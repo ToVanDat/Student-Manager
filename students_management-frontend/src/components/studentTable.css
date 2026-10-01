@@ -1,0 +1,233 @@
+.modern-student-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.modern-student-table th {
+    white-space: nowrap;
+}
+
+.modern-student-table td {
+    white-space: nowrap;
+}
+
+
+/* ID */
+
+.student-id {
+    color: #8b97a9;
+    font-size: 10px;
+}
+
+
+/* CODE */
+
+.student-code {
+    color: #5266c9;
+
+    font-weight: 700;
+
+    font-size: 10px;
+}
+
+
+/* NAME */
+
+.student-name-cell {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+}
+
+.student-mini-avatar {
+    width: 29px;
+    height: 29px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background:
+        linear-gradient(
+            135deg,
+            #e5ecff,
+            #d8e1ff
+        );
+
+    color: #4d65d2;
+
+    font-size: 9px;
+
+    font-weight: 700;
+}
+
+.student-name-cell strong {
+    color: #34435c;
+
+    font-size: 10px;
+}
+
+
+/* EMAIL */
+
+.student-email {
+    color: #748198;
+}
+
+
+/* GENDER */
+
+.gender {
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 4px 8px;
+
+    border-radius: 20px;
+
+    font-size: 8px;
+
+    font-weight: 600;
+}
+
+.gender.male {
+    background: #edf4ff;
+    color: #4779dc;
+}
+
+.gender.female {
+    background: #fff0f6;
+    color: #d85a91;
+}
+
+
+/* CLASS */
+
+.class-cell strong {
+    display: block;
+
+    color: #475873;
+
+    font-size: 9px;
+}
+
+.class-cell span {
+    display: block;
+
+    margin-top: 2px;
+
+    color: #9aa5b6;
+
+    font-size: 8px;
+
+    max-width: 130px;
+
+    white-space: normal;
+
+    line-height: 1.3;
+}
+
+
+/* ACTIONS */
+
+.table-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 4px;
+}
+
+.icon-action {
+    width: 28px;
+    height: 28px;
+
+    border: 0;
+
+    border-radius: 7px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+
+    transition:
+        transform .15s ease,
+        background .15s ease;
+}
+
+.icon-action:hover {
+    transform: translateY(-1px);
+}
+
+.icon-action.view {
+    background: #eef4ff;
+    color: #4f75d9;
+}
+
+.icon-action.edit {
+    background: #fff5df;
+    color: #e89a1b;
+}
+
+.icon-action.delete {
+    background: #fff0f1;
+    color: #df4d59;
+}
+
+.icon-action.more {
+    background: #f3f5f8;
+    color: #758197;
+}
+
+
+/* EMPTY */
+
+.student-empty {
+    padding: 55px 20px;
+
+    text-align: center;
+
+    color: #8a96a9;
+}
+
+.empty-icon {
+    width: 55px;
+    height: 55px;
+
+    margin: 0 auto 12px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #f1f4fa;
+
+    border-radius: 15px;
+}
+
+.empty-icon span {
+    font-size: 25px;
+}
+
+.student-empty h3 {
+    margin: 0;
+
+    color: #4b5870;
+
+    font-size: 13px;
+}
+
+.student-empty p {
+    margin-top: 6px;
+
+    font-size: 10px;
+}
