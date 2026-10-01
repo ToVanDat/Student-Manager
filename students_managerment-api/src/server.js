@@ -11,10 +11,10 @@ const server = http.createServer(app);
 const startServer = async () => {
     try {
         await connectRedis();
-        console.log('>>> BEFORE INIT SOCKET');
+  
         // Khởi tạo Socket.IO
         initSocket(server);
-        console.log('>>> AFTER INIT SOCKET');
+    
         // Chạy HTTP server
         server.listen(PORT, () => {
             console.log(
