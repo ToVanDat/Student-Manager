@@ -1,69 +1,32 @@
-import axios from 'axios';
-import { API_BASE_URL } from '../constant';
+import { apiClient } from "./apiClient";
+import { API_BASE_URL } from "../constant";
 
-const API_URL = `${API_BASE_URL}/api/students`;
-const getAuthHeaders = () => {
-    const accessToken =
-        localStorage.getItem('accessToken');
-
-    return {
-        Authorization: `Bearer ${accessToken}`
-    };
-};
+const STUDENT_API_URL = `${API_BASE_URL}/api/students`;
 
 export const getStudents = async () => {
-    const response = await axios.get(
-        API_URL,
-        {
-            headers: getAuthHeaders()
-        }
-    );
-
-    return response.data;
+  const response = await apiClient.get(STUDENT_API_URL);
+  return response.data;
 };
 
 export const createStudent = async (studentData) => {
-    const response = await axios.post(
-        API_URL,
-        studentData,
-        {
-            headers: getAuthHeaders()
-        }
-    );
-
-    return response.data;
+  const response = await apiClient.post(STUDENT_API_URL, studentData);
+  return response.data;
 };
 
 export const updateStudent = async (id, studentData) => {
-    const response = await axios.patch(
-        `${API_URL}/${id}`,
-        studentData,
-        {
-            headers: getAuthHeaders()
-        }
-    );
-
-    return response.data;
+  const response = await apiClient.patch(
+    `${STUDENT_API_URL}/${id}`,
+    studentData,
+  );
+  return response.data;
 };
 
 export const deleteStudent = async (id) => {
-    const response = await axios.delete(
-        `${API_URL}/${id}`,
-        {
-            headers: getAuthHeaders()
-        }
-    );
-
-    return response.data;
+  const response = await apiClient.delete(`${STUDENT_API_URL}/${id}`);
+  return response.data;
 };
 
 export const getStudentById = async (id) => {
-    const response = await axios.get(
-        `${API_URL}/${id}`,
-        {
-            headers: getAuthHeaders()
-        }
-    );
-
-    return response.data;
+  const response = await apiClient.get(`${STUDENT_API_URL}/${id}`);
+  return response.data;
 };
