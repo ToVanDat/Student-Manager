@@ -1,68 +1,65 @@
-
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-import {
-    Search,
-    Bell,
-    Moon,
-    Sun,
-    MoreVertical,
-    User,
-    Settings,
-    LogOut,
-    Home,
-    Users,
-    GraduationCap,
-    BookOpen,
-    Layers,
-    ClipboardList,
-    CalendarDays,
-    BarChart3,
-    ChevronRight,
-    Plus,
-    Pencil,
-    Trash2,
-    Eye,
-    Filter,
-    ArrowUpDown,
-    X,
-    Menu,
-    Sparkles,
-    ShieldCheck,
-    Monitor,
-    Smartphone,
-    KeyRound,
-    Mail,
-    Save,
-    RefreshCw,
-    Globe,
-    Clock3,
-    CheckCircle2,
-    AlertCircle
-} from 'lucide-react';
-
-import { useAuth } from '../auth/useAuth.js';
-
-import StudentTable from '../components/studentTable.jsx';
-import StudentForm from '../components/studentForm.jsx';
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import {
-    getStudents,
-    createStudent,
-    updateStudent,
-    deleteStudent
-} from '../service/studentApi.js';
+  Search,
+  Bell,
+  Moon,
+  Sun,
+  MoreVertical,
+  User,
+  Settings,
+  LogOut,
+  Home,
+  Users,
+  GraduationCap,
+  BookOpen,
+  Layers,
+  ClipboardList,
+  CalendarDays,
+  BarChart3,
+  ChevronRight,
+  Plus,
+  Pencil,
+  Trash2,
+  Eye,
+  Filter,
+  ArrowUpDown,
+  X,
+  Menu,
+  Sparkles,
+  ShieldCheck,
+  Monitor,
+  Smartphone,
+  KeyRound,
+  Mail,
+  Save,
+  RefreshCw,
+  Globe,
+  Clock3,
+  CheckCircle2,
+  AlertCircle,
+} from "lucide-react";
 
-import './students.css';
-import axios from 'axios';
+import { useAuth } from "../auth/useAuth.js";
+
+import StudentTable from "../components/studentTable.jsx";
+import StudentForm from "../components/studentForm.jsx";
+
 import {
-    getSessionsApi,
-    revokeSessionApi,
-    revokeOtherSessionsApi
-} from '../service/sessionApi.js';
+  getStudents,
+  createStudent,
+  updateStudent,
+  deleteStudent,
+} from "../service/studentApi.js";
 
-
+import "./students.css";
+import axios from "axios";
+import {
+  getSessionsApi,
+  revokeSessionApi,
+  revokeOtherSessionsApi,
+} from "../service/sessionApi.js";
 
 /*
  * Settings styles are kept here temporarily because the current requirement
@@ -579,3117 +576,1904 @@ const settingsStyles = `
 }
 `;
 
-
 function Students() {
-    const navigate = useNavigate();
-    const { user, logoutUser } = useAuth();
+  const navigate = useNavigate();
+  const { user, logoutUser } = useAuth();
 
-    const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState([]);
 
-    const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-    const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
-    const [selectedStudent, setSelectedStudent] =
-        useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
 
-    const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
 
-    const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
 
-    const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-    const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
-    const menuRef = useRef(null);
+  const menuRef = useRef(null);
 
-    // =====================================================
-    // PAGE / SETTINGS STATE
-    // =====================================================
+  // =====================================================
+  // PAGE / SETTINGS STATE
+  // =====================================================
 
-    const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState("dashboard");
 
-    const [settingsTab, setSettingsTab] =
-        useState('account');
+  const [settingsTab, setSettingsTab] = useState("account");
 
-    const [sessions, setSessions] = useState([]);
+  const [sessions, setSessions] = useState([]);
 
-    const [sessionsLoading, setSessionsLoading] =
-        useState(false);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
-    const [sessionsError, setSessionsError] =
-        useState('');
+  const [sessionsError, setSessionsError] = useState("");
 
-    const [currentSessionId, setCurrentSessionId] =
-        useState(null);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
 
-    const [accountForm, setAccountForm] = useState({
-        username: user?.username || '',
-        email: user?.email || ''
+  const [accountForm, setAccountForm] = useState({
+    username: user?.username || "",
+    email: user?.email || "",
+  });
+
+  const [accountSaving, setAccountSaving] = useState(false);
+
+  const [accountMessage, setAccountMessage] = useState("");
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [passwordSaving, setPasswordSaving] = useState(false);
+
+  const [passwordMessage, setPasswordMessage] = useState("");
+
+  const [passwordError, setPasswordError] = useState("");
+
+  // =====================================================
+  // LOAD STUDENTS
+  // =====================================================
+
+  const loadStudents = async () => {
+    try {
+      setLoading(true);
+
+      setError("");
+
+      const data = await getStudents();
+
+      setStudents(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+
+      setError(
+        error.response?.data?.message || "Không thể kết nối đến Backend.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStudents();
+  }, []);
+
+  useEffect(() => {
+    setAccountForm({
+      username: user?.username || "",
+      email: user?.email || "",
     });
-
-    const [accountSaving, setAccountSaving] =
-        useState(false);
-
-    const [accountMessage, setAccountMessage] =
-        useState('');
-
-    const [passwordForm, setPasswordForm] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
-
-    const [passwordSaving, setPasswordSaving] =
-        useState(false);
-
-    const [passwordMessage, setPasswordMessage] =
-        useState('');
-
-    const [passwordError, setPasswordError] =
-        useState('');
-
-    // =====================================================
-    // LOAD STUDENTS
-    // =====================================================
-
-    const loadStudents = async () => {
-
-        try {
-
-            setLoading(true);
-
-            setError('');
-
-            const data = await getStudents();
-
-            setStudents(Array.isArray(data) ? data : []);
-
-        } catch (error) {
-
-            console.error(error);
-
-            setError(
-                error.response?.data?.message ||
-                'Không thể kết nối đến Backend.'
-            );
-
-        } finally {
-
-            setLoading(false);
-
-        }
-
-    };
-
-
-    useEffect(() => {
-
-        loadStudents();
-
-    }, []);
-
-    useEffect(() => {
-
-        setAccountForm({
-            username: user?.username || '',
-            email: user?.email || ''
-        });
-
-    }, [user]);
-
-
-    // =====================================================
-    // CLOSE USER MENU WHEN CLICK OUTSIDE
-    // =====================================================
-
-    useEffect(() => {
-
-        const handleClickOutside = (event) => {
-
-            if (
-                menuRef.current &&
-                !menuRef.current.contains(event.target)
-            ) {
-                setMenuOpen(false);
-            }
-
-        };
-
-        document.addEventListener(
-            'mousedown',
-            handleClickOutside
-        );
-
-        return () => {
-
-            document.removeEventListener(
-                'mousedown',
-                handleClickOutside
-            );
-
-        };
-
-    }, []);
-
-
-    // =====================================================
-    // FILTER STUDENTS
-    // =====================================================
-
-    const filteredStudents = useMemo(() => {
-
-        const keyword =
-            search.trim().toLowerCase();
-
-        if (!keyword) {
-            return students;
-        }
-
-        return students.filter((student) => {
-
-            return (
-                String(student.student_code || '')
-                    .toLowerCase()
-                    .includes(keyword) ||
-
-                String(student.name || '')
-                    .toLowerCase()
-                    .includes(keyword) ||
-
-                String(student.email || '')
-                    .toLowerCase()
-                    .includes(keyword) ||
-
-                String(student.class_code || '')
-                    .toLowerCase()
-                    .includes(keyword) ||
-
-                String(student.class_name || '')
-                    .toLowerCase()
-                    .includes(keyword)
-            );
-
-        });
-
-    }, [students, search]);
-
-
-    // =====================================================
-    // STATISTICS
-    // =====================================================
-
-    const statistics = useMemo(() => {
-
-        const classes = new Set(
-            students
-                .map(
-                    (student) =>
-                        student.class_code
-                )
-                .filter(Boolean)
-        );
-
-        const male = students.filter(
-            (student) =>
-                String(student.gender)
-                    .toLowerCase() === 'male'
-        ).length;
-
-        const female = students.filter(
-            (student) =>
-                String(student.gender)
-                    .toLowerCase() === 'female'
-        ).length;
-
-        return {
-
-            totalStudents: students.length,
-
-            totalClasses: classes.size,
-
-            male,
-
-            female
-
-        };
-
-    }, [students]);
-
-
-    // =====================================================
-    // CLASS STATISTICS
-    // =====================================================
-
-    const classStatistics = useMemo(() => {
-
-        const map = {};
-
-        students.forEach((student) => {
-
-            const code =
-                student.class_code ||
-                'Chưa phân lớp';
-
-            const name =
-                student.class_name ||
-                '';
-
-            if (!map[code]) {
-
-                map[code] = {
-                    code,
-                    name,
-                    count: 0
-                };
-
-            }
-
-            map[code].count++;
-
-        });
-
-        return Object.values(map)
-            .sort((a, b) =>
-                b.count - a.count
-            );
-
-    }, [students]);
-
-
-    // =====================================================
-    // DECODE CURRENT ACCESS TOKEN
-    // =====================================================
-
-    const getCurrentSessionFromToken = () => {
-
-        try {
-
-            const token =
-                localStorage.getItem('accessToken');
-
-            if (!token) {
-                return null;
-            }
-
-            const parts = token.split('.');
-
-            if (parts.length !== 3) {
-                return null;
-            }
-
-            const payload = JSON.parse(
-                decodeURIComponent(
-                    atob(parts[1]
-                        .replace(/-/g, '+')
-                        .replace(/_/g, '/')
-                        .padEnd(
-                            parts[1].length +
-                            (4 - parts[1].length % 4) % 4,
-                            '='
-                        ))
-                        .split('')
-                        .map((char) =>
-                            '%' +
-                            ('00' + char.charCodeAt(0).toString(16))
-                                .slice(-2)
-                        )
-                        .join('')
-                )
-            );
-
-            return payload;
-
-        } catch (error) {
-
-            console.error(
-                'Không thể đọc access token:',
-                error
-            );
-
-            return null;
-
-        }
-
-    };
-
-
-    // =====================================================
-    // LOAD SESSIONS
-    // =====================================================
-
-    const loadSessions = async () => {
-
-        try {
-
-            setSessionsLoading(true);
-            setSessionsError('');
-
-            const data = await getSessionsApi();
-
-            const sessionList =
-                Array.isArray(data)
-                    ? data
-                    : Array.isArray(data?.sessions)
-                        ? data.sessions
-                        : [];
-
-            setSessions(sessionList);
-
-            const payload =
-                getCurrentSessionFromToken();
-
-            setCurrentSessionId(
-                payload?.sessionId ||
-                payload?.session_id ||
-                null
-            );
-
-        } catch (error) {
-
-            console.error(
-                'LOAD SESSIONS ERROR:',
-                error
-            );
-
-            setSessionsError(
-                error.response?.data?.message ||
-                'Không thể tải danh sách phiên đăng nhập.'
-            );
-
-        } finally {
-
-            setSessionsLoading(false);
-
-        }
-
-    };
-
-
-    // =====================================================
-    // OPEN SETTINGS
-    // =====================================================
-
-    const openSettings = (tab = 'account') => {
-
-        setActivePage('settings');
-
-        setSettingsTab(tab);
-
+  }, [user]);
+
+  // =====================================================
+  // CLOSE USER MENU WHEN CLICK OUTSIDE
+  // =====================================================
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
-
-        setSidebarOpen(false);
-
-        if (tab === 'sessions') {
-            loadSessions();
-        }
-
+      }
     };
 
+    document.addEventListener("mousedown", handleClickOutside);
 
-    // =====================================================
-    // REVOKE SESSION
-    // =====================================================
-
-    const handleRevokeSession = async (sessionId) => {
-
-        if (!sessionId) {
-            return;
-        }
-
-        const confirmed = window.confirm(
-            'Bạn có chắc muốn đăng xuất phiên này?'
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-
-            await revokeSessionApi(sessionId);
-
-            await loadSessions();
-
-        } catch (error) {
-
-            console.error(
-                'REVOKE SESSION ERROR:',
-                error
-            );
-
-            alert(
-                error.response?.data?.message ||
-                'Không thể đăng xuất phiên này.'
-            );
-
-        }
-
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, []);
 
+  // =====================================================
+  // FILTER STUDENTS
+  // =====================================================
 
-    // =====================================================
-    // REVOKE OTHER SESSIONS
-    // =====================================================
+  const filteredStudents = useMemo(() => {
+    const keyword = search.trim().toLowerCase();
 
-    const handleRevokeOtherSessions = async () => {
+    if (!keyword) {
+      return students;
+    }
 
-        const confirmed = window.confirm(
-            'Bạn có chắc muốn đăng xuất tất cả thiết bị khác?'
-        );
+    return students.filter((student) => {
+      return (
+        String(student.student_code || "")
+          .toLowerCase()
+          .includes(keyword) ||
+        String(student.name || "")
+          .toLowerCase()
+          .includes(keyword) ||
+        String(student.email || "")
+          .toLowerCase()
+          .includes(keyword) ||
+        String(student.class_code || "")
+          .toLowerCase()
+          .includes(keyword) ||
+        String(student.class_name || "")
+          .toLowerCase()
+          .includes(keyword)
+      );
+    });
+  }, [students, search]);
 
-        if (!confirmed) {
-            return;
-        }
+  // =====================================================
+  // STATISTICS
+  // =====================================================
 
-        try {
+  const statistics = useMemo(() => {
+    const classes = new Set(
+      students.map((student) => student.class_code).filter(Boolean),
+    );
 
-            await revokeOtherSessionsApi();
+    const male = students.filter(
+      (student) => String(student.gender).toLowerCase() === "male",
+    ).length;
 
-            await loadSessions();
+    const female = students.filter(
+      (student) => String(student.gender).toLowerCase() === "female",
+    ).length;
 
-        } catch (error) {
+    return {
+      totalStudents: students.length,
 
-            console.error(
-                'REVOKE OTHER SESSIONS ERROR:',
-                error
-            );
+      totalClasses: classes.size,
 
-            alert(
-                error.response?.data?.message ||
-                'Không thể đăng xuất các thiết bị khác.'
-            );
+      male,
 
-        }
-
+      female,
     };
-
-
-    // =====================================================
-    // UPDATE ACCOUNT
-    // =====================================================
-
-    const handleUpdateAccount = async (event) => {
-
-        event.preventDefault();
-
-        setAccountSaving(true);
-        setAccountMessage('');
-
-        try {
-
-            const accessToken =
-                localStorage.getItem('accessToken');
-
-            await axios.patch(
-                'http://localhost:3000/api/auth/me',
-                {
-                    username: accountForm.username,
-                    email: accountForm.email
-                },
-                {
-                    withCredentials: true,
-                    headers: {
-                        Authorization:
-                            `Bearer ${accessToken}`
-                    }
-                }
-            );
-
-            setAccountMessage(
-                'Cập nhật thông tin tài khoản thành công.'
-            );
-
-        } catch (error) {
-
-            console.error(
-                'UPDATE ACCOUNT ERROR:',
-                error
-            );
-
-            setAccountMessage(
-                error.response?.data?.message ||
-                'Cập nhật tài khoản thất bại.'
-            );
-
-        } finally {
-
-            setAccountSaving(false);
-
-        }
-
-    };
-
-
-    // =====================================================
-    // CHANGE PASSWORD
-    // =====================================================
-
-    const handleChangePassword = async (event) => {
-
-        event.preventDefault();
-
-        setPasswordMessage('');
-        setPasswordError('');
-
-        if (
-            !passwordForm.currentPassword ||
-            !passwordForm.newPassword ||
-            !passwordForm.confirmPassword
-        ) {
-
-            setPasswordError(
-                'Vui lòng nhập đầy đủ thông tin.'
-            );
-
-            return;
-
-        }
-
-        if (
-            passwordForm.newPassword !==
-            passwordForm.confirmPassword
-        ) {
-
-            setPasswordError(
-                'Mật khẩu xác nhận không khớp.'
-            );
-
-            return;
-
-        }
-
-        if (
-            passwordForm.newPassword.length < 8
-        ) {
-
-            setPasswordError(
-                'Mật khẩu mới phải có ít nhất 8 ký tự.'
-            );
-
-            return;
-
-        }
-
-        try {
-
-            setPasswordSaving(true);
-
-            const accessToken =
-                localStorage.getItem('accessToken');
-
-            await axios.post(
-                'http://localhost:3000/api/auth/change-password',
-                {
-                    currentPassword:
-                        passwordForm.currentPassword,
-                    newPassword:
-                        passwordForm.newPassword
-                },
-                {
-                    withCredentials: true,
-                    headers: {
-                        Authorization:
-                            `Bearer ${accessToken}`
-                    }
-                }
-            );
-
-            setPasswordMessage(
-                'Đổi mật khẩu thành công.'
-            );
-
-            setPasswordForm({
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: ''
-            });
-
-        } catch (error) {
-
-            console.error(
-                'CHANGE PASSWORD ERROR:',
-                error
-            );
-
-            setPasswordError(
-                error.response?.data?.message ||
-                'Đổi mật khẩu thất bại.'
-            );
-
-        } finally {
-
-            setPasswordSaving(false);
-
-        }
-
-    };
-
-
-    // =====================================================
-    // FORMAT SESSION DATE
-    // =====================================================
-
-    const formatSessionDate = (value) => {
-
-        if (!value) {
-            return 'Không có dữ liệu';
-        }
-
-        const date = new Date(value);
-
-        if (Number.isNaN(date.getTime())) {
-            return 'Không xác định';
-        }
-
-        return date.toLocaleString(
-            'vi-VN',
-            {
-                dateStyle: 'medium',
-                timeStyle: 'short'
-            }
-        );
-
-    };
-
-
-    // =====================================================
-    // SESSION DEVICE ICON
-    // =====================================================
-
-    const getSessionIcon = (session) => {
-
-        const value =
-            `${session?.device_name || ''} ${session?.user_agent || ''}`
-                .toLowerCase();
-
-        if (
-            value.includes('mobile') ||
-            value.includes('android') ||
-            value.includes('iphone')
-        ) {
-
-            return <Smartphone size={24} />;
-
-        }
-
-        return <Monitor size={24} />;
-
-    };
-
-
-    // =====================================================
-    // ADD
-    // =====================================================
-
-    const handleAdd = () => {
-
-        setSelectedStudent(null);
-
-        setShowForm(true);
-
-    };
-
-
-    // =====================================================
-    // EDIT
-    // =====================================================
-
-    const handleEdit = (student) => {
-
-        setSelectedStudent(student);
-
-        setShowForm(true);
-
-    };
-
-
-    // =====================================================
-    // DELETE
-    // =====================================================
-
-    const handleDelete = async (id) => {
-
-        const confirmed =
-            window.confirm(
-                'Bạn có chắc muốn xóa sinh viên này?'
-            );
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-
-            await deleteStudent(id);
-
-            await loadStudents();
-
-        } catch (error) {
-
-            console.error(error);
-
-            alert(
-                error.response?.data?.message ||
-                'Xóa sinh viên thất bại'
-            );
-
-        }
-
-    };
-
-
-    // =====================================================
-    // SUBMIT
-    // =====================================================
-
-    const handleSubmit = async (studentData) => {
-
-        try {
-
-            if (selectedStudent) {
-
-                await updateStudent(
-                    selectedStudent.id,
-                    studentData
-                );
-
-            } else {
-
-                await createStudent(studentData);
-
-            }
-
-            setShowForm(false);
-
-            setSelectedStudent(null);
-
-            await loadStudents();
-
-        } catch (error) {
-
-            console.error(error);
-
-            alert(
-                error.response?.data?.message ||
-                (
-                    selectedStudent
-                        ? 'Cập nhật sinh viên thất bại'
-                        : 'Thêm sinh viên thất bại'
-                )
-            );
-
-        }
-
-    };
-
-
-    // =====================================================
-    // LOGOUT
-    // =====================================================
-
-   const handleLogout = async () => {
+  }, [students]);
+
+  // =====================================================
+  // CLASS STATISTICS
+  // =====================================================
+
+  const classStatistics = useMemo(() => {
+    const map = {};
+
+    students.forEach((student) => {
+      const code = student.class_code || "Chưa phân lớp";
+
+      const name = student.class_name || "";
+
+      if (!map[code]) {
+        map[code] = {
+          code,
+          name,
+          count: 0,
+        };
+      }
+
+      map[code].count++;
+    });
+
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [students]);
+
+  // =====================================================
+  // DECODE CURRENT ACCESS TOKEN
+  // =====================================================
+
+  const getCurrentSessionFromToken = () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      if (!token) {
+        return null;
+      }
+
+      const parts = token.split(".");
+
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      const payload = JSON.parse(
+        decodeURIComponent(
+          atob(
+            parts[1]
+              .replace(/-/g, "+")
+              .replace(/_/g, "/")
+              .padEnd(parts[1].length + ((4 - (parts[1].length % 4)) % 4), "="),
+          )
+            .split("")
+            .map(
+              (char) =>
+                "%" + ("00" + char.charCodeAt(0).toString(16)).slice(-2),
+            )
+            .join(""),
+        ),
+      );
+
+      return payload;
+    } catch (error) {
+      console.error("Không thể đọc access token:", error);
+
+      return null;
+    }
+  };
+
+  // =====================================================
+  // LOAD SESSIONS
+  // =====================================================
+
+  const loadSessions = async () => {
+    try {
+      setSessionsLoading(true);
+      setSessionsError("");
+
+      const data = await getSessionsApi();
+
+      const sessionList = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.sessions)
+          ? data.sessions
+          : [];
+
+      setSessions(sessionList);
+
+      const payload = getCurrentSessionFromToken();
+
+      setCurrentSessionId(payload?.sessionId || payload?.session_id || null);
+    } catch (error) {
+      console.error("LOAD SESSIONS ERROR:", error);
+
+      setSessionsError(
+        error.response?.data?.message ||
+          "Không thể tải danh sách phiên đăng nhập.",
+      );
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  // =====================================================
+  // OPEN SETTINGS
+  // =====================================================
+
+  const openSettings = (tab = "account") => {
+    setActivePage("settings");
+
+    setSettingsTab(tab);
 
     setMenuOpen(false);
 
+    setSidebarOpen(false);
+
+    if (tab === "sessions") {
+      loadSessions();
+    }
+  };
+
+  // =====================================================
+  // REVOKE SESSION
+  // =====================================================
+
+  const handleRevokeSession = async (sessionId) => {
+    if (!sessionId) {
+      return;
+    }
+
+    const confirmed = window.confirm("Bạn có chắc muốn đăng xuất phiên này?");
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
+      await revokeSessionApi(sessionId);
 
-        await logoutUser();
-
-        navigate('/login', {
-            replace: true
-        });
-
+      await loadSessions();
     } catch (error) {
+      console.error("REVOKE SESSION ERROR:", error);
 
-        console.error('LOGOUT ERROR:', error);
+      alert(error.response?.data?.message || "Không thể đăng xuất phiên này.");
+    }
+  };
 
-        // Dù logout API có lỗi,
-        // vẫn đưa người dùng về Login
-        navigate('/login', {
-            replace: true
-        });
+  // =====================================================
+  // REVOKE OTHER SESSIONS
+  // =====================================================
 
+  const handleRevokeOtherSessions = async () => {
+    const confirmed = window.confirm(
+      "Bạn có chắc muốn đăng xuất tất cả thiết bị khác?",
+    );
+
+    if (!confirmed) {
+      return;
     }
 
-};
+    try {
+      await revokeOtherSessionsApi();
 
+      await loadSessions();
+    } catch (error) {
+      console.error("REVOKE OTHER SESSIONS ERROR:", error);
 
-    // =====================================================
-    // LOADING
-    // =====================================================
+      alert(
+        error.response?.data?.message ||
+          "Không thể đăng xuất các thiết bị khác.",
+      );
+    }
+  };
 
-    if (loading) {
+  // =====================================================
+  // UPDATE ACCOUNT
+  // =====================================================
 
-        return (
+  const handleUpdateAccount = async (event) => {
+    event.preventDefault();
 
-            <div className="dashboard-loading">
+    setAccountSaving(true);
+    setAccountMessage("");
 
-                <div className="loading-spinner"></div>
+    try {
+      const accessToken = localStorage.getItem("accessToken");
 
-                <p>Đang tải dữ liệu...</p>
+      await axios.patch(
+        "http://localhost:3000/api/auth/me",
+        {
+          username: accountForm.username,
+          email: accountForm.email,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
 
-            </div>
+      setAccountMessage("Cập nhật thông tin tài khoản thành công.");
+    } catch (error) {
+      console.error("UPDATE ACCOUNT ERROR:", error);
 
-        );
+      setAccountMessage(
+        error.response?.data?.message || "Cập nhật tài khoản thất bại.",
+      );
+    } finally {
+      setAccountSaving(false);
+    }
+  };
 
+  // =====================================================
+  // CHANGE PASSWORD
+  // =====================================================
+
+  const handleChangePassword = async (event) => {
+    event.preventDefault();
+
+    setPasswordMessage("");
+    setPasswordError("");
+
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      setPasswordError("Vui lòng nhập đầy đủ thông tin.");
+
+      return;
     }
 
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("Mật khẩu xác nhận không khớp.");
 
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("Mật khẩu mới phải có ít nhất 8 ký tự.");
+
+      return;
+    }
+
+    try {
+      setPasswordSaving(true);
+
+      const accessToken = localStorage.getItem("accessToken");
+
+      await axios.post(
+        "http://localhost:3000/api/auth/change-password",
+        {
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        },
+        {
+          withCredentials: true,
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      setPasswordMessage("Đổi mật khẩu thành công.");
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error) {
+      console.error("CHANGE PASSWORD ERROR:", error);
+
+      setPasswordError(
+        error.response?.data?.message || "Đổi mật khẩu thất bại.",
+      );
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  // =====================================================
+  // FORMAT SESSION DATE
+  // =====================================================
+
+  const formatSessionDate = (value) => {
+    if (!value) {
+      return "Không có dữ liệu";
+    }
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      return "Không xác định";
+    }
+
+    return date.toLocaleString("vi-VN", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+  };
+
+  // =====================================================
+  // SESSION DEVICE ICON
+  // =====================================================
+
+  const getSessionIcon = (session) => {
+    const value =
+      `${session?.device_name || ""} ${session?.user_agent || ""}`.toLowerCase();
+
+    if (
+      value.includes("mobile") ||
+      value.includes("android") ||
+      value.includes("iphone")
+    ) {
+      return <Smartphone size={24} />;
+    }
+
+    return <Monitor size={24} />;
+  };
+
+  // =====================================================
+  // ADD
+  // =====================================================
+
+  const handleAdd = () => {
+    setSelectedStudent(null);
+
+    setShowForm(true);
+  };
+
+  // =====================================================
+  // EDIT
+  // =====================================================
+
+  const handleEdit = (student) => {
+    setSelectedStudent(student);
+
+    setShowForm(true);
+  };
+
+  // =====================================================
+  // DELETE
+  // =====================================================
+
+  const handleDelete = async (id) => {
+    const confirmed = window.confirm("Bạn có chắc muốn xóa sinh viên này?");
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteStudent(id);
+
+      await loadStudents();
+    } catch (error) {
+      console.error(error);
+
+      alert(error.response?.data?.message || "Xóa sinh viên thất bại");
+    }
+  };
+
+  // =====================================================
+  // SUBMIT
+  // =====================================================
+
+  const handleSubmit = async (studentData) => {
+    try {
+      if (selectedStudent) {
+        await updateStudent(selectedStudent.id, studentData);
+      } else {
+        await createStudent(studentData);
+      }
+
+      setShowForm(false);
+
+      setSelectedStudent(null);
+
+      await loadStudents();
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error.response?.data?.message ||
+          (selectedStudent
+            ? "Cập nhật sinh viên thất bại"
+            : "Thêm sinh viên thất bại"),
+      );
+    }
+  };
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
+  const handleLogout = async () => {
+    setMenuOpen(false);
+
+    try {
+      await logoutUser();
+
+      navigate("/login", {
+        replace: true,
+      });
+    } catch (error) {
+      console.error("LOGOUT ERROR:", error);
+
+      // Dù logout API có lỗi,
+      // vẫn đưa người dùng về Login
+      navigate("/login", {
+        replace: true,
+      });
+    }
+  };
+
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (loading) {
     return (
+      <div className="dashboard-loading">
+        <div className="loading-spinner"></div>
 
-        <div
-            className={
-                darkMode
-                    ? 'dashboard dark'
-                    : 'dashboard'
-            }
-        >
-            <style>{settingsStyles}</style>
+        <p>Đang tải dữ liệu...</p>
+      </div>
+    );
+  }
 
-            {/* =================================================
+  return (
+    <div className={darkMode ? "dashboard dark" : "dashboard"}>
+      <style>{settingsStyles}</style>
+
+      {/* =================================================
                 MOBILE OVERLAY
             ================================================= */}
 
-            {sidebarOpen && (
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-                <div
-                    className="sidebar-overlay"
-                    onClick={() =>
-                        setSidebarOpen(false)
-                    }
-                />
-
-            )}
-
-
-            {/* =================================================
+      {/* =================================================
                 SIDEBAR
             ================================================= */}
 
-            <aside
-                className={
-                    sidebarOpen
-                        ? 'sidebar sidebar-open'
-                        : 'sidebar'
-                }
-            >
+      <aside className={sidebarOpen ? "sidebar sidebar-open" : "sidebar"}>
+        <div className="brand">
+          <div className="brand-logo">
+            <GraduationCap size={27} />
+          </div>
 
-                <div className="brand">
+          <div>
+            <strong>StudentOS</strong>
 
-                    <div className="brand-logo">
+            <span>Academic Management</span>
+          </div>
+        </div>
 
-                        <GraduationCap size={27} />
+        {/* NAVIGATION */}
 
-                    </div>
+        <nav className="sidebar-nav">
+          <div className="nav-section-title">TỔNG QUAN</div>
 
-                    <div>
+          <button
+            className={
+              activePage === "dashboard" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => {
+              setActivePage("dashboard");
+              setSidebarOpen(false);
+            }}
+          >
+            <Home size={19} />
 
-                        <strong>StudentOS</strong>
+            <span>Trang chủ</span>
+          </button>
 
-                        <span>
-                            Academic Management
-                        </span>
+          <button
+            className={
+              activePage === "students" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => {
+              setActivePage("dashboard");
+              setSidebarOpen(false);
+            }}
+          >
+            <Users size={19} />
 
-                    </div>
+            <span>Sinh viên</span>
 
-                </div>
+            <span className="nav-badge">{statistics.totalStudents}</span>
+          </button>
 
+          <button className="nav-item">
+            <Layers size={19} />
 
-                {/* NAVIGATION */}
+            <span>Lớp học</span>
+          </button>
 
-                <nav className="sidebar-nav">
+          <button className="nav-item">
+            <GraduationCap size={19} />
 
-                    <div className="nav-section-title">
-                        TỔNG QUAN
-                    </div>
+            <span>Khoa - Ngành</span>
+          </button>
 
-                    <button
-                        className={
-                            activePage === 'dashboard'
-                                ? 'nav-item active'
-                                : 'nav-item'
-                        }
-                        onClick={() => {
-                            setActivePage('dashboard');
-                            setSidebarOpen(false);
-                        }}
-                    >
+          <div className="nav-section-title second">QUẢN LÝ ĐÀO TẠO</div>
 
-                        <Home size={19} />
+          <button className="nav-item">
+            <BookOpen size={19} />
 
-                        <span>Trang chủ</span>
+            <span>Môn học</span>
+          </button>
 
-                    </button>
+          <button className="nav-item">
+            <ClipboardList size={19} />
 
+            <span>Đăng ký học</span>
+          </button>
 
-                    <button
-                        className={
-                            activePage === 'students'
-                                ? 'nav-item active'
-                                : 'nav-item'
-                        }
-                        onClick={() => {
-                            setActivePage('dashboard');
-                            setSidebarOpen(false);
-                        }}
-                    >
+          <button className="nav-item">
+            <CalendarDays size={19} />
 
-                        <Users size={19} />
+            <span>Học kỳ</span>
+          </button>
 
-                        <span>Sinh viên</span>
+          <button className="nav-item">
+            <BarChart3 size={19} />
 
-                        <span className="nav-badge">
-                            {statistics.totalStudents}
-                        </span>
+            <span>Báo cáo</span>
+          </button>
 
-                    </button>
+          <button
+            className={
+              activePage === "settings" ? "nav-item active" : "nav-item"
+            }
+            onClick={() => openSettings("account")}
+          >
+            <Settings size={19} />
 
+            <span>Cài đặt</span>
+          </button>
+        </nav>
 
-                    <button className="nav-item">
+        {/* LEARNING CARD */}
 
-                        <Layers size={19} />
-
-                        <span>Lớp học</span>
-
-                    </button>
-
-
-                    <button className="nav-item">
-
-                        <GraduationCap size={19} />
-
-                        <span>Khoa - Ngành</span>
-
-                    </button>
-
-
-                    <div className="nav-section-title second">
-
-                        QUẢN LÝ ĐÀO TẠO
-
-                    </div>
-
-
-                    <button className="nav-item">
-
-                        <BookOpen size={19} />
-
-                        <span>Môn học</span>
-
-                    </button>
-
-
-                    <button className="nav-item">
-
-                        <ClipboardList size={19} />
-
-                        <span>Đăng ký học</span>
-
-                    </button>
-
-
-                    <button className="nav-item">
-
-                        <CalendarDays size={19} />
-
-                        <span>Học kỳ</span>
-
-                    </button>
-
-
-                    <button className="nav-item">
-
-                        <BarChart3 size={19} />
-
-                        <span>Báo cáo</span>
-
-                    </button>
-
-
-                    <button
-                        className={
-                            activePage === 'settings'
-                                ? 'nav-item active'
-                                : 'nav-item'
-                        }
-                        onClick={() => openSettings('account')}
-                    >
-
-                        <Settings size={19} />
-
-                        <span>Cài đặt</span>
-
-                    </button>
-
-                </nav>
-
-
-                {/* LEARNING CARD */}
-
-                <div className="learning-card">
-
-                    <div className="learning-card-content">
-
-                        <span className="learning-label">
-                            HỌC TẬP
-                        </span>
-
-                        <h3>
-                            Học tập là hành trình
-                            không có điểm dừng
-                        </h3>
-
-                        <button>
-
-                            Khám phá
-
-                            <ChevronRight size={15} />
-
-                        </button>
-
-                    </div>
-
-                    <div className="learning-decoration">
-
-                        <Sparkles size={70} />
-
-                    </div>
-
-                </div>
-
-
-                {/* SIDEBAR FOOTER */}
-
-                <div className="sidebar-footer">
-
-                    <div className="footer-avatar">
-
-                        {user?.username
-                            ?.charAt(0)
-                            ?.toUpperCase() || 'U'}
-
-                    </div>
-
-                    <div className="footer-user">
-
-                        <strong>
-                            {user?.username || 'User'}
-                        </strong>
-
-                        <span>
-                            {user?.role === 'admin'
-                                ? 'Quản trị viên'
-                                : 'Người dùng'}
-                        </span>
-
-                    </div>
-
-                </div>
-
-            </aside>
-
-
-            {/* =================================================
+        <div className="learning-card">
+          <div className="learning-card-content">
+            <span className="learning-label">HỌC TẬP</span>
+
+            <h3>Học tập là hành trình không có điểm dừng</h3>
+
+            <button>
+              Khám phá
+              <ChevronRight size={15} />
+            </button>
+          </div>
+
+          <div className="learning-decoration">
+            <Sparkles size={70} />
+          </div>
+        </div>
+
+        {/* SIDEBAR FOOTER */}
+
+        <div className="sidebar-footer">
+          <div className="footer-avatar">
+            {user?.username?.charAt(0)?.toUpperCase() || "U"}
+          </div>
+
+          <div className="footer-user">
+            <strong>{user?.username || "User"}</strong>
+
+            <span>
+              {user?.role === "admin" ? "Quản trị viên" : "Người dùng"}
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      {/* =================================================
                 MAIN
             ================================================= */}
 
-            <main className="main-content">
-
-
-                {/* =================================================
+      <main className="main-content">
+        {/* =================================================
                     HEADER
                 ================================================= */}
 
-                <header className="top-header">
+        <header className="top-header">
+          <button
+            className="mobile-menu"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu size={22} />
+          </button>
 
-                    <button
-                        className="mobile-menu"
-                        onClick={() =>
-                            setSidebarOpen(
-                                !sidebarOpen
-                            )
-                        }
-                    >
+          {/* SEARCH */}
 
-                        <Menu size={22} />
+          <div className="global-search">
+            <Search size={19} />
 
-                    </button>
+            <input
+              type="text"
+              placeholder="Tìm kiếm sinh viên, lớp học, mã sinh viên, email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
 
+          <div className="header-actions">
+            {/* NOTIFICATION */}
 
-                    {/* SEARCH */}
+            <button className="header-icon">
+              <Bell size={20} />
 
-                    <div className="global-search">
+              <span className="notification-dot">2</span>
+            </button>
 
-                        <Search size={19} />
+            {/* DARK MODE */}
 
-                        <input
-                            type="text"
-                            placeholder="Tìm kiếm sinh viên, lớp học, mã sinh viên, email..."
-                            value={search}
-                            onChange={(e) =>
-                                setSearch(
-                                    e.target.value
-                                )
-                            }
-                        />
+            <button
+              className="header-icon"
+              onClick={() => setDarkMode(!darkMode)}
+            >
+              {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
 
+            {/* USER MENU */}
+
+            <div className="user-menu-wrapper" ref={menuRef}>
+              <button
+                className="user-menu-trigger"
+                onClick={() => setMenuOpen(!menuOpen)}
+              >
+                <div className="user-avatar">
+                  {user?.username?.charAt(0)?.toUpperCase() || "U"}
+                </div>
+
+                <div className="header-user-info">
+                  <strong>{user?.username || "User"}</strong>
+
+                  <span>
+                    {user?.role === "admin" ? "Quản trị viên" : "Người dùng"}
+                  </span>
+                </div>
+
+                <MoreVertical size={20} />
+              </button>
+
+              {/* DROPDOWN */}
+
+              {menuOpen && (
+                <div className="user-dropdown">
+                  <div className="dropdown-user">
+                    <div className="user-avatar large">
+                      {user?.username?.charAt(0)?.toUpperCase() || "U"}
                     </div>
 
+                    <div>
+                      <strong>{user?.username || "User"}</strong>
 
-                    <div className="header-actions">
-
-
-                        {/* NOTIFICATION */}
-
-                        <button className="header-icon">
-
-                            <Bell size={20} />
-
-                            <span className="notification-dot">
-                                2
-                            </span>
-
-                        </button>
-
-
-                        {/* DARK MODE */}
-
-                        <button
-                            className="header-icon"
-                            onClick={() =>
-                                setDarkMode(
-                                    !darkMode
-                                )
-                            }
-                        >
-
-                            {darkMode
-                                ? <Sun size={20} />
-                                : <Moon size={20} />
-                            }
-
-                        </button>
-
-
-                        {/* USER MENU */}
-
-                        <div
-                            className="user-menu-wrapper"
-                            ref={menuRef}
-                        >
-
-                            <button
-                                className="user-menu-trigger"
-                                onClick={() =>
-                                    setMenuOpen(
-                                        !menuOpen
-                                    )
-                                }
-                            >
-
-                                <div className="user-avatar">
-
-                                    {user?.username
-                                        ?.charAt(0)
-                                        ?.toUpperCase() ||
-                                        'U'}
-
-                                </div>
-
-                                <div className="header-user-info">
-
-                                    <strong>
-                                        {user?.username ||
-                                            'User'}
-                                    </strong>
-
-                                    <span>
-                                        {user?.role === 'admin'
-                                            ? 'Quản trị viên'
-                                            : 'Người dùng'}
-                                    </span>
-
-                                </div>
-
-                                <MoreVertical
-                                    size={20}
-                                />
-
-                            </button>
-
-
-                            {/* DROPDOWN */}
-
-                            {menuOpen && (
-
-                                <div className="user-dropdown">
-
-                                    <div className="dropdown-user">
-
-                                        <div className="user-avatar large">
-
-                                            {user?.username
-                                                ?.charAt(0)
-                                                ?.toUpperCase() ||
-                                                'U'}
-
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                {user?.username ||
-                                                    'User'}
-                                            </strong>
-
-                                            <span>
-                                                {user?.email ||
-                                                    'user@example.com'}
-                                            </span>
-
-                                        </div>
-
-                                    </div>
-
-
-                                    <div className="dropdown-divider" />
-
-
-                                    <button>
-
-                                        <User size={18} />
-
-                                        <span>
-                                            Thông tin người dùng
-                                        </span>
-
-                                    </button>
-
-
-                                    <button
-                                        onClick={() =>
-                                            openSettings('account')
-                                        }
-                                    >
-
-                                        <Settings size={18} />
-
-                                        <span>
-                                            Cài đặt tài khoản
-                                        </span>
-
-                                    </button>
-
-
-                                    <div className="dropdown-divider" />
-
-
-                                    <button
-                                        className="logout-item"
-                                        onClick={
-                                            handleLogout
-                                        }
-                                    >
-
-                                        <LogOut size={18} />
-
-                                        <span>
-                                            Đăng xuất
-                                        </span>
-
-                                    </button>
-
-                                </div>
-
-                            )}
-
-                        </div>
-
+                      <span>{user?.email || "user@example.com"}</span>
                     </div>
+                  </div>
 
-                </header>
+                  <div className="dropdown-divider" />
 
+                  <button>
+                    <User size={18} />
 
-                {/* =================================================
+                    <span>Thông tin người dùng</span>
+                  </button>
+
+                  <button onClick={() => openSettings("account")}>
+                    <Settings size={18} />
+
+                    <span>Cài đặt tài khoản</span>
+                  </button>
+
+                  <div className="dropdown-divider" />
+
+                  <button className="logout-item" onClick={handleLogout}>
+                    <LogOut size={18} />
+
+                    <span>Đăng xuất</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* =================================================
                     PAGE CONTENT
                 ================================================= */}
 
-                <section className="content">
-
-                    {activePage === 'dashboard' && (
-                        <>
-
-                    {/* =================================================
+        <section className="content">
+          {activePage === "dashboard" && (
+            <>
+              {/* =================================================
                         HERO
                     ================================================= */}
 
-                    <div className="welcome-row">
+              <div className="welcome-row">
+                <div>
+                  <div className="welcome-title">
+                    <span>👋</span>
 
-                        <div>
+                    <h1>Xin chào, {user?.username || "bạn"}!</h1>
+                  </div>
 
-                            <div className="welcome-title">
+                  <p>Chúc bạn có một ngày làm việc hiệu quả.</p>
 
-                                <span>
-                                    👋
-                                </span>
+                  <div className="current-date">
+                    <CalendarDays size={16} />
 
-                                <h1>
-                                    Xin chào,{' '}
-                                    {user?.username ||
-                                        'bạn'}!
-                                </h1>
+                    {new Date().toLocaleDateString("vi-VN", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </div>
+                </div>
 
-                            </div>
+                {/* QUOTE BANNER */}
 
-                            <p>
-                                Chúc bạn có một ngày
-                                làm việc hiệu quả.
-                            </p>
+                <div className="quote-banner">
+                  <div className="quote-overlay"></div>
 
-                            <div className="current-date">
+                  <div className="quote-content">
+                    <span>“Tri thức là chìa khóa mở ra tương lai.”</span>
 
-                                <CalendarDays size={16} />
+                    <button>
+                      Xem thêm
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                                {new Date()
-                                    .toLocaleDateString(
-                                        'vi-VN',
-                                        {
-                                            weekday: 'long',
-                                            day: 'numeric',
-                                            month: 'long',
-                                            year: 'numeric'
-                                        }
-                                    )}
-
-                            </div>
-
-                        </div>
-
-
-                        {/* QUOTE BANNER */}
-
-                        <div className="quote-banner">
-
-                            <div className="quote-overlay"></div>
-
-                            <div className="quote-content">
-
-                                <span>
-                                    “Tri thức là chìa khóa
-                                    mở ra tương lai.”
-                                </span>
-
-                                <button>
-
-                                    Xem thêm
-
-                                    <ChevronRight
-                                        size={15}
-                                    />
-
-                                </button>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* =================================================
+              {/* =================================================
                         STAT CARDS
                     ================================================= */}
 
-                    <div className="stats-grid">
+              <div className="stats-grid">
+                <div className="stat-card blue">
+                  <div className="stat-icon">
+                    <Users size={23} />
+                  </div>
 
+                  <div className="stat-info">
+                    <span>Tổng số sinh viên</span>
 
-                        <div className="stat-card blue">
+                    <strong>{statistics.totalStudents}</strong>
 
-                            <div className="stat-icon">
+                    <small>Sinh viên đang quản lý</small>
+                  </div>
+                </div>
 
-                                <Users size={23} />
+                <div className="stat-card green">
+                  <div className="stat-icon">
+                    <BookOpen size={23} />
+                  </div>
 
-                            </div>
+                  <div className="stat-info">
+                    <span>Lớp học</span>
 
-                            <div className="stat-info">
+                    <strong>{statistics.totalClasses}</strong>
 
-                                <span>
-                                    Tổng số sinh viên
-                                </span>
+                    <small>Lớp đang có sinh viên</small>
+                  </div>
+                </div>
 
-                                <strong>
-                                    {statistics.totalStudents}
-                                </strong>
+                <div className="stat-card purple">
+                  <div className="stat-icon">
+                    <User size={23} />
+                  </div>
 
-                                <small>
-                                    Sinh viên đang quản lý
-                                </small>
+                  <div className="stat-info">
+                    <span>Phân bố giới tính</span>
 
-                            </div>
+                    <strong>
+                      {statistics.male}
+                      <small className="inline"> Nam</small>
+                    </strong>
 
-                        </div>
+                    <small>{statistics.female} nữ</small>
+                  </div>
+                </div>
 
+                <div className="stat-card orange">
+                  <div className="stat-icon">
+                    <Sparkles size={23} />
+                  </div>
 
-                        <div className="stat-card green">
+                  <div className="stat-info">
+                    <span>Dữ liệu hệ thống</span>
 
-                            <div className="stat-icon">
+                    <strong>{filteredStudents.length}</strong>
 
-                                <BookOpen size={23} />
+                    <small>Kết quả đang hiển thị</small>
+                  </div>
+                </div>
+              </div>
 
-                            </div>
-
-                            <div className="stat-info">
-
-                                <span>
-                                    Lớp học
-                                </span>
-
-                                <strong>
-                                    {statistics.totalClasses}
-                                </strong>
-
-                                <small>
-                                    Lớp đang có sinh viên
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        <div className="stat-card purple">
-
-                            <div className="stat-icon">
-
-                                <User size={23} />
-
-                            </div>
-
-                            <div className="stat-info">
-
-                                <span>
-                                    Phân bố giới tính
-                                </span>
-
-                                <strong>
-                                    {statistics.male}
-                                    <small className="inline">
-                                        {' '}Nam
-                                    </small>
-                                </strong>
-
-                                <small>
-                                    {statistics.female} nữ
-                                </small>
-
-                            </div>
-
-                        </div>
-
-
-                        <div className="stat-card orange">
-
-                            <div className="stat-icon">
-
-                                <Sparkles size={23} />
-
-                            </div>
-
-                            <div className="stat-info">
-
-                                <span>
-                                    Dữ liệu hệ thống
-                                </span>
-
-                                <strong>
-                                    {filteredStudents.length}
-                                </strong>
-
-                                <small>
-                                    Kết quả đang hiển thị
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* =================================================
+              {/* =================================================
                         MAIN GRID
                     ================================================= */}
 
-                    <div className="dashboard-grid">
-
-
-                        {/* =================================================
+              <div className="dashboard-grid">
+                {/* =================================================
                             STUDENT TABLE
                         ================================================= */}
 
-                        <div className="panel student-panel">
+                <div className="panel student-panel">
+                  <div className="panel-header">
+                    <div>
+                      <h2>Danh sách sinh viên</h2>
 
-                            <div className="panel-header">
+                      <p>Quản lý thông tin và theo dõi học tập của sinh viên</p>
+                    </div>
 
-                                <div>
+                    <button className="primary-button" onClick={handleAdd}>
+                      <Plus size={18} />
+                      Thêm sinh viên
+                    </button>
+                  </div>
 
-                                    <h2>
-                                        Danh sách sinh viên
-                                    </h2>
+                  {/* SEARCH / FILTER */}
 
-                                    <p>
-                                        Quản lý thông tin
-                                        và theo dõi học tập
-                                        của sinh viên
-                                    </p>
+                  <div className="table-toolbar">
+                    <div className="table-search">
+                      <Search size={17} />
 
-                                </div>
+                      <input
+                        placeholder="Tìm theo mã, tên, email..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                      />
 
+                      {search && (
+                        <button onClick={() => setSearch("")}>
+                          <X size={15} />
+                        </button>
+                      )}
+                    </div>
 
-                                <button
-                                    className="primary-button"
-                                    onClick={handleAdd}
-                                >
+                    <button className="toolbar-button">
+                      <Filter size={16} />
+                      Bộ lọc
+                    </button>
 
-                                    <Plus size={18} />
+                    <button className="toolbar-button">
+                      <ArrowUpDown size={16} />
+                      Sắp xếp
+                    </button>
+                  </div>
 
-                                    Thêm sinh viên
+                  {error && <div className="dashboard-error">{error}</div>}
 
-                                </button>
+                  <div className="student-table-wrapper">
+                    <StudentTable
+                      students={filteredStudents}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  </div>
 
-                            </div>
+                  <div className="table-footer">
+                    <span>
+                      Hiển thị {filteredStudents.length} trong tổng số{" "}
+                      {students.length} sinh viên
+                    </span>
 
+                    <div className="pagination">
+                      <button>‹</button>
 
-                            {/* SEARCH / FILTER */}
+                      <button className="active">1</button>
 
-                            <div className="table-toolbar">
+                      <button>2</button>
 
-                                <div className="table-search">
+                      <button>3</button>
 
-                                    <Search size={17} />
+                      <button>…</button>
 
-                                    <input
-                                        placeholder="Tìm theo mã, tên, email..."
-                                        value={search}
-                                        onChange={(e) =>
-                                            setSearch(
-                                                e.target.value
-                                            )
-                                        }
-                                    />
+                      <button>›</button>
+                    </div>
+                  </div>
+                </div>
 
-                                    {search && (
-
-                                        <button
-                                            onClick={() =>
-                                                setSearch('')
-                                            }
-                                        >
-
-                                            <X size={15} />
-
-                                        </button>
-
-                                    )}
-
-                                </div>
-
-
-                                <button className="toolbar-button">
-
-                                    <Filter size={16} />
-
-                                    Bộ lọc
-
-                                </button>
-
-
-                                <button className="toolbar-button">
-
-                                    <ArrowUpDown size={16} />
-
-                                    Sắp xếp
-
-                                </button>
-
-                            </div>
-
-
-                            {error && (
-
-                                <div className="dashboard-error">
-
-                                    {error}
-
-                                </div>
-
-                            )}
-
-
-                            <div className="student-table-wrapper">
-
-                                <StudentTable
-                                    students={
-                                        filteredStudents
-                                    }
-                                    onEdit={
-                                        handleEdit
-                                    }
-                                    onDelete={
-                                        handleDelete
-                                    }
-                                />
-
-                            </div>
-
-
-                            <div className="table-footer">
-
-                                <span>
-                                    Hiển thị{' '}
-                                    {filteredStudents.length}{' '}
-                                    trong tổng số{' '}
-                                    {students.length}{' '}
-                                    sinh viên
-                                </span>
-
-                                <div className="pagination">
-
-                                    <button>
-                                        ‹
-                                    </button>
-
-                                    <button className="active">
-                                        1
-                                    </button>
-
-                                    <button>
-                                        2
-                                    </button>
-
-                                    <button>
-                                        3
-                                    </button>
-
-                                    <button>
-                                        …
-                                    </button>
-
-                                    <button>
-                                        ›
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-
-                        {/* =================================================
+                {/* =================================================
                             RIGHT SIDE
                         ================================================= */}
 
-                        <div className="right-column">
-
-
-                            {/* RECENT ACTIVITY */}
-
-                            <div className="panel activity-panel">
-
-                                <div className="panel-header compact">
-
-                                    <div>
-
-                                        <h2>
-                                            Hoạt động gần đây
-                                        </h2>
-
-                                    </div>
-
-                                    <button className="text-button">
-                                        Xem tất cả
-                                    </button>
-
-                                </div>
-
-
-                                <div className="activity-list">
-
-                                    <div className="activity-item">
-
-                                        <div className="activity-icon green">
-
-                                            <Plus size={17} />
-
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                Thêm mới sinh viên
-                                            </strong>
-
-                                            <span>
-                                                Hệ thống quản lý
-                                            </span>
-
-                                        </div>
-
-                                        <small>
-                                            Vừa xong
-                                        </small>
-
-                                    </div>
-
-
-                                    <div className="activity-item">
-
-                                        <div className="activity-icon blue">
-
-                                            <Pencil size={16} />
-
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                Cập nhật thông tin
-                                            </strong>
-
-                                            <span>
-                                                Dữ liệu sinh viên
-                                            </span>
-
-                                        </div>
-
-                                        <small>
-                                            Gần đây
-                                        </small>
-
-                                    </div>
-
-
-                                    <div className="activity-item">
-
-                                        <div className="activity-icon purple">
-
-                                            <ClipboardList size={16} />
-
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                Quản lý đăng ký học
-                                            </strong>
-
-                                            <span>
-                                                Theo dõi học tập
-                                            </span>
-
-                                        </div>
-
-                                        <small>
-                                            Hôm nay
-                                        </small>
-
-                                    </div>
-
-
-                                    <div className="activity-item">
-
-                                        <div className="activity-icon orange">
-
-                                            <Users size={16} />
-
-                                        </div>
-
-                                        <div>
-
-                                            <strong>
-                                                Quản lý sinh viên
-                                            </strong>
-
-                                            <span>
-                                                Danh sách hiện tại
-                                            </span>
-
-                                        </div>
-
-                                        <small>
-                                            Hôm nay
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-
-                            {/* CLASS DISTRIBUTION */}
-
-                            <div className="panel class-panel">
-
-                                <div className="panel-header compact">
-
-                                    <div>
-
-                                        <h2>
-                                            Sinh viên theo lớp
-                                        </h2>
-
-                                    </div>
-
-                                    <button className="text-button">
-                                        Xem chi tiết
-                                    </button>
-
-                                </div>
-
-
-                                <div className="class-chart">
-
-                                    {classStatistics.length === 0 ? (
-
-                                        <div className="empty-chart">
-
-                                            Chưa có dữ liệu lớp
-
-                                        </div>
-
-                                    ) : (
-
-                                        classStatistics
-                                            .slice(0, 5)
-                                            .map(
-                                                (
-                                                    item,
-                                                    index
-                                                ) => {
-
-                                                    const max =
-                                                        Math.max(
-                                                            ...classStatistics.map(
-                                                                x =>
-                                                                    x.count
-                                                            )
-                                                        );
-
-                                                    const width =
-                                                        max > 0
-                                                            ? (
-                                                                item.count /
-                                                                max
-                                                            ) *
-                                                            100
-                                                            : 0;
-
-                                                    return (
-
-                                                        <div
-                                                            className="class-row"
-                                                            key={
-                                                                item.code
-                                                            }
-                                                        >
-
-                                                            <div className="class-row-info">
-
-                                                                <span>
-                                                                    {item.code}
-                                                                </span>
-
-                                                                <strong>
-                                                                    {item.count}
-                                                                </strong>
-
-                                                            </div>
-
-                                                            <div className="class-progress">
-
-                                                                <span
-                                                                    style={{
-                                                                        width:
-                                                                            `${width}%`
-                                                                    }}
-                                                                />
-
-                                                            </div>
-
-                                                        </div>
-
-                                                    );
-
-                                                }
-                                            )
-
-                                    )}
-
-                                </div>
-
-                            </div>
-
-
-                            {/* QUICK ACTION */}
-
-                            <div className="quick-card">
-
-                                <div className="quick-card-icon">
-
-                                    <GraduationCap
-                                        size={25}
-                                    />
-
-                                </div>
-
-                                <div>
-
-                                    <h3>
-                                        Quản lý đào tạo
-                                    </h3>
-
-                                    <p>
-                                        Theo dõi lớp học,
-                                        môn học và đăng ký
-                                        học tập.
-                                    </p>
-
-                                </div>
-
-                                <ChevronRight />
-
-                            </div>
-
-                        </div>
-
+                <div className="right-column">
+                  {/* RECENT ACTIVITY */}
+
+                  <div className="panel activity-panel">
+                    <div className="panel-header compact">
+                      <div>
+                        <h2>Hoạt động gần đây</h2>
+                      </div>
+
+                      <button className="text-button">Xem tất cả</button>
                     </div>
 
+                    <div className="activity-list">
+                      <div className="activity-item">
+                        <div className="activity-icon green">
+                          <Plus size={17} />
+                        </div>
 
-                    {/* =================================================
+                        <div>
+                          <strong>Thêm mới sinh viên</strong>
+
+                          <span>Hệ thống quản lý</span>
+                        </div>
+
+                        <small>Vừa xong</small>
+                      </div>
+
+                      <div className="activity-item">
+                        <div className="activity-icon blue">
+                          <Pencil size={16} />
+                        </div>
+
+                        <div>
+                          <strong>Cập nhật thông tin</strong>
+
+                          <span>Dữ liệu sinh viên</span>
+                        </div>
+
+                        <small>Gần đây</small>
+                      </div>
+
+                      <div className="activity-item">
+                        <div className="activity-icon purple">
+                          <ClipboardList size={16} />
+                        </div>
+
+                        <div>
+                          <strong>Quản lý đăng ký học</strong>
+
+                          <span>Theo dõi học tập</span>
+                        </div>
+
+                        <small>Hôm nay</small>
+                      </div>
+
+                      <div className="activity-item">
+                        <div className="activity-icon orange">
+                          <Users size={16} />
+                        </div>
+
+                        <div>
+                          <strong>Quản lý sinh viên</strong>
+
+                          <span>Danh sách hiện tại</span>
+                        </div>
+
+                        <small>Hôm nay</small>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CLASS DISTRIBUTION */}
+
+                  <div className="panel class-panel">
+                    <div className="panel-header compact">
+                      <div>
+                        <h2>Sinh viên theo lớp</h2>
+                      </div>
+
+                      <button className="text-button">Xem chi tiết</button>
+                    </div>
+
+                    <div className="class-chart">
+                      {classStatistics.length === 0 ? (
+                        <div className="empty-chart">Chưa có dữ liệu lớp</div>
+                      ) : (
+                        classStatistics.slice(0, 5).map((item, index) => {
+                          const max = Math.max(
+                            ...classStatistics.map((x) => x.count),
+                          );
+
+                          const width = max > 0 ? (item.count / max) * 100 : 0;
+
+                          return (
+                            <div className="class-row" key={item.code}>
+                              <div className="class-row-info">
+                                <span>{item.code}</span>
+
+                                <strong>{item.count}</strong>
+                              </div>
+
+                              <div className="class-progress">
+                                <span
+                                  style={{
+                                    width: `${width}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* QUICK ACTION */}
+
+                  <div className="quick-card">
+                    <div className="quick-card-icon">
+                      <GraduationCap size={25} />
+                    </div>
+
+                    <div>
+                      <h3>Quản lý đào tạo</h3>
+
+                      <p>Theo dõi lớp học, môn học và đăng ký học tập.</p>
+                    </div>
+
+                    <ChevronRight />
+                  </div>
+                </div>
+              </div>
+
+              {/* =================================================
                         MODAL FORM
                     ================================================= */}
 
-                    {showForm && (
+              {showForm && (
+                <div className="modal-backdrop">
+                  <div className="student-modal">
+                    <div className="modal-header">
+                      <div>
+                        <span>QUẢN LÝ SINH VIÊN</span>
 
-                        <div className="modal-backdrop">
+                        <h2>
+                          {selectedStudent
+                            ? "Cập nhật sinh viên"
+                            : "Thêm sinh viên"}
+                        </h2>
+                      </div>
 
-                            <div className="student-modal">
+                      <button
+                        className="modal-close"
+                        onClick={() => {
+                          setShowForm(false);
 
-                                <div className="modal-header">
+                          setSelectedStudent(null);
+                        }}
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
 
-                                    <div>
+                    <div className="modal-body">
+                      <StudentForm
+                        student={selectedStudent}
+                        onSubmit={handleSubmit}
+                        onCancel={() => {
+                          setShowForm(false);
 
-                                        <span>
-                                            QUẢN LÝ SINH VIÊN
-                                        </span>
+                          setSelectedStudent(null);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
-                                        <h2>
-                                            {selectedStudent
-                                                ? 'Cập nhật sinh viên'
-                                                : 'Thêm sinh viên'}
-                                        </h2>
-
-                                    </div>
-
-                                    <button
-                                        className="modal-close"
-                                        onClick={() => {
-
-                                            setShowForm(
-                                                false
-                                            );
-
-                                            setSelectedStudent(
-                                                null
-                                            );
-
-                                        }}
-                                    >
-
-                                        <X size={20} />
-
-                                    </button>
-
-                                </div>
-
-
-                                <div className="modal-body">
-
-                                    <StudentForm
-                                        student={
-                                            selectedStudent
-                                        }
-                                        onSubmit={
-                                            handleSubmit
-                                        }
-                                        onCancel={() => {
-
-                                            setShowForm(
-                                                false
-                                            );
-
-                                            setSelectedStudent(
-                                                null
-                                            );
-
-                                        }}
-                                    />
-
-                                </div>
-
-                            </div>
-
-                        </div>
-
-                    )}
-
-                        </>
-
-                    )}
-
-
-                    {/* =================================================
+          {/* =================================================
                         SETTINGS
                     ================================================= */}
 
-                    {activePage === 'settings' && (
+          {activePage === "settings" && (
+            <div className="settings-page">
+              <div className="settings-header">
+                <div>
+                  <span className="settings-kicker">ACCOUNT & SECURITY</span>
 
-                        <div className="settings-page">
+                  <h1>Cài đặt tài khoản</h1>
 
-                            <div className="settings-header">
+                  <p>
+                    Quản lý thông tin tài khoản, bảo mật và các phiên đăng nhập.
+                  </p>
+                </div>
 
-                                <div>
-                                    <span className="settings-kicker">
-                                        ACCOUNT & SECURITY
-                                    </span>
+                {settingsTab === "sessions" && (
+                  <button
+                    className="settings-refresh-button"
+                    onClick={loadSessions}
+                    disabled={sessionsLoading}
+                  >
+                    <RefreshCw
+                      size={17}
+                      className={sessionsLoading ? "spin" : ""}
+                    />
+                    Làm mới
+                  </button>
+                )}
+              </div>
 
-                                    <h1>Cài đặt tài khoản</h1>
+              <div className="settings-layout">
+                {/* SETTINGS MENU */}
 
-                                    <p>
-                                        Quản lý thông tin tài khoản,
-                                        bảo mật và các phiên đăng nhập.
-                                    </p>
-                                </div>
+                <aside className="settings-menu">
+                  <button
+                    className={
+                      settingsTab === "account"
+                        ? "settings-menu-item active"
+                        : "settings-menu-item"
+                    }
+                    onClick={() => setSettingsTab("account")}
+                  >
+                    <User size={18} />
+                    <span>Tài khoản</span>
+                  </button>
 
-                                {settingsTab === 'sessions' && (
-                                    <button
-                                        className="settings-refresh-button"
-                                        onClick={loadSessions}
-                                        disabled={sessionsLoading}
-                                    >
-                                        <RefreshCw
-                                            size={17}
-                                            className={
-                                                sessionsLoading
-                                                    ? 'spin'
-                                                    : ''
-                                            }
-                                        />
-                                        Làm mới
-                                    </button>
-                                )}
+                  <button
+                    className={
+                      settingsTab === "security"
+                        ? "settings-menu-item active"
+                        : "settings-menu-item"
+                    }
+                    onClick={() => setSettingsTab("security")}
+                  >
+                    <ShieldCheck size={18} />
+                    <span>Bảo mật</span>
+                  </button>
 
-                            </div>
+                  <button
+                    className={
+                      settingsTab === "sessions"
+                        ? "settings-menu-item active"
+                        : "settings-menu-item"
+                    }
+                    onClick={() => {
+                      setSettingsTab("sessions");
+                      loadSessions();
+                    }}
+                  >
+                    <Monitor size={18} />
+                    <span>Phiên đăng nhập</span>
 
+                    {sessions.length > 0 && (
+                      <span className="settings-count">
+                        {
+                          sessions.filter((session) => !session.revoked_at)
+                            .length
+                        }
+                      </span>
+                    )}
+                  </button>
 
-                            <div className="settings-layout">
+                  <button
+                    className={
+                      settingsTab === "password"
+                        ? "settings-menu-item active"
+                        : "settings-menu-item"
+                    }
+                    onClick={() => setSettingsTab("password")}
+                  >
+                    <KeyRound size={18} />
+                    <span>Đổi mật khẩu</span>
+                  </button>
+                </aside>
 
+                {/* SETTINGS CONTENT */}
 
-                                {/* SETTINGS MENU */}
-
-                                <aside className="settings-menu">
-
-                                    <button
-                                        className={
-                                            settingsTab === 'account'
-                                                ? 'settings-menu-item active'
-                                                : 'settings-menu-item'
-                                        }
-                                        onClick={() =>
-                                            setSettingsTab('account')
-                                        }
-                                    >
-                                        <User size={18} />
-                                        <span>
-                                            Tài khoản
-                                        </span>
-                                    </button>
-
-
-                                    <button
-                                        className={
-                                            settingsTab === 'security'
-                                                ? 'settings-menu-item active'
-                                                : 'settings-menu-item'
-                                        }
-                                        onClick={() =>
-                                            setSettingsTab('security')
-                                        }
-                                    >
-                                        <ShieldCheck size={18} />
-                                        <span>
-                                            Bảo mật
-                                        </span>
-                                    </button>
-
-
-                                    <button
-                                        className={
-                                            settingsTab === 'sessions'
-                                                ? 'settings-menu-item active'
-                                                : 'settings-menu-item'
-                                        }
-                                        onClick={() => {
-                                            setSettingsTab('sessions');
-                                            loadSessions();
-                                        }}
-                                    >
-                                        <Monitor size={18} />
-                                        <span>
-                                            Phiên đăng nhập
-                                        </span>
-
-                                        {sessions.length > 0 && (
-                                            <span className="settings-count">
-                                                {sessions.filter(
-                                                    session =>
-                                                        !session.revoked_at
-                                                ).length}
-                                            </span>
-                                        )}
-                                    </button>
-
-
-                                    <button
-                                        className={
-                                            settingsTab === 'password'
-                                                ? 'settings-menu-item active'
-                                                : 'settings-menu-item'
-                                        }
-                                        onClick={() =>
-                                            setSettingsTab('password')
-                                        }
-                                    >
-                                        <KeyRound size={18} />
-                                        <span>
-                                            Đổi mật khẩu
-                                        </span>
-                                    </button>
-
-                                </aside>
-
-
-                                {/* SETTINGS CONTENT */}
-
-                                <div className="settings-content">
-
-
-                                    {/* =====================================
+                <div className="settings-content">
+                  {/* =====================================
                                         ACCOUNT
                                     ===================================== */}
 
-                                    {settingsTab === 'account' && (
+                  {settingsTab === "account" && (
+                    <div className="settings-card">
+                      <div className="settings-card-header">
+                        <div className="settings-card-icon">
+                          <User size={20} />
+                        </div>
 
-                                        <div className="settings-card">
+                        <div>
+                          <h2>Thông tin tài khoản</h2>
 
-                                            <div className="settings-card-header">
-                                                <div className="settings-card-icon">
-                                                    <User size={20} />
-                                                </div>
+                          <p>Cập nhật thông tin cơ bản của tài khoản.</p>
+                        </div>
+                      </div>
 
-                                                <div>
-                                                    <h2>
-                                                        Thông tin tài khoản
-                                                    </h2>
+                      <form
+                        className="settings-form"
+                        onSubmit={handleUpdateAccount}
+                      >
+                        <div className="settings-field">
+                          <label>Username</label>
 
-                                                    <p>
-                                                        Cập nhật thông tin
-                                                        cơ bản của tài khoản.
-                                                    </p>
-                                                </div>
-                                            </div>
+                          <div className="settings-input-wrap">
+                            <User size={17} />
 
+                            <input
+                              type="text"
+                              value={accountForm.username}
+                              onChange={(event) =>
+                                setAccountForm({
+                                  ...accountForm,
+                                  username: event.target.value,
+                                })
+                              }
+                              required
+                            />
+                          </div>
+                        </div>
 
-                                            <form
-                                                className="settings-form"
-                                                onSubmit={
-                                                    handleUpdateAccount
-                                                }
-                                            >
+                        <div className="settings-field">
+                          <label>Email</label>
 
-                                                <div className="settings-field">
+                          <div className="settings-input-wrap">
+                            <Mail size={17} />
 
-                                                    <label>
-                                                        Username
-                                                    </label>
+                            <input
+                              type="email"
+                              value={accountForm.email}
+                              onChange={(event) =>
+                                setAccountForm({
+                                  ...accountForm,
+                                  email: event.target.value,
+                                })
+                              }
+                              required
+                            />
+                          </div>
+                        </div>
 
-                                                    <div className="settings-input-wrap">
-                                                        <User size={17} />
+                        <div className="settings-user-meta">
+                          <div>
+                            <span>Role</span>
+                            <strong>{user?.role || "user"}</strong>
+                          </div>
 
-                                                        <input
-                                                            type="text"
-                                                            value={
-                                                                accountForm.username
-                                                            }
-                                                            onChange={(event) =>
-                                                                setAccountForm({
-                                                                    ...accountForm,
-                                                                    username:
-                                                                        event.target.value
-                                                                })
-                                                            }
-                                                            required
-                                                        />
-                                                    </div>
+                          <div>
+                            <span>User ID</span>
+                            <strong>{user?.id || user?.userId || "—"}</strong>
+                          </div>
+                        </div>
 
-                                                </div>
+                        {accountMessage && (
+                          <div className="settings-message">
+                            <CheckCircle2 size={17} />
+                            {accountMessage}
+                          </div>
+                        )}
 
+                        <div className="settings-actions">
+                          <button
+                            type="submit"
+                            className="primary-button"
+                            disabled={accountSaving}
+                          >
+                            <Save size={17} />
 
-                                                <div className="settings-field">
+                            {accountSaving ? "Đang lưu..." : "Lưu thay đổi"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
 
-                                                    <label>
-                                                        Email
-                                                    </label>
-
-                                                    <div className="settings-input-wrap">
-                                                        <Mail size={17} />
-
-                                                        <input
-                                                            type="email"
-                                                            value={
-                                                                accountForm.email
-                                                            }
-                                                            onChange={(event) =>
-                                                                setAccountForm({
-                                                                    ...accountForm,
-                                                                    email:
-                                                                        event.target.value
-                                                                })
-                                                            }
-                                                            required
-                                                        />
-                                                    </div>
-
-                                                </div>
-
-
-                                                <div className="settings-user-meta">
-
-                                                    <div>
-                                                        <span>Role</span>
-                                                        <strong>
-                                                            {user?.role ||
-                                                                'user'}
-                                                        </strong>
-                                                    </div>
-
-                                                    <div>
-                                                        <span>User ID</span>
-                                                        <strong>
-                                                            {user?.id ||
-                                                                user?.userId ||
-                                                                '—'}
-                                                        </strong>
-                                                    </div>
-
-                                                </div>
-
-
-                                                {accountMessage && (
-                                                    <div className="settings-message">
-                                                        <CheckCircle2
-                                                            size={17}
-                                                        />
-                                                        {accountMessage}
-                                                    </div>
-                                                )}
-
-
-                                                <div className="settings-actions">
-
-                                                    <button
-                                                        type="submit"
-                                                        className="primary-button"
-                                                        disabled={
-                                                            accountSaving
-                                                        }
-                                                    >
-                                                        <Save size={17} />
-
-                                                        {accountSaving
-                                                            ? 'Đang lưu...'
-                                                            : 'Lưu thay đổi'}
-                                                    </button>
-
-                                                </div>
-
-                                            </form>
-
-                                        </div>
-
-                                    )}
-
-
-                                    {/* =====================================
+                  {/* =====================================
                                         SECURITY
                                     ===================================== */}
 
-                                    {settingsTab === 'security' && (
+                  {settingsTab === "security" && (
+                    <div className="settings-card">
+                      <div className="settings-card-header">
+                        <div className="settings-card-icon">
+                          <ShieldCheck size={20} />
+                        </div>
 
-                                        <div className="settings-card">
+                        <div>
+                          <h2>Bảo mật</h2>
 
-                                            <div className="settings-card-header">
+                          <p>
+                            Thông tin trạng thái bảo mật của phiên hiện tại.
+                          </p>
+                        </div>
+                      </div>
 
-                                                <div className="settings-card-icon">
-                                                    <ShieldCheck
-                                                        size={20}
-                                                    />
-                                                </div>
+                      <div className="security-list">
+                        <div className="security-row">
+                          <div className="security-row-icon">
+                            <ShieldCheck size={20} />
+                          </div>
 
-                                                <div>
-                                                    <h2>
-                                                        Bảo mật
-                                                    </h2>
+                          <div>
+                            <strong>Authentication</strong>
 
-                                                    <p>
-                                                        Thông tin trạng thái
-                                                        bảo mật của phiên
-                                                        hiện tại.
-                                                    </p>
-                                                </div>
+                            <span>
+                              Tài khoản đang sử dụng JWT Authentication.
+                            </span>
+                          </div>
 
-                                            </div>
+                          <span className="status-badge success">
+                            Hoạt động
+                          </span>
+                        </div>
 
+                        <div className="security-row">
+                          <div className="security-row-icon">
+                            <KeyRound size={20} />
+                          </div>
 
-                                            <div className="security-list">
+                          <div>
+                            <strong>Access Token</strong>
 
-                                                <div className="security-row">
+                            <span>
+                              Access token được gửi trong Authorization Bearer
+                              header.
+                            </span>
+                          </div>
 
-                                                    <div className="security-row-icon">
-                                                        <ShieldCheck
-                                                            size={20}
-                                                        />
-                                                    </div>
+                          <span className="status-badge success">JWT</span>
+                        </div>
 
-                                                    <div>
-                                                        <strong>
-                                                            Authentication
-                                                        </strong>
+                        <div className="security-row">
+                          <div className="security-row-icon">
+                            <Clock3 size={20} />
+                          </div>
 
-                                                        <span>
-                                                            Tài khoản đang
-                                                            sử dụng JWT
-                                                            Authentication.
-                                                        </span>
-                                                    </div>
+                          <div>
+                            <strong>Refresh Token</strong>
 
-                                                    <span className="status-badge success">
-                                                        Hoạt động
-                                                    </span>
+                            <span>
+                              Refresh token được dùng để duy trì phiên đăng
+                              nhập.
+                            </span>
+                          </div>
 
-                                                </div>
+                          <span className="status-badge success">Enabled</span>
+                        </div>
 
+                        <div className="security-row">
+                          <div className="security-row-icon">
+                            <Globe size={20} />
+                          </div>
 
-                                                <div className="security-row">
+                          <div>
+                            <strong>Session Management</strong>
 
-                                                    <div className="security-row-icon">
-                                                        <KeyRound
-                                                            size={20}
-                                                        />
-                                                    </div>
+                            <span>
+                              Mỗi lần đăng nhập được quản lý như một session
+                              riêng.
+                            </span>
+                          </div>
 
-                                                    <div>
-                                                        <strong>
-                                                            Access Token
-                                                        </strong>
+                          <button
+                            className="secondary-button"
+                            onClick={() => setSettingsTab("sessions")}
+                          >
+                            Xem session
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                                                        <span>
-                                                            Access token được
-                                                            gửi trong
-                                                            Authorization
-                                                            Bearer header.
-                                                        </span>
-                                                    </div>
-
-                                                    <span className="status-badge success">
-                                                        JWT
-                                                    </span>
-
-                                                </div>
-
-
-                                                <div className="security-row">
-
-                                                    <div className="security-row-icon">
-                                                        <Clock3
-                                                            size={20}
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <strong>
-                                                            Refresh Token
-                                                        </strong>
-
-                                                        <span>
-                                                            Refresh token được
-                                                            dùng để duy trì
-                                                            phiên đăng nhập.
-                                                        </span>
-                                                    </div>
-
-                                                    <span className="status-badge success">
-                                                        Enabled
-                                                    </span>
-
-                                                </div>
-
-
-                                                <div className="security-row">
-
-                                                    <div className="security-row-icon">
-                                                        <Globe
-                                                            size={20}
-                                                        />
-                                                    </div>
-
-                                                    <div>
-                                                        <strong>
-                                                            Session Management
-                                                        </strong>
-
-                                                        <span>
-                                                            Mỗi lần đăng nhập
-                                                            được quản lý như
-                                                            một session riêng.
-                                                        </span>
-                                                    </div>
-
-                                                    <button
-                                                        className="secondary-button"
-                                                        onClick={() =>
-                                                            setSettingsTab(
-                                                                'sessions'
-                                                            )
-                                                        }
-                                                    >
-                                                        Xem session
-                                                    </button>
-
-                                                </div>
-
-                                            </div>
-
-                                        </div>
-
-                                    )}
-
-
-                                    {/* =====================================
+                  {/* =====================================
                                         SESSIONS
                                     ===================================== */}
 
-                                    {settingsTab === 'sessions' && (
-
-                                        <div className="settings-card">
-
-                                            <div className="settings-card-header session-main-header">
-
-                                                <div>
-
-                                                    <div className="settings-card-title-row">
-
-                                                        <div className="settings-card-icon">
-                                                            <Monitor
-                                                                size={20}
-                                                            />
-                                                        </div>
-
-                                                        <div>
-                                                            <h2>
-                                                                Phiên đăng nhập
-                                                            </h2>
-
-                                                            <p>
-                                                                Các thiết bị
-                                                                đang và đã đăng
-                                                                nhập vào tài
-                                                                khoản.
-                                                            </p>
-                                                        </div>
-
-                                                    </div>
-
-                                                </div>
-
-
-                                                <button
-                                                    className="danger-outline-button"
-                                                    onClick={
-                                                        handleRevokeOtherSessions
-                                                    }
-                                                    disabled={
-                                                        sessionsLoading ||
-                                                        sessions.filter(
-                                                            session =>
-                                                                !session.revoked_at &&
-                                                                session.id !==
-                                                                    currentSessionId
-                                                        ).length === 0
-                                                    }
-                                                >
-                                                    <LogOut size={16} />
-                                                    Đăng xuất thiết bị khác
-                                                </button>
-
-                                            </div>
-
-
-                                            <div className="session-summary">
-
-                                                <div className="session-summary-item">
-
-                                                    <strong>
-                                                        {
-                                                            sessions.filter(
-                                                                session =>
-                                                                    !session.revoked_at
-                                                            ).length
-                                                        }
-                                                    </strong>
-
-                                                    <span>
-                                                        Phiên đang hoạt động
-                                                    </span>
-
-                                                </div>
-
-
-                                                <div className="session-summary-item">
-
-                                                    <strong>
-                                                        {
-                                                            sessions.filter(
-                                                                session =>
-                                                                    session.revoked_at
-                                                            ).length
-                                                        }
-                                                    </strong>
-
-                                                    <span>
-                                                        Phiên đã thu hồi
-                                                    </span>
-
-                                                </div>
-
-
-                                                <div className="session-summary-item">
-
-                                                    <strong>
-                                                        {sessions.length}
-                                                    </strong>
-
-                                                    <span>
-                                                        Tổng số phiên
-                                                    </span>
-
-                                                </div>
-
-                                            </div>
-
-
-                                            {sessionsError && (
-
-                                                <div className="settings-error">
-
-                                                    <AlertCircle
-                                                        size={18}
-                                                    />
-
-                                                    {sessionsError}
-
-                                                </div>
-
-                                            )}
-
-
-                                            {sessionsLoading ? (
-
-                                                <div className="session-loading">
-
-                                                    <div className="loading-spinner"></div>
-
-                                                    <p>
-                                                        Đang tải danh sách
-                                                        phiên đăng nhập...
-                                                    </p>
-
-                                                </div>
-
-                                            ) : sessions.length === 0 ? (
-
-                                                <div className="session-empty">
-
-                                                    <Monitor
-                                                        size={42}
-                                                    />
-
-                                                    <h3>
-                                                        Chưa có dữ liệu session
-                                                    </h3>
-
-                                                    <p>
-                                                        Không tìm thấy phiên
-                                                        đăng nhập nào.
-                                                    </p>
-
-                                                    <button
-                                                        className="secondary-button"
-                                                        onClick={
-                                                            loadSessions
-                                                        }
-                                                    >
-                                                        <RefreshCw
-                                                            size={16}
-                                                        />
-                                                        Tải lại
-                                                    </button>
-
-                                                </div>
-
-                                            ) : (
-
-                                                <div className="session-list">
-
-                                                    {sessions.map(
-                                                        (session) => {
-
-                                                            const isCurrent =
-                                                                session.id ===
-                                                                currentSessionId;
-
-                                                            const isRevoked =
-                                                                Boolean(
-                                                                    session.revoked_at
-                                                                );
-
-                                                            return (
-
-                                                                <div
-                                                                    className={
-                                                                        `session-card ${
-                                                                            isCurrent
-                                                                                ? 'current'
-                                                                                : ''
-                                                                        } ${
-                                                                            isRevoked
-                                                                                ? 'revoked'
-                                                                                : ''
-                                                                        }`
-                                                                    }
-                                                                    key={
-                                                                        session.id
-                                                                    }
-                                                                >
-
-                                                                    <div className="session-device-icon">
-
-                                                                        {getSessionIcon(
-                                                                            session
-                                                                        )}
-
-                                                                    </div>
-
-
-                                                                    <div className="session-details">
-
-                                                                        <div className="session-title-row">
-
-                                                                            <div>
-
-                                                                                <h3>
-                                                                                    {
-                                                                                        session.device_name ||
-                                                                                        'Thiết bị không xác định'
-                                                                                    }
-                                                                                </h3>
-
-                                                                                <div className="session-badges">
-
-                                                                                    {isCurrent && (
-                                                                                        <span className="status-badge current">
-                                                                                            <CheckCircle2
-                                                                                                size={13}
-                                                                                            />
-                                                                                            Thiết bị hiện tại
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                    {!isRevoked && !isCurrent && (
-                                                                                        <span className="status-badge success">
-                                                                                            Đang hoạt động
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                    {isRevoked && (
-                                                                                        <span className="status-badge revoked">
-                                                                                            Đã thu hồi
-                                                                                        </span>
-                                                                                    )}
-
-                                                                                </div>
-
-                                                                            </div>
-
-
-                                                                            {!isCurrent &&
-                                                                                !isRevoked && (
-
-                                                                                <button
-                                                                                    className="session-revoke-button"
-                                                                                    onClick={() =>
-                                                                                        handleRevokeSession(
-                                                                                            session.id
-                                                                                        )
-                                                                                    }
-                                                                                >
-                                                                                    <LogOut
-                                                                                        size={16}
-                                                                                    />
-
-                                                                                    Đăng xuất
-                                                                                </button>
-
-                                                                            )}
-
-                                                                        </div>
-
-
-                                                                        <div className="session-meta-grid">
-
-                                                                            <div>
-                                                                                <span>
-                                                                                    Trình duyệt
-                                                                                </span>
-
-                                                                                <strong>
-                                                                                    {
-                                                                                        session.user_agent ||
-                                                                                        'Không xác định'
-                                                                                    }
-                                                                                </strong>
-                                                                            </div>
-
-
-                                                                            <div>
-                                                                                <span>
-                                                                                    Địa chỉ IP
-                                                                                </span>
-
-                                                                                <strong>
-                                                                                    {
-                                                                                        session.ip_address ||
-                                                                                        'Không xác định'
-                                                                                    }
-                                                                                </strong>
-                                                                            </div>
-
-
-                                                                            <div>
-                                                                                <span>
-                                                                                    Đăng nhập
-                                                                                </span>
-
-                                                                                <strong>
-                                                                                    {
-                                                                                        formatSessionDate(
-                                                                                            session.created_at
-                                                                                        )
-                                                                                    }
-                                                                                </strong>
-                                                                            </div>
-
-
-                                                                            <div>
-                                                                                <span>
-                                                                                    Hoạt động cuối
-                                                                                </span>
-
-                                                                                <strong>
-                                                                                    {
-                                                                                        formatSessionDate(
-                                                                                            session.last_used_at
-                                                                                        )
-                                                                                    }
-                                                                                </strong>
-                                                                            </div>
-
-                                                                            {isRevoked && (
-                                                                                <div>
-                                                                                    <span>
-                                                                                        Thu hồi
-                                                                                    </span>
-
-                                                                                    <strong>
-                                                                                        {
-                                                                                            formatSessionDate(
-                                                                                                session.revoked_at
-                                                                                            )
-                                                                                        }
-                                                                                    </strong>
-                                                                                </div>
-                                                                            )}
-
-                                                                        </div>
-
-                                                                    </div>
-
-                                                                </div>
-
-                                                            );
-
-                                                        }
-                                                    )}
-
-                                                </div>
-
-                                            )}
-
-                                        </div>
-
+                  {settingsTab === "sessions" && (
+                    <div className="settings-card">
+                      <div className="settings-card-header session-main-header">
+                        <div>
+                          <div className="settings-card-title-row">
+                            <div className="settings-card-icon">
+                              <Monitor size={20} />
+                            </div>
+
+                            <div>
+                              <h2>Phiên đăng nhập</h2>
+
+                              <p>
+                                Các thiết bị đang và đã đăng nhập vào tài khoản.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          className="danger-outline-button"
+                          onClick={handleRevokeOtherSessions}
+                          disabled={
+                            sessionsLoading ||
+                            sessions.filter(
+                              (session) =>
+                                !session.revoked_at &&
+                                session.id !== currentSessionId,
+                            ).length === 0
+                          }
+                        >
+                          <LogOut size={16} />
+                          Đăng xuất thiết bị khác
+                        </button>
+                      </div>
+
+                      <div className="session-summary">
+                        <div className="session-summary-item">
+                          <strong>
+                            {
+                              sessions.filter((session) => !session.revoked_at)
+                                .length
+                            }
+                          </strong>
+
+                          <span>Phiên đang hoạt động</span>
+                        </div>
+
+                        <div className="session-summary-item">
+                          <strong>
+                            {
+                              sessions.filter((session) => session.revoked_at)
+                                .length
+                            }
+                          </strong>
+
+                          <span>Phiên đã thu hồi</span>
+                        </div>
+
+                        <div className="session-summary-item">
+                          <strong>{sessions.length}</strong>
+
+                          <span>Tổng số phiên</span>
+                        </div>
+                      </div>
+
+                      {sessionsError && (
+                        <div className="settings-error">
+                          <AlertCircle size={18} />
+
+                          {sessionsError}
+                        </div>
+                      )}
+
+                      {sessionsLoading ? (
+                        <div className="session-loading">
+                          <div className="loading-spinner"></div>
+
+                          <p>Đang tải danh sách phiên đăng nhập...</p>
+                        </div>
+                      ) : sessions.length === 0 ? (
+                        <div className="session-empty">
+                          <Monitor size={42} />
+
+                          <h3>Chưa có dữ liệu session</h3>
+
+                          <p>Không tìm thấy phiên đăng nhập nào.</p>
+
+                          <button
+                            className="secondary-button"
+                            onClick={loadSessions}
+                          >
+                            <RefreshCw size={16} />
+                            Tải lại
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="session-list">
+                          {sessions.map((session) => {
+                            const isCurrent = session.id === currentSessionId;
+
+                            const isRevoked = Boolean(session.revoked_at);
+
+                            return (
+                              <div
+                                className={`session-card ${
+                                  isCurrent ? "current" : ""
+                                } ${isRevoked ? "revoked" : ""}`}
+                                key={session.id}
+                              >
+                                <div className="session-device-icon">
+                                  {getSessionIcon(session)}
+                                </div>
+
+                                <div className="session-details">
+                                  <div className="session-title-row">
+                                    <div>
+                                      <h3>
+                                        {session.device_name ||
+                                          "Thiết bị không xác định"}
+                                      </h3>
+
+                                      <div className="session-badges">
+                                        {isCurrent && (
+                                          <span className="status-badge current">
+                                            <CheckCircle2 size={13} />
+                                            Thiết bị hiện tại
+                                          </span>
+                                        )}
+
+                                        {!isRevoked && !isCurrent && (
+                                          <span className="status-badge success">
+                                            Đang hoạt động
+                                          </span>
+                                        )}
+
+                                        {isRevoked && (
+                                          <span className="status-badge revoked">
+                                            Đã thu hồi
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {!isCurrent && !isRevoked && (
+                                      <button
+                                        className="session-revoke-button"
+                                        onClick={() =>
+                                          handleRevokeSession(session.id)
+                                        }
+                                      >
+                                        <LogOut size={16} />
+                                        Đăng xuất
+                                      </button>
                                     )}
+                                  </div>
 
+                                  <div className="session-meta-grid">
+                                    <div>
+                                      <span>Trình duyệt</span>
 
-                                    {/* =====================================
+                                      <strong>
+                                        {session.user_agent || "Không xác định"}
+                                      </strong>
+                                    </div>
+
+                                    <div>
+                                      <span>Địa chỉ IP</span>
+
+                                      <strong>
+                                        {session.ip_address || "Không xác định"}
+                                      </strong>
+                                    </div>
+
+                                    <div>
+                                      <span>Đăng nhập</span>
+
+                                      <strong>
+                                        {formatSessionDate(session.created_at)}
+                                      </strong>
+                                    </div>
+
+                                    <div>
+                                      <span>Hoạt động cuối</span>
+
+                                      <strong>
+                                        {formatSessionDate(
+                                          session.last_used_at,
+                                        )}
+                                      </strong>
+                                    </div>
+
+                                    {isRevoked && (
+                                      <div>
+                                        <span>Thu hồi</span>
+
+                                        <strong>
+                                          {formatSessionDate(
+                                            session.revoked_at,
+                                          )}
+                                        </strong>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* =====================================
                                         CHANGE PASSWORD
                                     ===================================== */}
 
-                                    {settingsTab === 'password' && (
-
-                                        <div className="settings-card">
-
-                                            <div className="settings-card-header">
-
-                                                <div className="settings-card-icon">
-                                                    <KeyRound
-                                                        size={20}
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <h2>
-                                                        Đổi mật khẩu
-                                                    </h2>
-
-                                                    <p>
-                                                        Sử dụng mật khẩu mạnh
-                                                        và không chia sẻ mật
-                                                        khẩu với người khác.
-                                                    </p>
-                                                </div>
-
-                                            </div>
-
-
-                                            <form
-                                                className="settings-form"
-                                                onSubmit={
-                                                    handleChangePassword
-                                                }
-                                            >
-
-                                                <div className="settings-field">
-
-                                                    <label>
-                                                        Mật khẩu hiện tại
-                                                    </label>
-
-                                                    <div className="settings-input-wrap">
-
-                                                        <KeyRound
-                                                            size={17}
-                                                        />
-
-                                                        <input
-                                                            type="password"
-                                                            value={
-                                                                passwordForm.currentPassword
-                                                            }
-                                                            onChange={(event) =>
-                                                                setPasswordForm({
-                                                                    ...passwordForm,
-                                                                    currentPassword:
-                                                                        event.target.value
-                                                                })
-                                                            }
-                                                            autoComplete="current-password"
-                                                        />
-
-                                                    </div>
-
-                                                </div>
-
-
-                                                <div className="settings-field">
-
-                                                    <label>
-                                                        Mật khẩu mới
-                                                    </label>
-
-                                                    <div className="settings-input-wrap">
-
-                                                        <KeyRound
-                                                            size={17}
-                                                        />
-
-                                                        <input
-                                                            type="password"
-                                                            value={
-                                                                passwordForm.newPassword
-                                                            }
-                                                            onChange={(event) =>
-                                                                setPasswordForm({
-                                                                    ...passwordForm,
-                                                                    newPassword:
-                                                                        event.target.value
-                                                                })
-                                                            }
-                                                            autoComplete="new-password"
-                                                        />
-
-                                                    </div>
-
-                                                </div>
-
-
-                                                <div className="settings-field">
-
-                                                    <label>
-                                                        Xác nhận mật khẩu mới
-                                                    </label>
-
-                                                    <div className="settings-input-wrap">
-
-                                                        <KeyRound
-                                                            size={17}
-                                                        />
-
-                                                        <input
-                                                            type="password"
-                                                            value={
-                                                                passwordForm.confirmPassword
-                                                            }
-                                                            onChange={(event) =>
-                                                                setPasswordForm({
-                                                                    ...passwordForm,
-                                                                    confirmPassword:
-                                                                        event.target.value
-                                                                })
-                                                            }
-                                                            autoComplete="new-password"
-                                                        />
-
-                                                    </div>
-
-                                                </div>
-
-
-                                                {passwordError && (
-
-                                                    <div className="settings-error">
-
-                                                        <AlertCircle
-                                                            size={17}
-                                                        />
-
-                                                        {passwordError}
-
-                                                    </div>
-
-                                                )}
-
-
-                                                {passwordMessage && (
-
-                                                    <div className="settings-message">
-
-                                                        <CheckCircle2
-                                                            size={17}
-                                                        />
-
-                                                        {passwordMessage}
-
-                                                    </div>
-
-                                                )}
-
-
-                                                <div className="password-rules">
-
-                                                    <strong>
-                                                        Yêu cầu mật khẩu
-                                                    </strong>
-
-                                                    <span>
-                                                        • Ít nhất 8 ký tự
-                                                    </span>
-
-                                                    <span>
-                                                        • Không sử dụng mật khẩu
-                                                        quá dễ đoán
-                                                    </span>
-
-                                                </div>
-
-
-                                                <div className="settings-actions">
-
-                                                    <button
-                                                        type="submit"
-                                                        className="primary-button"
-                                                        disabled={
-                                                            passwordSaving
-                                                        }
-                                                    >
-                                                        <KeyRound
-                                                            size={17}
-                                                        />
-
-                                                        {passwordSaving
-                                                            ? 'Đang cập nhật...'
-                                                            : 'Đổi mật khẩu'}
-                                                    </button>
-
-                                                </div>
-
-                                            </form>
-
-                                        </div>
-
-                                    )}
-
-                                </div>
-
-                            </div>
-
+                  {settingsTab === "password" && (
+                    <div className="settings-card">
+                      <div className="settings-card-header">
+                        <div className="settings-card-icon">
+                          <KeyRound size={20} />
                         </div>
 
-                    )}
+                        <div>
+                          <h2>Đổi mật khẩu</h2>
 
-                </section>
+                          <p>
+                            Sử dụng mật khẩu mạnh và không chia sẻ mật khẩu với
+                            người khác.
+                          </p>
+                        </div>
+                      </div>
 
-            </main>
+                      <form
+                        className="settings-form"
+                        onSubmit={handleChangePassword}
+                      >
+                        <div className="settings-field">
+                          <label>Mật khẩu hiện tại</label>
 
-        </div>
+                          <div className="settings-input-wrap">
+                            <KeyRound size={17} />
 
-    );
+                            <input
+                              type="password"
+                              value={passwordForm.currentPassword}
+                              onChange={(event) =>
+                                setPasswordForm({
+                                  ...passwordForm,
+                                  currentPassword: event.target.value,
+                                })
+                              }
+                              autoComplete="current-password"
+                            />
+                          </div>
+                        </div>
 
+                        <div className="settings-field">
+                          <label>Mật khẩu mới</label>
+
+                          <div className="settings-input-wrap">
+                            <KeyRound size={17} />
+
+                            <input
+                              type="password"
+                              value={passwordForm.newPassword}
+                              onChange={(event) =>
+                                setPasswordForm({
+                                  ...passwordForm,
+                                  newPassword: event.target.value,
+                                })
+                              }
+                              autoComplete="new-password"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="settings-field">
+                          <label>Xác nhận mật khẩu mới</label>
+
+                          <div className="settings-input-wrap">
+                            <KeyRound size={17} />
+
+                            <input
+                              type="password"
+                              value={passwordForm.confirmPassword}
+                              onChange={(event) =>
+                                setPasswordForm({
+                                  ...passwordForm,
+                                  confirmPassword: event.target.value,
+                                })
+                              }
+                              autoComplete="new-password"
+                            />
+                          </div>
+                        </div>
+
+                        {passwordError && (
+                          <div className="settings-error">
+                            <AlertCircle size={17} />
+
+                            {passwordError}
+                          </div>
+                        )}
+
+                        {passwordMessage && (
+                          <div className="settings-message">
+                            <CheckCircle2 size={17} />
+
+                            {passwordMessage}
+                          </div>
+                        )}
+
+                        <div className="password-rules">
+                          <strong>Yêu cầu mật khẩu</strong>
+
+                          <span>• Ít nhất 8 ký tự</span>
+
+                          <span>• Không sử dụng mật khẩu quá dễ đoán</span>
+                        </div>
+
+                        <div className="settings-actions">
+                          <button
+                            type="submit"
+                            className="primary-button"
+                            disabled={passwordSaving}
+                          >
+                            <KeyRound size={17} />
+
+                            {passwordSaving
+                              ? "Đang cập nhật..."
+                              : "Đổi mật khẩu"}
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
 }
-
 
 export default Students;
