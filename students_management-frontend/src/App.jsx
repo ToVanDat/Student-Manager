@@ -7,10 +7,11 @@ import {
 
 import Login from './page/login';
 import Students from './page/students';
-
+import { Toaster } from 'sonner';
 function App() {
     return (
         <BrowserRouter>
+        <Toaster position="top-right" reverseOrder={false} />
             <Routes>
 
                 <Route

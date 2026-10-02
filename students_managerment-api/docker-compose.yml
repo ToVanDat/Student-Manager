@@ -2,7 +2,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
 
     container_name: student-management-backend
@@ -15,16 +15,16 @@ services:
 
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: students_managerment
-      DB_USER: postgres
-      DB_PASSWORD: ${}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
 
       REDIS_HOST: redis
       REDIS_PORT: 6379
 
-      JWT_SECRET: your_jwt_secret
+      JWT_SECRET: ${JWT_SECRET}
 
-      RESEND_API_KEY: your_resend_api_key
+      RESEND_API_KEY: ${RESEND_API_KEY}
 
     depends_on:
       - postgres
@@ -39,12 +39,12 @@ services:
     container_name: student-management-postgres
 
     environment:
-      POSTGRES_DB: students_managerment
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: your_password
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
 
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data

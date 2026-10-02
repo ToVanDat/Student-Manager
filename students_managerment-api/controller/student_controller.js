@@ -44,7 +44,11 @@ const createStudent = async (req, res) => {
     try {
         const student = await studentService.createStudent(req.body);
 
-        res.status(201).json(student);
+        res.status(201).json({
+            data: student,
+            message: 'Thêm sinh viên thành công',
+            code: 201,
+        });
 
     } catch (error) {
         console.error('LỖI DATABASE:', error);

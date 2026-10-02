@@ -9,7 +9,7 @@ export const loginApi = async (
 
     const response =
         await axios.post(
-            `${API_BASE_URL}/login`,
+            `${API_BASE_URL}/api/auth/login`,
             {
                 username,
                 password,
@@ -33,7 +33,7 @@ export const registerApi = async (
 
     const response =
         await axios.post(
-            `${API_BASE_URL}/register`,
+            `${API_BASE_URL}/api/auth/register`,
             {
                 username,
                 email,
@@ -49,7 +49,7 @@ export const refreshApi = async () => {
 
     const response =
         await axios.post(
-            `${API_BASE_URL}/refresh`,
+            `${API_BASE_URL}/api/auth/refresh`,
             {},
             {
                 withCredentials: true
@@ -71,7 +71,7 @@ export const logoutApi = async () => {
 
     const response =
         await axios.post(
-            `${API_BASE_URL}/logout`,
+            `${API_BASE_URL}/api/auth/logout`,
             {},
             {
                 withCredentials: true,
@@ -96,7 +96,7 @@ export const logoutApi = async () => {
 export const forgotPasswordApi = async (email) => {
 
     const response = await axios.post(
-        `${API_BASE_URL}/forgot-password`,
+        `${API_BASE_URL}/api/auth/forgot-password`,
         {
             email
         }
@@ -115,7 +115,7 @@ export const verifyResetOtpApi = async (
 ) => {
 
     const response = await axios.post(
-        `${API_BASE_URL}/verify-reset-otp`,
+        `${API_BASE_URL}/api/auth/verify-reset-otp`,
         {
             email,
             otp
@@ -136,7 +136,7 @@ export const resetPasswordApi = async (
 ) => {
 
     const response = await axios.post(
-        `${API_BASE_URL}/reset-password`,
+        `${API_BASE_URL}/api/auth/reset-password`,
         {
             resetToken,
             newPassword

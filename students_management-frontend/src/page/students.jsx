@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { toast } from 'sonner';
 import {
   Search,
   Bell,
@@ -1123,7 +1123,8 @@ function Students() {
       if (selectedStudent) {
         await updateStudent(selectedStudent.id, studentData);
       } else {
-        await createStudent(studentData);
+        const res = await createStudent(studentData);
+        toast.success(res.message);
       }
 
       setShowForm(false);
