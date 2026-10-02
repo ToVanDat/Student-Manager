@@ -1,10 +1,5 @@
 import axios from 'axios';
-
-const API_BASE_URL =
-    'http://localhost:3000';
-
-const AUTH_URL =
-    `${API_BASE_URL}/api/auth`;
+import { API_BASE_URL } from '../constant';
 
 
 // ==========================================
@@ -170,7 +165,7 @@ apiClient.interceptors.response.use(
 
             refreshPromise =
                 axios.post(
-                    `${AUTH_URL}/refresh`,
+                    `${API_BASE_URL}/api/auth/refresh`,
                     {},
                     {
                         withCredentials: true

@@ -1,7 +1,7 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../constant';
 
-const API_URL = 'http://localhost:3000/api/students';
-
+const API_URL = `${API_BASE_URL}/api/students`;
 const getAuthHeaders = () => {
     const accessToken =
         localStorage.getItem('accessToken');

@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-const API_URL =
-    'http://localhost:3000/api/auth/sessions';
+import { API_BASE_URL } from '../constant';
 
 
 const getAuthConfig = () => {
@@ -28,7 +27,7 @@ export const getSessionsApi = async () => {
 
     const response =
         await axios.get(
-            API_URL,
+            `${API_BASE_URL}/api/auth/sessions`,
             getAuthConfig()
         );
 
@@ -45,7 +44,7 @@ export const revokeSessionApi =
 
         const response =
             await axios.delete(
-                `${API_URL}/${sessionId}`,
+                `${API_BASE_URL}/api/auth/sessions/${sessionId}`,
                 getAuthConfig()
             );
 
@@ -62,7 +61,7 @@ export const revokeOtherSessionsApi =
 
         const response =
             await axios.post(
-                `${API_URL}/revoke-others`,
+                `${API_BASE_URL}/api/auth/sessions/revoke-others`,
                 {},
                 getAuthConfig()
             );
