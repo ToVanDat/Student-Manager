@@ -184,6 +184,7 @@ export const useChat = () => {
         };
 
         socket.on('presence:snapshot', handlePresenceSnapshot);
+        if (socket.connected) socket.emit('presence:sync');
         socket.on('presence:online', handlePresenceOnline);
         socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
