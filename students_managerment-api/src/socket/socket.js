@@ -79,11 +79,8 @@ const initSocket = (server) => {
     // Gửi snapshot presence cho client vừa kết nối.
     try {
         const contactIds = await conversationRepository.getConversationContactIds(userId);
-        for (const contactId of contactIds) {
-            if (onlineUsers.has(contactId)) {
-                socket.emit('presence:online', { userId: contactId });
-            }
-        }
+        const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
+        socket.emit('presence:snapshot', { userIds: onlineContactIds });
     } catch (error) {
         console.error('PRESENCE SNAPSHOT ERROR:', error);
     }
@@ -139,6 +136,7 @@ const initSocket = (server) => {
                     io.to(`user:${memberId}`).emit('conversation:updated', {
                         conversationId: id,
                         lastMessage: savedMessage,
+                        senderId: userId,
                         updatedAt: savedMessage.created_at
                     });
                 }
