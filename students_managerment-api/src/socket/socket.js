@@ -99,6 +99,14 @@ const initSocket = (server) => {
 
                 socket.join(`conversation:${id}`);
                 socket.emit('conversation:joined', { conversationId: id });
+
+                // Đồng bộ presence ngay khi mở conversation mới.
+                const memberIds = await conversationRepository.getConversationMemberIds(id);
+                for (const memberId of memberIds) {
+                    if (memberId !== userId && onlineUsers.has(memberId)) {
+                        socket.emit('presence:online', { userId: memberId });
+                    }
+                }
             } catch (error) {
                 console.error('JOIN CONVERSATION ERROR:', error);
                 socket.emit('conversation:error', { message: 'Không thể tham gia conversation' });
