@@ -61,7 +61,32 @@ const initSocket = (server) => {
         socket.join(`session:${sessionId}`);
         socket.join(`user:${userId}`);
 
-        onlineUsers.set(userId, (onlineUsers.get(userId) || 0) + 1);
+        const previousSocketCount = onlineUsers.get(userId) || 0;
+    onlineUsers.set(userId, previousSocketCount + 1);
+
+    // Chỉ phát ONLINE khi user thực sự chuyển từ offline -> online.
+    if (previousSocketCount === 0) {
+        try {
+            const contactIds = await conversationRepository.getConversationContactIds(userId);
+            for (const contactId of contactIds) {
+                io.to(`user:${contactId}`).emit('presence:online', { userId });
+            }
+        } catch (error) {
+            console.error('PRESENCE ONLINE ERROR:', error);
+        }
+    }
+
+    // Gửi snapshot presence cho client vừa kết nối.
+    try {
+        const contactIds = await conversationRepository.getConversationContactIds(userId);
+        for (const contactId of contactIds) {
+            if (onlineUsers.has(contactId)) {
+                socket.emit('presence:online', { userId: contactId });
+            }
+        }
+    } catch (error) {
+        console.error('PRESENCE SNAPSHOT ERROR:', error);
+    }
 
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
@@ -174,8 +199,20 @@ const initSocket = (server) => {
 
         socket.on('disconnect', (reason) => {
             const count = Math.max((onlineUsers.get(userId) || 1) - 1, 0);
-            if (count === 0) onlineUsers.delete(userId);
-            else onlineUsers.set(userId, count);
+            if (count === 0) {
+                onlineUsers.delete(userId);
+
+                try {
+                    const contactIds = await conversationRepository.getConversationContactIds(userId);
+                    for (const contactId of contactIds) {
+                        io.to(`user:${contactId}`).emit('presence:offline', { userId });
+                    }
+                } catch (error) {
+                    console.error('PRESENCE OFFLINE ERROR:', error);
+                }
+            } else {
+                onlineUsers.set(userId, count);
+            }
 
             console.log(`Socket disconnected: user=${userId}, reason=${reason}`);
         });
@@ -189,6 +226,8 @@ const getIO = () => {
     return io;
 };
 
+const isUserOnline = (userId) => onlineUsers.has(Number(userId));
+
 const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
     getIO().to(`session:${sessionId}`).emit('session:revoked', {
         sessionId,
@@ -199,5 +238,6 @@ const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
 module.exports = {
     initSocket,
     getIO,
-    emitSessionRevoked
+    emitSessionRevoked,
+    isUserOnline
 };
