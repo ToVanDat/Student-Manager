@@ -127,10 +127,10 @@ export const useChat = () => {
             if (Number(conversationId) === Number(activeId)) setIsTyping(false);
         };
 
-        const handleMessagesRead = ({ conversationId }) => {
+        const handleMessagesRead = ({ conversationId, readBy }) => {
             if (Number(conversationId) !== Number(activeId)) return;
             setMessages(prev => prev.map(message =>
-                Number(message.sender_id ?? message.senderId) === Number(activeId)
+                Number(message.sender_id ?? message.senderId) !== Number(readBy)
                     ? { ...message, is_read: true }
                     : message
             ));
