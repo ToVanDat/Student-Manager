@@ -121,7 +121,7 @@ export default function ChatSidebar({
                     <ConversationItem
                         key={item.id}
                         conversation={item}
-                        isSelected={item.id === activeId}
+                        isSelected={Number(item.id) === Number(activeId)}
                         onClick={() => onSelectConversation(item.id)}
                     />
                 ))}
