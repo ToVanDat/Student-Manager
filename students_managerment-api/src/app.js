@@ -11,6 +11,7 @@ const authRouter = require('../router/authRouter');
 const sessionRouter = require('../router/sessionRouter.js');
 const conversationRouter = require('../router/conversationRouter');
 const messageRouter = require('../router/messageRouter');
+const userRouter = require('../router/userRouter');
 
 const app = express();
 const allowedOrigins = new Set([
@@ -20,26 +21,17 @@ const allowedOrigins = new Set([
 ].filter(Boolean));
 
 app.use(express.json());
-
-app.use(
-    cors({
-        origin(origin, callback) {
-            if (!origin || allowedOrigins.has(origin)) {
-                return callback(null, true);
-            }
-
-            return callback(new Error('Origin not allowed by CORS'));
-        },
-        credentials: true
-    })
-);
-
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+        return callback(new Error('Origin not allowed by CORS'));
+    },
+    credentials: true
+}));
 app.use(cookieParser());
 
 app.get('/', (req, res) => {
-    res.json({
-        message: 'Student Management API is running'
-    });
+    res.json({ message: 'Student Management API is running' });
 });
 
 app.use('/api/students', studentRouter);
@@ -49,9 +41,8 @@ app.use('/api/enrollments', enrollmentRouter);
 app.use('/api/semesters', semesterRouter);
 app.use('/api/subjects', subjectRouter);
 app.use('/api/auth', authRouter);
-// api session
-app.use('/api/auth/sessions',sessionRouter);
-// api chat 
+app.use('/api/auth/sessions', sessionRouter);
+app.use('/api/users', userRouter);
 app.use('/api/conversations', conversationRouter);
 app.use('/api/messages', messageRouter);
 
