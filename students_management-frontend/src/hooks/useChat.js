@@ -10,15 +10,20 @@ export const useChat = () => {
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
+    const [onlineUserIds, setOnlineUserIds] = useState(new Set());
 
     const fetchConversations = useCallback(async () => {
         try {
             const res = await chatApi.getConversations();
-            setConversations(res.data?.data || []);
+            const data = res.data?.data || [];
+            setConversations(prev => data.map(conversation => ({
+                ...conversation,
+                isOnline: onlineUserIds.has(Number(conversation.userId))
+            })));
         } catch (error) {
             console.error('Lỗi lấy danh sách conversation:', error);
         }
-    }, []);
+    }, [onlineUserIds]);
 
     useEffect(() => {
         fetchConversations();
@@ -140,6 +145,34 @@ export const useChat = () => {
             console.error('Socket message error:', message);
         };
 
+        const handlePresenceOnline = ({ userId }) => {
+            const id = Number(userId);
+            if (!Number.isInteger(id)) return;
+            setOnlineUserIds(prev => {
+                const next = new Set(prev);
+                next.add(id);
+                return next;
+            });
+            setConversations(prev => prev.map(c =>
+                Number(c.userId) === id ? { ...c, isOnline: true } : c
+            ));
+        };
+
+        const handlePresenceOffline = ({ userId }) => {
+            const id = Number(userId);
+            if (!Number.isInteger(id)) return;
+            setOnlineUserIds(prev => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+            setConversations(prev => prev.map(c =>
+                Number(c.userId) === id ? { ...c, isOnline: false } : c
+            ));
+        };
+
+        socket.on('presence:online', handlePresenceOnline);
+        socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
         socket.on('conversation:updated', handleConversationUpdated);
         socket.on('typing:start', handleTypingStart);
@@ -148,6 +181,8 @@ export const useChat = () => {
         socket.on('message:error', handleMessageError);
 
         return () => {
+            socket.off('presence:online', handlePresenceOnline);
+            socket.off('presence:offline', handlePresenceOffline);
             socket.off('message:new', handleNewMessage);
             socket.off('conversation:updated', handleConversationUpdated);
             socket.off('typing:start', handleTypingStart);
@@ -200,6 +235,7 @@ export const useChat = () => {
         activeId,
         setActiveId,
         messages,
+        onlineUserIds,
         loading,
         isTyping,
         sendMessage,
