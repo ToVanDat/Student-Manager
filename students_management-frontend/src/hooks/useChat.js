@@ -94,7 +94,7 @@ export const useChat = () => {
                     ...c,
                     lastMessage: message.content,
                     lastMessageAt: message.created_at,
-                    unreadCount: Number(c.id) === Number(activeId)
+                    unreadCount: Number(c.id) === Number(activeId) || Number(message.sender_id ?? message.senderId) === currentUserId
                         ? 0
                         : (c.unreadCount || 0) + 1
                 };
@@ -118,9 +118,7 @@ export const useChat = () => {
                             lastMessageAt: updatedAt,
                             unreadCount: Number(c.id) === Number(activeId) || Number(senderId) === currentUserId
                                 ? 0
-                                : Number(senderId) === currentUserId
-                                    ? (c.unreadCount || 0)
-                                    : (c.unreadCount || 0) + 1
+                                : (c.unreadCount || 0) + 1
                         }
                         : c)
                     .sort((a, b) =>
