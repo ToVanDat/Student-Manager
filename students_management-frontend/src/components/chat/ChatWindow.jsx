@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MoreVertical, Search, Send } from 'lucide-react';
+import { MoreVertical, Search, Send, Paperclip, Smile } from 'lucide-react';
 import MessageBubble from './MessageBubble';
 
 export default function ChatWindow({
@@ -13,6 +13,9 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
     const typingTimer = useRef(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+    const emojis = ['😀', '😂', '😊', '😍', '🥰', '😎', '👍', '👏', '❤️', '🔥', '🎉', '😢', '😮', '🙏'];
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,7 +53,11 @@ export default function ChatWindow({
                     />
                     <div>
                         <h3 className="text-sm font-bold text-slate-900">{activeConversation.name}</h3>
-                        <p className="text-xs text-slate-400">Cuộc trò chuyện 1-1</p>
+                        <p className="text-xs flex items-center gap-1 text-slate-400">
+                            <span className={activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}>
+                                {activeConversation.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}
+                            </span>
+                        </p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1 text-slate-400">
@@ -86,17 +93,56 @@ export default function ChatWindow({
             </div>
 
             <form onSubmit={handleSend} className="p-4 border-t border-slate-100 flex items-center gap-2">
+                <button
+                    type="button"
+                    title="Đính kèm tệp"
+                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                    onClick={() => alert('Chức năng tải tệp cần backend storage để lưu URL file.')}
+                >
+                    <Paperclip size={20} />
+                </button>
+
+                <div className="relative">
+                    <button
+                        type="button"
+                        title="Emoji"
+                        onClick={() => setShowEmojiPicker(prev => !prev)}
+                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                    >
+                        <Smile size={20} />
+                    </button>
+
+                    {showEmojiPicker && (
+                        <div className="absolute bottom-12 left-0 z-30 w-64 bg-white border border-slate-200 rounded-xl shadow-xl p-3 grid grid-cols-7 gap-1">
+                            {emojis.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                        setInput(prev => prev + emoji);
+                                        setShowEmojiPicker(false);
+                                    }}
+                                    className="text-xl p-1.5 rounded-lg hover:bg-slate-100"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 <input
                     type="text"
                     placeholder="Nhập tin nhắn..."
                     value={input}
                     onChange={handleChange}
-                    className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none"
+                    className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
                 />
                 <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl"
+                    className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-full shadow-sm"
+                    title="Gửi tin nhắn"
                 >
                     <Send size={18} />
                 </button>
