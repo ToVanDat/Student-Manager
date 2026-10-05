@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { chatApi } from '@/api/chatApi';
 import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
 
 export const useChat = () => {
+    const { user } = useAuth();
+    const currentUserId = Number(user?.id);
     const [conversations, setConversations] = useState([]);
     const [activeId, setActiveId] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -98,7 +101,7 @@ export const useChat = () => {
             }));
         };
 
-        const handleConversationUpdated = ({ conversationId, lastMessage, updatedAt }) => {
+        const handleConversationUpdated = ({ conversationId, lastMessage, senderId, updatedAt }) => {
             setConversations(prev => {
                 const exists = prev.some(c => Number(c.id) === Number(conversationId));
 
@@ -113,9 +116,11 @@ export const useChat = () => {
                             ...c,
                             lastMessage: lastMessage?.content || '',
                             lastMessageAt: updatedAt,
-                            unreadCount: Number(c.id) === Number(activeId)
+                            unreadCount: Number(c.id) === Number(activeId) || Number(senderId) === currentUserId
                                 ? 0
-                                : (c.unreadCount || 0) + 1
+                                : Number(senderId) === currentUserId
+                                    ? (c.unreadCount || 0)
+                                    : (c.unreadCount || 0) + 1
                         }
                         : c)
                     .sort((a, b) =>
@@ -158,6 +163,15 @@ export const useChat = () => {
             ));
         };
 
+        const handlePresenceSnapshot = ({ userIds = [] }) => {
+            const ids = new Set(userIds.map(Number));
+            setOnlineUserIds(ids);
+            setConversations(prev => prev.map(c => ({
+                ...c,
+                isOnline: ids.has(Number(c.userId))
+            })));
+        };
+
         const handlePresenceOffline = ({ userId }) => {
             const id = Number(userId);
             if (!Number.isInteger(id)) return;
@@ -171,6 +185,7 @@ export const useChat = () => {
             ));
         };
 
+        socket.on('presence:snapshot', handlePresenceSnapshot);
         socket.on('presence:online', handlePresenceOnline);
         socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
@@ -181,6 +196,7 @@ export const useChat = () => {
         socket.on('message:error', handleMessageError);
 
         return () => {
+            socket.off('presence:snapshot', handlePresenceSnapshot);
             socket.off('presence:online', handlePresenceOnline);
             socket.off('presence:offline', handlePresenceOffline);
             socket.off('message:new', handleNewMessage);
@@ -190,7 +206,7 @@ export const useChat = () => {
             socket.off('messages:read', handleMessagesRead);
             socket.off('message:error', handleMessageError);
         };
-    }, [activeId, fetchConversations]);
+    }, [activeId, fetchConversations, currentUserId]);
 
     const sendMessage = useCallback((content) => {
         const text = content.trim();
