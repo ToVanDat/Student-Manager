@@ -5,6 +5,7 @@ const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
 
 let io = null;
+const onlineUsers = new Map();
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -59,6 +60,8 @@ const initSocket = (server) => {
 
         socket.join(`session:${sessionId}`);
         socket.join(`user:${userId}`);
+
+        onlineUsers.set(userId, (onlineUsers.get(userId) || 0) + 1);
 
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
@@ -122,6 +125,22 @@ const initSocket = (server) => {
             }
         });
 
+        socket.on('message:read', async ({ conversationId }) => {
+            const id = Number(conversationId);
+            if (!Number.isInteger(id) || id <= 0) return;
+
+            try {
+                if (!await conversationRepository.isConversationMember(id, userId)) return;
+                await messageRepository.markMessagesAsRead(id, userId);
+                socket.to(`conversation:${id}`).emit('messages:read', {
+                    conversationId: id,
+                    readBy: userId
+                });
+            } catch (error) {
+                console.error('MARK READ ERROR:', error);
+            }
+        });
+
         socket.on('typing:start', async ({ conversationId }) => {
             const id = Number(conversationId);
             try {
@@ -154,6 +173,10 @@ const initSocket = (server) => {
         });
 
         socket.on('disconnect', (reason) => {
+            const count = Math.max((onlineUsers.get(userId) || 1) - 1, 0);
+            if (count === 0) onlineUsers.delete(userId);
+            else onlineUsers.set(userId, count);
+
             console.log(`Socket disconnected: user=${userId}, reason=${reason}`);
         });
     });
