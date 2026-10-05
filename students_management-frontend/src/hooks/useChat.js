@@ -40,6 +40,7 @@ export const useChat = () => {
 
                 setMessages(res.data?.data || []);
                 await chatApi.markAsRead(activeId);
+                if (socket.connected) socket.emit('message:read', { conversationId: activeId });
 
                 setConversations(prev => prev.map(c =>
                     c.id === activeId ? { ...c, unreadCount: 0 } : c
@@ -126,6 +127,15 @@ export const useChat = () => {
             if (Number(conversationId) === Number(activeId)) setIsTyping(false);
         };
 
+        const handleMessagesRead = ({ conversationId }) => {
+            if (Number(conversationId) !== Number(activeId)) return;
+            setMessages(prev => prev.map(message =>
+                Number(message.sender_id ?? message.senderId) === Number(activeId)
+                    ? { ...message, is_read: true }
+                    : message
+            ));
+        };
+
         const handleMessageError = ({ message }) => {
             console.error('Socket message error:', message);
         };
@@ -134,6 +144,7 @@ export const useChat = () => {
         socket.on('conversation:updated', handleConversationUpdated);
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
+        socket.on('messages:read', handleMessagesRead);
         socket.on('message:error', handleMessageError);
 
         return () => {
@@ -141,6 +152,7 @@ export const useChat = () => {
             socket.off('conversation:updated', handleConversationUpdated);
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
+            socket.off('messages:read', handleMessagesRead);
             socket.off('message:error', handleMessageError);
         };
     }, [activeId, fetchConversations]);
