@@ -1,119 +1,188 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { chatApi } from '@/api/chatApi';
-// Dòng 3 file src/hooks/useChat.js:
-import socket from '@/socket/socket.js'; //  Bỏ dấu { }
+import { userApi } from '@/api/userApi';
+import socket from '@/socket/socket.js';
 
-// quản lý toàn bộ state và gọi API lấy danh sách/tin nhắn và lắng nghe Realtime từ Socket
 export const useChat = () => {
     const [conversations, setConversations] = useState([]);
     const [activeId, setActiveId] = useState(null);
     const [messages, setMessages] = useState([]);
+    const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [isTyping, setIsTyping] = useState(false);
 
-    // 1. Lấy danh sách cuộc trò chuyện ban đầu
-    const fetchConversations = async () => {
+    const fetchConversations = useCallback(async () => {
         try {
             const res = await chatApi.getConversations();
-            setConversations(res.data || []);
+            setConversations(res.data?.data || []);
         } catch (error) {
-            console.error("Lỗi lấy danh sách conversation:", error);
+            console.error('Lỗi lấy danh sách conversation:', error);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchConversations();
-    }, []);
+    }, [fetchConversations]);
 
-    // 2. Khi chọn 1 Conversation -> Lấy lịch sử tin nhắn & Đánh dấu đã đọc
     useEffect(() => {
-        if (!activeId) return;
+        if (!activeId) {
+            setMessages([]);
+            return;
+        }
+
+        let cancelled = false;
 
         const loadMessages = async () => {
             setLoading(true);
             try {
                 const res = await chatApi.getMessages(activeId);
-                setMessages(res.data || []);
+                if (cancelled) return;
 
-                // Gọi API đánh dấu đã đọc
+                setMessages(res.data?.data || []);
                 await chatApi.markAsRead(activeId);
 
-                // Cập nhật lại số unreadCount = 0 ở danh sách Sidebar
-                setConversations(prev =>
-                    prev.map(c => c.id === activeId ? { ...c, unreadCount: 0 } : c)
-                );
+                setConversations(prev => prev.map(c =>
+                    c.id === activeId ? { ...c, unreadCount: 0 } : c
+                ));
+
+                if (socket.connected) {
+                    socket.emit('conversation:join', { conversationId: activeId });
+                }
             } catch (error) {
-                console.error("Lỗi lấy tin nhắn:", error);
+                console.error('Lỗi lấy tin nhắn:', error);
             } finally {
-                setLoading(false);
+                if (!cancelled) setLoading(false);
             }
         };
 
         loadMessages();
 
-        // Join room Socket
-        socket.emit('join_conversation', activeId);
-
-    }, [activeId]);
-
-    // 3. Lắng nghe Socket realtime (Tin nhắn mới, typing...)
-    useEffect(() => {
-        socket.on('receive_message', (newMessage) => {
-            // Nếu tin nhắn thuộc conversation đang mở -> Thêm vào list tin nhắn
-            if (newMessage.conversationId === activeId) {
-                setMessages(prev => [...prev, newMessage]);
-                chatApi.markAsRead(activeId); // Tự động đánh dấu đã đọc
-            }
-
-            // Cập nhật lastMessage ở Sidebar
-            setConversations(prev => prev.map(c => {
-                if (c.id === newMessage.conversationId) {
-                    return {
-                        ...c,
-                        lastMessage: newMessage.content,
-                        time: newMessage.time,
-                        unreadCount: c.id === activeId ? 0 : (c.unreadCount || 0) + 1
-                    };
-                }
-                return c;
-            }));
-        });
-
-        socket.on('user_typing', ({ conversationId, typing }) => {
-            if (conversationId === activeId) {
-                setIsTyping(typing);
-            }
-        });
-
         return () => {
-            socket.off('receive_message');
-            socket.off('user_typing');
+            cancelled = true;
+            if (socket.connected) {
+                socket.emit('conversation:leave', { conversationId: activeId });
+            }
+            setIsTyping(false);
         };
     }, [activeId]);
 
-    // 4. Hàm gửi tin nhắn
-const sendMessage = async (content) => {
-    if (!activeId || !content.trim()) return;
+    useEffect(() => {
+        const handleNewMessage = (message) => {
+            const conversationId = Number(message.conversation_id ?? message.conversationId);
 
-    try {
-        // 1. Gọi API lưu tin nhắn vào Database
-        const res = await chatApi.sendMessage({
+            if (conversationId === Number(activeId)) {
+                setMessages(prev => {
+                    if (prev.some(item => item.id === message.id)) return prev;
+                    return [...prev, message];
+                });
+                chatApi.markAsRead(conversationId).catch(() => {});
+            }
+
+            setConversations(prev => prev.map(c => {
+                if (Number(c.id) !== conversationId) return c;
+
+                return {
+                    ...c,
+                    lastMessage: message.content,
+                    lastMessageAt: message.created_at,
+                    unreadCount: Number(c.id) === Number(activeId)
+                        ? 0
+                        : (c.unreadCount || 0) + 1
+                };
+            }));
+        };
+
+        const handleConversationUpdated = ({ conversationId, lastMessage, updatedAt }) => {
+            setConversations(prev => {
+                const exists = prev.some(c => Number(c.id) === Number(conversationId));
+
+                if (!exists) {
+                    fetchConversations();
+                    return prev;
+                }
+
+                return prev
+                    .map(c => Number(c.id) === Number(conversationId)
+                        ? {
+                            ...c,
+                            lastMessage: lastMessage?.content || '',
+                            lastMessageAt: updatedAt,
+                            unreadCount: Number(c.id) === Number(activeId)
+                                ? 0
+                                : (c.unreadCount || 0) + 1
+                        }
+                        : c)
+                    .sort((a, b) =>
+                        new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0)
+                    );
+            });
+        };
+
+        const handleTypingStart = ({ conversationId }) => {
+            if (Number(conversationId) === Number(activeId)) setIsTyping(true);
+        };
+
+        const handleTypingStop = ({ conversationId }) => {
+            if (Number(conversationId) === Number(activeId)) setIsTyping(false);
+        };
+
+        const handleMessageError = ({ message }) => {
+            console.error('Socket message error:', message);
+        };
+
+        socket.on('message:new', handleNewMessage);
+        socket.on('conversation:updated', handleConversationUpdated);
+        socket.on('typing:start', handleTypingStart);
+        socket.on('typing:stop', handleTypingStop);
+        socket.on('message:error', handleMessageError);
+
+        return () => {
+            socket.off('message:new', handleNewMessage);
+            socket.off('conversation:updated', handleConversationUpdated);
+            socket.off('typing:start', handleTypingStart);
+            socket.off('typing:stop', handleTypingStop);
+            socket.off('message:error', handleMessageError);
+        };
+    }, [activeId, fetchConversations]);
+
+    const sendMessage = useCallback((content) => {
+        const text = content.trim();
+        if (!activeId || !text || !socket.connected) return;
+
+        socket.emit('message:send', {
             conversationId: activeId,
-            content
+            content: text
         });
+    }, [activeId]);
 
-        // 2. Cập nhật ngay tin nhắn vừa gửi vào state local để UI hiển thị tức thì
-        const newMsg = res.data;
-        setMessages(prev => [...prev, newMsg]);
+    const searchUsers = useCallback(async (search) => {
+        try {
+            const res = await userApi.searchForChat(search);
+            setSearchResults(res.data?.data || []);
+        } catch (error) {
+            console.error('Lỗi tìm user:', error);
+            setSearchResults([]);
+        }
+    }, []);
 
-        // 3. (Tùy chọn) Bắn sự kiện socket nếu backend yêu cầu client phát trực tiếp
-        socket.emit('send_message', newMsg);
+    const startConversation = useCallback(async (targetUserId) => {
+        const res = await chatApi.createDirectConversation(targetUserId);
+        const conversation = res.data?.data;
 
-    } catch (error) {
-        console.error("Lỗi gửi tin nhắn:", error);
-    }
-};
-    
+        await fetchConversations();
+        if (conversation?.id) setActiveId(conversation.id);
+
+        return conversation;
+    }, [fetchConversations]);
+
+    const setTyping = useCallback((typing) => {
+        if (!activeId || !socket.connected) return;
+
+        socket.emit(typing ? 'typing:start' : 'typing:stop', {
+            conversationId: activeId
+        });
+    }, [activeId]);
+
     return {
         conversations,
         activeId,
@@ -122,7 +191,10 @@ const sendMessage = async (content) => {
         loading,
         isTyping,
         sendMessage,
+        searchResults,
+        searchUsers,
+        startConversation,
+        setTyping,
         refetchConversations: fetchConversations
     };
-    
 };
