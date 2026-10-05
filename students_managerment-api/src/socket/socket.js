@@ -54,7 +54,7 @@ const initSocket = (server) => {
         }
     });
 
-    io.on('connection', (socket) => {
+    io.on('connection', async (socket) => {
         const userId = Number(socket.user.id);
         const sessionId = socket.user.sessionId;
 
@@ -64,8 +64,8 @@ const initSocket = (server) => {
         const previousSocketCount = onlineUsers.get(userId) || 0;
     onlineUsers.set(userId, previousSocketCount + 1);
 
-    // Chỉ phát ONLINE khi user thực sự chuyển từ offline -> online.
-    if (previousSocketCount === 0) {
+        // Chỉ phát ONLINE khi user thực sự chuyển từ offline -> online.
+        if (previousSocketCount === 0) {
         try {
             const contactIds = await conversationRepository.getConversationContactIds(userId);
             for (const contactId of contactIds) {
@@ -74,16 +74,16 @@ const initSocket = (server) => {
         } catch (error) {
             console.error('PRESENCE ONLINE ERROR:', error);
         }
-    }
+        }
 
-    // Gửi snapshot presence cho client vừa kết nối.
-    try {
-        const contactIds = await conversationRepository.getConversationContactIds(userId);
+        // Gửi snapshot presence cho client vừa kết nối.
+        try {
+            const contactIds = await conversationRepository.getConversationContactIds(userId);
         const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
-        socket.emit('presence:snapshot', { userIds: onlineContactIds });
-    } catch (error) {
-        console.error('PRESENCE SNAPSHOT ERROR:', error);
-    }
+            socket.emit('presence:snapshot', { userIds: onlineContactIds });
+        } catch (error) {
+            console.error('PRESENCE SNAPSHOT ERROR:', error);
+        }
 
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
@@ -203,7 +203,7 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('disconnect', (reason) => {
+        socket.on('disconnect', async (reason) => {
             const count = Math.max((onlineUsers.get(userId) || 1) - 1, 0);
             if (count === 0) {
                 onlineUsers.delete(userId);
