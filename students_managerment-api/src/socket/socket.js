@@ -85,6 +85,16 @@ const initSocket = (server) => {
             console.error('PRESENCE SNAPSHOT ERROR:', error);
         }
 
+        socket.on('presence:sync', async () => {
+            try {
+                const contactIds = await conversationRepository.getConversationContactIds(userId);
+                const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
+                socket.emit('presence:snapshot', { userIds: onlineContactIds });
+            } catch (error) {
+                console.error('PRESENCE SYNC ERROR:', error);
+            }
+        });
+
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
