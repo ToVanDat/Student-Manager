@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import './StudentForm.css';
 
 // form infomation student and validation 
 function StudentForm({ student, onSubmit, onCancel }) {
@@ -139,19 +138,20 @@ function StudentForm({ student, onSubmit, onCancel }) {
     };
 
     return (
-        <div className="form-container">
-            <h2>
+        <div className="rounded-b-xl bg-white dark:bg-slate-900">
+            <h2 className="sr-only">
                 {student
                     ? 'Cập nhật sinh viên'
                     : 'Thêm sinh viên'}
             </h2>
 
-            <form onSubmit={handleSubmit}>
+            <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
                 {/* Mã sinh viên */}
-                <div className="form-group">
-                    <label>Mã sinh viên</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mã sinh viên</label>
 
                     <input
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         type="text"
                         name="student_code"
                         value={formData.student_code}
@@ -160,17 +160,18 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     />
 
                     {errors.student_code && (
-                        <p className="error">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errors.student_code}
                         </p>
                     )}
                 </div>
 
                 {/* Họ tên */}
-                <div className="form-group">
-                    <label>Họ và tên</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Họ và tên</label>
 
                     <input
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         type="text"
                         name="name"
                         value={formData.name}
@@ -179,17 +180,18 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     />
 
                     {errors.name && (
-                        <p className="error">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errors.name}
                         </p>
                     )}
                 </div>
 
                 {/* Email */}
-                <div className="form-group">
-                    <label>Email</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email</label>
 
                     <input
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         type="email"
                         name="email"
                         value={formData.email}
@@ -198,17 +200,18 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     />
 
                     {errors.email && (
-                        <p className="error">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errors.email}
                         </p>
                     )}
                 </div>
 
                 {/* Ngày sinh */}
-                <div className="form-group">
-                    <label>Ngày sinh</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Ngày sinh</label>
 
                     <input
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         type="date"
                         name="date_of_birth"
                         value={formData.date_of_birth}
@@ -216,17 +219,18 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     />
 
                     {errors.date_of_birth && (
-                        <p className="error">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errors.date_of_birth}
                         </p>
                     )}
                 </div>
 
                 {/* Giới tính */}
-                <div className="form-group">
-                    <label>Giới tính</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Giới tính</label>
 
                     <select
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
@@ -245,17 +249,18 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     </select>
 
                     {errors.gender && (
-                        <p className="error">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errors.gender}
                         </p>
                     )}
                 </div>
 
                 {/* ID lớp */}
-                <div className="form-group">
-                    <label>ID lớp</label>
+                <div className="flex flex-col gap-2">
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">ID lớp</label>
 
                     <input
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         type="number"
                         name="class_id"
                         value={formData.class_id}
@@ -265,17 +270,17 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     />
 
                     {errors.class_id && (
-                        <p className="error">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
                             {errors.class_id}
                         </p>
                     )}
                 </div>
 
                 {/* Buttons */}
-                <div className="form-buttons">
+                <div className="col-span-full mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5 dark:border-slate-800">
                     <button
                         type="submit"
-                        className="btn-save"
+                        className="rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                     >
                         {student
                             ? 'Cập nhật'
@@ -285,7 +290,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     {student && (
                         <button
                             type="button"
-                            className="btn-cancel"
+                            className="rounded-md bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
                             onClick={onCancel}
                         >
                             Hủy

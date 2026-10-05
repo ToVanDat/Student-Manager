@@ -277,7 +277,7 @@ const forgotPassword = async (
 
         return res.status(500).json({
             message:
-                'Không thể xử lý yêu cầu đặt lại mật khẩu'
+                'Không gửi được email OTP. Hãy kiểm tra cấu hình người gửi đã được xác minh trên dịch vụ email.'
         });
     }
 };

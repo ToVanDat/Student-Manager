@@ -1,15 +1,10 @@
-import {
-    useEffect,
-    useState
-} from 'react';
+import {useEffect, useState} from 'react';
 
 import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
 import RegisterForm from '@/components/auth/RegisterForm.jsx';
 import AuthBanner from '@/components/auth/AuthBanner.jsx';
-
-import './login.css';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -496,9 +491,9 @@ function Login() {
 
     return (
 
-        <div className="login-page">
+        <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-0">
 
-            <div className="login-container">
+            <div className="grid min-h-screen w-full grid-cols-[55%_45%] overflow-hidden bg-white max-[1100px]:grid-cols-[52%_48%] max-[900px]:grid-cols-2 max-[800px]:flex max-[800px]:flex-col">
 
 
                 {/* =================================================
@@ -512,27 +507,27 @@ function Login() {
                     RIGHT FORM
                 ================================================= */}
 
-                <div className="login-form-container">
+                <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-white max-[800px]:min-h-[54vh] max-[800px]:flex-1 max-[800px]:items-start">
 
-                    <div className="login-form-wrapper">
+                    <div className="w-full max-w-[460px] px-5 py-7 min-[451px]:px-6 min-[451px]:py-8 min-[601px]:px-[30px] min-[601px]:py-[35px] min-[901px]:px-10 min-[901px]:py-[45px] min-[1101px]:p-[55px] max-[800px]:max-w-[520px]">
 
 
                         {/* BRAND */}
 
-                        <div className="login-brand">
+                        <div className="mb-[25px] flex items-center gap-2.5 min-[451px]:mb-7 min-[601px]:mb-[35px] min-[901px]:mb-[45px]">
 
-                            <div className="login-brand-mark">
+                            <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-linear-to-br from-blue-600 to-blue-700 text-xs font-extrabold tracking-wide text-white shadow-lg shadow-blue-600/20 min-[451px]:size-[46px] min-[451px]:rounded-xl min-[451px]:text-sm">
                                 SM
                             </div>
 
 
-                            <div className="login-brand-text">
+                            <div>
 
-                                <h1>
+                                <h1 className="m-0 text-[15px] leading-[1.3] font-bold text-slate-900 min-[451px]:text-[17px]">
                                     Student Management
                                 </h1>
 
-                                <p>
+                                <p className="mt-[3px] mb-0 text-[9px] leading-[1.3] font-medium text-slate-400 min-[451px]:text-[11px]">
                                     School Management System
                                 </p>
 
@@ -543,9 +538,9 @@ function Login() {
 
                         {/* HEADING */}
 
-                        <div className="login-heading">
+                        <div className="mb-[25px] min-[451px]:mb-[30px]">
 
-                            <h2>
+                            <h2 className="mb-2 text-2xl leading-tight font-bold text-slate-900 min-[451px]:text-[26px] min-[601px]:text-[28px] min-[901px]:text-[31px]">
 
                                 {mode === 'login' &&
                                     'Đăng nhập'}
@@ -559,7 +554,7 @@ function Login() {
                             </h2>
 
 
-                            <p>
+                            <p className="m-0 text-xs leading-relaxed text-slate-500 min-[451px]:text-[13px]">
 
                                 {mode === 'login' &&
                                     'Đăng nhập vào hệ thống quản lý sinh viên'}

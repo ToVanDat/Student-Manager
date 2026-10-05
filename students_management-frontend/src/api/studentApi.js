@@ -1,7 +1,6 @@
-import axios from 'axios';
-import { API_BASE_URL } from '../constant';
+import { apiClient } from '@/api/client.js';
 
-const STUDENT_API_URL = `${API_BASE_URL}/api/students`;
+const STUDENT_API_URL = '/api/students';
 
 export const getStudents = async () => {
   const response = await apiClient.get(STUDENT_API_URL);

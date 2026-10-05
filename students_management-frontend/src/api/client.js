@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../constant';
+import { API_BASE_URL } from '@/utils/constants.js';
 
 // ==========================================
 // ACCESS TOKEN MEMORY

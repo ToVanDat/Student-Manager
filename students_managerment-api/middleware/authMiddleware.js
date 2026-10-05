@@ -215,19 +215,11 @@ const authMiddleware = async (
         // ==================================================
 
         req.user = {
-
-            sub:
-                decoded.sub,
-
-            username:
-                decoded.username,
-
-            role:
-                decoded.role,
-
-            sessionId:
-                decoded.sessionId
-
+            id: decoded.sub,
+            sub: decoded.sub,
+            username: decoded.username,
+            role: decoded.role,
+            sessionId: decoded.sessionId
         };
 
 

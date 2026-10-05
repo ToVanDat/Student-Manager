@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+    --font-sans: "Aptos", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    --font-display: "Aptos Display", "Segoe UI", ui-sans-serif, sans-serif;
+    --color-brand-50: #eef3ff;
+    --color-brand-100: #dbe6ff;
+    --color-brand-500: #5376e8;
+    --color-brand-600: #3e61d6;
+    --color-brand-700: #2f4fb7;
+    --color-ink: #17233c;
+    --color-muted: #7f8ba0;
+    --color-canvas: #f5f7fb;
+    --color-line: #e6ebf3;
+    --shadow-panel: 0 8px 24px rgba(23, 35, 60, .055);
+    --animate-banner-fade: banner-fade 800ms ease both;
+
+    @keyframes banner-fade {
+        from { opacity: 0; transform: scale(1.06); }
+        to { opacity: 1; transform: scale(1); }
+    }
+}
+
+@layer base {
+    html {
+        @apply min-h-full;
+    }
+
+    body {
+        @apply m-0 min-h-screen bg-canvas font-sans text-ink antialiased;
+    }
+
+    button {
+        @apply cursor-pointer transition-colors duration-150;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-brand-500;
+    }
+
+    ::selection {
+        @apply bg-brand-100 text-brand-700;
+    }
+}

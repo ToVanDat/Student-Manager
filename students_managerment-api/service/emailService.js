@@ -11,7 +11,7 @@ const sendEmail = async ({
 }) => {
     const { data, error } =
         await resend.emails.send({
-            from: 'onboarding@resend.dev',
+            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
             to: [to],
             subject,
             html

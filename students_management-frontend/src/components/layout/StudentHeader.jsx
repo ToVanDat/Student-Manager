@@ -41,14 +41,15 @@ function StudentHeader({
     };
 
     return (
-        <header className="top-header">
-            <button className="mobile-menu" onClick={onToggleSidebar}>
+        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] bg-white/90 px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px] dark:border-slate-800 dark:bg-slate-950/95">
+            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 min-[801px]:hidden dark:text-slate-300 dark:hover:bg-slate-800" onClick={onToggleSidebar} aria-label="Mở menu">
                 <Menu size={22} />
             </button>
 
-            <div className="global-search">
-                <Search size={19} />
+            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f3f6fb] px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white focus-within:shadow-sm dark:bg-slate-900 dark:focus-within:bg-slate-900">
+                <Search size={18} className="shrink-0" />
                 <input
+                    className="min-w-0 flex-1 border-0 bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100"
                     type="text"
                     placeholder="Tìm kiếm sinh viên, lớp học, mã sinh viên, email..."
                     value={search}
@@ -56,26 +57,26 @@ function StudentHeader({
                 />
             </div>
 
-            <div className="header-actions">
-                <button className="header-icon">
+            <div className="ml-auto flex items-center gap-1 sm:gap-2">
+                <button className="relative flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Thông báo">
                     <Bell size={20} />
-                    <span className="notification-dot">2</span>
+                    <span className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">2</span>
                 </button>
-                <button className="header-icon" onClick={onToggleDarkMode}>
+                <button className="flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onToggleDarkMode} aria-label="Đổi giao diện">
                     {darkMode ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
 
-                <div className="user-menu-wrapper" ref={menuRef}>
+                <div className="relative" ref={menuRef}>
                     <button
-                        className="user-menu-trigger"
+                        className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-3"
                         onClick={() => setMenuOpen((open) => !open)}
                     >
-                        <div className="user-avatar">
+                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
                             {user?.username?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
-                        <div className="header-user-info">
-                            <strong>{user?.username || 'User'}</strong>
-                            <span>
+                        <div className="hidden min-w-0 flex-col sm:flex">
+                            <strong className="max-w-28 truncate text-xs text-slate-800 dark:text-slate-100">{user?.username || 'User'}</strong>
+                            <span className="text-[10px] text-slate-500">
                                 {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
                             </span>
                         </div>
@@ -83,22 +84,23 @@ function StudentHeader({
                     </button>
 
                     {menuOpen && (
-                        <div className="user-dropdown">
-                            <div className="dropdown-user">
-                                <div className="user-avatar large">
+                        <div className="absolute top-full right-0 z-50 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            <div className="flex items-center gap-3 p-2">
+                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
                                     {user?.username?.charAt(0)?.toUpperCase() || 'U'}
                                 </div>
-                                <div>
-                                    <strong>{user?.username || 'User'}</strong>
-                                    <span>{user?.email || 'user@example.com'}</span>
+                                <div className="min-w-0">
+                                    <strong className="block truncate text-xs text-slate-800 dark:text-slate-100">{user?.username || 'User'}</strong>
+                                    <span className="block truncate text-[11px] text-slate-500">{user?.email || 'user@example.com'}</span>
                                 </div>
                             </div>
-                            <div className="dropdown-divider" />
-                            <button>
+                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                            <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
                                 <User size={18} />
                                 <span>Thông tin người dùng</span>
                             </button>
                             <button
+                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
                                 onClick={() => {
                                     setMenuOpen(false);
                                     onOpenSettings();
@@ -107,8 +109,8 @@ function StudentHeader({
                                 <Settings size={18} />
                                 <span>Cài đặt tài khoản</span>
                             </button>
-                            <div className="dropdown-divider" />
-                            <button className="logout-item" onClick={handleLogout}>
+                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                            <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={handleLogout}>
                                 <LogOut size={18} />
                                 <span>Đăng xuất</span>
                             </button>
