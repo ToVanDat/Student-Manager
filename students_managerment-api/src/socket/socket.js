@@ -166,6 +166,84 @@ const initSocket = (server) => {
             }
         });
 
+        socket.on('message:edit', async ({ messageId, content }) => {
+            const id = Number(messageId);
+            const text = typeof content === 'string' ? content.trim() : '';
+
+            if (!Number.isInteger(id) || id <= 0) {
+                return socket.emit('message:error', { message: 'messageId không hợp lệ' });
+            }
+
+            if (!text) {
+                return socket.emit('message:error', {
+                    message: 'Nội dung message không được để trống'
+                });
+            }
+
+            try {
+                const message = await messageRepository.getMessageById(id);
+
+                if (!message) {
+                    return socket.emit('message:error', {
+                        message: 'Message không tồn tại'
+                    });
+                }
+
+                const isMember =
+                    await conversationRepository.isConversationMember(
+                        message.conversation_id,
+                        userId
+                    );
+
+                if (!isMember) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn không thuộc conversation này'
+                    });
+                }
+
+                if (String(message.sender_id) !== String(userId)) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn chỉ có thể sửa message do chính mình gửi'
+                    });
+                }
+
+                if (message.is_recalled) {
+                    return socket.emit('message:error', {
+                        message: 'Message đã được thu hồi và không thể chỉnh sửa'
+                    });
+                }
+
+                if (message.deleted_at) {
+                    return socket.emit('message:error', {
+                        message: 'Message đã bị xoá và không thể chỉnh sửa'
+                    });
+                }
+
+                const updatedMessage =
+                    await messageRepository.updateMessageContent(id, text);
+
+                if (!updatedMessage) {
+                    return socket.emit('message:error', {
+                        message: 'Không thể chỉnh sửa message'
+                    });
+                }
+
+                io.to(`conversation:${message.conversation_id}`).emit(
+                    'message:updated',
+                    updatedMessage
+                );
+
+                socket.emit('message:edit:sent', {
+                    message: updatedMessage
+                });
+            } catch (error) {
+                console.error('EDIT MESSAGE SOCKET ERROR:', error);
+                socket.emit('message:error', {
+                    message: 'Không thể chỉnh sửa message'
+                });
+            }
+        });
+
         socket.on('message:read', async ({ conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) return;
