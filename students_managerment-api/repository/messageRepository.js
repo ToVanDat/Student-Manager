@@ -76,7 +76,25 @@ const getMessagesByConversation = async (conversationId, userId) => {
             deleted_at,
             edited_at,
             created_at,
-            updated_at
+            updated_at,
+            COALESCE(
+                (
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', mf.id,
+                            'message_id', mf.message_id,
+                            'file_name', mf.file_name,
+                            'mime_type', mf.mime_type,
+                            'file_size', mf.file_size,
+                            'created_at', mf.created_at
+                        )
+                        ORDER BY mf.created_at ASC, mf.id ASC
+                    )
+                    FROM message_files mf
+                    WHERE mf.message_id = m.id
+                ),
+                '[]'::json
+            ) AS files
         FROM messages m
         WHERE m.conversation_id = $1
           AND NOT EXISTS (
