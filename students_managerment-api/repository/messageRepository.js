@@ -22,6 +22,11 @@ const createMessage = async (conversationId, senderId, content) => {
                 sender_id,
                 content,
                 is_read,
+                read_at,
+                is_recalled,
+                recalled_at,
+                deleted_at,
+                edited_at,
                 created_at,
                 updated_at;
         `;
@@ -47,7 +52,7 @@ const createMessage = async (conversationId, senderId, content) => {
 
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Lỗi khi tạo tin nhắn trong Transaction:', error); // Log the error
+        console.error('Lỗi khi tạo tin nhắn trong Transaction:', error);
         throw error;
     } finally {
         client.release();
@@ -65,6 +70,11 @@ const getMessagesByConversation = async (conversationId) => {
             sender_id,
             content,
             is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
             created_at,
             updated_at
         FROM messages
@@ -87,6 +97,11 @@ const getMessageById = async (messageId) => {
             sender_id,
             content,
             is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
             created_at,
             updated_at
         FROM messages
@@ -95,6 +110,41 @@ const getMessageById = async (messageId) => {
     `;
 
     const { rows } = await pool.query(query, [messageId]);
+    return rows[0] || null;
+};
+
+/**
+ * Chỉnh sửa message.
+ * Quyền và trạng thái message được kiểm tra ở service.
+ */
+const updateMessageContent = async (messageId, content) => {
+    const query = `
+        UPDATE messages
+        SET
+            content = $2,
+            edited_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+            id,
+            conversation_id,
+            sender_id,
+            content,
+            is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
+            created_at,
+            updated_at;
+    `;
+
+    const { rows } = await pool.query(query, [
+        messageId,
+        content
+    ]);
+
     return rows[0] || null;
 };
 
@@ -120,5 +170,6 @@ module.exports = {
     createMessage,
     getMessagesByConversation,
     getMessageById,
+    updateMessageContent,
     markMessagesAsRead
 };
