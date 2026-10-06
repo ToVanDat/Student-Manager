@@ -149,6 +149,36 @@ const updateMessageContent = async (messageId, content) => {
 };
 
 /**
+ * Thu hồi message
+ */
+const recallMessage = async (messageId) => {
+    const query = `
+        UPDATE messages
+        SET
+            is_recalled = TRUE,
+            recalled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+            id,
+            conversation_id,
+            sender_id,
+            content,
+            is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
+            created_at,
+            updated_at;
+    `;
+
+    const { rows } = await pool.query(query, [messageId]);
+    return rows[0] || null;
+};
+
+/**
  * Đánh dấu tất cả tin nhắn chưa đọc trong conversation do người khác gửi là đã đọc
  */
 const markMessagesAsRead = async (conversationId, userId) => {
@@ -171,5 +201,6 @@ module.exports = {
     getMessagesByConversation,
     getMessageById,
     updateMessageContent,
+    recallMessage,
     markMessagesAsRead
 };
