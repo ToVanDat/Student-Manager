@@ -63,57 +63,65 @@ const getUserConversations = async (userId) => {
         SELECT
             c.id,
             c.type,
-
             u.id AS "userId",
             u.username AS "name",
             u.avatar_url AS "avatar",
 
-            m.content AS "lastMessage",
-            m.created_at AS "lastMessageAt",
+            COALESCE(latest_message.content, '') AS "lastMessage",
+            latest_message.created_at AS "lastMessageAt",
 
-            COUNT(
-                CASE
-                    WHEN m2.is_read = FALSE
-                     AND m2.sender_id != $1
-                    THEN 1
-                END
+            (
+                SELECT COUNT(*)
+                FROM messages m2
+                WHERE m2.conversation_id = c.id
+                  AND m2.is_read = FALSE
+                  AND m2.sender_id != $1
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM message_deletions md2
+                      WHERE md2.message_id = m2.id
+                        AND md2.user_id = $1
+                  )
             ) AS "unreadCount"
 
         FROM conversations c
 
         INNER JOIN conversation_members cm
             ON cm.conversation_id = c.id
+           AND cm.user_id = $1
 
         INNER JOIN conversation_members other_cm
             ON other_cm.conversation_id = c.id
-            AND other_cm.user_id != $1
+           AND other_cm.user_id != $1
 
         INNER JOIN users u
             ON u.id = other_cm.user_id
 
         LEFT JOIN LATERAL (
             SELECT
-                content,
-                created_at
-            FROM messages
-            WHERE conversation_id = c.id
-            ORDER BY created_at DESC
+                CASE
+                    WHEN m.is_recalled THEN 'Tin nhắn đã được thu hồi'
+                    WHEN m.deleted_at IS NOT NULL THEN 'Tin nhắn đã bị xoá'
+                    ELSE m.content
+                END AS content,
+                m.created_at
+            FROM messages m
+            WHERE m.conversation_id = c.id
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM message_deletions md
+                  WHERE md.message_id = m.id
+                    AND md.user_id = $1
+              )
+            ORDER BY m.created_at DESC
             LIMIT 1
-        ) m ON TRUE
+        ) latest_message ON TRUE
 
-        LEFT JOIN messages m2
-            ON m2.conversation_id = c.id
-
-        WHERE cm.user_id = $1
-
-        GROUP BY
-            c.id,
-            c.type,
-            u.id,
-            u.username,
-            u.avatar_url,
-            m.content,
-            m.created_at
+        WHERE (
+            SELECT COUNT(*)
+            FROM conversation_members cm_all
+            WHERE cm_all.conversation_id = c.id
+        ) = 2
 
         ORDER BY c.updated_at DESC;
     `;
