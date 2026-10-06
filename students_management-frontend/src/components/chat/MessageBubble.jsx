@@ -1,6 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download } from 'lucide-react';
 import AvatarFallback from './AvatarFallback';
+
+const formatFileSize = (size) => {
+    const bytes = Number(size);
+    if (!Number.isFinite(bytes) || bytes <= 0) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
 
 export default function MessageBubble({
     message,
@@ -10,7 +19,8 @@ export default function MessageBubble({
     onEdit,
     onRecall,
     onDeleteForMe,
-    onDeleteForEveryone
+    onDeleteForEveryone,
+    onDownloadFile
 }) {
     const { content, time, isRead } = message;
     const [menuOpen, setMenuOpen] = useState(false);
@@ -132,7 +142,67 @@ export default function MessageBubble({
                             </div>
                         </div>
                     ) : (
-                        <p className="leading-relaxed whitespace-pre-wrap">{content}</p>
+                        <>
+                            {content && (
+                                <p className="leading-relaxed whitespace-pre-wrap">
+                                    {content}
+                                </p>
+                            )}
+
+                            {message.files?.length > 0 && (
+                                <div className={content ? 'mt-2 space-y-2' : 'space-y-2'}>
+                                    {message.files.map(file => {
+                                        const isImage = file.mime_type?.startsWith('image/');
+
+                                        return (
+                                            <div
+                                                key={file.id}
+                                                className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden"
+                                            >
+                                                {isImage ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onDownloadFile?.(file)}
+                                                        className="block w-full text-left"
+                                                        title="Tải ảnh"
+                                                    >
+                                                        <img
+                                                            src={file.previewUrl || ''}
+                                                            alt={file.file_name}
+                                                            className="max-w-[280px] max-h-[280px] object-cover"
+                                                            onError={(event) => {
+                                                                event.currentTarget.style.display = 'none';
+                                                            }}
+                                                        />
+                                                    </button>
+                                                ) : null}
+
+                                                <div className="flex items-center gap-2 px-3 py-2">
+                                                    <FileText size={18} className="shrink-0" />
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-xs font-medium">
+                                                            {file.file_name}
+                                                        </p>
+                                                        <p className="text-[10px] opacity-70">
+                                                            {formatFileSize(file.file_size)}
+                                                        </p>
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onDownloadFile?.(file)}
+                                                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
+                                                        title="Tải xuống"
+                                                    >
+                                                        <Download size={15} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
                     )}
 
                     <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isOwn ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'}`}>
