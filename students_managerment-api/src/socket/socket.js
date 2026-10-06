@@ -220,7 +220,7 @@ const initSocket = (server) => {
                 }
 
                 const updatedMessage =
-                    await messageRepository.updateMessageContent(id, text);
+                    await messageRepository.updateMessageContent(id, userId, text);
 
                 if (!updatedMessage) {
                     return socket.emit('message:error', {
@@ -287,7 +287,7 @@ const initSocket = (server) => {
                     });
                 }
 
-                const recalledMessage = await messageRepository.recallMessage(id);
+                const recalledMessage = await messageRepository.recallMessage(id, userId);
 
                 if (!recalledMessage) {
                     return socket.emit('message:error', {
@@ -395,7 +395,7 @@ const initSocket = (server) => {
                 }
 
                 const deletedMessage =
-                    await messageRepository.deleteMessageForEveryone(id);
+                    await messageRepository.deleteMessageForEveryone(id, userId);
 
                 if (!deletedMessage) {
                     return socket.emit('message:error', {
