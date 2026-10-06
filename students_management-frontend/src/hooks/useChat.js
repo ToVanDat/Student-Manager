@@ -39,13 +39,6 @@ export const useChat = () => {
     }, [currentUserId, fetchConversations]);
 
     useEffect(() => {
-        setConversations(prev => prev.map(conversation => ({
-            ...conversation,
-            isOnline: onlineUserIds.has(Number(conversation.userId))
-        })));
-    }, [onlineUserIds]);
-
-    useEffect(() => {
         if (!activeId) {
             setMessages([]);
             return;
@@ -250,35 +243,59 @@ export const useChat = () => {
         const handlePresenceOnline = ({ userId }) => {
             const id = Number(userId);
             if (!Number.isInteger(id)) return;
+
             setOnlineUserIds(prev => {
+                if (prev.has(id)) return prev;
                 const next = new Set(prev);
                 next.add(id);
                 return next;
             });
+
             setConversations(prev => prev.map(c =>
-                Number(c.userId) === id ? { ...c, isOnline: true } : c
+                Number(c.userId) === id && !c.isOnline
+                    ? { ...c, isOnline: true }
+                    : c
             ));
         };
 
         const handlePresenceSnapshot = ({ userIds = [] }) => {
-            const ids = new Set(userIds.map(Number));
+            const ids = new Set(
+                userIds
+                    .map(Number)
+                    .filter(Number.isInteger)
+            );
+
             setOnlineUserIds(ids);
-            setConversations(prev => prev.map(c => ({
-                ...c,
-                isOnline: ids.has(Number(c.userId))
-            })));
+
+            setConversations(prev => {
+                let changed = false;
+
+                const next = prev.map(c => {
+                    const isOnline = ids.has(Number(c.userId));
+                    if (c.isOnline === isOnline) return c;
+                    changed = true;
+                    return { ...c, isOnline };
+                });
+
+                return changed ? next : prev;
+            });
         };
 
         const handlePresenceOffline = ({ userId }) => {
             const id = Number(userId);
             if (!Number.isInteger(id)) return;
+
             setOnlineUserIds(prev => {
+                if (!prev.has(id)) return prev;
                 const next = new Set(prev);
                 next.delete(id);
                 return next;
             });
+
             setConversations(prev => prev.map(c =>
-                Number(c.userId) === id ? { ...c, isOnline: false } : c
+                Number(c.userId) === id && c.isOnline
+                    ? { ...c, isOnline: false }
+                    : c
             ));
         };
 
