@@ -76,6 +76,20 @@ export const useChat = () => {
     }, [activeId]);
 
     useEffect(() => {
+        const joinActiveConversation = () => {
+            if (!socket.connected || !activeId) return;
+
+            socket.emit('conversation:join', {
+                conversationId: activeId
+            });
+        };
+
+        const handleSocketConnect = () => {
+            // AuthContext có thể kết nối socket trước khi useChat được mount.
+            // Vì vậy khi socket connect/reconnect, luôn join lại conversation hiện tại.
+            joinActiveConversation();
+        };
+
         const handleNewMessage = (message) => {
             const conversationId = Number(message.conversation_id ?? message.conversationId);
 
@@ -255,8 +269,12 @@ export const useChat = () => {
             ));
         };
 
+        socket.on('connect', handleSocketConnect);
         socket.on('presence:snapshot', handlePresenceSnapshot);
-        if (socket.connected) socket.emit('presence:sync');
+        if (socket.connected) {
+            socket.emit('presence:sync');
+            joinActiveConversation();
+        }
         socket.on('presence:online', handlePresenceOnline);
         socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
@@ -272,6 +290,7 @@ export const useChat = () => {
         socket.on('message:error', handleMessageError);
 
         return () => {
+            socket.off('connect', handleSocketConnect);
             socket.off('presence:snapshot', handlePresenceSnapshot);
             socket.off('presence:online', handlePresenceOnline);
             socket.off('presence:offline', handlePresenceOffline);
