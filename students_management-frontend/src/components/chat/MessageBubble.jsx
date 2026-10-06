@@ -159,7 +159,7 @@ export default function MessageBubble({
                                                 key={file.id}
                                                 className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden"
                                             >
-                                                {isImage ? (
+                                                {isImage && file.previewUrl ? (
                                                     <button
                                                         type="button"
                                                         onClick={() => onDownloadFile?.(file)}
@@ -167,12 +167,9 @@ export default function MessageBubble({
                                                         title="Tải ảnh"
                                                     >
                                                         <img
-                                                            src={file.previewUrl || ''}
+                                                            src={file.previewUrl}
                                                             alt={file.file_name}
                                                             className="max-w-[280px] max-h-[280px] object-cover"
-                                                            onError={(event) => {
-                                                                event.currentTarget.style.display = 'none';
-                                                            }}
                                                         />
                                                     </button>
                                                 ) : null}
