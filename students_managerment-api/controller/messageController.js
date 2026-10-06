@@ -199,8 +199,59 @@ const updateMessage = async (req, res) => {
     }
 };
 
+/**
+ * Thu hồi message
+ */
+const recallMessage = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const messageId = Number(req.params.messageId);
+
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return res.status(401).json({
+                message: 'User hiện tại không hợp lệ'
+            });
+        }
+
+        if (!Number.isInteger(messageId) || messageId <= 0) {
+            return res.status(400).json({
+                message: 'messageId không hợp lệ'
+            });
+        }
+
+        const message =
+            await messageService.recallMessage(
+                messageId,
+                userId
+            );
+
+        return res.status(200).json({
+            message: 'Thu hồi message thành công',
+            data: message
+        });
+    } catch (error) {
+        console.error(
+            'RECALL MESSAGE ERROR:',
+            error
+        );
+
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            message:
+                error.message ||
+                'Không thể thu hồi message'
+        });
+    }
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
-    updateMessage
+    updateMessage,
+    recallMessage
 };
