@@ -1,12 +1,22 @@
-import React from 'react';
-import ChatSidebar from '@/components/chat/ChatSidebar';
-import ChatWindow from '@/components/chat/ChatWindow';
-import EmptyChat from '@/components/chat/EmptyChat';
-import { useChat } from '@/hooks/useChat';
-import { useAuth } from '@/hooks/useAuth';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
+import ChatWindow from '@/components/chat/ChatWindow.jsx';
+import EmptyChat from '@/components/chat/EmptyChat.jsx';
+import StudentHeader from '@/components/layout/StudentHeader.jsx';
+import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
+
+import { useChat } from '@/hooks/useChat.js';
+import { useAuth } from '@/hooks/useAuth.js';
 
 export default function ChatPage() {
+    const navigate = useNavigate();
     const { user } = useAuth();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [darkMode, setDarkMode] = useState(false);
+    const [headerSearch, setHeaderSearch] = useState('');
+
     const {
         conversations,
         activeId,
@@ -20,31 +30,84 @@ export default function ChatPage() {
         setTyping
     } = useChat();
 
-    const activeConversation = conversations.find(c => Number(c.id) === Number(activeId));
+    const activeConversation = conversations.find(
+        conversation => Number(conversation.id) === Number(activeId)
+    );
+
+    const unreadCount = conversations.reduce(
+        (total, conversation) => total + Number(conversation.unreadCount || 0),
+        0
+    );
+
+    const handleNavigate = (page) => {
+        setSidebarOpen(false);
+
+        if (page === 'chat') return;
+
+        if (page === 'dashboard' || page === 'students') {
+            navigate('/students');
+            return;
+        }
+
+        if (page === 'settings') {
+            navigate('/students');
+        }
+    };
 
     return (
-        <div className="h-[calc(100vh-76px)] min-h-0 bg-[#f5f8fc] p-4 lg:p-5">
-            <div className="h-full min-h-0 max-w-[1500px] mx-auto flex overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)]">
-                <ChatSidebar
-                conversations={conversations}
-                activeId={activeId}
-                onSelectConversation={setActiveId}
-                searchUsers={searchUsers}
-                searchResults={searchResults}
-                onStartConversation={startConversation}
-            />
-                {activeId && activeConversation ? (
-                <ChatWindow
-                    activeConversation={activeConversation}
-                    messages={messages}
-                    currentUserId={Number(user?.id)}
-                    onSendMessage={sendMessage}
-                    isTyping={isTyping}
-                    onTyping={setTyping}
+        <div className={darkMode ? 'dark' : ''}>
+            <div className="flex min-h-screen bg-[#f5f7fb] font-sans text-[#17233c] dark:bg-slate-950 dark:text-slate-100">
+                <StudentSidebar
+                    user={user}
+                    activePage="chat"
+                    totalStudents={11}
+                    isOpen={sidebarOpen}
+                    onClose={() => setSidebarOpen(false)}
+                    onNavigate={handleNavigate}
+                    onOpenSettings={() => navigate('/students')}
+                    unreadCount={unreadCount}
                 />
-                ) : (
-                    <EmptyChat />
-                )}
+
+                <main className="ml-[250px] min-h-screen min-w-0 flex-1 max-[1100px]:ml-[220px] max-[800px]:ml-0">
+                    <StudentHeader
+                        user={user}
+                        search={headerSearch}
+                        onSearchChange={setHeaderSearch}
+                        darkMode={darkMode}
+                        onToggleDarkMode={() => setDarkMode(current => !current)}
+                        onOpenSettings={() => navigate('/students')}
+                        onLogout={() => navigate('/login')}
+                        onToggleSidebar={() => setSidebarOpen(open => !open)}
+                    />
+
+                    <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
+                        <div className="h-full min-h-0 overflow-hidden rounded-2xl border border-[#e7ebf3] bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-900">
+                            <div className="flex h-full min-h-0">
+                                <ChatSidebar
+                                    conversations={conversations}
+                                    activeId={activeId}
+                                    onSelectConversation={setActiveId}
+                                    searchUsers={searchUsers}
+                                    searchResults={searchResults}
+                                    onStartConversation={startConversation}
+                                />
+
+                                {activeId && activeConversation ? (
+                                    <ChatWindow
+                                        activeConversation={activeConversation}
+                                        messages={messages}
+                                        currentUserId={Number(user?.id)}
+                                        onSendMessage={sendMessage}
+                                        isTyping={isTyping}
+                                        onTyping={setTyping}
+                                    />
+                                ) : (
+                                    <EmptyChat />
+                                )}
+                            </div>
+                        </div>
+                    </section>
+                </main>
             </div>
         </div>
     );
