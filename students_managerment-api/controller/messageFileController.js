@@ -1,4 +1,6 @@
 const messageFileService = require('../service/messageFileService');
+const messageRepository = require('../repository/messageRepository');
+const { getIO } = require('../src/socket/socket');
 
 const handleError = (res, error) => {
     const statusCode = error.statusCode || 500;
@@ -28,6 +30,18 @@ const uploadFile = async (req, res) => {
                 req.user.id,
                 req.file
             );
+
+        const message = await messageRepository.getMessageById(messageId);
+        const io = getIO();
+
+        io.to(`conversation:${message.conversation_id}`).emit(
+            'message:file:uploaded',
+            {
+                messageId: message.id,
+                conversationId: message.conversation_id,
+                file: savedFile
+            }
+        );
 
         return res.status(201).json({
             message: 'Upload file thành công',
