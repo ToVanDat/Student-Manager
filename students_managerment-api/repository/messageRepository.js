@@ -62,7 +62,7 @@ const createMessage = async (conversationId, senderId, content) => {
 /**
  * Lấy danh sách message của conversation
  */
-const getMessagesByConversation = async (conversationId) => {
+const getMessagesByConversation = async (conversationId, userId) => {
     const query = `
         SELECT
             id,
@@ -77,12 +77,18 @@ const getMessagesByConversation = async (conversationId) => {
             edited_at,
             created_at,
             updated_at
-        FROM messages
-        WHERE conversation_id = $1
-        ORDER BY created_at ASC;
+        FROM messages m
+        WHERE m.conversation_id = $1
+          AND NOT EXISTS (
+              SELECT 1
+              FROM message_deletions md
+              WHERE md.message_id = m.id
+                AND md.user_id = $2
+          )
+        ORDER BY m.created_at ASC;
     `;
 
-    const { rows } = await pool.query(query, [conversationId]);
+    const { rows } = await pool.query(query, [conversationId, userId]);
     return rows;
 };
 
