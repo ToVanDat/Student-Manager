@@ -34,4 +34,11 @@ router.post(
     messageController.recallMessage
 );
 
+// Xoá message cho riêng user hiện tại
+router.delete(
+    '/:messageId/me',
+    authMiddleware,
+    messageController.deleteMessageForMe
+);
+
 module.exports = router;
