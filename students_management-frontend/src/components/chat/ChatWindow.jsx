@@ -84,6 +84,7 @@ export default function ChatWindow({
                         }}
                         isOwn={Number(msg.sender_id ?? msg.senderId) === Number(currentUserId)}
                         senderAvatar={activeConversation.avatar}
+                            senderName={activeConversation.name}
                     />
                 ))}
 
