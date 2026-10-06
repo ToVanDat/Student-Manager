@@ -14,6 +14,7 @@ export default function ChatWindow({
     const messagesEndRef = useRef(null);
     const typingTimer = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [avatarError, setAvatarError] = useState(false);
 
     const emojis = ['😀', '😂', '😊', '😍', '🥰', '😎', '👍', '👏', '❤️', '🔥', '🎉', '😢', '😮', '🙏'];
 
@@ -43,16 +44,18 @@ export default function ChatWindow({
     };
 
     return (
-        <section className="flex-1 min-w-0 flex flex-col bg-white">
-            <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100">
+        <section className="flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
+            <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                    <img
-                        src={activeConversation.avatar || 'https://via.placeholder.com/40'}
-                        alt={activeConversation.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                    />
+                    {activeConversation.avatar && !avatarError ? (
+                        <img src={activeConversation.avatar} alt={activeConversation.name} onError={() => setAvatarError(true)} className="w-12 h-12 rounded-full object-cover" />
+                    ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center text-sm font-bold">
+                            {(activeConversation.name || 'U').charAt(0).toUpperCase()}
+                        </div>
+                    )}
                     <div>
-                        <h3 className="text-[16px] font-bold text-slate-900">{activeConversation.name}</h3>
+                        <h3 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">{activeConversation.name}</h3>
                         <p className={`text-[12px] mt-0.5 ${activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
                             <span className={activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}>
                                 {activeConversation.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}
@@ -60,13 +63,13 @@ export default function ChatWindow({
                         </p>
                     </div>
                 </div>
-                <div className="flex items-center gap-1 text-slate-500">
-                    <button className="p-2 hover:bg-slate-50 rounded-full"><Search size={18} /></button>
+                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
+                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 dark:hover:bg-slate-800 rounded-full"><Search size={18} /></button>
                     <button className="p-2 hover:bg-slate-50 rounded-full"><MoreVertical size={18} /></button>
                 </div>
             </header>
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
                 {messages.map(msg => (
                     <MessageBubble
                         key={msg.id}
@@ -85,18 +88,18 @@ export default function ChatWindow({
                 ))}
 
                 {isTyping && (
-                    <div className="text-[11px] text-slate-400 mb-3 ml-1">
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
                         {activeConversation.name} đang nhập...
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSend} className="min-h-[78px] px-5 py-3 border-t border-slate-100 flex items-center gap-2 bg-white">
+            <form onSubmit={handleSend} className="min-h-[78px] px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900">
                 <button
                     type="button"
                     title="Đính kèm tệp"
-                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                    className="p-2 text-slate-500 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full"
                     onClick={() => alert('Chức năng tải tệp cần backend storage để lưu URL file.')}
                 >
                     <Paperclip size={20} />
@@ -113,7 +116,7 @@ export default function ChatWindow({
                     </button>
 
                     {showEmojiPicker && (
-                        <div className="absolute bottom-12 left-0 z-30 w-64 bg-white border border-slate-200 rounded-xl shadow-xl p-3 grid grid-cols-7 gap-1">
+                        <div className="absolute bottom-12 left-0 z-30 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3 grid grid-cols-7 gap-1">
                             {emojis.map(emoji => (
                                 <button
                                     key={emoji}
@@ -136,7 +139,7 @@ export default function ChatWindow({
                     placeholder="Nhập tin nhắn..."
                     value={input}
                     onChange={handleChange}
-                    className="flex-1 h-12 bg-white border border-slate-200 rounded-full px-5 text-sm focus:outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                    className="flex-1 h-12 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-full px-5 text-sm focus:outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950"
                 />
                 <button
                     type="submit"
