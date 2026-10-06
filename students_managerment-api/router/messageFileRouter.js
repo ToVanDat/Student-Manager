@@ -8,7 +8,7 @@ const router = express.Router();
 router.post(
     '/messages/:messageId/files',
     authMiddleware,
-    upload.single('file'),
+    upload,
     messageFileController.uploadFile
 );
 
