@@ -24,6 +24,22 @@ export const chatApi = {
             content
         }),
 
+    // Chỉnh sửa message
+    editMessage: (messageId, content) =>
+        client.patch(`/api/messages/${messageId}`, { content }),
+
+    // Thu hồi message
+    recallMessage: (messageId) =>
+        client.post(`/api/messages/${messageId}/recall`),
+
+    // Xoá message cho tôi
+    deleteMessageForMe: (messageId) =>
+        client.delete(`/api/messages/${messageId}/me`),
+
+    // Xoá message cho tất cả
+    deleteMessageForEveryone: (messageId) =>
+        client.delete(`/api/messages/${messageId}/everyone`),
+
     // Đánh dấu user đã đọc
     markAsRead: (conversationId) =>
         client.patch(
