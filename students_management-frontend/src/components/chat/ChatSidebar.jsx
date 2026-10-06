@@ -46,9 +46,9 @@ export default function ChatSidebar({
             </div>
 
             {showNewChat && (
-                <div className="absolute z-20 left-4 right-4 top-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3">
+                <div className="absolute z-30 left-5 right-5 top-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">Tin nhắn mới</span>
+                        <span className="font-semibold text-base text-slate-800 dark:text-slate-100">Tin nhắn mới</span>
                         <button onClick={() => setShowNewChat(false)}>
                             <X size={16} />
                         </button>
@@ -58,7 +58,7 @@ export default function ChatSidebar({
                         autoFocus
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
-                        placeholder="Tìm username..."
+                        placeholder="Tìm username, email..."
                         className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg outline-none"
                     />
 
@@ -73,11 +73,13 @@ export default function ChatSidebar({
                                 }}
                                 className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
                             >
-                                <img
-                                    src={user.avatar || 'https://via.placeholder.com/40'}
-                                    className="w-9 h-9 rounded-full object-cover"
-                                    alt=""
-                                />
+                                {user.avatar ? (
+                                    <img src={user.avatar} className="w-9 h-9 rounded-full object-cover" alt={user.username} />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center text-xs font-bold">
+                                        {(user.username || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                )}
                                 <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.username}</span>
                             </button>
                         ))}
