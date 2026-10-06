@@ -1,120 +1,150 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, MoreVertical, Paperclip, Smile, Send } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { MoreVertical, Search, Send, Paperclip, Smile } from 'lucide-react';
 import MessageBubble from './MessageBubble';
+import AvatarFallback from './AvatarFallback';
 
-export default function ChatWindow({ activeConversation, messages, currentUserId, onSendMessage, isTyping }) {
+export default function ChatWindow({
+    activeConversation,
+    messages,
+    currentUserId,
+    onSendMessage,
+    isTyping,
+    onTyping
+}) {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
+    const typingTimer = useRef(null);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-    // Auto scroll bottom when new message arrives
+    const emojis = ['😀', '😂', '😊', '😍', '🥰', '😎', '👍', '👏', '❤️', '🔥', '🎉', '😢', '😮', '🙏'];
+
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, isTyping]);
 
-    const handleSend = (e) => {
+    useEffect(() => () => clearTimeout(typingTimer.current), []);
+
+    const handleChange = e => {
+        const value = e.target.value;
+        setInput(value);
+        onTyping?.(Boolean(value.trim()));
+
+        clearTimeout(typingTimer.current);
+        if (value.trim()) {
+            typingTimer.current = setTimeout(() => onTyping?.(false), 800);
+        }
+    };
+
+    const handleSend = e => {
         e.preventDefault();
         if (!input.trim()) return;
         onSendMessage(input);
         setInput('');
+        onTyping?.(false);
     };
 
-    if (!activeConversation) {
-        return (
-            <div className="flex-1 flex items-center justify-center bg-slate-50/50 rounded-r-2xl text-slate-400 text-sm">
-                Chọn một cuộc trò chuyện để bắt đầu nhắn tin
-            </div>
-        );
-    }
-
     return (
-        <div className="flex-1 flex flex-col h-full bg-white rounded-r-2xl">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <section className="flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
+            <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <img
-                            src={activeConversation.avatar || 'https://via.placeholder.com/40'}
-                            alt={activeConversation.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                        />
-                        {activeConversation.isOnline && (
-                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                        )}
-                    </div>
+                    <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="lg" showStatus isOnline={activeConversation.isOnline} />
                     <div>
-                        <h3 className="text-sm font-bold text-slate-900">{activeConversation.name}</h3>
-                        <p className="text-xs text-emerald-600 font-medium">
-                            {activeConversation.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}
+                        <h3 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">{activeConversation.name}</h3>
+                        <p className={`text-[12px] mt-0.5 ${activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
+                            <span className={activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}>
+                                {activeConversation.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}
+                            </span>
                         </p>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-1 text-slate-400">
-                    <button className="p-2 hover:bg-slate-50 rounded-full transition-colors">
-                        <Search size={18} />
-                    </button>
-                    <button className="p-2 hover:bg-slate-50 rounded-full transition-colors">
-                        <MoreVertical size={18} />
-                    </button>
+                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
+                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 dark:hover:bg-slate-800 rounded-full"><Search size={18} /></button>
+                    <button className="p-2 hover:bg-slate-50 rounded-full"><MoreVertical size={18} /></button>
                 </div>
-            </div>
+            </header>
 
-            {/* Message Area */}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {/* Date separator */}
-                <div className="flex justify-center my-4">
-                    <span className="text-[11px] bg-slate-100 text-slate-500 font-medium px-3 py-1 rounded-full">
-                        Hôm nay
-                    </span>
-                </div>
-
-                {messages.map((msg) => (
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
+                {messages.map(msg => (
                     <MessageBubble
                         key={msg.id}
-                        message={msg}
-                        isOwn={msg.senderId === currentUserId}
+                        message={{
+                            ...msg,
+                            senderId: Number(msg.sender_id ?? msg.senderId),
+                            isRead: msg.is_read ?? msg.isRead,
+                            time: new Date(msg.created_at ?? msg.createdAt).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })
+                        }}
+                        isOwn={Number(msg.sender_id ?? msg.senderId) === Number(currentUserId)}
                         senderAvatar={activeConversation.avatar}
+                            senderName={activeConversation.name}
                     />
                 ))}
 
-                {/* Typing Indicator */}
                 {isTyping && (
-                    <div className="flex items-center gap-2 mb-4">
-                        <img src={activeConversation.avatar} className="w-7 h-7 rounded-full object-cover" alt="avatar" />
-                        <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-bl-xs flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-                            <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-                            <span className="text-xs text-slate-400 ml-2 font-medium">{activeConversation.name} đang nhập...</span>
-                        </div>
+                    <div className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
+                        {activeConversation.name} đang nhập...
                     </div>
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Bar */}
-            <form onSubmit={handleSend} className="p-4 border-t border-slate-100 flex items-center gap-2">
-                <button type="button" className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+            <form onSubmit={handleSend} className="min-h-[78px] px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900">
+                <button
+                    type="button"
+                    title="Đính kèm tệp"
+                    className="p-2 text-slate-500 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full"
+                    onClick={() => alert('Chức năng tải tệp cần backend storage để lưu URL file.')}
+                >
                     <Paperclip size={20} />
                 </button>
-                <button type="button" className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
-                    <Smile size={20} />
-                </button>
+
+                <div className="relative">
+                    <button
+                        type="button"
+                        title="Emoji"
+                        onClick={() => setShowEmojiPicker(prev => !prev)}
+                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                    >
+                        <Smile size={20} />
+                    </button>
+
+                    {showEmojiPicker && (
+                        <div className="absolute bottom-12 left-0 z-30 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3 grid grid-cols-7 gap-1">
+                            {emojis.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                        setInput(prev => prev + emoji);
+                                        setShowEmojiPicker(false);
+                                    }}
+                                    className="text-xl p-1.5 rounded-lg hover:bg-slate-100"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
                 <input
                     type="text"
                     placeholder="Nhập tin nhắn..."
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"
+                    onChange={handleChange}
+                    className="flex-1 h-12 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-full px-5 text-sm focus:outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950"
                 />
                 <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="p-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl transition-all shadow-md shadow-blue-500/20"
+                    className="w-12 h-12 flex items-center justify-center bg-[#4b63f5] hover:bg-[#3f56e8] disabled:opacity-50 text-white rounded-full shadow-sm"
+                    title="Gửi tin nhắn"
                 >
                     <Send size={18} />
                 </button>
             </form>
-        </div>
+        </section>
     );
 }

@@ -1,7 +1,5 @@
 const conversationService = require('../service/conversationService');
-const conversationRepository = require('../repository/conversationRepository');
 const messageRepository = require('../repository/messageRepository');
-
 
 const createDirectConversation = async (req, res) => {
     try {
@@ -9,167 +7,100 @@ const createDirectConversation = async (req, res) => {
         const targetUserId = Number(req.body.userId);
 
         if (!Number.isInteger(currentUserId) || currentUserId <= 0) {
-            return res.status(401).json({
-                message: 'User hiện tại không hợp lệ'
-            });
+            return res.status(401).json({ message: 'User hiện tại không hợp lệ' });
         }
 
         if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
-            return res.status(400).json({
-                message: 'userId không hợp lệ'
-            });
+            return res.status(400).json({ message: 'userId không hợp lệ' });
         }
 
-        const conversation =
-            await conversationService.getOrCreateDirectConversation(
-                currentUserId,
-                targetUserId
-            );
+        const conversation = await conversationService.getOrCreateDirectConversation(
+            currentUserId,
+            targetUserId
+        );
 
         return res.status(200).json({
             message: 'Conversation đã sẵn sàng',
             data: conversation
         });
-
     } catch (error) {
-        console.error(
-            'CREATE DIRECT CONVERSATION ERROR:',
-            error
-        );
+        console.error('CREATE DIRECT CONVERSATION ERROR:', error);
 
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể tạo conversation'
-        });
-    }
-};
-
-// Lấy danh sách tất cả userId trong conversation để join vào room
-const getUserConversations = async (req, res) => {
-    try {
-        const userId = req.user.id;
-
-        const conversations =
-            await conversationService.getUserConversations(userId);
-
-        return res.status(200).json({
-            data: conversations
-        });
-    } catch (error) {
-        console.error(
-            'GET USER CONVERSATIONS ERROR:',
-            error
-        );
-
-        return res.status(500).json({
-            message: 'Không thể lấy danh sách conversation'
-        });
-    }
-};
-// Lấy danh sách tất cả userId trong conversation
-const getConversationMembers = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const conversationId = Number(
-            req.params.conversationId
-        );
-
-        if (Number.isNaN(conversationId)) {
-            return res.status(400).json({
-                message: 'conversationId không hợp lệ'
-            });
+        if (error.message === 'Không thể tạo conversation với chính mình') {
+            return res.status(400).json({ message: error.message });
         }
 
-        const members =
-            await conversationService.getConversationMembers(
-                conversationId,
-                userId
-            );
-
-        return res.status(200).json({
-            data: members
-        });
-    } catch (error) {
-        console.error(
-            'GET CONVERSATION MEMBERS ERROR:',
-            error
-        );
-
-        if (
-            error.message ===
-            'Bạn không thuộc conversation này'
-        ) {
-            return res.status(403).json({
-                message: error.message
-            });
+        if (error.message === 'Người dùng không tồn tại hoặc đã bị khóa') {
+            return res.status(404).json({ message: error.message });
         }
 
         return res.status(500).json({
-            message: 'Không thể lấy members'
+            message: error.message || 'Không thể tạo conversation'
         });
     }
 };
-// lấy danh sách toàn bộ userId trong conversation đến room , mục đích để hiện thị một newmessage 
-const getConversationMemberIds = async (conversationId) => {
-    const query = `
-        SELECT user_id 
-        FROM conversation_members 
-        WHERE conversation_id = $1;
-    `;
-    const { rows } = await pool.query(query, [conversationId]);
-    return rows.map(row => Number(row.user_id));
+
+const getUserConversations = async (req, res, next) => {
+    try {
+        const conversations = await conversationService.getUserConversations(Number(req.user.id));
+        return res.status(200).json({ data: conversations });
+    } catch (error) {
+        next(error);
+    }
 };
 
-const getConversations = async (req, res, next) => {
-  try {
-    const userId = req.user.id; // Lấy từ authMiddleware (JWT)
-    
-    const conversations = await conversationRepository.getUserConversations(userId);
+const getConversationMembers = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
 
-    return res.status(200).json({
-      success: true,
-      data: conversations,
-    });
-  } catch (error) {
-    next(error);
-  }
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+
+        const members = await conversationService.getConversationMembers(
+            conversationId,
+            Number(req.user.id)
+        );
+
+        return res.status(200).json({ data: members });
+    } catch (error) {
+        if (error.message === 'Bạn không thuộc conversation này') {
+            return res.status(403).json({ message: error.message });
+        }
+        next(error);
+    }
 };
 
-
-//  [PATCH] /api/conversations/:id/read
-//  Đánh dấu đã xem toàn bộ tin nhắn trong cuộc trò chuyện
 const markAsRead = async (req, res, next) => {
-  try {
-    const conversationId = req.params.id;
-    const userId = req.user.id; // Lấy từ authMiddleware (JWT)
+    try {
+        const conversationId = Number(req.params.id);
+        const userId = Number(req.user.id);
 
-    await messageRepository.markMessagesAsRead(conversationId, userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
 
-    // Bắn Socket event báo cho người kia biết nếu cần (Optional)
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`conversation:${conversationId}`).emit('messages_marked_read', {
-        conversationId,
-        readBy: userId,
-      });
+        const isMember = await require('../repository/conversationRepository')
+            .isConversationMember(conversationId, userId);
+
+        if (!isMember) {
+            return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
+        }
+
+        await messageRepository.markMessagesAsRead(conversationId, userId);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Đã đánh dấu là đã đọc'
+        });
+    } catch (error) {
+        next(error);
     }
-
-    return res.status(200).json({
-      success: true,
-      message: 'Đã đánh dấu là đã đọc',
-    });
-  } catch (error) {
-    next(error);
-  }
 };
 
 module.exports = {
     createDirectConversation,
     getUserConversations,
     getConversationMembers,
-    getConversationMemberIds,
-    markAsRead,
-    getConversations 
-
+    markAsRead
 };

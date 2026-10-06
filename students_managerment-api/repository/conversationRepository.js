@@ -172,6 +172,24 @@ const isConversationMember = async (conversationId, userId) => {
 //  * @param {number} conversationId
 //  * @returns {Promise<number[]>}
 //  */
+/**
+ * Lấy danh sách user khác mà user hiện tại đang có conversation cùng.
+ * Dùng cho realtime presence: chỉ broadcast online/offline tới người có liên quan.
+ */
+const getConversationContactIds = async (userId) => {
+    const query = `
+        SELECT DISTINCT cm_other.user_id
+        FROM conversation_members cm_self
+        INNER JOIN conversation_members cm_other
+            ON cm_other.conversation_id = cm_self.conversation_id
+           AND cm_other.user_id != $1
+        WHERE cm_self.user_id = $1;
+    `;
+
+    const { rows } = await pool.query(query, [userId]);
+    return rows.map(row => Number(row.user_id));
+};
+
 const getConversationMemberIds = async (conversationId) => {
     try {
         const query = `
@@ -196,5 +214,6 @@ module.exports = {
     getUserConversations,
     getConversationMembers,
     isConversationMember,
-    getConversationMemberIds
+    getConversationMemberIds,
+    getConversationContactIds
 };

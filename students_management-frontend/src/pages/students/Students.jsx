@@ -442,9 +442,15 @@ function Students() {
         totalStudents={statistics.totalStudents}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onNavigate={() => {
-          setActivePage("dashboard");
+        onNavigate={(page) => {
           setSidebarOpen(false);
+
+          if (page === "chat") {
+            navigate("/chat");
+            return;
+          }
+
+          setActivePage(page);
         }}
         onOpenSettings={() =>
           openSettings("account")
