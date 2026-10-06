@@ -78,6 +78,8 @@ export default function ChatPage() {
                         onOpenSettings={() => navigate('/students')}
                         onLogout={() => navigate('/login')}
                         onToggleSidebar={() => setSidebarOpen(open => !open)}
+                        unreadCount={unreadCount}
+                        onOpenNotifications={() => setSidebarOpen(false)}
                     />
 
                     <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
