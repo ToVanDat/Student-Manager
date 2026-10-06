@@ -11,27 +11,31 @@ const UPLOAD_ROOT = path.resolve(
 );
 
 const MIME_LIMITS = {
-    'image/jpeg': 10 * 1024 * 1024,
-    'image/png': 10 * 1024 * 1024,
-    'image/gif': 10 * 1024 * 1024,
-    'image/webp': 10 * 1024 * 1024,
+    // Images: 20 MB
+    'image/jpeg': 20 * 1024 * 1024,
+    'image/png': 20 * 1024 * 1024,
+    'image/gif': 20 * 1024 * 1024,
+    'image/webp': 20 * 1024 * 1024,
 
-    'video/mp4': 200 * 1024 * 1024,
-    'video/webm': 200 * 1024 * 1024,
+    // Videos: 500 MB
+    'video/mp4': 500 * 1024 * 1024,
+    'video/webm': 500 * 1024 * 1024,
 
-    'audio/mpeg': 50 * 1024 * 1024,
-    'audio/wav': 50 * 1024 * 1024,
-    'audio/ogg': 50 * 1024 * 1024,
+    // Audio: 100 MB
+    'audio/mpeg': 100 * 1024 * 1024,
+    'audio/wav': 100 * 1024 * 1024,
+    'audio/ogg': 100 * 1024 * 1024,
 
-    'application/pdf': 50 * 1024 * 1024,
-    'text/plain': 20 * 1024 * 1024,
+    // PDF and documents: 100 MB
+    'application/pdf': 100 * 1024 * 1024,
+    'text/plain': 100 * 1024 * 1024,
 
-    'application/msword': 30 * 1024 * 1024,
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 30 * 1024 * 1024,
-    'application/vnd.ms-excel': 30 * 1024 * 1024,
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 30 * 1024 * 1024,
-    'application/vnd.ms-powerpoint': 30 * 1024 * 1024,
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 30 * 1024 * 1024
+    'application/msword': 100 * 1024 * 1024,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 100 * 1024 * 1024,
+    'application/vnd.ms-excel': 100 * 1024 * 1024,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 100 * 1024 * 1024,
+    'application/vnd.ms-powerpoint': 100 * 1024 * 1024,
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 100 * 1024 * 1024
 };
 
 const MAX_FILE_SIZE = Math.max(...Object.values(MIME_LIMITS));
