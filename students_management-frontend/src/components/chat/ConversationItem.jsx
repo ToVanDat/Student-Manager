@@ -1,14 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
+import AvatarFallback from './AvatarFallback';
 
 export default function ConversationItem({ conversation, isSelected, onClick }) {
     const { name, avatar, lastMessage, lastMessageAt, unreadCount, isOnline } = conversation;
-    const [avatarError, setAvatarError] = useState(false);
-
     const time = lastMessageAt
         ? new Date(lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : '';
-
-    const initial = (name || 'U').charAt(0).toUpperCase();
 
     return (
         <button
@@ -16,23 +13,7 @@ export default function ConversationItem({ conversation, isSelected, onClick }) 
             onClick={onClick}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition ${isSelected ? 'bg-[#eef2ff]' : 'hover:bg-slate-50'}`}
         >
-            <div className="relative flex-shrink-0">
-                {!avatarError && avatar ? (
-                    <img
-                        src={avatar}
-                        alt={name}
-                        onError={() => setAvatarError(true)}
-                        className="w-12 h-12 rounded-full object-cover"
-                    />
-                ) : (
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center text-sm font-bold">
-                        {initial}
-                    </div>
-                )}
-                {isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full" />
-                )}
-            </div>
+            <AvatarFallback name={name} src={avatar} size="lg" showStatus isOnline={isOnline} />
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
