@@ -23,6 +23,8 @@ export default function ChatPage() {
         setActiveId,
         messages,
         sendMessage,
+        sendAttachment,
+        downloadFile,
         isTyping,
         searchResults,
         searchUsers,
@@ -104,6 +106,8 @@ export default function ChatPage() {
                                         messages={messages}
                                         currentUserId={Number(user?.id)}
                                         onSendMessage={sendMessage}
+                                        onSendAttachment={sendAttachment}
+                                        onDownloadFile={downloadFile}
                                         isTyping={isTyping}
                                         onTyping={setTyping}
                                         onEdit={editMessage}
