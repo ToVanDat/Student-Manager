@@ -1,6 +1,5 @@
 const fs = require('fs/promises');
 const path = require('path');
-const crypto = require('crypto');
 
 const messageFileRepository = require('../repository/messageFileRepository');
 const messageRepository = require('../repository/messageRepository');
@@ -10,20 +9,6 @@ const UPLOAD_ROOT = path.resolve(
     __dirname,
     '../storage/uploads/chat'
 );
-
-const getSafeExtension = (fileName) => {
-    const extension = path.extname(fileName || '').toLowerCase();
-
-    if (!/^[a-z0-9.]{1,10}$/.test(extension)) {
-        return '';
-    }
-
-    return extension;
-};
-
-const ensureUploadDirectory = async () => {
-    await fs.mkdir(UPLOAD_ROOT, { recursive: true });
-};
 
 const canAccessMessage = async (messageId, userId) => {
     const message = await messageRepository.getMessageById(messageId);
@@ -58,19 +43,7 @@ const uploadFile = async (messageId, userId, file) => {
 
     const message = await canAccessMessage(messageId, userId);
 
-    await ensureUploadDirectory();
-
-    const storageKey =
-        `chat/${crypto.randomUUID()}${getSafeExtension(file.originalname)}`;
-
-    const absolutePath = path.join(
-        UPLOAD_ROOT,
-        path.basename(storageKey)
-    );
-
-    await fs.writeFile(absolutePath, file.buffer, {
-        flag: 'wx'
-    });
+    const storageKey = `chat/${file.filename}`;
 
     try {
         const savedFile =
@@ -84,9 +57,14 @@ const uploadFile = async (messageId, userId, file) => {
 
         return savedFile;
     } catch (error) {
-        await fs.unlink(absolutePath).catch(() => {});
+        await fs.unlink(file.path).catch(() => {});
         throw error;
     }
+};
+
+const getPhysicalPath = (storageKey) => {
+    const fileName = path.basename(storageKey);
+    return path.join(UPLOAD_ROOT, fileName);
 };
 
 const getFileForDownload = async (fileId, userId) => {
@@ -101,10 +79,7 @@ const getFileForDownload = async (fileId, userId) => {
 
     await canAccessMessage(file.message_id, userId);
 
-    const filePath = path.join(
-        UPLOAD_ROOT,
-        path.basename(file.storage_key)
-    );
+    const filePath = getPhysicalPath(file.storage_key);
 
     try {
         await fs.access(filePath);
@@ -150,10 +125,7 @@ const deleteFile = async (fileId, userId) => {
         throw error;
     }
 
-    const filePath = path.join(
-        UPLOAD_ROOT,
-        path.basename(deleted.storage_key)
-    );
+    const filePath = getPhysicalPath(deleted.storage_key);
 
     await fs.unlink(filePath).catch(() => {});
 
