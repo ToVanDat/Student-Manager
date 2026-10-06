@@ -144,6 +144,43 @@ export const useChat = () => {
             ));
         };
 
+        const handleMessageUpdated = (updatedMessage) => {
+            if (Number(updatedMessage.conversation_id) !== Number(activeId)) return;
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(updatedMessage.id)
+                    ? { ...item, ...updatedMessage }
+                    : item
+            ));
+            setConversations(prev => prev.map(c =>
+                Number(c.id) === Number(updatedMessage.conversation_id)
+                    ? { ...c, lastMessage: updatedMessage.content, lastMessageAt: updatedMessage.updated_at }
+                    : c
+            ));
+        };
+
+        const handleMessageRecalled = (recalledMessage) => {
+            if (Number(recalledMessage.conversation_id) !== Number(activeId)) return;
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(recalledMessage.id)
+                    ? { ...item, ...recalledMessage }
+                    : item
+            ));
+        };
+
+        const handleMessageDeletedEveryone = (deletedMessage) => {
+            if (Number(deletedMessage.conversation_id) !== Number(activeId)) return;
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(deletedMessage.id)
+                    ? { ...item, ...deletedMessage }
+                    : item
+            ));
+        };
+
+        const handleMessageDeletedMe = ({ messageId, conversationId }) => {
+            if (Number(conversationId) !== Number(activeId)) return;
+            setMessages(prev => prev.filter(item => Number(item.id) !== Number(messageId)));
+        };
+
         const handleMessageError = ({ message }) => {
             console.error('Socket message error:', message);
         };
@@ -192,6 +229,10 @@ export const useChat = () => {
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
         socket.on('messages:read', handleMessagesRead);
+        socket.on('message:updated', handleMessageUpdated);
+        socket.on('message:recalled', handleMessageRecalled);
+        socket.on('message:deleted:everyone', handleMessageDeletedEveryone);
+        socket.on('message:deleted:me', handleMessageDeletedMe);
         socket.on('message:error', handleMessageError);
 
         return () => {
@@ -203,9 +244,36 @@ export const useChat = () => {
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
             socket.off('messages:read', handleMessagesRead);
+            socket.off('message:updated', handleMessageUpdated);
+            socket.off('message:recalled', handleMessageRecalled);
+            socket.off('message:deleted:everyone', handleMessageDeletedEveryone);
+            socket.off('message:deleted:me', handleMessageDeletedMe);
             socket.off('message:error', handleMessageError);
         };
     }, [activeId, fetchConversations, currentUserId]);
+
+    const editMessage = useCallback((messageId, content) => {
+        if (!socket.connected || !activeId || !content.trim()) return;
+        socket.emit('message:edit', {
+            messageId,
+            content: content.trim()
+        });
+    }, [activeId]);
+
+    const recallMessage = useCallback((messageId) => {
+        if (!socket.connected) return;
+        socket.emit('message:recall', { messageId });
+    }, []);
+
+    const deleteMessageForMe = useCallback((messageId) => {
+        if (!socket.connected) return;
+        socket.emit('message:delete:me', { messageId });
+    }, []);
+
+    const deleteMessageForEveryone = useCallback((messageId) => {
+        if (!socket.connected) return;
+        socket.emit('message:delete:everyone', { messageId });
+    }, []);
 
     const sendMessage = useCallback((content) => {
         const text = content.trim();
@@ -254,6 +322,10 @@ export const useChat = () => {
         loading,
         isTyping,
         sendMessage,
+        editMessage,
+        recallMessage,
+        deleteMessageForMe,
+        deleteMessageForEveryone,
         searchResults,
         searchUsers,
         startConversation,
