@@ -29,8 +29,17 @@ export const useChat = () => {
     }, [onlineUserIds]);
 
     useEffect(() => {
-        fetchConversations();
-    }, [fetchConversations]);
+        // User đổi sau logout/login: không được giữ state chat của user cũ.
+        setConversations([]);
+        setMessages([]);
+        setActiveId(null);
+        setSearchResults([]);
+        setOnlineUserIds(new Set());
+
+        if (currentUserId > 0) {
+            fetchConversations();
+        }
+    }, [currentUserId, fetchConversations]);
 
     useEffect(() => {
         if (!activeId) {
