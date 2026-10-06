@@ -132,6 +132,7 @@ const updateMessage = async (
     const updatedMessage =
         await messageRepository.updateMessageContent(
             messageId,
+            userId,
             content.trim()
         );
 
@@ -207,7 +208,7 @@ const recallMessage = async (
     }
 
     const recalledMessage =
-        await messageRepository.recallMessage(messageId);
+        await messageRepository.recallMessage(messageId, userId);
 
     if (!recalledMessage) {
         const error = new Error(
@@ -310,7 +311,7 @@ const deleteMessageForEveryone = async (
     }
 
     const deletedMessage =
-        await messageRepository.deleteMessageForEveryone(messageId);
+        await messageRepository.deleteMessageForEveryone(messageId, userId);
 
     if (!deletedMessage) {
         const error = new Error('Không thể xoá message cho tất cả');

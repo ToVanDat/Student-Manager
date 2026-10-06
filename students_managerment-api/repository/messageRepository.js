@@ -141,14 +141,17 @@ const getMessageById = async (messageId) => {
  * Chỉnh sửa message.
  * Quyền và trạng thái message được kiểm tra ở service.
  */
-const updateMessageContent = async (messageId, content) => {
+const updateMessageContent = async (messageId, userId, content) => {
     const query = `
         UPDATE messages
         SET
-            content = $2,
+            content = $3,
             edited_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
+          AND sender_id = $2
+          AND is_recalled = FALSE
+          AND deleted_at IS NULL
         RETURNING
             id,
             conversation_id,
@@ -166,6 +169,7 @@ const updateMessageContent = async (messageId, content) => {
 
     const { rows } = await pool.query(query, [
         messageId,
+        userId,
         content
     ]);
 
@@ -175,7 +179,7 @@ const updateMessageContent = async (messageId, content) => {
 /**
  * Thu hồi message
  */
-const recallMessage = async (messageId) => {
+const recallMessage = async (messageId, userId) => {
     const query = `
         UPDATE messages
         SET
@@ -183,6 +187,9 @@ const recallMessage = async (messageId) => {
             recalled_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
+          AND sender_id = $2
+          AND is_recalled = FALSE
+          AND deleted_at IS NULL
         RETURNING
             id,
             conversation_id,
@@ -198,7 +205,7 @@ const recallMessage = async (messageId) => {
             updated_at;
     `;
 
-    const { rows } = await pool.query(query, [messageId]);
+    const { rows } = await pool.query(query, [messageId, userId]);
     return rows[0] || null;
 };
 
@@ -227,7 +234,16 @@ const deleteMessageForMe = async (messageId, userId) => {
             deleted_at
         )
         VALUES ($1, $2, NOW())
-        RETURNING id, message_id, user_id, deleted_at;
+        RETURNING
+            id,
+            message_id,
+            user_id,
+            deleted_at,
+            (
+                SELECT conversation_id
+                FROM messages
+                WHERE id = message_deletions.message_id
+            ) AS conversation_id;
     `;
 
     const { rows } = await pool.query(query, [messageId, userId]);
@@ -237,17 +253,18 @@ const deleteMessageForMe = async (messageId, userId) => {
 /**
  * Đánh dấu tất cả tin nhắn chưa đọc trong conversation do người khác gửi là đã đọc
  */
-const deleteMessageForEveryone = async (messageId) => {
+const deleteMessageForEveryone = async (messageId, userId) => {
     const query = `
         UPDATE messages
         SET content = '', deleted_at = NOW(), updated_at = NOW()
         WHERE id = $1
+          AND sender_id = $2
           AND deleted_at IS NULL
           AND is_recalled = FALSE
         RETURNING id, conversation_id, sender_id, content, is_read, read_at,
                   is_recalled, recalled_at, deleted_at, edited_at, created_at, updated_at;
     `;
-    const { rows } = await pool.query(query, [messageId]);
+    const { rows } = await pool.query(query, [messageId, userId]);
     return rows[0] || null;
 };
 

@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/useAuth.js';
 
 export default function ChatPage() {
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, logoutUser } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [headerSearch, setHeaderSearch] = useState('');
@@ -82,7 +82,7 @@ export default function ChatPage() {
                         darkMode={darkMode}
                         onToggleDarkMode={() => setDarkMode(current => !current)}
                         onOpenSettings={() => navigate('/students')}
-                        onLogout={() => navigate('/login')}
+                        onLogout={logoutUser}
                         onToggleSidebar={() => setSidebarOpen(open => !open)}
                         unreadCount={unreadCount}
                         onOpenNotifications={() => setSidebarOpen(false)}

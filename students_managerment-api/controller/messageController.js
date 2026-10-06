@@ -1,4 +1,5 @@
 const messageService = require('../service/messageService');
+const { getIO } = require('../src/socket/socket');
 
 /**
  * Gửi message
@@ -174,6 +175,11 @@ const updateMessage = async (req, res) => {
                 content
             );
 
+        getIO().to(`conversation:${message.conversation_id}`).emit(
+            'message:updated',
+            message
+        );
+
         return res.status(200).json({
             message: 'Chỉnh sửa message thành công',
             data: message
@@ -225,6 +231,11 @@ const recallMessage = async (req, res) => {
                 userId
             );
 
+        getIO().to(`conversation:${message.conversation_id}`).emit(
+            'message:recalled',
+            message
+        );
+
         return res.status(200).json({
             message: 'Thu hồi message thành công',
             data: message
@@ -275,6 +286,15 @@ const deleteMessageForMe = async (req, res) => {
                 userId
             );
 
+        getIO().to(`user:${userId}`).emit(
+            'message:deleted:me',
+            {
+                messageId,
+                conversationId: deletion.conversation_id,
+                deletion
+            }
+        );
+
         return res.status(200).json({
             message: 'Xoá message cho tôi thành công',
             data: deletion
@@ -324,6 +344,11 @@ const deleteMessageForEveryone = async (req, res) => {
                 messageId,
                 userId
             );
+
+        getIO().to(`conversation:${message.conversation_id}`).emit(
+            'message:deleted:everyone',
+            message
+        );
 
         return res.status(200).json({
             message: 'Xoá message cho tất cả thành công',
