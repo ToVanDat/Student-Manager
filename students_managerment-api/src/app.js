@@ -12,6 +12,7 @@ const sessionRouter = require('../router/sessionRouter.js');
 const conversationRouter = require('../router/conversationRouter');
 const messageRouter = require('../router/messageRouter');
 const userRouter = require('../router/userRouter');
+const messageFileRouter = require('../router/messageFileRouter');
 
 const app = express();
 const allowedOrigins = new Set([
@@ -45,5 +46,6 @@ app.use('/api/auth/sessions', sessionRouter);
 app.use('/api/users', userRouter);
 app.use('/api/conversations', conversationRouter);
 app.use('/api/messages', messageRouter);
+app.use('/api', messageFileRouter);
 
 module.exports = app;
