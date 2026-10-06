@@ -11,14 +11,12 @@ const createMessage = async (req, res) => {
         );
         const content = req.body.content;
 
-        // Kiểm tra sender
         if (!Number.isInteger(senderId) || senderId <= 0) {
             return res.status(401).json({
                 message: 'User hiện tại không hợp lệ'
             });
         }
 
-        // Kiểm tra conversationId
         if (
             !Number.isInteger(conversationId) ||
             conversationId <= 0
@@ -28,7 +26,6 @@ const createMessage = async (req, res) => {
             });
         }
 
-        // Kiểm tra content
         if (
             typeof content !== 'string' ||
             !content.trim()
@@ -82,7 +79,6 @@ const createMessage = async (req, res) => {
     }
 };
 
-
 /**
  * Lấy lịch sử message của conversation
  */
@@ -93,14 +89,12 @@ const getMessagesByConversation = async (req, res) => {
             req.params.conversationId
         );
 
-        // Kiểm tra user
         if (!Number.isInteger(userId) || userId <= 0) {
             return res.status(401).json({
                 message: 'User hiện tại không hợp lệ'
             });
         }
 
-        // Kiểm tra conversationId
         if (
             !Number.isInteger(conversationId) ||
             conversationId <= 0
@@ -143,8 +137,70 @@ const getMessagesByConversation = async (req, res) => {
     }
 };
 
+/**
+ * Chỉnh sửa message
+ */
+const updateMessage = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const messageId = Number(req.params.messageId);
+        const content = req.body.content;
+
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return res.status(401).json({
+                message: 'User hiện tại không hợp lệ'
+            });
+        }
+
+        if (!Number.isInteger(messageId) || messageId <= 0) {
+            return res.status(400).json({
+                message: 'messageId không hợp lệ'
+            });
+        }
+
+        if (
+            typeof content !== 'string' ||
+            !content.trim()
+        ) {
+            return res.status(400).json({
+                message: 'Nội dung message không được để trống'
+            });
+        }
+
+        const message =
+            await messageService.updateMessage(
+                messageId,
+                userId,
+                content
+            );
+
+        return res.status(200).json({
+            message: 'Chỉnh sửa message thành công',
+            data: message
+        });
+
+    } catch (error) {
+        console.error(
+            'UPDATE MESSAGE ERROR:',
+            error
+        );
+
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            message:
+                error.message ||
+                'Không thể chỉnh sửa message'
+        });
+    }
+};
 
 module.exports = {
     createMessage,
-    getMessagesByConversation
+    getMessagesByConversation,
+    updateMessage
 };
