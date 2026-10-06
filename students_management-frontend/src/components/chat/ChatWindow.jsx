@@ -9,7 +9,11 @@ export default function ChatWindow({
     currentUserId,
     onSendMessage,
     isTyping,
-    onTyping
+    onTyping,
+    onEdit,
+    onRecall,
+    onDeleteForMe,
+    onDeleteForEveryone
 }) {
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
@@ -78,7 +82,11 @@ export default function ChatWindow({
                         }}
                         isOwn={Number(msg.sender_id ?? msg.senderId) === Number(currentUserId)}
                         senderAvatar={activeConversation.avatar}
-                            senderName={activeConversation.name}
+                        senderName={activeConversation.name}
+                        onEdit={onEdit}
+                        onRecall={onRecall}
+                        onDeleteForMe={onDeleteForMe}
+                        onDeleteForEveryone={onDeleteForEveryone}
                     />
                 ))}
 
