@@ -34,6 +34,16 @@ const uploadFile = async (req, res) => {
         const message = await messageRepository.getMessageById(messageId);
         const io = getIO();
 
+        const messageWithFile = {
+            ...message,
+            files: [savedFile]
+        };
+
+        io.to(`conversation:${message.conversation_id}`).emit(
+            'message:new',
+            messageWithFile
+        );
+
         io.to(`conversation:${message.conversation_id}`).emit(
             'message:file:uploaded',
             {
