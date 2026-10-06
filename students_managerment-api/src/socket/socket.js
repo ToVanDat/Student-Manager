@@ -311,6 +311,68 @@ const initSocket = (server) => {
             }
         });
 
+        socket.on('message:delete:everyone', async ({ messageId }) => {
+            const id = Number(messageId);
+
+            if (!Number.isInteger(id) || id <= 0) {
+                return socket.emit('message:error', { message: 'messageId không hợp lệ' });
+            }
+
+            try {
+                const message = await messageRepository.getMessageById(id);
+
+                if (!message) {
+                    return socket.emit('message:error', { message: 'Message không tồn tại' });
+                }
+
+                const isMember = await conversationRepository.isConversationMember(
+                    message.conversation_id,
+                    userId
+                );
+
+                if (!isMember) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn không thuộc conversation này'
+                    });
+                }
+
+                if (String(message.sender_id) !== String(userId)) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn chỉ có thể xoá message do chính mình gửi cho tất cả'
+                    });
+                }
+
+                if (message.is_recalled || message.deleted_at) {
+                    return socket.emit('message:error', {
+                        message: 'Message không còn ở trạng thái có thể xoá cho tất cả'
+                    });
+                }
+
+                const deletedMessage =
+                    await messageRepository.deleteMessageForEveryone(id);
+
+                if (!deletedMessage) {
+                    return socket.emit('message:error', {
+                        message: 'Không thể xoá message cho tất cả'
+                    });
+                }
+
+                io.to(`conversation:${message.conversation_id}`).emit(
+                    'message:deleted:everyone',
+                    deletedMessage
+                );
+
+                socket.emit('message:delete:everyone:sent', {
+                    message: deletedMessage
+                });
+            } catch (error) {
+                console.error('DELETE MESSAGE EVERYONE SOCKET ERROR:', error);
+                socket.emit('message:error', {
+                    message: 'Không thể xoá message cho tất cả'
+                });
+            }
+        });
+
         socket.on('message:read', async ({ conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) return;
