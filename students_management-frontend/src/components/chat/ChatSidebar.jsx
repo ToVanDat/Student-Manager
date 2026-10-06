@@ -33,12 +33,12 @@ export default function ChatSidebar({
     });
 
     return (
-        <div className="w-80 bg-white border-r border-slate-100 flex flex-col h-full p-4 rounded-l-2xl relative">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-900">Tin nhắn</h2>
+        <div className="w-[360px] min-w-[360px] bg-white border-r border-slate-100 flex flex-col h-full p-5 relative">
+            <div className="flex items-center justify-between mb-5">
+                <h2 className="text-[24px] leading-8 font-bold tracking-[-0.02em] text-slate-900">Tin nhắn</h2>
                 <button
                     onClick={() => setShowNewChat(true)}
-                    className="p-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                    className="w-10 h-10 flex items-center justify-center text-white bg-[#4b63f5] hover:bg-[#3f56e8] rounded-xl shadow-sm"
                     title="Tin nhắn mới"
                 >
                     <SquarePen size={18} />
@@ -97,20 +97,20 @@ export default function ChatSidebar({
                     placeholder="Tìm kiếm cuộc trò chuyện..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-100 rounded-xl text-xs focus:outline-none"
+                    className="w-full h-11 pl-10 pr-4 bg-[#f4f7fb] border border-transparent rounded-xl text-sm outline-none focus:bg-white focus:border-blue-200 focus:ring-4 focus:ring-blue-50"
                 />
             </div>
 
-            <div className="flex gap-2 mb-3 bg-slate-50 p-1 rounded-xl">
+            <div className="flex mt-4 mb-3 bg-[#f5f7fb] p-1 rounded-xl">
                 <button
                     onClick={() => setFilter('all')}
-                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${filter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}
+                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     Tất cả <span className="ml-1">{conversations.length}</span>
                 </button>
                 <button
                     onClick={() => setFilter('unread')}
-                    className={`flex-1 py-1.5 text-xs font-semibold rounded-lg ${filter === 'unread' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}
+                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'unread' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
                     Chưa đọc {unreadTotal > 0 && <span className="ml-1">{unreadTotal}</span>}
                 </button>
