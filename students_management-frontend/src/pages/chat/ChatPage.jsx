@@ -27,7 +27,11 @@ export default function ChatPage() {
         searchResults,
         searchUsers,
         startConversation,
-        setTyping
+        setTyping,
+        editMessage,
+        recallMessage,
+        deleteMessageForMe,
+        deleteMessageForEveryone
     } = useChat();
 
     const activeConversation = conversations.find(
@@ -102,6 +106,10 @@ export default function ChatPage() {
                                         onSendMessage={sendMessage}
                                         isTyping={isTyping}
                                         onTyping={setTyping}
+                                        onEdit={editMessage}
+                                        onRecall={recallMessage}
+                                        onDeleteForMe={deleteMessageForMe}
+                                        onDeleteForEveryone={deleteMessageForEveryone}
                                     />
                                 ) : (
                                     <EmptyChat />
