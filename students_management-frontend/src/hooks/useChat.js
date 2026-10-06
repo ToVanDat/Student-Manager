@@ -181,6 +181,24 @@ export const useChat = () => {
             setMessages(prev => prev.filter(item => Number(item.id) !== Number(messageId)));
         };
 
+        const handleMessageFileUploaded = ({ messageId, conversationId, file }) => {
+            if (Number(conversationId) !== Number(activeId)) return;
+
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(messageId)
+                    ? {
+                        ...item,
+                        files: [
+                            ...(item.files || []).filter(
+                                existing => Number(existing.id) !== Number(file.id)
+                            ),
+                            file
+                        ]
+                    }
+                    : item
+            ));
+        };
+
         const handleMessageError = ({ message }) => {
             console.error('Socket message error:', message);
         };
@@ -233,6 +251,7 @@ export const useChat = () => {
         socket.on('message:recalled', handleMessageRecalled);
         socket.on('message:deleted:everyone', handleMessageDeletedEveryone);
         socket.on('message:deleted:me', handleMessageDeletedMe);
+        socket.on('message:file:uploaded', handleMessageFileUploaded);
         socket.on('message:error', handleMessageError);
 
         return () => {
@@ -248,6 +267,7 @@ export const useChat = () => {
             socket.off('message:recalled', handleMessageRecalled);
             socket.off('message:deleted:everyone', handleMessageDeletedEveryone);
             socket.off('message:deleted:me', handleMessageDeletedMe);
+            socket.off('message:file:uploaded', handleMessageFileUploaded);
             socket.off('message:error', handleMessageError);
         };
     }, [activeId, fetchConversations, currentUserId]);
@@ -275,6 +295,36 @@ export const useChat = () => {
         socket.emit('message:delete:everyone', { messageId });
     }, []);
 
+    const sendAttachment = useCallback(async (file) => {
+        if (!activeId || !file) return;
+
+        const placeholder = `📎 ${file.name}`;
+        const messageResponse = await chatApi.sendMessage(activeId, placeholder);
+        const message = messageResponse.data?.data;
+
+        if (!message?.id) {
+            throw new Error('Không tạo được message cho file');
+        }
+
+        try {
+            const uploadResponse = await chatApi.uploadFile(message.id, file);
+            const uploadedFile = uploadResponse.data?.file;
+
+            if (uploadedFile) {
+                setMessages(prev => prev.map(item =>
+                    Number(item.id) === Number(message.id)
+                        ? { ...item, files: [uploadedFile] }
+                        : item
+                ));
+            }
+
+            return uploadedFile;
+        } catch (error) {
+            // Không xoá message tự động để tránh xoá nhầm trong race condition.
+            throw error;
+        }
+    }, [activeId]);
+
     const sendMessage = useCallback((content) => {
         const text = content.trim();
         if (!activeId || !text || !socket.connected) return;
@@ -284,6 +334,21 @@ export const useChat = () => {
             content: text
         });
     }, [activeId]);
+
+    const downloadFile = useCallback(async (file) => {
+        if (!file?.id) return;
+
+        const response = await chatApi.downloadFile(file.id);
+        const blobUrl = window.URL.createObjectURL(response.data);
+        const link = document.createElement('a');
+
+        link.href = blobUrl;
+        link.download = file.file_name || 'download';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+    }, []);
 
     const searchUsers = useCallback(async (search) => {
         try {
@@ -322,6 +387,8 @@ export const useChat = () => {
         loading,
         isTyping,
         sendMessage,
+        sendAttachment,
+        downloadFile,
         editMessage,
         recallMessage,
         deleteMessageForMe,
