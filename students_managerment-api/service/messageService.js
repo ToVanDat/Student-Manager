@@ -145,8 +145,83 @@ const updateMessage = async (
     return updatedMessage;
 };
 
+/**
+ * Thu hồi message.
+ *
+ * Quy tắc:
+ * - User phải thuộc conversation.
+ * - Chỉ sender mới được thu hồi message.
+ * - Message đã recall không được recall lại.
+ * - Message đã delete for everyone không được recall.
+ */
+const recallMessage = async (
+    messageId,
+    userId
+) => {
+    const message =
+        await messageRepository.getMessageById(messageId);
+
+    if (!message) {
+        const error = new Error('Message không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const isMember =
+        await conversationRepository.isConversationMember(
+            message.conversation_id,
+            userId
+        );
+
+    if (!isMember) {
+        const error = new Error(
+            'Bạn không thuộc conversation này'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (String(message.sender_id) !== String(userId)) {
+        const error = new Error(
+            'Bạn chỉ có thể thu hồi message do chính mình gửi'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (message.is_recalled) {
+        const error = new Error(
+            'Message đã được thu hồi'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (message.deleted_at) {
+        const error = new Error(
+            'Message đã bị xoá và không thể thu hồi'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const recalledMessage =
+        await messageRepository.recallMessage(messageId);
+
+    if (!recalledMessage) {
+        const error = new Error(
+            'Không thể thu hồi message'
+        );
+        error.statusCode = 500;
+        throw error;
+    }
+
+    return recalledMessage;
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
-    updateMessage
+    updateMessage,
+    recallMessage
 };
