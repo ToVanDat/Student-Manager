@@ -54,7 +54,8 @@ const getMessagesByConversation = async (
     }
 
     return messageRepository.getMessagesByConversation(
-        conversationId
+        conversationId,
+        userId
     );
 };
 
