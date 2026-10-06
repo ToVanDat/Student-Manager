@@ -33,9 +33,9 @@ export default function ChatSidebar({
     });
 
     return (
-        <div className="w-[360px] min-w-[360px] bg-white border-r border-slate-100 flex flex-col h-full p-5 relative">
+        <div className="w-[360px] min-w-[360px] bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col h-full p-5 relative">
             <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[24px] leading-8 font-bold tracking-[-0.02em] text-slate-900">Tin nhắn</h2>
+                <h2 className="text-[24px] leading-8 font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">Tin nhắn</h2>
                 <button
                     onClick={() => setShowNewChat(true)}
                     className="w-10 h-10 flex items-center justify-center text-white bg-[#4b63f5] hover:bg-[#3f56e8] rounded-xl shadow-sm"
@@ -46,9 +46,9 @@ export default function ChatSidebar({
             </div>
 
             {showNewChat && (
-                <div className="absolute z-20 left-4 right-4 top-16 bg-white border border-slate-200 rounded-xl shadow-xl p-3">
+                <div className="absolute z-20 left-4 right-4 top-16 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-sm">Tin nhắn mới</span>
+                        <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">Tin nhắn mới</span>
                         <button onClick={() => setShowNewChat(false)}>
                             <X size={16} />
                         </button>
@@ -59,7 +59,7 @@ export default function ChatSidebar({
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder="Tìm username..."
-                        className="w-full px-3 py-2 text-sm bg-slate-50 rounded-lg outline-none"
+                        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg outline-none"
                     />
 
                     <div className="mt-2 max-h-52 overflow-y-auto">
@@ -71,14 +71,14 @@ export default function ChatSidebar({
                                     setShowNewChat(false);
                                     setUserSearch('');
                                 }}
-                                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 text-left"
+                                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
                             >
                                 <img
                                     src={user.avatar || 'https://via.placeholder.com/40'}
                                     className="w-9 h-9 rounded-full object-cover"
                                     alt=""
                                 />
-                                <span className="text-sm font-medium">{user.username}</span>
+                                <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.username}</span>
                             </button>
                         ))}
                         {userSearch && searchResults.length === 0 && (
@@ -97,7 +97,7 @@ export default function ChatSidebar({
                     placeholder="Tìm kiếm cuộc trò chuyện..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 pl-10 pr-4 bg-[#f4f7fb] border border-transparent rounded-xl text-sm outline-none focus:bg-white focus:border-blue-200 focus:ring-4 focus:ring-blue-50"
+                    className="w-full h-11 pl-10 pr-4 bg-[#f4f7fb] dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-transparent rounded-xl text-sm outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-blue-200 focus:ring-4 focus:ring-blue-50"
                 />
             </div>
 
