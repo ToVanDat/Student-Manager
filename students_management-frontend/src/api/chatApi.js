@@ -40,6 +40,29 @@ export const chatApi = {
     deleteMessageForEveryone: (messageId) =>
         client.delete(`/api/messages/${messageId}/everyone`),
 
+    // Upload file cho một message
+    uploadFile: (messageId, file, onUploadProgress) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        return client.post(
+            `/api/messages/${messageId}/files`,
+            formData,
+            {
+                onUploadProgress,
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            }
+        );
+    },
+
+    // Tải file bằng access token hiện tại
+    downloadFile: (fileId) =>
+        client.get(`/api/message-files/${fileId}`, {
+            responseType: 'blob'
+        }),
+
     // Đánh dấu user đã đọc
     markAsRead: (conversationId) =>
         client.patch(
