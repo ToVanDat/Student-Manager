@@ -258,10 +258,74 @@ const deleteMessageForMe = async (
     );
 };
 
+/**
+ * Xoá message cho tất cả thành viên.
+ * Chỉ sender được xoá và message được soft-delete.
+ */
+const deleteMessageForEveryone = async (
+    messageId,
+    userId
+) => {
+    const message =
+        await messageRepository.getMessageById(messageId);
+
+    if (!message) {
+        const error = new Error('Message không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const isMember =
+        await conversationRepository.isConversationMember(
+            message.conversation_id,
+            userId
+        );
+
+    if (!isMember) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (String(message.sender_id) !== String(userId)) {
+        const error = new Error(
+            'Bạn chỉ có thể xoá message do chính mình gửi cho tất cả'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (message.is_recalled) {
+        const error = new Error(
+            'Message đã được thu hồi và không thể xoá cho tất cả'
+        );
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (message.deleted_at) {
+        const error = new Error('Message đã được xoá cho tất cả');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const deletedMessage =
+        await messageRepository.deleteMessageForEveryone(messageId);
+
+    if (!deletedMessage) {
+        const error = new Error('Không thể xoá message cho tất cả');
+        error.statusCode = 500;
+        throw error;
+    }
+
+    return deletedMessage;
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
     updateMessage,
     recallMessage,
-    deleteMessageForMe
+    deleteMessageForMe,
+    deleteMessageForEveryone
 };
