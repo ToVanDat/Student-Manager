@@ -308,27 +308,75 @@ export const useChat = () => {
         };
     }, [activeId, fetchConversations, currentUserId]);
 
-    const editMessage = useCallback((messageId, content) => {
-        if (!socket.connected || !activeId || !content.trim()) return;
-        socket.emit('message:edit', {
-            messageId,
-            content: content.trim()
-        });
-    }, [activeId]);
+    const editMessage = useCallback(async (messageId, content) => {
+        const text = typeof content === 'string' ? content.trim() : '';
+        if (!messageId || !text) return;
 
-    const recallMessage = useCallback((messageId) => {
-        if (!socket.connected) return;
-        socket.emit('message:recall', { messageId });
+        try {
+            const res = await chatApi.editMessage(messageId, text);
+            const updatedMessage = res.data?.data;
+
+            if (updatedMessage) {
+                setMessages(prev => prev.map(item =>
+                    Number(item.id) === Number(updatedMessage.id)
+                        ? { ...item, ...updatedMessage }
+                        : item
+                ));
+            }
+        } catch (error) {
+            console.error('Không thể chỉnh sửa message:', error);
+        }
     }, []);
 
-    const deleteMessageForMe = useCallback((messageId) => {
-        if (!socket.connected) return;
-        socket.emit('message:delete:me', { messageId });
+    const recallMessage = useCallback(async (messageId) => {
+        if (!messageId) return;
+
+        try {
+            const res = await chatApi.recallMessage(messageId);
+            const recalledMessage = res.data?.data;
+
+            if (recalledMessage) {
+                setMessages(prev => prev.map(item =>
+                    Number(item.id) === Number(recalledMessage.id)
+                        ? { ...item, ...recalledMessage }
+                        : item
+                ));
+            }
+        } catch (error) {
+            console.error('Không thể thu hồi message:', error);
+        }
     }, []);
 
-    const deleteMessageForEveryone = useCallback((messageId) => {
-        if (!socket.connected) return;
-        socket.emit('message:delete:everyone', { messageId });
+    const deleteMessageForMe = useCallback(async (messageId) => {
+        if (!messageId) return;
+
+        try {
+            await chatApi.deleteMessageForMe(messageId);
+            setMessages(prev =>
+                prev.filter(item => Number(item.id) !== Number(messageId))
+            );
+        } catch (error) {
+            console.error('Không thể xoá message cho tôi:', error);
+        }
+    }, []);
+
+    const deleteMessageForEveryone = useCallback(async (messageId) => {
+        if (!messageId) return;
+
+        try {
+            const res = await chatApi.deleteMessageForEveryone(messageId);
+            const deletedMessage = res.data?.data;
+
+            if (deletedMessage) {
+                setMessages(prev => prev.map(item =>
+                    Number(item.id) === Number(deletedMessage.id)
+                        ? { ...item, ...deletedMessage }
+                        : item
+                ));
+            }
+        } catch (error) {
+            console.error('Không thể xoá message cho tất cả:', error);
+        }
     }, []);
 
     const sendAttachment = useCallback(async (file) => {
