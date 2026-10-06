@@ -227,7 +227,16 @@ const deleteMessageForMe = async (messageId, userId) => {
             deleted_at
         )
         VALUES ($1, $2, NOW())
-        RETURNING id, message_id, user_id, deleted_at;
+        RETURNING
+            id,
+            message_id,
+            user_id,
+            deleted_at,
+            (
+                SELECT conversation_id
+                FROM messages
+                WHERE id = message_deletions.message_id
+            ) AS conversation_id;
     `;
 
     const { rows } = await pool.query(query, [messageId, userId]);
