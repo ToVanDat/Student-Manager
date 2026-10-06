@@ -64,7 +64,7 @@ export default function ChatWindow({
                     <button className="p-2 hover:bg-slate-50 rounded-full"><Search size={18} /></button>
                     <button className="p-2 hover:bg-slate-50 rounded-full"><MoreVertical size={18} /></button>
                 </div>
-            </div>
+            </header>
 
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white">
                 {messages.map(msg => (
