@@ -19,14 +19,11 @@ export const useChat = () => {
         try {
             const res = await chatApi.getConversations();
             const data = res.data?.data || [];
-            setConversations(prev => data.map(conversation => ({
-                ...conversation,
-                isOnline: onlineUserIds.has(Number(conversation.userId))
-            })));
+            setConversations(data);
         } catch (error) {
             console.error('Lỗi lấy danh sách conversation:', error);
         }
-    }, [onlineUserIds]);
+    }, []);
 
     useEffect(() => {
         // User đổi sau logout/login: không được giữ state chat của user cũ.
@@ -40,6 +37,13 @@ export const useChat = () => {
             fetchConversations();
         }
     }, [currentUserId, fetchConversations]);
+
+    useEffect(() => {
+        setConversations(prev => prev.map(conversation => ({
+            ...conversation,
+            isOnline: onlineUserIds.has(Number(conversation.userId))
+        })));
+    }, [onlineUserIds]);
 
     useEffect(() => {
         if (!activeId) {
