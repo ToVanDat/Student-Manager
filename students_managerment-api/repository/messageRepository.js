@@ -145,7 +145,7 @@ const updateMessageContent = async (messageId, userId, content) => {
     const query = `
         UPDATE messages
         SET
-            content = $2,
+            content = $3,
             edited_at = NOW(),
             updated_at = NOW()
         WHERE id = $1
