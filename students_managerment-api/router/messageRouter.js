@@ -20,4 +20,32 @@ router.get(
     messageController.getMessagesByConversation
 );
 
+// Chỉnh sửa message
+router.patch(
+    '/:messageId',
+    authMiddleware,
+    messageController.updateMessage
+);
+
+// Thu hồi message
+router.post(
+    '/:messageId/recall',
+    authMiddleware,
+    messageController.recallMessage
+);
+
+// Xoá message cho riêng user hiện tại
+router.delete(
+    '/:messageId/me',
+    authMiddleware,
+    messageController.deleteMessageForMe
+);
+
+// Xoá message cho tất cả
+router.delete(
+    '/:messageId/everyone',
+    authMiddleware,
+    messageController.deleteMessageForEveryone
+);
+
 module.exports = router;

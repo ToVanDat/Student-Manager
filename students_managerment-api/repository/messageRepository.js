@@ -22,6 +22,11 @@ const createMessage = async (conversationId, senderId, content) => {
                 sender_id,
                 content,
                 is_read,
+                read_at,
+                is_recalled,
+                recalled_at,
+                deleted_at,
+                edited_at,
                 created_at,
                 updated_at;
         `;
@@ -47,7 +52,7 @@ const createMessage = async (conversationId, senderId, content) => {
 
     } catch (error) {
         await client.query('ROLLBACK');
-        console.error('Lỗi khi tạo tin nhắn trong Transaction:', error); // Log the error
+        console.error('Lỗi khi tạo tin nhắn trong Transaction:', error);
         throw error;
     } finally {
         client.release();
@@ -57,7 +62,7 @@ const createMessage = async (conversationId, senderId, content) => {
 /**
  * Lấy danh sách message của conversation
  */
-const getMessagesByConversation = async (conversationId) => {
+const getMessagesByConversation = async (conversationId, userId) => {
     const query = `
         SELECT
             id,
@@ -65,14 +70,43 @@ const getMessagesByConversation = async (conversationId) => {
             sender_id,
             content,
             is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
             created_at,
-            updated_at
-        FROM messages
-        WHERE conversation_id = $1
-        ORDER BY created_at ASC;
+            updated_at,
+            COALESCE(
+                (
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', mf.id,
+                            'message_id', mf.message_id,
+                            'file_name', mf.file_name,
+                            'mime_type', mf.mime_type,
+                            'file_size', mf.file_size,
+                            'created_at', mf.created_at
+                        )
+                        ORDER BY mf.created_at ASC, mf.id ASC
+                    )
+                    FROM message_files mf
+                    WHERE mf.message_id = m.id
+                ),
+                '[]'::json
+            ) AS files
+        FROM messages m
+        WHERE m.conversation_id = $1
+          AND NOT EXISTS (
+              SELECT 1
+              FROM message_deletions md
+              WHERE md.message_id = m.id
+                AND md.user_id = $2
+          )
+        ORDER BY m.created_at ASC;
     `;
 
-    const { rows } = await pool.query(query, [conversationId]);
+    const { rows } = await pool.query(query, [conversationId, userId]);
     return rows;
 };
 
@@ -87,6 +121,11 @@ const getMessageById = async (messageId) => {
             sender_id,
             content,
             is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
             created_at,
             updated_at
         FROM messages
@@ -99,8 +138,119 @@ const getMessageById = async (messageId) => {
 };
 
 /**
+ * Chỉnh sửa message.
+ * Quyền và trạng thái message được kiểm tra ở service.
+ */
+const updateMessageContent = async (messageId, content) => {
+    const query = `
+        UPDATE messages
+        SET
+            content = $2,
+            edited_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+            id,
+            conversation_id,
+            sender_id,
+            content,
+            is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
+            created_at,
+            updated_at;
+    `;
+
+    const { rows } = await pool.query(query, [
+        messageId,
+        content
+    ]);
+
+    return rows[0] || null;
+};
+
+/**
+ * Thu hồi message
+ */
+const recallMessage = async (messageId) => {
+    const query = `
+        UPDATE messages
+        SET
+            is_recalled = TRUE,
+            recalled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING
+            id,
+            conversation_id,
+            sender_id,
+            content,
+            is_read,
+            read_at,
+            is_recalled,
+            recalled_at,
+            deleted_at,
+            edited_at,
+            created_at,
+            updated_at;
+    `;
+
+    const { rows } = await pool.query(query, [messageId]);
+    return rows[0] || null;
+};
+
+/**
+ * Xoá message cho riêng một user.
+ */
+const deleteMessageForMe = async (messageId, userId) => {
+    const existingQuery = `
+        SELECT id, message_id, user_id, deleted_at
+        FROM message_deletions
+        WHERE message_id = $1
+          AND user_id = $2
+        LIMIT 1;
+    `;
+
+    const existing = await pool.query(existingQuery, [messageId, userId]);
+
+    if (existing.rows[0]) {
+        return existing.rows[0];
+    }
+
+    const query = `
+        INSERT INTO message_deletions (
+            message_id,
+            user_id,
+            deleted_at
+        )
+        VALUES ($1, $2, NOW())
+        RETURNING id, message_id, user_id, deleted_at;
+    `;
+
+    const { rows } = await pool.query(query, [messageId, userId]);
+    return rows[0];
+};
+
+/**
  * Đánh dấu tất cả tin nhắn chưa đọc trong conversation do người khác gửi là đã đọc
  */
+const deleteMessageForEveryone = async (messageId) => {
+    const query = `
+        UPDATE messages
+        SET content = '', deleted_at = NOW(), updated_at = NOW()
+        WHERE id = $1
+          AND deleted_at IS NULL
+          AND is_recalled = FALSE
+        RETURNING id, conversation_id, sender_id, content, is_read, read_at,
+                  is_recalled, recalled_at, deleted_at, edited_at, created_at, updated_at;
+    `;
+    const { rows } = await pool.query(query, [messageId]);
+    return rows[0] || null;
+};
+
 const markMessagesAsRead = async (conversationId, userId) => {
     const query = `
         UPDATE messages
@@ -120,5 +270,9 @@ module.exports = {
     createMessage,
     getMessagesByConversation,
     getMessageById,
+    updateMessageContent,
+    recallMessage,
+    deleteMessageForMe,
+    deleteMessageForEveryone,
     markMessagesAsRead
 };

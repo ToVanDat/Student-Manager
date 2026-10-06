@@ -23,11 +23,17 @@ export default function ChatPage() {
         setActiveId,
         messages,
         sendMessage,
+        sendAttachment,
+        downloadFile,
         isTyping,
         searchResults,
         searchUsers,
         startConversation,
-        setTyping
+        setTyping,
+        editMessage,
+        recallMessage,
+        deleteMessageForMe,
+        deleteMessageForEveryone
     } = useChat();
 
     const activeConversation = conversations.find(
@@ -100,8 +106,14 @@ export default function ChatPage() {
                                         messages={messages}
                                         currentUserId={Number(user?.id)}
                                         onSendMessage={sendMessage}
+                                        onSendAttachment={sendAttachment}
+                                        onDownloadFile={downloadFile}
                                         isTyping={isTyping}
                                         onTyping={setTyping}
+                                        onEdit={editMessage}
+                                        onRecall={recallMessage}
+                                        onDeleteForMe={deleteMessageForMe}
+                                        onDeleteForEveryone={deleteMessageForEveryone}
                                     />
                                 ) : (
                                     <EmptyChat />
