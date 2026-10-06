@@ -1,35 +1,122 @@
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+const crypto = require('crypto');
+const { Transform } = require('stream');
+const { pipeline } = require('stream');
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const UPLOAD_ROOT = path.resolve(
+    __dirname,
+    '../storage/uploads/chat'
+);
 
-const allowedMimeTypes = new Set([
-    'image/jpeg',
-    'image/png',
-    'image/gif',
-    'image/webp',
-    'video/mp4',
-    'video/webm',
-    'audio/mpeg',
-    'audio/wav',
-    'audio/ogg',
-    'application/pdf',
-    'text/plain',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-]);
+const MIME_LIMITS = {
+    'image/jpeg': 10 * 1024 * 1024,
+    'image/png': 10 * 1024 * 1024,
+    'image/gif': 10 * 1024 * 1024,
+    'image/webp': 10 * 1024 * 1024,
+
+    'video/mp4': 200 * 1024 * 1024,
+    'video/webm': 200 * 1024 * 1024,
+
+    'audio/mpeg': 50 * 1024 * 1024,
+    'audio/wav': 50 * 1024 * 1024,
+    'audio/ogg': 50 * 1024 * 1024,
+
+    'application/pdf': 50 * 1024 * 1024,
+    'text/plain': 20 * 1024 * 1024,
+
+    'application/msword': 30 * 1024 * 1024,
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 30 * 1024 * 1024,
+    'application/vnd.ms-excel': 30 * 1024 * 1024,
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 30 * 1024 * 1024,
+    'application/vnd.ms-powerpoint': 30 * 1024 * 1024,
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation': 30 * 1024 * 1024
+};
+
+const MAX_FILE_SIZE = Math.max(...Object.values(MIME_LIMITS));
+
+class LimitTransform extends Transform {
+    constructor(limit) {
+        super();
+        this.limit = limit;
+        this.bytes = 0;
+    }
+
+    _transform(chunk, encoding, callback) {
+        this.bytes += chunk.length;
+
+        if (this.bytes > this.limit) {
+            const error = new Error('FILE_SIZE_LIMIT_EXCEEDED');
+            error.code = 'LIMIT_FILE_SIZE';
+            return callback(error);
+        }
+
+        callback(null, chunk);
+    }
+}
+
+const storage = {
+    _handleFile(req, file, cb) {
+        fs.mkdir(UPLOAD_ROOT, { recursive: true }, (mkdirError) => {
+            if (mkdirError) {
+                return cb(mkdirError);
+            }
+
+            const extension = path
+                .extname(file.originalname || '')
+                .toLowerCase();
+
+            const safeExtension = /^[a-z0-9.]{1,10}$/.test(extension)
+                ? extension
+                : '';
+
+            const filename = `${crypto.randomUUID()}${safeExtension}`;
+            const destination = path.join(UPLOAD_ROOT, filename);
+            const limiter = new LimitTransform(MIME_LIMITS[file.mimetype]);
+            const output = fs.createWriteStream(destination, {
+                flags: 'wx'
+            });
+
+            pipeline(file.stream, limiter, output, (error) => {
+                if (error) {
+                    fs.unlink(destination, () => {});
+                    return cb(error);
+                }
+
+                cb(null, {
+                    destination: UPLOAD_ROOT,
+                    filename,
+                    path: destination,
+                    size: limiter.bytes
+                });
+            });
+        });
+    },
+
+    _removeFile(req, file, cb) {
+        if (!file?.path) {
+            return cb(null);
+        }
+
+        fs.unlink(file.path, (error) => {
+            if (error && error.code !== 'ENOENT') {
+                return cb(error);
+            }
+
+            cb(null);
+        });
+    }
+};
 
 const upload = multer({
-    storage: multer.memoryStorage(),
+    storage,
     limits: {
         fileSize: MAX_FILE_SIZE,
         files: 1
     },
     fileFilter: (req, file, cb) => {
-        if (!allowedMimeTypes.has(file.mimetype)) {
+        if (!Object.prototype.hasOwnProperty.call(MIME_LIMITS, file.mimetype)) {
             return cb(new Error('Loại file không được hỗ trợ'));
         }
 
@@ -43,9 +130,13 @@ const uploadSingleFile = (req, res, next) => {
             return next();
         }
 
+        if (req.file?.path) {
+            fs.unlink(req.file.path, () => {});
+        }
+
         if (error.code === 'LIMIT_FILE_SIZE') {
             return res.status(413).json({
-                message: 'File vượt quá giới hạn 10MB'
+                message: 'File vượt quá giới hạn cho loại MIME này'
             });
         }
 
@@ -54,5 +145,8 @@ const uploadSingleFile = (req, res, next) => {
         });
     });
 };
+
+uploadSingleFile.MIME_LIMITS = MIME_LIMITS;
+uploadSingleFile.UPLOAD_ROOT = UPLOAD_ROOT;
 
 module.exports = uploadSingleFile;
