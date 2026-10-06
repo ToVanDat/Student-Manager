@@ -23,8 +23,9 @@ export default function ChatPage() {
     const activeConversation = conversations.find(c => Number(c.id) === Number(activeId));
 
     return (
-        <div className="flex h-[calc(100vh-theme(spacing.16))] bg-slate-100 p-4 gap-0">
-            <ChatSidebar
+        <div className="h-[calc(100vh-76px)] min-h-0 bg-[#f5f8fc] p-4 lg:p-5">
+            <div className="h-full min-h-0 max-w-[1500px] mx-auto flex overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)]">
+                <ChatSidebar
                 conversations={conversations}
                 activeId={activeId}
                 onSelectConversation={setActiveId}
@@ -32,8 +33,7 @@ export default function ChatPage() {
                 searchResults={searchResults}
                 onStartConversation={startConversation}
             />
-
-            {activeId && activeConversation ? (
+                {activeId && activeConversation ? (
                 <ChatWindow
                     activeConversation={activeConversation}
                     messages={messages}
@@ -42,9 +42,10 @@ export default function ChatPage() {
                     isTyping={isTyping}
                     onTyping={setTyping}
                 />
-            ) : (
-                <EmptyChat />
-            )}
+                ) : (
+                    <EmptyChat />
+                )}
+            </div>
         </div>
     );
 }
