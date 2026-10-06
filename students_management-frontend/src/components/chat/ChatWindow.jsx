@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MoreVertical, Search, Send, Paperclip, Smile } from 'lucide-react';
 import MessageBubble from './MessageBubble';
+import AvatarFallback from './AvatarFallback';
 
 export default function ChatWindow({
     activeConversation,
@@ -14,7 +15,6 @@ export default function ChatWindow({
     const messagesEndRef = useRef(null);
     const typingTimer = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const [avatarError, setAvatarError] = useState(false);
 
     const emojis = ['😀', '😂', '😊', '😍', '🥰', '😎', '👍', '👏', '❤️', '🔥', '🎉', '😢', '😮', '🙏'];
 
@@ -47,13 +47,7 @@ export default function ChatWindow({
         <section className="flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
             <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-3">
-                    {activeConversation.avatar && !avatarError ? (
-                        <img src={activeConversation.avatar} alt={activeConversation.name} onError={() => setAvatarError(true)} className="w-12 h-12 rounded-full object-cover" />
-                    ) : (
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white flex items-center justify-center text-sm font-bold">
-                            {(activeConversation.name || 'U').charAt(0).toUpperCase()}
-                        </div>
-                    )}
+                    <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="lg" showStatus isOnline={activeConversation.isOnline} />
                     <div>
                         <h3 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">{activeConversation.name}</h3>
                         <p className={`text-[12px] mt-0.5 ${activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
