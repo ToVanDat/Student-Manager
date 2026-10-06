@@ -249,9 +249,60 @@ const recallMessage = async (req, res) => {
     }
 };
 
+/**
+ * Xoá message cho riêng user hiện tại
+ */
+const deleteMessageForMe = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const messageId = Number(req.params.messageId);
+
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return res.status(401).json({
+                message: 'User hiện tại không hợp lệ'
+            });
+        }
+
+        if (!Number.isInteger(messageId) || messageId <= 0) {
+            return res.status(400).json({
+                message: 'messageId không hợp lệ'
+            });
+        }
+
+        const deletion =
+            await messageService.deleteMessageForMe(
+                messageId,
+                userId
+            );
+
+        return res.status(200).json({
+            message: 'Xoá message cho tôi thành công',
+            data: deletion
+        });
+    } catch (error) {
+        console.error(
+            'DELETE MESSAGE FOR ME ERROR:',
+            error
+        );
+
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            message:
+                error.message ||
+                'Không thể xoá message'
+        });
+    }
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
     updateMessage,
-    recallMessage
+    recallMessage,
+    deleteMessageForMe
 };
