@@ -27,4 +27,11 @@ router.patch(
     messageController.updateMessage
 );
 
+// Thu hồi message
+router.post(
+    '/:messageId/recall',
+    authMiddleware,
+    messageController.recallMessage
+);
+
 module.exports = router;
