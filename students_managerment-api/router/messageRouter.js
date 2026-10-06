@@ -20,4 +20,11 @@ router.get(
     messageController.getMessagesByConversation
 );
 
+// Chỉnh sửa message
+router.patch(
+    '/:messageId',
+    authMiddleware,
+    messageController.updateMessage
+);
+
 module.exports = router;
