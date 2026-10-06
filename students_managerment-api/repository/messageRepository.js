@@ -219,6 +219,20 @@ const deleteMessageForMe = async (messageId, userId) => {
 /**
  * Đánh dấu tất cả tin nhắn chưa đọc trong conversation do người khác gửi là đã đọc
  */
+const deleteMessageForEveryone = async (messageId) => {
+    const query = `
+        UPDATE messages
+        SET content = '', deleted_at = NOW(), updated_at = NOW()
+        WHERE id = $1
+          AND deleted_at IS NULL
+          AND is_recalled = FALSE
+        RETURNING id, conversation_id, sender_id, content, is_read, read_at,
+                  is_recalled, recalled_at, deleted_at, edited_at, created_at, updated_at;
+    `;
+    const { rows } = await pool.query(query, [messageId]);
+    return rows[0] || null;
+};
+
 const markMessagesAsRead = async (conversationId, userId) => {
     const query = `
         UPDATE messages
@@ -241,5 +255,6 @@ module.exports = {
     updateMessageContent,
     recallMessage,
     deleteMessageForMe,
+    deleteMessageForEveryone,
     markMessagesAsRead
 };
