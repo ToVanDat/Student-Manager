@@ -43,17 +43,17 @@ export default function ChatWindow({
     };
 
     return (
-        <div className="flex-1 flex flex-col h-full bg-white rounded-r-2xl">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+        <section className="flex-1 min-w-0 flex flex-col bg-white">
+            <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100">
                 <div className="flex items-center gap-3">
                     <img
                         src={activeConversation.avatar || 'https://via.placeholder.com/40'}
                         alt={activeConversation.name}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-12 h-12 rounded-full object-cover"
                     />
                     <div>
-                        <h3 className="text-sm font-bold text-slate-900">{activeConversation.name}</h3>
-                        <p className="text-xs flex items-center gap-1 text-slate-400">
+                        <h3 className="text-[16px] font-bold text-slate-900">{activeConversation.name}</h3>
+                        <p className={`text-[12px] mt-0.5 ${activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
                             <span className={activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}>
                                 {activeConversation.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}
                             </span>
@@ -66,7 +66,7 @@ export default function ChatWindow({
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white">
                 {messages.map(msg => (
                     <MessageBubble
                         key={msg.id}
