@@ -244,6 +244,73 @@ const initSocket = (server) => {
             }
         });
 
+        socket.on('message:recall', async ({ messageId }) => {
+            const id = Number(messageId);
+
+            if (!Number.isInteger(id) || id <= 0) {
+                return socket.emit('message:error', { message: 'messageId không hợp lệ' });
+            }
+
+            try {
+                const message = await messageRepository.getMessageById(id);
+
+                if (!message) {
+                    return socket.emit('message:error', { message: 'Message không tồn tại' });
+                }
+
+                const isMember = await conversationRepository.isConversationMember(
+                    message.conversation_id,
+                    userId
+                );
+
+                if (!isMember) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn không thuộc conversation này'
+                    });
+                }
+
+                if (String(message.sender_id) !== String(userId)) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn chỉ có thể thu hồi message do chính mình gửi'
+                    });
+                }
+
+                if (message.is_recalled) {
+                    return socket.emit('message:error', {
+                        message: 'Message đã được thu hồi'
+                    });
+                }
+
+                if (message.deleted_at) {
+                    return socket.emit('message:error', {
+                        message: 'Message đã bị xoá và không thể thu hồi'
+                    });
+                }
+
+                const recalledMessage = await messageRepository.recallMessage(id);
+
+                if (!recalledMessage) {
+                    return socket.emit('message:error', {
+                        message: 'Không thể thu hồi message'
+                    });
+                }
+
+                io.to(`conversation:${message.conversation_id}`).emit(
+                    'message:recalled',
+                    recalledMessage
+                );
+
+                socket.emit('message:recall:sent', {
+                    message: recalledMessage
+                });
+            } catch (error) {
+                console.error('RECALL MESSAGE SOCKET ERROR:', error);
+                socket.emit('message:error', {
+                    message: 'Không thể thu hồi message'
+                });
+            }
+        });
+
         socket.on('message:read', async ({ conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) return;
