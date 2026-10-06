@@ -41,4 +41,11 @@ router.delete(
     messageController.deleteMessageForMe
 );
 
+// Xoá message cho tất cả
+router.delete(
+    '/:messageId/everyone',
+    authMiddleware,
+    messageController.deleteMessageForEveryone
+);
+
 module.exports = router;
