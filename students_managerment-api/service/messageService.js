@@ -219,9 +219,48 @@ const recallMessage = async (
     return recalledMessage;
 };
 
+/**
+ * Xoá message cho riêng user hiện tại.
+ *
+ * Message vẫn tồn tại trong bảng messages và user khác vẫn thấy.
+ */
+const deleteMessageForMe = async (
+    messageId,
+    userId
+) => {
+    const message =
+        await messageRepository.getMessageById(messageId);
+
+    if (!message) {
+        const error = new Error('Message không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const isMember =
+        await conversationRepository.isConversationMember(
+            message.conversation_id,
+            userId
+        );
+
+    if (!isMember) {
+        const error = new Error(
+            'Bạn không thuộc conversation này'
+        );
+        error.statusCode = 403;
+        throw error;
+    }
+
+    return messageRepository.deleteMessageForMe(
+        messageId,
+        userId
+    );
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
     updateMessage,
-    recallMessage
+    recallMessage,
+    deleteMessageForMe
 };
