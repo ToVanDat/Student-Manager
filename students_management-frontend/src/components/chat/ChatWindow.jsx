@@ -1,5 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { MoreVertical, Search, Send, Paperclip, Smile } from 'lucide-react';
+import {
+    MoreVertical,
+    Search,
+    Send,
+    Paperclip,
+    Smile
+} from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
+
 import MessageBubble from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
 
@@ -8,6 +16,8 @@ export default function ChatWindow({
     messages,
     currentUserId,
     onSendMessage,
+    onSendAttachment,
+    onDownloadFile,
     isTyping,
     onTyping,
     onEdit,
@@ -18,75 +28,205 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
     const typingTimer = useRef(null);
+    const fileInputRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const emojiPickerRef = useRef(null);
 
-    const emojis = ['😀', '😂', '😊', '😍', '🥰', '😎', '👍', '👏', '❤️', '🔥', '🎉', '😢', '😮', '🙏'];
+    const [isDarkMode, setIsDarkMode] = useState(
+        document.documentElement.classList.contains('dark')
+    );
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({
+            behavior: 'smooth'
+        });
     }, [messages, isTyping]);
 
-    useEffect(() => () => clearTimeout(typingTimer.current), []);
+    useEffect(() => {
+        return () => clearTimeout(typingTimer.current);
+    }, []);
 
-    const handleChange = e => {
+    useEffect(() => {
+        const observer = new MutationObserver(() => {
+            setIsDarkMode(
+                document.documentElement.classList.contains('dark')
+            );
+        });
+
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
+        return () => observer.disconnect();
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                emojiPickerRef.current &&
+                !emojiPickerRef.current.contains(event.target)
+            ) {
+                setShowEmojiPicker(false);
+            }
+        };
+
+        if (showEmojiPicker) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showEmojiPicker]);
+
+    const handleChange = (e) => {
         const value = e.target.value;
+
         setInput(value);
         onTyping?.(Boolean(value.trim()));
 
         clearTimeout(typingTimer.current);
+
         if (value.trim()) {
-            typingTimer.current = setTimeout(() => onTyping?.(false), 800);
+            typingTimer.current = setTimeout(() => {
+                onTyping?.(false);
+            }, 800);
         }
     };
 
-    const handleSend = e => {
+    const handleSend = (e) => {
         e.preventDefault();
+
         if (!input.trim()) return;
+
         onSendMessage(input);
+
         setInput('');
         onTyping?.(false);
     };
 
+    const handleEmojiClick = (emojiData) => {
+        setInput((prev) => prev + emojiData.emoji);
+    };
+
+    const handleAttachmentClick = () => {
+        if (isUploading) return;
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = async (event) => {
+        const file = event.target.files?.[0];
+
+        // Cho phép chọn lại đúng file sau khi upload xong.
+        event.target.value = '';
+
+        if (!file || !onSendAttachment) return;
+
+        try {
+            setIsUploading(true);
+            await onSendAttachment(file);
+        } catch (error) {
+            console.error('Lỗi gửi file:', error);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     return (
         <section className="flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
+
+            {/* ================= HEADER ================= */}
+
             <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+
                 <div className="flex items-center gap-3">
-                    <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="lg" showStatus isOnline={activeConversation.isOnline} />
+
+                    <AvatarFallback
+                        name={activeConversation.name}
+                        src={activeConversation.avatar}
+                        size="lg"
+                        showStatus
+                        isOnline={activeConversation.isOnline}
+                    />
+
                     <div>
-                        <h3 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">{activeConversation.name}</h3>
-                        <p className={`text-[12px] mt-0.5 ${activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
-                            <span className={activeConversation.isOnline ? 'text-emerald-500' : 'text-slate-400'}>
-                                {activeConversation.isOnline ? 'Đang hoạt động' : 'Ngoại tuyến'}
-                            </span>
+                        <h3 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">
+                            {activeConversation.name}
+                        </h3>
+
+                        <p
+                            className={`text-[12px] mt-0.5 ${
+                                activeConversation.isOnline
+                                    ? 'text-emerald-500'
+                                    : 'text-slate-400'
+                            }`}
+                        >
+                            {activeConversation.isOnline
+                                ? 'Đang hoạt động'
+                                : 'Ngoại tuyến'}
                         </p>
                     </div>
+
                 </div>
+
                 <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
-                    <button className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 dark:hover:bg-slate-800 rounded-full"><Search size={18} /></button>
-                    <button className="p-2 hover:bg-slate-50 rounded-full"><MoreVertical size={18} /></button>
+
+                    <button
+                        type="button"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                    >
+                        <Search size={18} />
+                    </button>
+
+                    <button
+                        type="button"
+                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                    >
+                        <MoreVertical size={18} />
+                    </button>
+
                 </div>
+
             </header>
 
+            {/* ================= MESSAGES ================= */}
+
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
-                {messages.map(msg => (
+
+                {messages.map((msg) => (
                     <MessageBubble
                         key={msg.id}
                         message={{
                             ...msg,
-                            senderId: Number(msg.sender_id ?? msg.senderId),
-                            isRead: msg.is_read ?? msg.isRead,
-                            time: new Date(msg.created_at ?? msg.createdAt).toLocaleTimeString([], {
+                            senderId: Number(
+                                msg.sender_id ?? msg.senderId
+                            ),
+                            isRead:
+                                msg.is_read ??
+                                msg.isRead,
+                            time: new Date(
+                                msg.created_at ??
+                                msg.createdAt
+                            ).toLocaleTimeString([], {
                                 hour: '2-digit',
                                 minute: '2-digit'
                             })
                         }}
-                        isOwn={Number(msg.sender_id ?? msg.senderId) === Number(currentUserId)}
+                        isOwn={
+                            Number(
+                                msg.sender_id ??
+                                msg.senderId
+                            ) === Number(currentUserId)
+                        }
                         senderAvatar={activeConversation.avatar}
                         senderName={activeConversation.name}
                         onEdit={onEdit}
                         onRecall={onRecall}
                         onDeleteForMe={onDeleteForMe}
                         onDeleteForEveryone={onDeleteForEveryone}
+                        onDownloadFile={onDownloadFile}
                     />
                 ))}
 
@@ -95,47 +235,80 @@ export default function ChatWindow({
                         {activeConversation.name} đang nhập...
                     </div>
                 )}
+
                 <div ref={messagesEndRef} />
+
             </div>
 
-            <form onSubmit={handleSend} className="min-h-[78px] px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900">
+            {/* ================= INPUT AREA ================= */}
+
+            <form
+                onSubmit={handleSend}
+                className="min-h-[78px] px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900"
+            >
+
+                {/* ================= ATTACHMENT ================= */}
+
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileChange}
+                />
+
                 <button
                     type="button"
                     title="Đính kèm tệp"
-                    className="p-2 text-slate-500 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full"
-                    onClick={() => alert('Chức năng tải tệp cần backend storage để lưu URL file.')}
+                    disabled={isUploading}
+                    className="p-2 text-slate-500 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full disabled:opacity-50"
+                    onClick={handleAttachmentClick}
                 >
                     <Paperclip size={20} />
                 </button>
 
-                <div className="relative">
+                {/* ================= EMOJI ================= */}
+
+                <div
+                    ref={emojiPickerRef}
+                    className="relative"
+                >
+
                     <button
                         type="button"
                         title="Emoji"
-                        onClick={() => setShowEmojiPicker(prev => !prev)}
-                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                        onClick={() =>
+                            setShowEmojiPicker(
+                                (prev) => !prev
+                            )
+                        }
+                        className="p-2 text-slate-500 dark:text-slate-300 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 rounded-full"
                     >
                         <Smile size={20} />
                     </button>
 
                     {showEmojiPicker && (
-                        <div className="absolute bottom-12 left-0 z-30 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-3 grid grid-cols-7 gap-1">
-                            {emojis.map(emoji => (
-                                <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => {
-                                        setInput(prev => prev + emoji);
-                                        setShowEmojiPicker(false);
-                                    }}
-                                    className="text-xl p-1.5 rounded-lg hover:bg-slate-100"
-                                >
-                                    {emoji}
-                                </button>
-                            ))}
+                        <div className="absolute bottom-14 left-0 z-50">
+                            <EmojiPicker
+                                onEmojiClick={handleEmojiClick}
+                                theme={
+                                    isDarkMode
+                                        ? 'dark'
+                                        : 'light'
+                                }
+                                width={350}
+                                height={400}
+                                lazyLoadEmojis
+                                searchDisabled={false}
+                                previewConfig={{
+                                    showPreview: false
+                                }}
+                            />
                         </div>
                     )}
+
                 </div>
+
+                {/* ================= TEXT INPUT ================= */}
 
                 <input
                     type="text"
@@ -144,6 +317,9 @@ export default function ChatWindow({
                     onChange={handleChange}
                     className="flex-1 h-12 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-full px-5 text-sm focus:outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950"
                 />
+
+                {/* ================= SEND ================= */}
+
                 <button
                     type="submit"
                     disabled={!input.trim()}
@@ -152,7 +328,9 @@ export default function ChatWindow({
                 >
                     <Send size={18} />
                 </button>
+
             </form>
+
         </section>
     );
 }
