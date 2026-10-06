@@ -299,10 +299,61 @@ const deleteMessageForMe = async (req, res) => {
     }
 };
 
+/**
+ * Xoá message cho tất cả
+ */
+const deleteMessageForEveryone = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const messageId = Number(req.params.messageId);
+
+        if (!Number.isInteger(userId) || userId <= 0) {
+            return res.status(401).json({
+                message: 'User hiện tại không hợp lệ'
+            });
+        }
+
+        if (!Number.isInteger(messageId) || messageId <= 0) {
+            return res.status(400).json({
+                message: 'messageId không hợp lệ'
+            });
+        }
+
+        const message =
+            await messageService.deleteMessageForEveryone(
+                messageId,
+                userId
+            );
+
+        return res.status(200).json({
+            message: 'Xoá message cho tất cả thành công',
+            data: message
+        });
+    } catch (error) {
+        console.error(
+            'DELETE MESSAGE FOR EVERYONE ERROR:',
+            error
+        );
+
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({
+                message: error.message
+            });
+        }
+
+        return res.status(500).json({
+            message:
+                error.message ||
+                'Không thể xoá message cho tất cả'
+        });
+    }
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
     updateMessage,
     recallMessage,
-    deleteMessageForMe
+    deleteMessageForMe,
+    deleteMessageForEveryone
 };
