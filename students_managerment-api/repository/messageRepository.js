@@ -179,6 +179,38 @@ const recallMessage = async (messageId) => {
 };
 
 /**
+ * Xoá message cho riêng một user.
+ */
+const deleteMessageForMe = async (messageId, userId) => {
+    const existingQuery = `
+        SELECT id, message_id, user_id, deleted_at
+        FROM message_deletions
+        WHERE message_id = $1
+          AND user_id = $2
+        LIMIT 1;
+    `;
+
+    const existing = await pool.query(existingQuery, [messageId, userId]);
+
+    if (existing.rows[0]) {
+        return existing.rows[0];
+    }
+
+    const query = `
+        INSERT INTO message_deletions (
+            message_id,
+            user_id,
+            deleted_at
+        )
+        VALUES ($1, $2, NOW())
+        RETURNING id, message_id, user_id, deleted_at;
+    `;
+
+    const { rows } = await pool.query(query, [messageId, userId]);
+    return rows[0];
+};
+
+/**
  * Đánh dấu tất cả tin nhắn chưa đọc trong conversation do người khác gửi là đã đọc
  */
 const markMessagesAsRead = async (conversationId, userId) => {
@@ -202,5 +234,6 @@ module.exports = {
     getMessageById,
     updateMessageContent,
     recallMessage,
+    deleteMessageForMe,
     markMessagesAsRead
 };
