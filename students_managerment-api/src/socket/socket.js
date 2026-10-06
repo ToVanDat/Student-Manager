@@ -311,6 +311,52 @@ const initSocket = (server) => {
             }
         });
 
+        socket.on('message:delete:me', async ({ messageId }) => {
+            const id = Number(messageId);
+
+            if (!Number.isInteger(id) || id <= 0) {
+                return socket.emit('message:error', { message: 'messageId không hợp lệ' });
+            }
+
+            try {
+                const message = await messageRepository.getMessageById(id);
+
+                if (!message) {
+                    return socket.emit('message:error', { message: 'Message không tồn tại' });
+                }
+
+                const isMember = await conversationRepository.isConversationMember(
+                    message.conversation_id,
+                    userId
+                );
+
+                if (!isMember) {
+                    return socket.emit('message:error', {
+                        message: 'Bạn không thuộc conversation này'
+                    });
+                }
+
+                const deleted = await messageRepository.deleteMessageForMe(id, userId);
+
+                io.to(socket.id).emit('message:deleted:me', {
+                    messageId: id,
+                    conversationId: message.conversation_id,
+                    deletion: deleted
+                });
+
+                socket.emit('message:delete:me:sent', {
+                    messageId: id,
+                    conversationId: message.conversation_id,
+                    deletion: deleted
+                });
+            } catch (error) {
+                console.error('DELETE MESSAGE FOR ME SOCKET ERROR:', error);
+                socket.emit('message:error', {
+                    message: 'Không thể xoá message cho bạn'
+                });
+            }
+        });
+
         socket.on('message:delete:everyone', async ({ messageId }) => {
             const id = Number(messageId);
 
