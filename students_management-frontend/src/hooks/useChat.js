@@ -184,19 +184,36 @@ export const useChat = () => {
         const handleMessageFileUploaded = ({ messageId, conversationId, file }) => {
             if (Number(conversationId) !== Number(activeId)) return;
 
-            setMessages(prev => prev.map(item =>
-                Number(item.id) === Number(messageId)
-                    ? {
-                        ...item,
-                        files: [
-                            ...(item.files || []).filter(
-                                existing => Number(existing.id) !== Number(file.id)
-                            ),
-                            file
-                        ]
-                    }
-                    : item
-            ));
+            setMessages(prev => {
+                const exists = prev.some(item => Number(item.id) === Number(messageId));
+
+                if (!exists) {
+                    return [
+                        ...prev,
+                        {
+                            id: messageId,
+                            conversation_id: conversationId,
+                            content: `📎 ${file.file_name}`,
+                            files: [file],
+                            created_at: file.created_at
+                        }
+                    ];
+                }
+
+                return prev.map(item =>
+                    Number(item.id) === Number(messageId)
+                        ? {
+                            ...item,
+                            files: [
+                                ...(item.files || []).filter(
+                                    existing => Number(existing.id) !== Number(file.id)
+                                ),
+                                file
+                            ]
+                        }
+                        : item
+                );
+            });
         };
 
         const handleMessageError = ({ message }) => {
