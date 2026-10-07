@@ -12,16 +12,15 @@ export const chatApi = {
         }),
 
     // Lấy lịch sử message toàn bộ 
-    getMessages: (conversationId) =>
-        client.get(
-            `/api/messages/conversation/${conversationId}`
-        ),
+    getMessages: (conversationId, page = 1, limit = 50) =>
+        client.get(`/api/messages/conversation/${conversationId}?page=${page}&limit=${limit}`),
 
     // Gửi message đến user
-    sendMessage: (conversationId, content) =>
+    sendMessage: (conversationId, content, replyToMessageId = null) =>
         client.post('/api/messages', {
             conversationId,
-            content
+            content,
+            replyToMessageId
         }),
 
     // Chỉnh sửa message
@@ -39,6 +38,12 @@ export const chatApi = {
     // Xoá message cho tất cả
     deleteMessageForEveryone: (messageId) =>
         client.delete(`/api/messages/${messageId}/everyone`),
+
+    addReaction: (messageId, emoji) =>
+        client.post(`/api/messages/${messageId}/reactions`, { emoji }),
+
+    removeReaction: (messageId, emoji) =>
+        client.delete(`/api/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`),
 
     // Upload file cho một message
     uploadFile: (messageId, file, onUploadProgress) => {
