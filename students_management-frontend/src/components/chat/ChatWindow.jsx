@@ -38,7 +38,8 @@ export default function ChatWindow({
     onAddGroupMember,
     onRemoveGroupMember,
     onUpdateGroupMemberRole,
-    onLeaveGroup
+    onLeaveGroup,
+    onlineUserIds = new Set()
 }) {
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
@@ -238,7 +239,9 @@ export default function ChatWindow({
                 onAddMember={onAddGroupMember}
                 onRemoveMember={onRemoveGroupMember}
                 onUpdateRole={onUpdateGroupMemberRole}
+                onUpdateGroupConversation={onUpdateGroupConversation}
                 onLeaveGroup={onLeaveGroup}
+                onlineUserIds={onlineUserIds}
                 onClose={() => setShowGroupInfo(false)}
             />
 
