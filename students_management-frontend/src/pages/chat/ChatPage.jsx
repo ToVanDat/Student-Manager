@@ -22,6 +22,7 @@ export default function ChatPage() {
         activeId,
         setActiveId,
         messages,
+        conversationMembers,
         sendMessage,
         sendAttachment,
         downloadFile,
@@ -31,6 +32,10 @@ export default function ChatPage() {
         searchUsers,
         startConversation,
         startGroupConversation,
+        addGroupMember,
+        removeGroupMember,
+        leaveGroup,
+        updateGroupMemberRole,
         setTyping,
         editMessage,
         recallMessage,
@@ -123,6 +128,13 @@ export default function ChatPage() {
                                         onDeleteForEveryone={deleteMessageForEveryone}
                                         onReply={() => {}}
                                         onToggleReaction={toggleReaction}
+                                        conversationMembers={conversationMembers}
+                                        searchUsers={searchUsers}
+                                        searchResults={searchResults}
+                                        onAddGroupMember={addGroupMember}
+                                        onRemoveGroupMember={removeGroupMember}
+                                        onUpdateGroupMemberRole={updateGroupMemberRole}
+                                        onLeaveGroup={leaveGroup}
                                         hasMoreMessages={hasMoreMessages}
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
