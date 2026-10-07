@@ -209,8 +209,22 @@ export const useChat = () => {
 
                 const reactions = Array.isArray(item.reactions) ? item.reactions : [];
                 if (action === 'add') {
-                    if (reactions.some(r => Number(r.id) === Number(reaction?.id))) return item;
-                    return { ...item, reactions: [...reactions, reaction] };
+                    if (!reaction?.id) return item;
+
+                    // Backend guarantees one reaction/user/message.
+                    // Remove the user's previous reaction before adding the new one.
+                    const nextReactions = reactions.filter(
+                        r => Number(r.user_id) !== Number(reaction.user_id)
+                    );
+
+                    if (nextReactions.some(r => Number(r.id) === Number(reaction.id))) {
+                        return { ...item, reactions: nextReactions };
+                    }
+
+                    return {
+                        ...item,
+                        reactions: [...nextReactions, reaction]
+                    };
                 }
 
                 return {
