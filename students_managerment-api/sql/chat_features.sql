@@ -19,8 +19,18 @@ CREATE TABLE IF NOT EXISTS message_reactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_message_reactions_user_emoji
-    ON message_reactions (message_id, user_id, emoji);
+-- Messenger/Zalo style: one reaction per user per message.
+-- If the migration is re-run after the old schema, keep the newest reaction.
+DELETE FROM message_reactions a
+USING message_reactions b
+WHERE a.message_id = b.message_id
+  AND a.user_id = b.user_id
+  AND a.id < b.id;
+
+DROP INDEX IF EXISTS uq_message_reactions_user_emoji;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_message_reactions_message_user
+    ON message_reactions (message_id, user_id);
 
 CREATE INDEX IF NOT EXISTS idx_message_reactions_message
     ON message_reactions (message_id);
