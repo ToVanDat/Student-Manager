@@ -94,13 +94,13 @@ export default function MessageBubble({
     return (
         <div
             className={`relative flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
-            onMouseEnter={keepHovered}
-            onMouseLeave={scheduleHoverClose}
         >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
             <div
                 className={`relative max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
+                onMouseEnter={keepHovered}
+                onMouseLeave={scheduleHoverClose}
             >
                 <div className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                     isOwn
