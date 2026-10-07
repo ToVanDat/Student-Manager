@@ -163,7 +163,11 @@ const updateGroupMemberRole = async (conversationId, actorId, targetUserId, next
     }
 
     if (nextRole === 'owner') {
-        await conversationRepository.updateMemberRole(conversationId, actorId, 'admin');
+        return conversationRepository.transferGroupOwnership(
+            conversationId,
+            actorId,
+            targetUserId
+        );
     }
 
     return conversationRepository.updateMemberRole(conversationId, targetUserId, nextRole);
