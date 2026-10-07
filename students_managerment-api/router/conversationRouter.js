@@ -8,6 +8,7 @@ router.use(authMiddleware);
 
 router.post('/direct', conversationController.createDirectConversation);
 router.post('/group', conversationController.createGroup);
+router.patch('/:conversationId', conversationController.updateGroup);
 router.get('/', conversationController.getUserConversations);
 router.get('/:conversationId/members', conversationController.getConversationMembers);
 router.post('/:conversationId/members', conversationController.addGroupMember);
