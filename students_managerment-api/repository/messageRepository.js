@@ -319,20 +319,33 @@ const markMessagesAsRead = async (conversationId, userId) => {
 
 
 const addReaction = async (messageId, userId, emoji) => {
-    const query = `
-        INSERT INTO message_reactions (message_id, user_id, emoji)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (message_id, user_id, emoji) DO NOTHING
-        RETURNING id, message_id, user_id, emoji, created_at;
-    `;
-    const { rows } = await pool.query(query, [messageId, userId, emoji]);
-    if (rows[0]) return rows[0];
+    const client = await pool.connect();
 
-    const existing = await pool.query(
-        'SELECT id, message_id, user_id, emoji, created_at FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3 LIMIT 1',
-        [messageId, userId, emoji]
-    );
-    return existing.rows[0] || null;
+    try {
+        await client.query('BEGIN');
+
+        // One reaction per user/message, same behaviour as Messenger/Zalo.
+        await client.query(
+            `DELETE FROM message_reactions
+             WHERE message_id = $1 AND user_id = $2`,
+            [messageId, userId]
+        );
+
+        const { rows } = await client.query(
+            `INSERT INTO message_reactions (message_id, user_id, emoji)
+             VALUES ($1, $2, $3)
+             RETURNING id, message_id, user_id, emoji, created_at`,
+            [messageId, userId, emoji]
+        );
+
+        await client.query('COMMIT');
+        return rows[0] || null;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 const removeReaction = async (messageId, userId, emoji) => {
