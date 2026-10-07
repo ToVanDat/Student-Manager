@@ -1,6 +1,22 @@
 const conversationService = require('../service/conversationService');
 const messageRepository = require('../repository/messageRepository');
+const userRepository = require('../repository/userRepository');
 const { getIO } = require('../src/socket/socket');
+
+const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
+    const message = await messageRepository.createSystemMessage(
+        conversationId,
+        actorId,
+        content
+    );
+    getIO().to(`conversation:${conversationId}`).emit('message:new', message);
+    return message;
+};
+
+const getUsername = async (userId) => {
+    const user = await userRepository.findActiveUserById(Number(userId));
+    return user?.username || 'Người dùng';
+};
 
 const createDirectConversation = async (req, res) => {
     try {
@@ -82,6 +98,13 @@ const createGroup = async (req, res) => {
             getIO().to(`user:${memberId}`).emit('conversation:created', { conversation: data });
         }
 
+        const actorName = await getUsername(Number(req.user.id));
+        await createAndEmitSystemMessage(
+            data.id,
+            Number(req.user.id),
+            `${actorName} đã tạo nhóm ${data.name}`
+        );
+
         return res.status(201).json({ message: 'Tạo group thành công', data });
     } catch (error) {
         const status = /ít nhất|không hợp lệ/.test(error.message) ? 400 : 404;
@@ -95,6 +118,9 @@ const updateGroup = async (req, res) => {
         if (!Number.isInteger(conversationId) || conversationId <= 0) {
             return res.status(400).json({ message: 'conversationId không hợp lệ' });
         }
+
+        const oldConversation = await require('../repository/conversationRepository')
+            .getConversationInfo(conversationId);
 
         const data = await conversationService.updateGroupConversation(
             conversationId,
@@ -113,6 +139,13 @@ const updateGroup = async (req, res) => {
             });
         }
 
+        const actorName = await getUsername(Number(req.user.id));
+        await createAndEmitSystemMessage(
+            conversationId,
+            Number(req.user.id),
+            `${actorName} đã đổi tên nhóm thành "${data.name}"`
+        );
+
         return res.status(200).json({ message: 'Đã cập nhật thông tin nhóm', data });
     } catch (error) {
         const status = /quyền|group|không hợp lệ/.test(error.message) ? 403 : 400;
@@ -128,6 +161,9 @@ const addGroupMember = async (req, res) => {
             Number(req.body.userId)
         );
         const conversationId = Number(req.params.conversationId);
+        const actorId = Number(req.user.id);
+        const addedName = await getUsername(Number(data.user_id));
+        const actorName = await getUsername(actorId);
         const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const io = getIO();
 
@@ -153,6 +189,12 @@ const addGroupMember = async (req, res) => {
             }
         }
 
+        await createAndEmitSystemMessage(
+            conversationId,
+            actorId,
+            `${actorName} đã thêm ${addedName} vào nhóm`
+        );
+
         return res.status(201).json({ message: 'Đã thêm thành viên', data });
     } catch (error) {
         const status = /quyền|role|group|không tồn tại/.test(error.message) ? 403 : 400;
@@ -163,11 +205,14 @@ const addGroupMember = async (req, res) => {
 const removeGroupMember = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
+        const targetUserId = Number(req.params.userId);
         const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
         const data = await conversationService.removeGroupMember(
             conversationId,
             Number(req.user.id),
-            Number(req.params.userId)
+            targetUserId
         );
         const io = getIO();
         const removedUserId = Number(data.user_id);
@@ -186,6 +231,12 @@ const removeGroupMember = async (req, res) => {
                 member: data
             });
         }
+        await createAndEmitSystemMessage(
+            conversationId,
+            Number(req.user.id),
+            `${actorName} đã xóa ${targetName} khỏi nhóm`
+        );
+
         return res.status(200).json({ message: 'Đã xoá thành viên', data });
     } catch (error) {
         return res.status(403).json({ message: error.message });
@@ -195,6 +246,7 @@ const removeGroupMember = async (req, res) => {
 const leaveGroup = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
+        const leavingName = await getUsername(Number(req.user.id));
         const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.leaveGroup(
             conversationId,
@@ -216,6 +268,12 @@ const leaveGroup = async (req, res) => {
             member: data,
             message: 'Bạn đã rời nhóm'
         });
+        await createAndEmitSystemMessage(
+            conversationId,
+            Number(req.user.id),
+            `${leavingName} đã rời nhóm`
+        );
+
         return res.status(200).json({ message: 'Đã rời nhóm', data });
     } catch (error) {
         return res.status(400).json({ message: error.message });
@@ -225,11 +283,14 @@ const leaveGroup = async (req, res) => {
 const updateGroupMemberRole = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
+        const targetUserId = Number(req.params.userId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
         const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.updateGroupMemberRole(
             conversationId,
             Number(req.user.id),
-            Number(req.params.userId),
+            targetUserId,
             req.body.role
         );
         for (const memberId of memberIds) {
@@ -239,6 +300,13 @@ const updateGroupMemberRole = async (req, res) => {
                 member: data
             });
         }
+        const roleLabel = { owner: 'trưởng nhóm', admin: 'quản trị viên', member: 'thành viên' }[req.body.role] || req.body.role;
+        await createAndEmitSystemMessage(
+            conversationId,
+            Number(req.user.id),
+            `${actorName} đã cập nhật quyền của ${targetName} thành ${roleLabel}`
+        );
+
         return res.status(200).json({ message: 'Đã cập nhật role', data });
     } catch (error) {
         return res.status(403).json({ message: error.message });
