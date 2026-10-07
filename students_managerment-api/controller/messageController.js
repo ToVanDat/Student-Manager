@@ -1,6 +1,7 @@
 const messageService = require('../service/messageService');
 const { getIO } = require('../src/socket/socket');
 const messageRepository = require('../repository/messageRepository');
+const conversationRepository = require('../repository/conversationRepository');
 
 /**
  * Gửi message
@@ -45,6 +46,19 @@ const createMessage = async (req, res) => {
                 content,
                 replyToMessageId
             );
+
+        // REST fallback cũng đồng bộ realtime cho các client đang trong conversation.
+        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
+
+        const memberIds = await conversationRepository.getConversationMemberIds(conversationId);
+        for (const memberId of memberIds) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                lastMessage: message,
+                senderId,
+                updatedAt: message.created_at
+            });
+        }
 
         return res.status(201).json({
             message: 'Gửi message thành công',
