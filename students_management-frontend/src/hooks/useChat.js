@@ -157,18 +157,43 @@ export const useChat = () => {
         };
 
         const handleConversationUpdated = async ({ conversationId, lastMessage, senderId, updatedAt, action, member, conversation }) => {
-            if (action === 'member-added' || action === 'member-removed' || action === 'member-left' || action === 'member-role-updated') {
-                if (Number(conversationId) === Number(activeId)) {
+            const sameConversation = Number(conversationId) === Number(activeId);
+            const memberId = Number(member?.user_id);
+
+            // Khi chính mình bị kick/rời nhóm, đóng conversation ngay lập tức.
+            // Không gọi refresh members trước vì request đó sẽ 403 sau khi bị remove.
+            if ((action === 'member-removed' || action === 'member-left')
+                && memberId === currentUserId
+                && sameConversation) {
+                closeRemovedGroup(
+                    conversationId,
+                    action === 'member-removed'
+                        ? 'Bạn đã bị xóa khỏi nhóm'
+                        : 'Bạn đã rời nhóm'
+                );
+                await fetchConversations();
+                return;
+            }
+
+            if (action === 'member-added' || action === 'member-removed' || action === 'member-left') {
+                if (sameConversation) {
                     await refreshConversationMembers(conversationId);
                 }
                 await fetchConversations();
+                return;
+            }
 
-                if ((action === 'member-removed' || action === 'member-left')
-                    && Number(member?.user_id) === Number(currentUserId)
-                    && Number(conversationId) === Number(activeId)) {
-                    setConversationMembers([]);
-                    setActiveId(null);
+            if (action === 'member-role-updated') {
+                // Apply the role change immediately from the realtime event.
+                // The next fetch is only for conversation-list metadata.
+                if (sameConversation && member?.user_id != null) {
+                    setConversationMembers(prev => prev.map(item =>
+                        Number(item.user_id) === memberId
+                            ? { ...item, ...member }
+                            : item
+                    ));
                 }
+                await fetchConversations();
                 return;
             }
 
