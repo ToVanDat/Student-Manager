@@ -30,6 +30,7 @@ export default function ChatPage() {
         searchResults,
         searchUsers,
         startConversation,
+        startGroupConversation,
         setTyping,
         editMessage,
         recallMessage,
@@ -103,6 +104,7 @@ export default function ChatPage() {
                                     searchUsers={searchUsers}
                                     searchResults={searchResults}
                                     onStartConversation={startConversation}
+                                    onStartGroupConversation={startGroupConversation}
                                 />
 
                                 {activeId && activeConversation ? (
