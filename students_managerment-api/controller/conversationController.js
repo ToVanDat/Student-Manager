@@ -1,5 +1,6 @@
 const conversationService = require('../service/conversationService');
 const messageRepository = require('../repository/messageRepository');
+const { getIO } = require('../src/socket/socket');
 
 const createDirectConversation = async (req, res) => {
     try {
@@ -76,6 +77,11 @@ const createGroup = async (req, res) => {
             req.body.name,
             req.body.avatarUrl || null
         );
+        const memberIds = [...new Set([Number(req.user.id), ...(Array.isArray(req.body.memberIds) ? req.body.memberIds.map(Number) : [])])];
+        for (const memberId of memberIds) {
+            getIO().to(`user:${memberId}`).emit('conversation:created', { conversation: data });
+        }
+
         return res.status(201).json({ message: 'Tạo group thành công', data });
     } catch (error) {
         const status = /ít nhất|không hợp lệ/.test(error.message) ? 400 : 404;
@@ -90,6 +96,9 @@ const addGroupMember = async (req, res) => {
             Number(req.user.id),
             Number(req.body.userId)
         );
+        getIO().to(`user:${Number(req.body.userId)}`).emit('conversation:created', {
+            conversation: { id: Number(req.params.conversationId) }
+        });
         return res.status(201).json({ message: 'Đã thêm thành viên', data });
     } catch (error) {
         const status = /quyền|role|group|không tồn tại/.test(error.message) ? 403 : 400;
