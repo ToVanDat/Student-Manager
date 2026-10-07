@@ -51,7 +51,11 @@ const createMessage = async (conversationId, senderId, content, replyToMessageId
         await client.query(updateConversationQuery, [conversationId]);
 
         await client.query('COMMIT');
-        return savedMessage;
+
+        // Trả về cùng một shape với message history để realtime reply
+        // hiển thị ngay lập tức ở cả sender và recipient.
+        const enrichedMessage = await getMessageById(savedMessage.id);
+        return enrichedMessage || savedMessage;
 
     } catch (error) {
         await client.query('ROLLBACK');
