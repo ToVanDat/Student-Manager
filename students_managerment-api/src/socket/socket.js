@@ -3,9 +3,10 @@ const jwt = require('jsonwebtoken');
 const conversationRepository = require('../../repository/conversationRepository.js');
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
+const userRepository = require('../../repository/userRepository.js');
 
 let io = null;
-const onlineUsers = new Map();
+const onlineUsers = new Map(); // userId -> Set<socketId>
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -84,19 +85,27 @@ const initSocket = (server) => {
         socket.join(`session:${sessionId}`);
         socket.join(`user:${userId}`);
 
-        const previousSocketCount = onlineUsers.get(userId) || 0;
-    onlineUsers.set(userId, previousSocketCount + 1);
+        // Một user có thể mở nhiều tab/device. Chỉ khi socket đầu tiên kết nối
+        // mới chuyển trạng thái offline -> online.
+        let userSockets = onlineUsers.get(userId);
+        const wasOffline = !userSockets || userSockets.size === 0;
 
-        // Chỉ phát ONLINE khi user thực sự chuyển từ offline -> online.
-        if (previousSocketCount === 0) {
-        try {
-            const contactIds = await conversationRepository.getConversationContactIds(userId);
-            for (const contactId of contactIds) {
-                io.to(`user:${contactId}`).emit('presence:online', { userId });
-            }
-        } catch (error) {
-            console.error('PRESENCE ONLINE ERROR:', error);
+        if (!userSockets) {
+            userSockets = new Set();
+            onlineUsers.set(userId, userSockets);
         }
+
+        userSockets.add(socket.id);
+
+        if (wasOffline) {
+            try {
+                const contactIds = await conversationRepository.getConversationContactIds(userId);
+                for (const contactId of contactIds) {
+                    io.to(`user:${contactId}`).emit('presence:online', { userId });
+                }
+            } catch (error) {
+                console.error('PRESENCE ONLINE ERROR:', error);
+            }
         }
 
         // Gửi snapshot presence cho client vừa kết nối.
@@ -574,23 +583,34 @@ const initSocket = (server) => {
         });
 
         socket.on('disconnect', async (reason) => {
-            const count = Math.max((onlineUsers.get(userId) || 1) - 1, 0);
-            if (count === 0) {
-                onlineUsers.delete(userId);
+            const userSockets = onlineUsers.get(userId);
 
-                try {
-                    const contactIds = await conversationRepository.getConversationContactIds(userId);
-                    for (const contactId of contactIds) {
-                        io.to(`user:${contactId}`).emit('presence:offline', { userId });
+            if (userSockets) {
+                userSockets.delete(socket.id);
+
+                // Chỉ khi socket cuối cùng của user biến mất mới phát OFFLINE
+                // và ghi last_seen_at.
+                if (userSockets.size === 0) {
+                    onlineUsers.delete(userId);
+
+                    try {
+                        await userRepository.updateLastSeenAt(userId);
+                    } catch (error) {
+                        console.error('UPDATE LAST SEEN ERROR:', error);
                     }
-                } catch (error) {
-                    console.error('PRESENCE OFFLINE ERROR:', error);
+
+                    try {
+                        const contactIds = await conversationRepository.getConversationContactIds(userId);
+                        for (const contactId of contactIds) {
+                            io.to(`user:${contactId}`).emit('presence:offline', { userId });
+                        }
+                    } catch (error) {
+                        console.error('PRESENCE OFFLINE ERROR:', error);
+                    }
                 }
-            } else {
-                onlineUsers.set(userId, count);
             }
 
-            console.log(`Socket disconnected: user=${userId}, reason=${reason}`);
+            console.log(`Socket disconnected: user=${userId}, socket=${socket.id}, reason=${reason}`);
         });
     });
 
