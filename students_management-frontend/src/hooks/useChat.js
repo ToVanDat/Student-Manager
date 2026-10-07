@@ -57,7 +57,6 @@ export const useChat = () => {
 
                 setMessages(res.data?.data || []);
                 setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
-            setMessagePage(nextPage);
                 setMessagePage(1);
                 await chatApi.markAsRead(activeId);
                 if (socket.connected) socket.emit('message:read', { conversationId: activeId });
@@ -510,6 +509,7 @@ export const useChat = () => {
                 return [...uniqueOlder, ...prev];
             });
             setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
+            setMessagePage(nextPage);
         } catch (error) {
             console.error('Không thể tải thêm messages:', error);
         } finally {
