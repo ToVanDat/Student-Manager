@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
 
 const formatFileSize = (size) => {
@@ -33,6 +34,7 @@ export default function MessageBubble({
     const [hovered, setHovered] = useState(false);
     const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
     const menuRef = useRef(null);
+    const reactionAreaRef = useRef(null);
 
     const isRecalled = Boolean(message.is_recalled ?? message.isRecalled);
     const isDeleted = Boolean(message.deleted_at ?? message.deletedAt);
@@ -84,38 +86,15 @@ export default function MessageBubble({
             <div className={`relative max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
                 {hovered && !isDeleted && !isRecalled && (
                     <div
-                        className={`absolute z-50 -top-11 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-0' : 'left-0'}`}
+                        ref={reactionAreaRef}
+                        className={`absolute z-50 -top-12 ${isOwn ? 'right-0' : 'left-0'}`}
                         onMouseEnter={() => setHovered(true)}
+                        onMouseLeave={() => {
+                            if (!reactionPickerOpen) setHovered(false);
+                        }}
                     >
-                        {quickReactions.slice(0, 6).map(emoji => (
-                            <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => onToggleReaction?.(message.id, emoji)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
-                                title={`React ${emoji}`}
-                            >
-                                {emoji}
-                            </button>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={() => setReactionPickerOpen(prev => !prev)}
-                            className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
-                            title="Thêm reaction"
-                        >
-                            +
-                        </button>
-                    </div>
-                )}
-
-                {reactionPickerOpen && (
-                    <div
-                        className={`absolute z-[60] -top-[105px] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-0' : 'left-0'}`}
-                        onMouseEnter={() => setHovered(true)}
-                    >
-                        <div className="grid grid-cols-7 gap-1">
-                            {quickReactions.map(emoji => (
+                        <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
+                            {quickReactions.slice(0, 6).map(emoji => (
                                 <button
                                     key={emoji}
                                     type="button"
@@ -123,12 +102,52 @@ export default function MessageBubble({
                                         onToggleReaction?.(message.id, emoji);
                                         setReactionPickerOpen(false);
                                     }}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl text-xl hover:bg-slate-100 hover:scale-110 dark:hover:bg-slate-700"
+                                    className="flex h-8 w-8 items-center justify-center rounded-full text-[20px] leading-none transition-transform duration-150 hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                    title={`Thả ${emoji}`}
                                 >
                                     {emoji}
                                 </button>
                             ))}
+
+                            <div className="mx-1 h-6 w-px bg-slate-200 dark:bg-slate-600" />
+
+                            <button
+                                type="button"
+                                onMouseDown={event => event.preventDefault()}
+                                onClick={() => setReactionPickerOpen(prev => !prev)}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                                    reactionPickerOpen
+                                        ? 'bg-slate-100 text-blue-600 dark:bg-slate-700'
+                                        : 'text-slate-500'
+                                }`}
+                                title="Thêm reaction"
+                                aria-label="Thêm reaction"
+                            >
+                                +
+                            </button>
                         </div>
+
+                        {reactionPickerOpen && (
+                            <div
+                                className={`absolute bottom-full mb-2 z-[70] ${isOwn ? 'right-0' : 'left-0'}`}
+                                onMouseEnter={() => setHovered(true)}
+                                onMouseDown={event => event.stopPropagation()}
+                            >
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+                                    <EmojiPicker
+                                        onEmojiClick={(emojiData) => {
+                                            onToggleReaction?.(message.id, emojiData.emoji);
+                                            setReactionPickerOpen(false);
+                                            setHovered(true);
+                                        }}
+                                        width={330}
+                                        height={380}
+                                        lazyLoadEmojis
+                                        previewConfig={{ showPreview: false }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -285,7 +304,9 @@ export default function MessageBubble({
                 </div>
 
                 {groupedReactions.length > 0 && (
-                    <div className={`absolute -bottom-3 z-20 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 shadow-sm dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}>
+                    <div
+                        className={`absolute -bottom-3 z-20 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}
+                    >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
                             return (
@@ -293,13 +314,19 @@ export default function MessageBubble({
                                     key={emoji}
                                     type="button"
                                     onClick={() => onToggleReaction?.(message.id, emoji)}
-                                    className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 ${
-                                        mine ? 'ring-1 ring-blue-400 bg-blue-50 dark:bg-blue-950/50' : ''
+                                    className={`relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm transition hover:scale-110 ${
+                                        mine
+                                            ? 'bg-blue-50 ring-1 ring-blue-400 dark:bg-blue-950/50'
+                                            : 'hover:bg-slate-100 dark:hover:bg-slate-700'
                                     }`}
                                     title={`${reactions.length} người thả ${emoji}`}
                                 >
                                     <span>{emoji}</span>
-                                    {reactions.length > 1 && <span className="font-medium">{reactions.length}</span>}
+                                    {reactions.length > 1 && (
+                                        <span className="ml-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-300">
+                                            {reactions.length}
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
