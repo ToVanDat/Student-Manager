@@ -21,41 +21,34 @@ CREATE TABLE IF NOT EXISTS message_reactions (
 
 -- The table may already exist from an older chat migration.
 -- Older versions used the column name "reaction"; the application uses "emoji".
-DO $
+DO $$
 BEGIN
     IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'message_reactions'
-          AND column_name = 'reaction'
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'reaction'
     ) AND NOT EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'message_reactions'
-          AND column_name = 'emoji'
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'emoji'
     ) THEN
         ALTER TABLE message_reactions RENAME COLUMN reaction TO emoji;
     ELSIF NOT EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'message_reactions'
-          AND column_name = 'emoji'
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'emoji'
     ) THEN
         ALTER TABLE message_reactions ADD COLUMN emoji VARCHAR(32);
     END IF;
-END $;
 
--- If both columns existed during an earlier partial migration, preserve old data.
-UPDATE message_reactions
-SET emoji = reaction
-WHERE emoji IS NULL
-  AND reaction IS NOT NULL
-  AND EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_name = 'message_reactions'
-        AND column_name = 'reaction'
-  );
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'reaction'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'emoji'
+    ) THEN
+        EXECUTE 'UPDATE message_reactions SET emoji = reaction WHERE emoji IS NULL AND reaction IS NOT NULL';
+    END IF;
+END $$;
+
 -- Messenger/Zalo style: one reaction per user per message.
 -- If the migration is re-run after the old schema, keep the newest reaction.
 DELETE FROM message_reactions a
