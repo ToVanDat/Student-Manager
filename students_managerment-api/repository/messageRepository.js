@@ -135,12 +135,12 @@ const getMessagesByConversation = async (conversationId, userId, page = 1, limit
               WHERE md.message_id = m.id
                 AND md.user_id = $2
           )
-        ORDER BY m.created_at ASC, m.id ASC
+        ORDER BY m.created_at DESC, m.id DESC
         LIMIT $3 OFFSET $4;
     `;
 
     const { rows } = await pool.query(query, [conversationId, userId, safeLimit, offset]);
-    return rows;
+    return rows.reverse();
 };
 
 /**
