@@ -300,13 +300,33 @@ const updateGroupMemberRole = async (req, res) => {
             targetUserId,
             req.body.role
         );
-        for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
-                conversationId,
-                action: 'member-role-updated',
-                member: data
-            });
+
+        const io = getIO();
+
+        if (req.body.role === 'owner') {
+            // Ownership transfer is atomic in the repository. Only emit after COMMIT.
+            for (const memberId of memberIds) {
+                io.to(`user:${memberId}`).emit('conversation:updated', {
+                    conversationId,
+                    action: 'member-role-updated',
+                    member: data.previousOwner
+                });
+                io.to(`user:${memberId}`).emit('conversation:updated', {
+                    conversationId,
+                    action: 'member-role-updated',
+                    member: data.newOwner
+                });
+            }
+        } else {
+            for (const memberId of memberIds) {
+                io.to(`user:${memberId}`).emit('conversation:updated', {
+                    conversationId,
+                    action: 'member-role-updated',
+                    member: data
+                });
+            }
         }
+
         const roleLabel = { owner: 'trưởng nhóm', admin: 'quản trị viên', member: 'thành viên' }[req.body.role] || req.body.role;
         await createAndEmitSystemMessage(
             conversationId,
