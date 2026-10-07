@@ -175,6 +175,22 @@ const getConversationInfo = async (conversationId) => {
     return rows[0] || null;
 };
 
+const updateGroupConversation = async (conversationId, name, avatarUrl = null) => {
+    const { rows } = await pool.query(
+        `
+            UPDATE conversations
+            SET name = $2,
+                avatar_url = $3,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND type = 'group'
+            RETURNING id, type, name, avatar_url, created_at, updated_at;
+        `,
+        [conversationId, name, avatarUrl]
+    );
+    return rows[0] || null;
+};
+
 const getConversationMemberIds = async (conversationId) => {
     const { rows } = await pool.query(
         `
@@ -317,5 +333,6 @@ module.exports = {
     removeMember,
     getConversationMemberIds,
     getConversationContactIds,
+    updateGroupConversation,
     createGroupConversation
 };
