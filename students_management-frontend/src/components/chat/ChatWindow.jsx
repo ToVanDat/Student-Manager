@@ -5,7 +5,8 @@ import {
     Send,
     Paperclip,
     Smile,
-    Reply
+    Reply,
+    X
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -313,21 +314,28 @@ export default function ChatWindow({
             {/* ================= INPUT AREA ================= */}
 
             {replyTo && (
-                <div className="mx-4 mb-1 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
-                    <div className="h-8 w-1 shrink-0 rounded-full bg-blue-500" />
-                    <Reply size={15} className="shrink-0 text-blue-500" />
-                    <div className="min-w-0 flex-1">
-                        <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">Đang trả lời</p>
-                        <p className="truncate text-xs text-slate-600 dark:text-slate-300">
-                            {replyTo.content || 'Tin nhắn có tệp'}
+                <div className="mx-5 mb-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 px-3 py-2.5 shadow-sm dark:border-blue-900/60 dark:bg-blue-950/30">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 dark:bg-blue-900/50 dark:text-blue-300">
+                        <Reply size={16} />
+                    </div>
+
+                    <div className="min-w-0 flex-1 border-l-2 border-blue-400 pl-3">
+                        <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                            Đang trả lời
+                        </p>
+                        <p className="truncate text-xs leading-5 text-slate-600 dark:text-slate-300">
+                            {replyTo.content || '📎 Tin nhắn có tệp đính kèm'}
                         </p>
                     </div>
+
                     <button
                         type="button"
                         onClick={() => setReplyTo(null)}
-                        className="rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700"
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                        title="Hủy trả lời"
+                        aria-label="Hủy trả lời"
                     >
-                        Huỷ
+                        <X size={16} />
                     </button>
                 </div>
             )}
