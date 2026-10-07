@@ -25,6 +25,7 @@ export default function ChatPage() {
         sendMessage,
         sendAttachment,
         downloadFile,
+        deleteFile,
         isTyping,
         searchResults,
         searchUsers,
