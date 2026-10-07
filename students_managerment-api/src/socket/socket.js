@@ -451,6 +451,12 @@ const initSocket = (server) => {
                     return socket.emit('message:error', { message: 'Bạn không thuộc conversation này' });
                 }
 
+                if (message.is_recalled || message.deleted_at) {
+                    return socket.emit('message:error', {
+                        message: 'Không thể reaction vào message đã thu hồi hoặc xoá'
+                    });
+                }
+
                 const reaction = await messageRepository.addReaction(id, userId, value);
                 io.to(`conversation:${message.conversation_id}`).emit('message:reaction:updated', {
                     messageId: id,
