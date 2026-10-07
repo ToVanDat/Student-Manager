@@ -27,7 +27,6 @@ export default function ChatWindow({
     onRecall,
     onDeleteForMe,
     onDeleteForEveryone,
-    onReply,
     onToggleReaction,
     hasMoreMessages,
     loadingOlder,
