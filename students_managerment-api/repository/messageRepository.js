@@ -80,6 +80,7 @@ const getMessagesByConversation = async (conversationId, userId, page = 1, limit
             conversation_id,
             sender_id,
             content,
+            message_type,
             is_read,
             read_at,
             is_recalled,
@@ -157,6 +158,7 @@ const getMessageById = async (messageId) => {
             conversation_id,
             sender_id,
             content,
+            message_type,
             is_read,
             read_at,
             is_recalled,
@@ -317,6 +319,32 @@ const deleteMessageForEveryone = async (messageId, userId) => {
     return rows[0] || null;
 };
 
+const createSystemMessage = async (conversationId, actorId, content) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(
+            `
+                INSERT INTO messages (conversation_id, sender_id, content, message_type)
+                VALUES ($1, $2, $3, 'system')
+                RETURNING id;
+            `,
+            [conversationId, actorId, content]
+        );
+        await client.query(
+            `UPDATE conversations SET updated_at = NOW() WHERE id = $1`,
+            [conversationId]
+        );
+        await client.query('COMMIT');
+        return getMessageById(rows[0].id);
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const markMessagesAsRead = async (conversationId, userId) => {
     const query = `
         UPDATE messages
@@ -383,5 +411,6 @@ module.exports = {
     deleteMessageForEveryone,
     markMessagesAsRead,
     addReaction,
-    removeReaction
+    removeReaction,
+    createSystemMessage
 };
