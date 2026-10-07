@@ -11,6 +11,7 @@ import EmojiPicker from 'emoji-picker-react';
 
 import MessageBubble from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
+import GroupInfoPanel from './GroupInfoPanel';
 
 export default function ChatWindow({
     activeConversation,
@@ -30,7 +31,14 @@ export default function ChatWindow({
     onToggleReaction,
     hasMoreMessages,
     loadingOlder,
-    onLoadOlder
+    onLoadOlder,
+    conversationMembers = [],
+    searchUsers,
+    searchResults = [],
+    onAddGroupMember,
+    onRemoveGroupMember,
+    onUpdateGroupMemberRole,
+    onLeaveGroup
 }) {
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
@@ -38,6 +46,7 @@ export default function ChatWindow({
     const typingTimer = useRef(null);
     const fileInputRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const emojiPickerRef = useRef(null);
 
@@ -153,7 +162,7 @@ export default function ChatWindow({
     };
 
     return (
-        <section className="flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
+        <section className="relative flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
 
             {/* ================= HEADER ================= */}
 
@@ -204,7 +213,13 @@ export default function ChatWindow({
 
                     <button
                         type="button"
+                        onClick={() => {
+                            if (activeConversation.type === 'group') {
+                                setShowGroupInfo(true);
+                            }
+                        }}
                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                        title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
                     >
                         <MoreVertical size={18} />
                     </button>
@@ -212,6 +227,20 @@ export default function ChatWindow({
                 </div>
 
             </header>
+
+            <GroupInfoPanel
+                open={showGroupInfo}
+                conversation={activeConversation}
+                members={conversationMembers}
+                currentUserId={currentUserId}
+                searchUsers={searchUsers}
+                searchResults={searchResults}
+                onAddMember={onAddGroupMember}
+                onRemoveMember={onRemoveGroupMember}
+                onUpdateRole={onUpdateGroupMemberRole}
+                onLeaveGroup={onLeaveGroup}
+                onClose={() => setShowGroupInfo(false)}
+            />
 
             {/* ================= MESSAGES ================= */}
 
