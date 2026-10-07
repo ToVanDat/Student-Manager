@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
@@ -33,9 +33,6 @@ export default function MessageBubble({
     const [editContent, setEditContent] = useState(content || '');
     const [hovered, setHovered] = useState(false);
     const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
-    const menuRef = useRef(null);
-    const reactionAreaRef = useRef(null);
-    const hoverTimeoutRef = useRef(null);
 
     const isRecalled = Boolean(message.is_recalled ?? message.isRecalled);
     const isDeleted = Boolean(message.deleted_at ?? message.deletedAt);
@@ -43,14 +40,8 @@ export default function MessageBubble({
     const canRecall = isOwn && !isRecalled && !isDeleted;
 
     useEffect(() => {
-        return () => {
-            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        };
-    }, []);
-
-    useEffect(() => {
         const close = event => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
+            if (!event.target.closest?.('[data-message-menu]')) {
                 setMenuOpen(false);
             }
         };
@@ -81,22 +72,17 @@ export default function MessageBubble({
 
     return (
         <div
-            className={`flex items-end gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
-            onMouseEnter={() => {
-                if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                setHovered(true);
-            }}
+            className={`flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
+            onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => {
-                if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                hoverTimeoutRef.current = setTimeout(() => {
+                if (!reactionPickerOpen) {
                     setHovered(false);
-                    setReactionPickerOpen(false);
-                }, 180);
+                }
             }}
         >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
-            <div className={`relative max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
+            <div className={`relative max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
                 <button
                     type="button"
                     onClick={() => setMenuOpen(prev => !prev)}
@@ -108,7 +94,7 @@ export default function MessageBubble({
 
                 {menuOpen && (
                     <div
-                        ref={menuRef}
+                        data-message-menu
                         className={`absolute z-40 top-7 ${isOwn ? 'right-0' : 'left-0'} min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800`}
                     >
                         <button type="button" onClick={() => {
@@ -147,7 +133,7 @@ export default function MessageBubble({
                             <button type="button" onClick={() => {
                                 setMenuOpen(false);
                                 onDeleteForEveryone?.(message.id);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                                 <Trash2 size={15} /> Xoá ở mọi người
                             </button>
                         )}
@@ -251,18 +237,8 @@ export default function MessageBubble({
 
                 {hovered && !isOwn && !isDeleted && !isRecalled && (
                     <div
-                        ref={reactionAreaRef}
-                        className={`absolute z-50 top-full mt-2 ${isOwn ? 'right-0' : 'left-0'}`}
-                        onMouseEnter={() => {
-                            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                            setHovered(true);
-                        }}
-                        onMouseLeave={() => {
-                            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-                            if (!reactionPickerOpen) {
-                                hoverTimeoutRef.current = setTimeout(() => setHovered(false), 180);
-                            }
-                        }}
+                        className="relative z-50 mt-2 self-start"
+                        onMouseEnter={() => setHovered(true)}
                     >
                         <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
                             {quickReactions.slice(0, 6).map(emoji => (
@@ -285,7 +261,10 @@ export default function MessageBubble({
                             <button
                                 type="button"
                                 onMouseDown={event => event.preventDefault()}
-                                onClick={() => setReactionPickerOpen(prev => !prev)}
+                                onClick={() => {
+                                    setReactionPickerOpen(prev => !prev);
+                                    setHovered(true);
+                                }}
                                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
                                     reactionPickerOpen
                                         ? 'bg-slate-100 text-blue-600 dark:bg-slate-700'
@@ -300,7 +279,7 @@ export default function MessageBubble({
 
                         {reactionPickerOpen && (
                             <div
-                                className={`absolute bottom-full mb-2 z-[70] ${isOwn ? 'right-0' : 'left-0'}`}
+                                className="absolute left-0 top-full z-[70] mt-2"
                                 onMouseEnter={() => setHovered(true)}
                                 onMouseDown={event => event.stopPropagation()}
                             >
@@ -309,7 +288,6 @@ export default function MessageBubble({
                                         onEmojiClick={(emojiData) => {
                                             onToggleReaction?.(message.id, emojiData.emoji);
                                             setReactionPickerOpen(false);
-                                            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
                                             setHovered(true);
                                         }}
                                         width={330}
