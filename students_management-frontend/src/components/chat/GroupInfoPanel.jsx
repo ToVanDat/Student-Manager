@@ -143,7 +143,7 @@ export default function GroupInfoPanel({
                             Thông tin nhóm
                         </h3>
                         <p className="text-xs text-slate-400">
-                            {members.length} thành viên
+                            {members.length} thành viên · {members.filter(member => onlineUserIds.has(Number(member.user_id))).length} đang online
                         </p>
                     </div>
 
@@ -298,10 +298,10 @@ export default function GroupInfoPanel({
                                                 src={member.avatar}
                                                 size="md"
                                             />
-                                            {member.last_seen_at && (
+                                            {onlineUserIds.has(memberId) && (
                                                 <span
                                                     className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"
-                                                    title="Đã từng hoạt động"
+                                                    title="Đang online"
                                                 />
                                             )}
                                         </div>
@@ -323,7 +323,7 @@ export default function GroupInfoPanel({
                                                 ) : (
                                                     <UserRound size={12} />
                                                 )}
-                                                <span>{ROLE_LABELS[member.role] || ROLE_LABELS.member}</span>
+                                                <span>{onlineUserIds.has(memberId) ? 'Đang online' : ROLE_LABELS[member.role] || ROLE_LABELS.member}</span>
                                             </div>
                                         </div>
 
