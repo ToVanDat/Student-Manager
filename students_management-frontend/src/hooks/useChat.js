@@ -616,6 +616,15 @@ export const useChat = () => {
         }
     }, []);
 
+    const refreshConversationMembers = useCallback(async (conversationId = activeId) => {
+        if (!conversationId) return [];
+
+        const res = await chatApi.getConversationMembers(conversationId);
+        const members = res.data?.data || [];
+        setConversationMembers(members);
+        return members;
+    }, [activeId]);
+
     const startGroupConversation = useCallback(async (name, memberIds) => {
         const res = await chatApi.createGroupConversation(name, memberIds);
         const conversation = res.data?.data;
@@ -625,6 +634,45 @@ export const useChat = () => {
 
         return conversation;
     }, [fetchConversations]);
+
+    const addGroupMember = useCallback(async (userId) => {
+        if (!activeId || !userId) return;
+
+        const res = await chatApi.addGroupMember(activeId, userId);
+        await refreshConversationMembers(activeId);
+        await fetchConversations();
+
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
+    const removeGroupMember = useCallback(async (userId) => {
+        if (!activeId || !userId) return;
+
+        const res = await chatApi.removeGroupMember(activeId, userId);
+        await refreshConversationMembers(activeId);
+        await fetchConversations();
+
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
+    const leaveGroup = useCallback(async () => {
+        if (!activeId) return;
+
+        await chatApi.leaveGroup(activeId);
+        setConversationMembers([]);
+        setActiveId(null);
+        await fetchConversations();
+    }, [activeId, fetchConversations]);
+
+    const updateGroupMemberRole = useCallback(async (userId, role) => {
+        if (!activeId || !userId || !role) return;
+
+        const res = await chatApi.updateGroupMemberRole(activeId, userId, role);
+        await refreshConversationMembers(activeId);
+        await fetchConversations();
+
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
 
     const startConversation = useCallback(async (targetUserId) => {
         const res = await chatApi.createDirectConversation(targetUserId);
@@ -649,6 +697,10 @@ export const useChat = () => {
         activeId,
         conversationMembers,
         setActiveId,
+        addGroupMember,
+        removeGroupMember,
+        leaveGroup,
+        updateGroupMemberRole,
         messages,
         onlineUserIds,
         loading,
