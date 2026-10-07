@@ -85,67 +85,10 @@ export default function MessageBubble({
                     }
                 }}
             >
-                <button
-                    type="button"
-                    onClick={() => setMenuOpen(prev => !prev)}
-                    className={`absolute -top-2 ${isOwn ? '-left-9' : '-right-9'} p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800`}
-                    title="Tuỳ chọn message"
-                >
-                    <MoreHorizontal size={17} />
-                </button>
-
-                {menuOpen && (
-                    <div
-                        data-message-menu
-                        className={`absolute z-40 top-7 ${isOwn ? 'right-0' : 'left-0'} min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800`}
-                    >
-                        <button type="button" onClick={() => {
-                            setMenuOpen(false);
-                            onReply?.(message);
-                        }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                            <Reply size={15} /> Trả lời
-                        </button>
-
-                        {canEdit && (
-                            <button type="button" onClick={() => {
-                                setEditing(true);
-                                setMenuOpen(false);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                <Pencil size={15} /> Chỉnh sửa
-                            </button>
-                        )}
-
-                        {canRecall && (
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onRecall?.(message.id);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                <RotateCcw size={15} /> Thu hồi
-                            </button>
-                        )}
-
-                        <button type="button" onClick={() => {
-                            setMenuOpen(false);
-                            onDeleteForMe?.(message.id);
-                        }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                            <Trash2 size={15} /> Xoá ở phía tôi
-                        </button>
-
-                        {isOwn && !isRecalled && !isDeleted && (
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onDeleteForEveryone?.(message.id);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
-                                <Trash2 size={15} /> Xoá ở mọi người
-                            </button>
-                        )}
-                    </div>
-                )}
-
-                <div className={`rounded-2xl px-4 py-2.5 shadow-sm text-sm ${
+                <div className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                     isOwn
-                        ? 'bg-blue-600 text-white rounded-br-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-xs'
+                        ? 'bg-blue-600 text-white rounded-br-[5px]'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-[5px]'
                 }`}>
                     {message.reply_to && !isDeleted && !isRecalled && (
                         <div className="mb-2 rounded-lg border-l-2 border-white/50 bg-black/5 px-2.5 py-1.5 text-xs opacity-80">
@@ -237,13 +180,18 @@ export default function MessageBubble({
                     </div>
                 </div>
 
-                {hovered && !isOwn && !isDeleted && !isRecalled && (
+                {hovered && !isDeleted && !isRecalled && (
                     <div
-                        className="absolute left-0 top-full z-50 pt-2"
+                        className={`absolute top-1/2 z-50 -translate-y-1/2 ${
+                            isOwn ? 'right-full mr-2' : 'left-full ml-2'
+                        }`}
                         onMouseEnter={() => setHovered(true)}
+                        onMouseLeave={() => {
+                            if (!reactionPickerOpen && !menuOpen) setHovered(false);
+                        }}
                     >
-                        <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
-                            {quickReactions.slice(0, 6).map(emoji => (
+                        <div className="flex items-center gap-0.5 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-1 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
+                            {quickReactions.slice(0, 4).map(emoji => (
                                 <button
                                     key={emoji}
                                     type="button"
@@ -252,37 +200,52 @@ export default function MessageBubble({
                                         setReactionPickerOpen(false);
                                         setHovered(false);
                                     }}
-                                    className="flex h-8 w-8 items-center justify-center rounded-full text-[20px] leading-none transition-transform duration-150 hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                    className="flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none transition-transform hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
                                     title={`Thả ${emoji}`}
                                 >
                                     {emoji}
                                 </button>
                             ))}
 
-                            <div className="mx-1 h-6 w-px bg-slate-200 dark:bg-slate-600" />
-
                             <button
                                 type="button"
                                 onMouseDown={event => event.preventDefault()}
                                 onClick={() => {
                                     setReactionPickerOpen(prev => !prev);
+                                    setMenuOpen(false);
                                     setHovered(true);
                                 }}
-                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
-                                    reactionPickerOpen
-                                        ? 'bg-slate-100 text-blue-600 dark:bg-slate-700'
-                                        : 'text-slate-500'
-                                }`}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-base font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-700"
                                 title="Thêm reaction"
                                 aria-label="Thêm reaction"
                             >
                                 +
                             </button>
+
+                            <div className="mx-0.5 h-5 w-px bg-slate-200 dark:bg-slate-600" />
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMenuOpen(prev => !prev);
+                                    setReactionPickerOpen(false);
+                                    setHovered(true);
+                                }}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 ${
+                                    menuOpen ? 'bg-slate-100 text-slate-800 dark:bg-slate-700' : ''
+                                }`}
+                                title="Tuỳ chọn"
+                                aria-label="Tuỳ chọn"
+                            >
+                                <MoreHorizontal size={18} />
+                            </button>
                         </div>
 
                         {reactionPickerOpen && (
                             <div
-                                className="absolute left-0 top-full z-[70] pt-2"
+                                className={`absolute top-full z-[70] pt-2 ${
+                                    isOwn ? 'right-0' : 'left-0'
+                                }`}
                                 onMouseEnter={() => setHovered(true)}
                                 onMouseDown={event => event.stopPropagation()}
                             >
@@ -299,6 +262,56 @@ export default function MessageBubble({
                                         previewConfig={{ showPreview: false }}
                                     />
                                 </div>
+                            </div>
+                        )}
+
+                        {menuOpen && (
+                            <div
+                                data-message-menu
+                                className={`absolute top-full z-[80] mt-2 min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800 ${
+                                    isOwn ? 'right-0' : 'left-0'
+                                }`}
+                            >
+                                <button type="button" onClick={() => {
+                                    setMenuOpen(false);
+                                    onReply?.(message);
+                                }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
+                                    <Reply size={15} /> Trả lời
+                                </button>
+
+                                {canEdit && (
+                                    <button type="button" onClick={() => {
+                                        setEditing(true);
+                                        setMenuOpen(false);
+                                    }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
+                                        <Pencil size={15} /> Chỉnh sửa
+                                    </button>
+                                )}
+
+                                {canRecall && (
+                                    <button type="button" onClick={() => {
+                                        setMenuOpen(false);
+                                        onRecall?.(message.id);
+                                    }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
+                                        <RotateCcw size={15} /> Thu hồi
+                                    </button>
+                                )}
+
+                                <button type="button" onClick={() => {
+                                    setMenuOpen(false);
+                                    onDeleteForMe?.(message.id);
+                                }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
+                                    <Trash2 size={15} /> Xoá ở phía tôi
+                                </button>
+
+                                {isOwn && !isRecalled && !isDeleted && (
+                                    <button type="button" onClick={() => {
+                                        setMenuOpen(false);
+                                        onDeleteForEveryone?.(message.id);
+                                    }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                        <Trash2 size={15} /> Xoá ở mọi người
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>
