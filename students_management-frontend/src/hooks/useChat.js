@@ -429,7 +429,7 @@ export const useChat = () => {
             socket.off('message:file:deleted', handleMessageFileDeleted);
             socket.off('message:error', handleMessageError);
         };
-    }, [activeId, fetchConversations, currentUserId]);
+    }, [activeId, fetchConversations, currentUserId, refreshConversationMembers]);
 
     const editMessage = useCallback(async (messageId, content) => {
         const text = typeof content === 'string' ? content.trim() : '';
