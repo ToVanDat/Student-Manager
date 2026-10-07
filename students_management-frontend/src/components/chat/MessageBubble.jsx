@@ -87,7 +87,7 @@ export default function MessageBubble({
                 {hovered && !isDeleted && !isRecalled && (
                     <div
                         ref={reactionAreaRef}
-                        className={`absolute z-50 -top-12 ${isOwn ? 'right-0' : 'left-0'}`}
+                        className={`absolute z-50 top-full mt-2 ${isOwn ? 'right-0' : 'left-0'}`}
                         onMouseEnter={() => setHovered(true)}
                         onMouseLeave={() => {
                             if (!reactionPickerOpen) setHovered(false);
