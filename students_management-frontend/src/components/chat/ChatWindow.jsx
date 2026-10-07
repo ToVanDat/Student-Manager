@@ -295,7 +295,10 @@ export default function ChatWindow({
                         onDeleteForEveryone={onDeleteForEveryone}
                         onDownloadFile={onDownloadFile}
                         onDeleteFile={onDeleteFile}
-                        onReply={onReply ? (message) => { setReplyTo(message); onReply(message); } : undefined}
+                        onReply={(message) => {
+                            setReplyTo(message);
+                            setInput(current => current);
+                        }}
                         onToggleReaction={onToggleReaction}
                         currentUserId={currentUserId}
                     />
@@ -314,15 +317,22 @@ export default function ChatWindow({
             {/* ================= INPUT AREA ================= */}
 
             {replyTo && (
-                <div className="border-t border-slate-100 dark:border-slate-800 px-5 py-2 bg-slate-50 dark:bg-slate-800/60 flex items-center gap-3">
-                    <Reply size={16} className="text-blue-500 shrink-0" />
+                <div className="mx-4 mb-1 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div className="h-8 w-1 shrink-0 rounded-full bg-blue-500" />
+                    <Reply size={15} className="shrink-0 text-blue-500" />
                     <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-slate-400">Đang trả lời</p>
-                        <p className="truncate text-sm text-slate-700 dark:text-slate-200">
+                        <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">Đang trả lời</p>
+                        <p className="truncate text-xs text-slate-600 dark:text-slate-300">
                             {replyTo.content || 'Tin nhắn có tệp'}
                         </p>
                     </div>
-                    <button type="button" onClick={() => setReplyTo(null)} className="text-xs text-slate-500 hover:text-slate-800">Huỷ</button>
+                    <button
+                        type="button"
+                        onClick={() => setReplyTo(null)}
+                        className="rounded-full px-2 py-1 text-xs text-slate-400 hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-slate-700"
+                    >
+                        Huỷ
+                    </button>
                 </div>
             )}
 
