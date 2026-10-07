@@ -372,6 +372,12 @@ const addReaction = async (messageId, userId, emoji) => {
         throw error;
     }
 
+    if (Number(message.sender_id) === Number(userId)) {
+        const error = new Error('Không thể thả reaction vào message của chính bạn');
+        error.statusCode = 400;
+        throw error;
+    }
+
     if (typeof emoji !== 'string' || !emoji.trim() || emoji.trim().length > 32) {
         const error = new Error('Emoji không hợp lệ');
         error.statusCode = 400;
