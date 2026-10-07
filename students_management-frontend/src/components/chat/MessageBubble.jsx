@@ -91,9 +91,17 @@ export default function MessageBubble({
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-[5px]'
                 }`}>
                     {message.reply_to && !isDeleted && !isRecalled && (
-                        <div className="mb-2 rounded-lg border-l-2 border-white/50 bg-black/5 px-2.5 py-1.5 text-xs opacity-80">
-                            <p className="font-medium">Tin nhắn được trả lời</p>
-                            <p className="truncate">{message.reply_to.content || 'Tin nhắn có tệp'}</p>
+                        <div className={`mb-2 overflow-hidden rounded-xl border-l-2 px-3 py-2 text-xs ${
+                            isOwn
+                                ? 'border-white/60 bg-white/10 text-blue-50'
+                                : 'border-slate-400 bg-black/5 text-slate-600 dark:border-slate-500 dark:bg-white/5 dark:text-slate-300'
+                        }`}>
+                            <p className="mb-0.5 font-semibold">
+                                Tin nhắn được trả lời
+                            </p>
+                            <p className="truncate opacity-90">
+                                {message.reply_to.content || 'Tin nhắn có tệp'}
+                            </p>
                         </div>
                     )}
 
@@ -319,7 +327,7 @@ export default function MessageBubble({
 
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`relative z-20 mt-2 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'self-end mr-2' : 'self-start ml-2'}`}
+                        className={`absolute -bottom-3 z-30 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
