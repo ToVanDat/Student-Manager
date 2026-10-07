@@ -1,5 +1,6 @@
 const messageService = require('../service/messageService');
 const { getIO } = require('../src/socket/socket');
+const messageRepository = require('../repository/messageRepository');
 
 /**
  * Gửi message
@@ -397,15 +398,8 @@ const addReaction = async (req, res) => {
         }
 
         const reaction = await messageService.addReaction(messageId, userId, emoji);
-        const message = await messageService.getMessagesByConversation(
-            Number((await messageService.getMessagesByConversation(messageId, userId, 1, 1))[0]?.conversation_id || 0),
-            userId,
-            1,
-            1
-        ).catch(() => []);
-
         const io = getIO();
-        const target = await require('../repository/messageRepository').getMessageById(messageId);
+        const target = await messageRepository.getMessageById(messageId);
         io.to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
             messageId,
             conversationId: target.conversation_id,
@@ -430,7 +424,7 @@ const removeReaction = async (req, res) => {
         }
 
         const reaction = await messageService.removeReaction(messageId, userId, decodeURIComponent(emoji));
-        const target = await require('../repository/messageRepository').getMessageById(messageId);
+        const target = await messageRepository.getMessageById(messageId);
         getIO().to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
             messageId,
             conversationId: target.conversation_id,
