@@ -33,7 +33,11 @@ export default function ChatPage() {
         editMessage,
         recallMessage,
         deleteMessageForMe,
-        deleteMessageForEveryone
+        deleteMessageForEveryone,
+        loadOlderMessages,
+        hasMoreMessages,
+        loadingOlder,
+        toggleReaction
     } = useChat();
 
     const activeConversation = conversations.find(
@@ -114,6 +118,11 @@ export default function ChatPage() {
                                         onRecall={recallMessage}
                                         onDeleteForMe={deleteMessageForMe}
                                         onDeleteForEveryone={deleteMessageForEveryone}
+                                        onReply={() => {}}
+                                        onToggleReaction={toggleReaction}
+                                        hasMoreMessages={hasMoreMessages}
+                                        loadingOlder={loadingOlder}
+                                        onLoadOlder={loadOlderMessages}
                                     />
                                 ) : (
                                     <EmptyChat />
