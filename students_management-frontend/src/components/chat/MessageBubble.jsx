@@ -271,7 +271,7 @@ export default function MessageBubble({
                     </div>
                 </div>
 
-                {hovered && !isDeleted && !isRecalled && (
+                {!isOwn && hovered && !isDeleted && !isRecalled && (
                     <div
                         className={`absolute z-50 ${groupedReactions.length > 0 ? 'bottom-7' : '-bottom-11'} ${isOwn ? 'right-0' : 'left-0'}`}
                         onMouseEnter={keepHovered}
