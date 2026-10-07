@@ -17,6 +17,7 @@ export const useChat = () => {
     const [messagePage, setMessagePage] = useState(1);
     const [isTyping, setIsTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+    const [conversationMembers, setConversationMembers] = useState([]);
 
     const fetchConversations = useCallback(async () => {
         try {
@@ -44,6 +45,7 @@ export const useChat = () => {
     useEffect(() => {
         if (!activeId) {
             setMessages([]);
+            setConversationMembers([]);
             return;
         }
 
@@ -56,6 +58,9 @@ export const useChat = () => {
                 if (cancelled) return;
 
                 setMessages(res.data?.data || []);
+                const membersResponse = await chatApi.getConversationMembers(activeId);
+                if (cancelled) return;
+                setConversationMembers(membersResponse.data?.data || []);
                 setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
                 setMessagePage(1);
                 await chatApi.markAsRead(activeId);
@@ -604,6 +609,16 @@ export const useChat = () => {
         }
     }, []);
 
+    const startGroupConversation = useCallback(async (name, memberIds) => {
+        const res = await chatApi.createGroupConversation(name, memberIds);
+        const conversation = res.data?.data;
+
+        await fetchConversations();
+        if (conversation?.id) setActiveId(conversation.id);
+
+        return conversation;
+    }, [fetchConversations]);
+
     const startConversation = useCallback(async (targetUserId) => {
         const res = await chatApi.createDirectConversation(targetUserId);
         const conversation = res.data?.data;
@@ -625,6 +640,7 @@ export const useChat = () => {
     return {
         conversations,
         activeId,
+        conversationMembers,
         setActiveId,
         messages,
         onlineUserIds,
@@ -645,6 +661,7 @@ export const useChat = () => {
         searchResults,
         searchUsers,
         startConversation,
+        startGroupConversation,
         setTyping,
         refetchConversations: fetchConversations
     };
