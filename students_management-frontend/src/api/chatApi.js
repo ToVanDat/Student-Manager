@@ -62,6 +62,9 @@ export const chatApi = {
         );
     },
 
+    deleteFile: (fileId) =>
+        client.delete(`/api/message-files/${fileId}`),
+
     // Tải file bằng access token hiện tại
     downloadFile: (fileId) =>
         client.get(`/api/message-files/${fileId}`, {
