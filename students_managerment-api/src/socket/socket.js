@@ -161,7 +161,10 @@ const initSocket = (server) => {
                 const savedMessage = await messageRepository.createMessage(id, userId, text, replyTo);
                 const memberIds = await conversationRepository.getConversationMemberIds(id);
 
-                io.to(`conversation:${id}`).emit('message:new', savedMessage);
+                // Gửi cho các client khác trong conversation và luôn gửi lại cho sender.
+                // Không phụ thuộc việc sender đã kịp join room hay chưa.
+                socket.to(`conversation:${id}`).emit('message:new', savedMessage);
+                socket.emit('message:new', savedMessage);
 
                 for (const memberId of memberIds) {
                     io.to(`user:${memberId}`).emit('conversation:updated', {
