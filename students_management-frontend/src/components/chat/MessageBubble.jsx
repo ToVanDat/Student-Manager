@@ -117,7 +117,7 @@ export default function MessageBubble({
                                 setMenuOpen(prev => !prev);
                                 setReactionPickerOpen(false);
                             }}
-                            className={`absolute right-2 top-2 z-[60] flex h-7 w-7 items-center justify-center rounded-full bg-black/5 text-slate-500 transition hover:bg-black/10 hover:text-slate-800 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/15 dark:hover:text-white`}
+                            className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white`}
                             title="Tuỳ chọn"
                             aria-label="Tuỳ chọn tin nhắn"
                         >
@@ -128,7 +128,8 @@ export default function MessageBubble({
                     {menuOpen && (
                         <div
                             data-message-menu
-                            className="absolute right-2 top-10 z-[80] min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800"
+                            onMouseEnter={keepHovered}
+                            className="absolute right-1 top-9 z-[80] min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800"
                         >
                             <button type="button" onClick={() => {
                                 setMenuOpen(false);
@@ -217,7 +218,7 @@ export default function MessageBubble({
                     ) : (
                         <>
                             {content && (
-                                <p className={`leading-relaxed whitespace-pre-wrap ${hovered ? 'pr-8' : ''}`}>
+                                <p className="leading-relaxed whitespace-pre-wrap">
                                     {content}
                                 </p>
                             )}
@@ -272,41 +273,43 @@ export default function MessageBubble({
 
                 {hovered && !isDeleted && !isRecalled && (
                     <div
-                        className={`absolute -top-12 z-50 ${isOwn ? 'right-0' : 'left-0'}`}
+                        className={`absolute z-50 ${groupedReactions.length > 0 ? 'bottom-7' : '-bottom-11'} ${isOwn ? 'right-0' : 'left-0'}`}
                         onMouseEnter={keepHovered}
                         onMouseLeave={scheduleHoverClose}
                     >
-                        <div className="flex items-center gap-0.5 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-1 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
-                            {quickReactions.slice(0, 4).map(emoji => (
-                                <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => {
-                                        onToggleReaction?.(message.id, emoji);
-                                        setReactionPickerOpen(false);
-                                        setHovered(false);
-                                    }}
-                                    className="flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none transition-transform hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
-                                    title={`Thả ${emoji}`}
-                                >
-                                    {emoji}
-                                </button>
-                            ))}
+                        <div className="relative">
+                            <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/98 px-1.5 py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800/98">
+                                {quickReactions.slice(0, 4).map(emoji => (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => {
+                                            onToggleReaction?.(message.id, emoji);
+                                            setReactionPickerOpen(false);
+                                            setHovered(false);
+                                        }}
+                                        className="flex h-7 w-7 items-center justify-center rounded-full text-[17px] leading-none transition-transform hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                        title={`Thả ${emoji}`}
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
 
-                            <button
-                                type="button"
-                                onMouseDown={event => event.preventDefault()}
-                                onClick={() => {
-                                    setReactionPickerOpen(prev => !prev);
-                                    setMenuOpen(false);
-                                    setHovered(true);
-                                }}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-base font-medium text-slate-500 hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-700"
-                                title="Thêm reaction"
-                                aria-label="Thêm reaction"
-                            >
-                                +
-                            </button>
+                                <button
+                                    type="button"
+                                    onMouseDown={event => event.preventDefault()}
+                                    onClick={() => {
+                                        setReactionPickerOpen(prev => !prev);
+                                        setMenuOpen(false);
+                                        keepHovered();
+                                    }}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full text-base font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                                    title="Thêm reaction"
+                                    aria-label="Thêm reaction"
+                                >
+                                    +
+                                </button>
+                            </div>
 
                             {reactionPickerOpen && (
                                 <div
@@ -336,7 +339,7 @@ export default function MessageBubble({
 
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`absolute -bottom-3 z-30 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}
+                        className={`absolute -bottom-3 z-30 flex items-center rounded-full border border-slate-200 bg-white/98 px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800/98 ${isOwn ? 'right-2' : 'left-2'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
