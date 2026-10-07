@@ -161,9 +161,20 @@ const getMessageById = async (messageId) => {
             edited_at,
             created_at,
             updated_at,
-            reply_to_message_id
-        FROM messages
-        WHERE id = $1
+            reply_to_message_id,
+            CASE WHEN m.reply_to_message_id IS NULL THEN NULL ELSE (
+                SELECT json_build_object(
+                    'id', rm.id,
+                    'sender_id', rm.sender_id,
+                    'content', rm.content,
+                    'is_recalled', rm.is_recalled,
+                    'deleted_at', rm.deleted_at
+                )
+                FROM messages rm
+                WHERE rm.id = m.reply_to_message_id
+            ) END AS reply_to
+        FROM messages m
+        WHERE m.id = $1
         LIMIT 1;
     `;
 
