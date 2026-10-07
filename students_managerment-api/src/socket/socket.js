@@ -136,7 +136,11 @@ const initSocket = (server) => {
             try {
                 const isMember = await conversationRepository.isConversationMember(id, userId);
                 if (!isMember) {
-                    return socket.emit('conversation:error', { message: 'Bạn không thuộc conversation này' });
+                    return socket.emit('conversation:error', {
+                        code: 'NOT_MEMBER',
+                        conversationId: id,
+                        message: 'Bạn không còn quyền truy cập nhóm này'
+                    });
                 }
 
                 socket.join(`conversation:${id}`);
