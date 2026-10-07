@@ -38,6 +38,7 @@ export default function ChatWindow({
     onAddGroupMember,
     onRemoveGroupMember,
     onUpdateGroupMemberRole,
+    onUpdateGroupConversation,
     onLeaveGroup,
     onlineUserIds = new Set()
 }) {
