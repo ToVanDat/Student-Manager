@@ -102,3 +102,27 @@ WHERE EXISTS (
 
 CREATE INDEX IF NOT EXISTS idx_conversations_type_updated
     ON conversations (type, updated_at DESC);
+
+
+-- Backfill roles for existing group conversations created before role support.
+-- Direct conversations intentionally keep role = NULL.
+WITH ranked_group_members AS (
+    SELECT
+        cm.conversation_id,
+        cm.user_id,
+        ROW_NUMBER() OVER (
+            PARTITION BY cm.conversation_id
+            ORDER BY cm.joined_at ASC, cm.user_id ASC
+        ) AS member_rank
+    FROM conversation_members cm
+    JOIN conversations c ON c.id = cm.conversation_id
+    WHERE c.type = 'group'
+      AND cm.left_at IS NULL
+      AND cm.role IS NULL
+)
+UPDATE conversation_members cm
+SET role = CASE WHEN r.member_rank = 1 THEN 'owner' ELSE 'member' END
+FROM ranked_group_members r
+WHERE cm.conversation_id = r.conversation_id
+  AND cm.user_id = r.user_id
+  AND cm.role IS NULL;
