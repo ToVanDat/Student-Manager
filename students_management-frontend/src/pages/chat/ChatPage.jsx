@@ -36,6 +36,7 @@ export default function ChatPage() {
         removeGroupMember,
         leaveGroup,
         updateGroupMemberRole,
+        updateGroupConversation,
         setTyping,
         editMessage,
         recallMessage,
@@ -134,6 +135,7 @@ export default function ChatPage() {
                                         onAddGroupMember={addGroupMember}
                                         onRemoveGroupMember={removeGroupMember}
                                         onUpdateGroupMemberRole={updateGroupMemberRole}
+                onUpdateGroupConversation={updateGroupConversation}
                                         onLeaveGroup={leaveGroup}
                                         hasMoreMessages={hasMoreMessages}
                                         loadingOlder={loadingOlder}
