@@ -32,6 +32,16 @@ export const setAccessToken = (token) => {
   } else {
     localStorage.removeItem("accessToken");
   }
+
+  // Đồng bộ token mới cho AuthContext/Socket ngay cả khi token
+  // được refresh bởi Axios interceptor thay vì bởi AuthContext.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("auth:access-token-changed", {
+        detail: { accessToken: token || null },
+      }),
+    );
+  }
 };
 
 // ==========================================
@@ -65,6 +75,38 @@ apiClient.interceptors.request.use(
 // ==========================================
 
 let refreshPromise = null;
+
+// ==========================================
+// REFRESH ACCESS TOKEN
+// ==========================================
+
+export const refreshAccessToken = async () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(
+        `${API_BASE_URL}/api/auth/refresh`,
+        {},
+        {
+          withCredentials: true,
+        },
+      )
+      .then((response) => {
+        const newAccessToken = response.data?.accessToken;
+
+        if (!newAccessToken) {
+          throw new Error("Refresh response không có accessToken");
+        }
+
+        setAccessToken(newAccessToken);
+        return newAccessToken;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+};
 
 // ==========================================
 // RESPONSE INTERCEPTOR
@@ -109,43 +151,16 @@ apiClient.interceptors.response.use(
     // CHỈ CHO 1 REFRESH CHẠY
     // ==========================================
 
-    if (!refreshPromise) {
-      refreshPromise = axios
-        .post(
-          `${API_BASE_URL}/api/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          },
-        )
-        .then((response) => {
-          const newAccessToken = response.data.accessToken;
-
-          setAccessToken(newAccessToken);
-
-          return newAccessToken;
-        })
-        .catch((refreshError) => {
-          setAccessToken(null);
-
-          localStorage.removeItem("user");
-
-          window.location.href = "/login";
-
-          throw refreshError;
-        })
-        .finally(() => {
-          refreshPromise = null;
-        });
-    }
-
     try {
-      const newAccessToken = await refreshPromise;
+      const newAccessToken = await refreshAccessToken();
 
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
       return apiClient(originalRequest);
     } catch (refreshError) {
+      setAccessToken(null);
+      localStorage.removeItem("user");
+      window.location.href = "/login";
       return Promise.reject(refreshError);
     }
   },
