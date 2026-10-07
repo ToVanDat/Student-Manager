@@ -128,7 +128,6 @@ export default function ChatPage() {
                                         onRecall={recallMessage}
                                         onDeleteForMe={deleteMessageForMe}
                                         onDeleteForEveryone={deleteMessageForEveryone}
-                                        onReply={() => {}}
                                         onToggleReaction={toggleReaction}
                                         conversationMembers={conversationMembers}
                                         searchUsers={searchUsers}
