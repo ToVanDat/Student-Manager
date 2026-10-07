@@ -635,6 +635,20 @@ export const useChat = () => {
         return conversation;
     }, [fetchConversations]);
 
+    const updateGroupConversation = useCallback(async (name, avatarUrl = null) => {
+        if (!activeId || !name?.trim()) return;
+
+        const res = await chatApi.updateGroupConversation(
+            activeId,
+            name.trim(),
+            avatarUrl
+        );
+
+        await fetchConversations();
+        await refreshConversationMembers(activeId);
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
     const addGroupMember = useCallback(async (userId) => {
         if (!activeId || !userId) return;
 
@@ -701,6 +715,7 @@ export const useChat = () => {
         removeGroupMember,
         leaveGroup,
         updateGroupMemberRole,
+        updateGroupConversation,
         messages,
         onlineUserIds,
         loading,
