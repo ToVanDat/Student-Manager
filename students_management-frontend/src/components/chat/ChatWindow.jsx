@@ -19,6 +19,7 @@ export default function ChatWindow({
     onSendMessage,
     onSendAttachment,
     onDownloadFile,
+    onDeleteFile,
     isTyping,
     onTyping,
     onEdit,
@@ -247,6 +248,7 @@ export default function ChatWindow({
                         onDeleteForMe={onDeleteForMe}
                         onDeleteForEveryone={onDeleteForEveryone}
                         onDownloadFile={onDownloadFile}
+                        onDeleteFile={onDeleteFile}
                         onReply={onReply ? (message) => { setReplyTo(message); onReply(message); } : undefined}
                         onToggleReaction={onToggleReaction}
                         currentUserId={currentUserId}
