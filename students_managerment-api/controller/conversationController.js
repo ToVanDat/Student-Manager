@@ -129,13 +129,26 @@ const addGroupMember = async (req, res) => {
         );
         const conversationId = Number(req.params.conversationId);
         const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        const io = getIO();
+
         for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+            io.to(`user:${memberId}`).emit('conversation:updated', {
                 conversationId,
                 action: 'member-added',
                 member: data
             });
         }
+
+        // Người vừa được thêm có thể đang online nhưng trước đó chưa nằm trong
+        // contact list của các thành viên hiện tại.
+        if (require('../src/socket/socket').isUserOnline(Number(data.user_id))) {
+            for (const memberId of memberIds) {
+                io.to(`user:${memberId}`).emit('presence:online', {
+                    userId: Number(data.user_id)
+                });
+            }
+        }
+
         return res.status(201).json({ message: 'Đã thêm thành viên', data });
     } catch (error) {
         const status = /quyền|role|group|không tồn tại/.test(error.message) ? 403 : 400;
@@ -152,8 +165,18 @@ const removeGroupMember = async (req, res) => {
             Number(req.user.id),
             Number(req.params.userId)
         );
+        const io = getIO();
+        const removedUserId = Number(data.user_id);
+
+        io.to(`user:${removedUserId}`).emit('member:removed', {
+            conversationId,
+            member: data,
+            message: 'Bạn đã bị xóa khỏi nhóm'
+        });
+
         for (const memberId of memberIdsBefore) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+            if (Number(memberId) === removedUserId) continue;
+            io.to(`user:${memberId}`).emit('conversation:updated', {
                 conversationId,
                 action: 'member-removed',
                 member: data
@@ -173,13 +196,22 @@ const leaveGroup = async (req, res) => {
             conversationId,
             Number(req.user.id)
         );
+        const io = getIO();
+        const leavingUserId = Number(data.user_id);
+
         for (const memberId of memberIdsBefore) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+            io.to(`user:${memberId}`).emit('conversation:updated', {
                 conversationId,
                 action: 'member-left',
                 member: data
             });
         }
+
+        io.to(`user:${leavingUserId}`).emit('member:left', {
+            conversationId,
+            member: data,
+            message: 'Bạn đã rời nhóm'
+        });
         return res.status(200).json({ message: 'Đã rời nhóm', data });
     } catch (error) {
         return res.status(400).json({ message: error.message });
