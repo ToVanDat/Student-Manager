@@ -58,6 +58,29 @@ const initSocket = (server) => {
         const userId = Number(socket.user.id);
         const sessionId = socket.user.sessionId;
 
+        // Socket authentication is checked only when the connection is
+        // established. Schedule a hard disconnect at JWT expiry so an
+        // expired access token can never keep using realtime events.
+        const tokenExpiresAt = Number(socket.handshake.auth?.accessToken
+            ? jwt.decode(socket.handshake.auth.accessToken)?.exp
+            : 0);
+
+        const tokenLifetimeMs = tokenExpiresAt > 0
+            ? Math.max(tokenExpiresAt * 1000 - Date.now(), 0)
+            : 0;
+
+        const tokenExpiryTimer = tokenLifetimeMs > 0
+            ? setTimeout(() => {
+                socket.disconnect(true);
+            }, tokenLifetimeMs)
+            : null;
+
+        socket.once('disconnect', () => {
+            if (tokenExpiryTimer) {
+                clearTimeout(tokenExpiryTimer);
+            }
+        });
+
         socket.join(`session:${sessionId}`);
         socket.join(`user:${userId}`);
 
