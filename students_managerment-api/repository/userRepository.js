@@ -42,7 +42,23 @@ const findActiveUserById = async (userId) => {
     return rows[0] || null;
 };
 
+
+const updateLastSeenAt = async (userId) => {
+    const { rows } = await pool.query(
+        `
+            UPDATE users
+            SET last_seen_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+            RETURNING id, last_seen_at;
+        `,
+        [userId]
+    );
+
+    return rows[0] || null;
+};
+
 module.exports = {
     searchUsersForChat,
-    findActiveUserById
+    findActiveUserById,
+    updateLastSeenAt
 };
