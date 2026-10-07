@@ -127,9 +127,15 @@ const addGroupMember = async (req, res) => {
             Number(req.user.id),
             Number(req.body.userId)
         );
-        getIO().to(`user:${Number(req.body.userId)}`).emit('conversation:created', {
-            conversation: { id: Number(req.params.conversationId) }
-        });
+        const conversationId = Number(req.params.conversationId);
+        const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        for (const memberId of memberIds) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                action: 'member-added',
+                member: data
+            });
+        }
         return res.status(201).json({ message: 'Đã thêm thành viên', data });
     } catch (error) {
         const status = /quyền|role|group|không tồn tại/.test(error.message) ? 403 : 400;
@@ -139,11 +145,20 @@ const addGroupMember = async (req, res) => {
 
 const removeGroupMember = async (req, res) => {
     try {
+        const conversationId = Number(req.params.conversationId);
+        const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.removeGroupMember(
-            Number(req.params.conversationId),
+            conversationId,
             Number(req.user.id),
             Number(req.params.userId)
         );
+        for (const memberId of memberIdsBefore) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                action: 'member-removed',
+                member: data
+            });
+        }
         return res.status(200).json({ message: 'Đã xoá thành viên', data });
     } catch (error) {
         return res.status(403).json({ message: error.message });
@@ -152,10 +167,19 @@ const removeGroupMember = async (req, res) => {
 
 const leaveGroup = async (req, res) => {
     try {
+        const conversationId = Number(req.params.conversationId);
+        const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.leaveGroup(
-            Number(req.params.conversationId),
+            conversationId,
             Number(req.user.id)
         );
+        for (const memberId of memberIdsBefore) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                action: 'member-left',
+                member: data
+            });
+        }
         return res.status(200).json({ message: 'Đã rời nhóm', data });
     } catch (error) {
         return res.status(400).json({ message: error.message });
@@ -164,12 +188,21 @@ const leaveGroup = async (req, res) => {
 
 const updateGroupMemberRole = async (req, res) => {
     try {
+        const conversationId = Number(req.params.conversationId);
+        const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.updateGroupMemberRole(
-            Number(req.params.conversationId),
+            conversationId,
             Number(req.user.id),
             Number(req.params.userId),
             req.body.role
         );
+        for (const memberId of memberIds) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                action: 'member-role-updated',
+                member: data
+            });
+        }
         return res.status(200).json({ message: 'Đã cập nhật role', data });
     } catch (error) {
         return res.status(403).json({ message: error.message });
