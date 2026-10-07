@@ -14,6 +14,7 @@ export const useChat = () => {
     const [loading, setLoading] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(false);
     const [loadingOlder, setLoadingOlder] = useState(false);
+    const [messagePage, setMessagePage] = useState(1);
     const [isTyping, setIsTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
 
@@ -56,6 +57,8 @@ export const useChat = () => {
 
                 setMessages(res.data?.data || []);
                 setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
+            setMessagePage(nextPage);
+                setMessagePage(1);
                 await chatApi.markAsRead(activeId);
                 if (socket.connected) socket.emit('message:read', { conversationId: activeId });
 
@@ -497,8 +500,7 @@ export const useChat = () => {
 
         setLoadingOlder(true);
         try {
-            const currentPage = Math.max(Math.ceil(messages.length / 50), 1);
-            const nextPage = currentPage + 1;
+            const nextPage = messagePage + 1;
             const res = await chatApi.getMessages(activeId, nextPage, 50);
             const older = res.data?.data || [];
 
@@ -513,7 +515,7 @@ export const useChat = () => {
         } finally {
             setLoadingOlder(false);
         }
-    }, [activeId, loadingOlder, hasMoreMessages, messages.length]);
+    }, [activeId, loadingOlder, hasMoreMessages, messagePage]);
 
     const toggleReaction = useCallback(async (messageId, emoji) => {
         if (!messageId || !emoji || !socket.connected) return;
