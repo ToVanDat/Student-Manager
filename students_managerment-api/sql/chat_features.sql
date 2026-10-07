@@ -19,6 +19,14 @@ CREATE TABLE IF NOT EXISTS message_reactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- The table may already exist from an older chat migration.
+-- CREATE TABLE IF NOT EXISTS does not add newly introduced columns,
+-- so explicitly ensure the reaction column exists.
+ALTER TABLE message_reactions
+    ADD COLUMN IF NOT EXISTS emoji VARCHAR(32);
+
+-- Older rows are allowed to remain temporarily without emoji; all new
+-- reactions are written with emoji by the application.
 -- Messenger/Zalo style: one reaction per user per message.
 -- If the migration is re-run after the old schema, keep the newest reaction.
 DELETE FROM message_reactions a
