@@ -48,4 +48,17 @@ router.delete(
     messageController.deleteMessageForEveryone
 );
 
+// Reaction
+router.post(
+    '/:messageId/reactions',
+    authMiddleware,
+    messageController.addReaction
+);
+
+router.delete(
+    '/:messageId/reactions/:emoji',
+    authMiddleware,
+    messageController.removeReaction
+);
+
 module.exports = router;
