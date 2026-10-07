@@ -20,13 +20,42 @@ CREATE TABLE IF NOT EXISTS message_reactions (
 );
 
 -- The table may already exist from an older chat migration.
--- CREATE TABLE IF NOT EXISTS does not add newly introduced columns,
--- so explicitly ensure the reaction column exists.
-ALTER TABLE message_reactions
-    ADD COLUMN IF NOT EXISTS emoji VARCHAR(32);
+-- Older versions used the column name "reaction"; the application uses "emoji".
+DO $
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'message_reactions'
+          AND column_name = 'reaction'
+    ) AND NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'message_reactions'
+          AND column_name = 'emoji'
+    ) THEN
+        ALTER TABLE message_reactions RENAME COLUMN reaction TO emoji;
+    ELSIF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'message_reactions'
+          AND column_name = 'emoji'
+    ) THEN
+        ALTER TABLE message_reactions ADD COLUMN emoji VARCHAR(32);
+    END IF;
+END $;
 
--- Older rows are allowed to remain temporarily without emoji; all new
--- reactions are written with emoji by the application.
+-- If both columns existed during an earlier partial migration, preserve old data.
+UPDATE message_reactions
+SET emoji = reaction
+WHERE emoji IS NULL
+  AND reaction IS NOT NULL
+  AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'message_reactions'
+        AND column_name = 'reaction'
+  );
 -- Messenger/Zalo style: one reaction per user per message.
 -- If the migration is re-run after the old schema, keep the newest reaction.
 DELETE FROM message_reactions a
