@@ -41,6 +41,15 @@ export default function ChatWindow({
     const [isUploading, setIsUploading] = useState(false);
     const emojiPickerRef = useRef(null);
 
+    const lastSeenLabel = activeConversation?.lastSeenAt
+        ? new Date(activeConversation.lastSeenAt).toLocaleString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit'
+        })
+        : 'Chưa có dữ liệu;
+
     const [isDarkMode, setIsDarkMode] = useState(
         document.documentElement.classList.contains('dark')
     );
