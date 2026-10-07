@@ -266,6 +266,94 @@ const updateMemberRole = async (conversationId, userId, role) => {
     return rows[0] || null;
 };
 
+const transferGroupOwnership = async (conversationId, currentOwnerId, targetUserId) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const ownerResult = await client.query(
+            `
+                SELECT conversation_id, user_id, role, joined_at, left_at
+                FROM conversation_members
+                WHERE conversation_id = $1
+                  AND user_id = $2
+                  AND role = 'owner'
+                  AND left_at IS NULL
+                FOR UPDATE;
+            `,
+            [conversationId, currentOwnerId]
+        );
+
+        if (ownerResult.rowCount === 0) {
+            throw new Error('Bạn không phải trưởng nhóm');
+        }
+
+        if (Number(currentOwnerId) === Number(targetUserId)) {
+            throw new Error('Trưởng nhóm mới phải là thành viên khác');
+        }
+
+        const targetResult = await client.query(
+            `
+                SELECT conversation_id, user_id, role, joined_at, left_at
+                FROM conversation_members
+                WHERE conversation_id = $1
+                  AND user_id = $2
+                  AND left_at IS NULL
+                FOR UPDATE;
+            `,
+            [conversationId, targetUserId]
+        );
+
+        if (targetResult.rowCount === 0) {
+            throw new Error('Thành viên không tồn tại');
+        }
+
+        await client.query(
+            `
+                UPDATE conversation_members
+                SET role = 'admin'
+                WHERE conversation_id = $1
+                  AND user_id = $2
+                  AND role = 'owner'
+                  AND left_at IS NULL;
+            `,
+            [conversationId, currentOwnerId]
+        );
+
+        const newOwnerResult = await client.query(
+            `
+                UPDATE conversation_members
+                SET role = 'owner'
+                WHERE conversation_id = $1
+                  AND user_id = $2
+                  AND left_at IS NULL
+                RETURNING conversation_id, user_id, role, joined_at, left_at;
+            `,
+            [conversationId, targetUserId]
+        );
+
+        if (newOwnerResult.rowCount === 0) {
+            throw new Error('Không thể chuyển quyền trưởng nhóm');
+        }
+
+        await client.query('COMMIT');
+
+        return {
+            previousOwner: {
+                ...ownerResult.rows[0],
+                role: 'admin'
+            },
+            newOwner: newOwnerResult.rows[0]
+        };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const removeMember = async (conversationId, userId) => {
     const { rows } = await pool.query(
         `
@@ -330,6 +418,7 @@ module.exports = {
     isConversationMember,
     getMemberRole,
     updateMemberRole,
+    transferGroupOwnership,
     removeMember,
     getConversationMemberIds,
     getConversationContactIds,
