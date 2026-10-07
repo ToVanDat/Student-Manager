@@ -92,6 +92,21 @@ export const useChat = () => {
         };
     }, [activeId]);
 
+    const refreshConversationMembers = useCallback(async (conversationId = activeId) => {
+        if (!conversationId) return [];
+
+        try {
+            const res = await chatApi.getConversationMembers(conversationId);
+            const members = res.data?.data || [];
+            setConversationMembers(members);
+            return members;
+        } catch (error) {
+            console.error('Lỗi lấy thành viên conversation:', error);
+            setConversationMembers([]);
+            return [];
+        }
+    }, [activeId]);
+
     useEffect(() => {
         const joinActiveConversation = () => {
             if (!socket.connected || !activeId) return;
@@ -638,15 +653,6 @@ export const useChat = () => {
             setSearchResults([]);
         }
     }, []);
-
-    const refreshConversationMembers = useCallback(async (conversationId = activeId) => {
-        if (!conversationId) return [];
-
-        const res = await chatApi.getConversationMembers(conversationId);
-        const members = res.data?.data || [];
-        setConversationMembers(members);
-        return members;
-    }, [activeId]);
 
     const startGroupConversation = useCallback(async (name, memberIds) => {
         const res = await chatApi.createGroupConversation(name, memberIds);
