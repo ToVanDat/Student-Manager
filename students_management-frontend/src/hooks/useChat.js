@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { chatApi } from '@/api/chatApi';
 import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
+import { toast } from 'sonner';
 
 export const useChat = () => {
     const { user } = useAuth();
@@ -397,6 +398,66 @@ export const useChat = () => {
             ));
         };
 
+        const closeRemovedGroup = (conversationId, message) => {
+            if (Number(conversationId) !== Number(activeId)) return false;
+
+            socket.emit('conversation:leave', { conversationId });
+            setMessages([]);
+            setConversationMembers([]);
+            setIsTyping(false);
+            setActiveId(null);
+            toast.error(message || 'Bạn không còn quyền truy cập nhóm');
+            return true;
+        };
+
+        const handleMemberAdded = async ({ conversationId }) => {
+            await fetchConversations();
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+        };
+
+        const handleMemberRemoved = async ({ conversationId, member, message }) => {
+            const removedUserId = Number(member?.user_id);
+            const isMe = removedUserId === currentUserId;
+
+            if (isMe) {
+                closeRemovedGroup(conversationId, message || 'Bạn đã bị xóa khỏi nhóm');
+                await fetchConversations();
+                return;
+            }
+
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+            await fetchConversations();
+        };
+
+        const handleMemberLeft = async ({ conversationId, member, message }) => {
+            if (Number(member?.user_id) === currentUserId) {
+                closeRemovedGroup(conversationId, message || 'Bạn đã rời nhóm');
+                await fetchConversations();
+                return;
+            }
+
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+            await fetchConversations();
+        };
+
+        const handleMemberRoleUpdated = async ({ conversationId }) => {
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+            await fetchConversations();
+        };
+
+        const handleConversationError = ({ code, conversationId, message }) => {
+            if (code !== 'NOT_MEMBER') return;
+            closeRemovedGroup(conversationId, message);
+        };
+
         const handleConversationCreated = () => {
             fetchConversations();
         };
@@ -404,6 +465,11 @@ export const useChat = () => {
         socket.on('connect', handleSocketConnect);
         socket.on('presence:snapshot', handlePresenceSnapshot);
         socket.on('conversation:created', handleConversationCreated);
+        socket.on('member:added', handleMemberAdded);
+        socket.on('member:removed', handleMemberRemoved);
+        socket.on('member:left', handleMemberLeft);
+        socket.on('member:role-updated', handleMemberRoleUpdated);
+        socket.on('conversation:error', handleConversationError);
         if (socket.connected) {
             socket.emit('presence:sync');
             joinActiveConversation();
@@ -428,6 +494,11 @@ export const useChat = () => {
             socket.off('connect', handleSocketConnect);
             socket.off('presence:snapshot', handlePresenceSnapshot);
             socket.off('conversation:created', handleConversationCreated);
+            socket.off('member:added', handleMemberAdded);
+            socket.off('member:removed', handleMemberRemoved);
+            socket.off('member:left', handleMemberLeft);
+            socket.off('member:role-updated', handleMemberRoleUpdated);
+            socket.off('conversation:error', handleConversationError);
             socket.off('presence:online', handlePresenceOnline);
             socket.off('presence:offline', handlePresenceOffline);
             socket.off('message:new', handleNewMessage);
