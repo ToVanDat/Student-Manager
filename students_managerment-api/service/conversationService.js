@@ -66,6 +66,32 @@ const createGroupConversation = async (ownerId, memberIds, name, avatarUrl = nul
     );
 };
 
+const updateGroupConversation = async (conversationId, actorId, name, avatarUrl = null) => {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName || normalizedName.length > 120) {
+        throw new Error('Tên nhóm không hợp lệ');
+    }
+
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation || conversation.type !== 'group') {
+        throw new Error('Conversation không phải group');
+    }
+
+    const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
+    if (actorRole !== 'owner') {
+        throw new Error('Chỉ trưởng nhóm mới có quyền cập nhật thông tin nhóm');
+    }
+
+    const updated = await conversationRepository.updateGroupConversation(
+        conversationId,
+        normalizedName,
+        avatarUrl
+    );
+
+    if (!updated) throw new Error('Không thể cập nhật thông tin nhóm');
+    return updated;
+};
+
 const addGroupMember = async (conversationId, actorId, targetUserId) => {
     const conversation = await conversationRepository.getConversationInfo(conversationId);
     if (!conversation || conversation.type !== 'group') {
@@ -148,6 +174,7 @@ module.exports = {
     getUserConversations,
     getConversationMembers,
     createGroupConversation,
+    updateGroupConversation,
     addGroupMember,
     removeGroupMember,
     leaveGroup,
