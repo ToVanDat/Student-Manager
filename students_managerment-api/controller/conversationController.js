@@ -89,6 +89,37 @@ const createGroup = async (req, res) => {
     }
 };
 
+const updateGroup = async (req, res) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+
+        const data = await conversationService.updateGroupConversation(
+            conversationId,
+            Number(req.user.id),
+            req.body.name,
+            req.body.avatarUrl || null
+        );
+
+        const memberIds = await require('../repository/conversationRepository')
+            .getConversationMemberIds(conversationId);
+
+        for (const memberId of memberIds) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                conversation: data
+            });
+        }
+
+        return res.status(200).json({ message: 'Đã cập nhật thông tin nhóm', data });
+    } catch (error) {
+        const status = /quyền|group|không hợp lệ/.test(error.message) ? 403 : 400;
+        return res.status(status).json({ message: error.message });
+    }
+};
+
 const addGroupMember = async (req, res) => {
     try {
         const data = await conversationService.addGroupMember(
@@ -151,6 +182,7 @@ module.exports = {
     getConversationMembers,
     markAsRead,
     createGroup,
+    updateGroup,
     addGroupMember,
     removeGroupMember,
     leaveGroup,
