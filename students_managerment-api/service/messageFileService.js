@@ -49,7 +49,7 @@ const uploadFile = async (messageId, userId, file) => {
         const savedFile =
             await messageFileRepository.createMessageFile({
                 messageId: message.id,
-                fileName: file.originalname,
+                fileName: String(file.originalname || 'file').replace(/[\\/\0]/g, '_').slice(0, 255),
                 storageKey,
                 mimeType: file.mimetype,
                 fileSize: file.size
