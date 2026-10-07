@@ -366,6 +366,12 @@ const addReaction = async (messageId, userId, emoji) => {
         throw error;
     }
 
+    if (message.is_recalled || message.deleted_at) {
+        const error = new Error('Không thể reaction vào message đã thu hồi hoặc xoá');
+        error.statusCode = 400;
+        throw error;
+    }
+
     if (typeof emoji !== 'string' || !emoji.trim() || emoji.trim().length > 32) {
         const error = new Error('Emoji không hợp lệ');
         error.statusCode = 400;
