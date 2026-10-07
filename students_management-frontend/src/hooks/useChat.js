@@ -358,8 +358,13 @@ export const useChat = () => {
             ));
         };
 
+        const handleConversationCreated = () => {
+            fetchConversations();
+        };
+
         socket.on('connect', handleSocketConnect);
         socket.on('presence:snapshot', handlePresenceSnapshot);
+        socket.on('conversation:created', handleConversationCreated);
         if (socket.connected) {
             socket.emit('presence:sync');
             joinActiveConversation();
@@ -383,6 +388,7 @@ export const useChat = () => {
         return () => {
             socket.off('connect', handleSocketConnect);
             socket.off('presence:snapshot', handlePresenceSnapshot);
+            socket.off('conversation:created', handleConversationCreated);
             socket.off('presence:online', handlePresenceOnline);
             socket.off('presence:offline', handlePresenceOffline);
             socket.off('message:new', handleNewMessage);
