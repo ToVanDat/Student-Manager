@@ -117,7 +117,7 @@ export default function MessageBubble({
                                 setMenuOpen(prev => !prev);
                                 setReactionPickerOpen(false);
                             }}
-                            className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-white/10 dark:hover:text-white`}
+                            className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white ${isOwn ? 'text-white/70 hover:text-white' : ''}`}
                             title="Tuỳ chọn"
                             aria-label="Tuỳ chọn tin nhắn"
                         >
@@ -125,54 +125,6 @@ export default function MessageBubble({
                         </button>
                     )}
 
-                    {menuOpen && (
-                        <div
-                            data-message-menu
-                            onMouseEnter={keepHovered}
-                            className="absolute right-0 top-[calc(100%+6px)] z-[80] min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                        >
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onReply?.(message);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
-                                <Reply size={15} /> Trả lời
-                            </button>
-
-                            {canEdit && (
-                                <button type="button" onClick={() => {
-                                    setEditing(true);
-                                    setMenuOpen(false);
-                                }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <Pencil size={15} /> Chỉnh sửa
-                                </button>
-                            )}
-
-                            {canRecall && (
-                                <button type="button" onClick={() => {
-                                    setMenuOpen(false);
-                                    onRecall?.(message.id);
-                                }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                    <RotateCcw size={15} /> Thu hồi
-                                </button>
-                            )}
-
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onDeleteForMe?.(message.id);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                <Trash2 size={15} /> Xoá ở phía tôi
-                            </button>
-
-                            {isOwn && !isRecalled && !isDeleted && (
-                                <button type="button" onClick={() => {
-                                    setMenuOpen(false);
-                                    onDeleteForEveryone?.(message.id);
-                                }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
-                                    <Trash2 size={15} /> Xoá ở mọi người
-                                </button>
-                            )}
-                        </div>
-                    )}
                     {message.reply_to && !isDeleted && !isRecalled && (
                         <div className={`mb-2 overflow-hidden rounded-xl border-l-2 px-3 py-2 text-xs ${
                             isOwn
@@ -270,6 +222,56 @@ export default function MessageBubble({
                         )}
                     </div>
                 </div>
+
+                {menuOpen && (
+                    <div
+                        data-message-menu
+                        onMouseEnter={keepHovered}
+                        onMouseLeave={scheduleHoverClose}
+                        className={`absolute top-full z-[80] mt-1 min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-2xl dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${isOwn ? 'right-0' : 'left-0'}`}
+                    >
+                        <button type="button" onClick={() => {
+                            setMenuOpen(false);
+                            onReply?.(message);
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                            <Reply size={15} /> <span>Trả lời</span>
+                        </button>
+
+                        {canEdit && (
+                            <button type="button" onClick={() => {
+                                setEditing(true);
+                                setMenuOpen(false);
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                                <Pencil size={15} /> <span>Chỉnh sửa</span>
+                            </button>
+                        )}
+
+                        {canRecall && (
+                            <button type="button" onClick={() => {
+                                setMenuOpen(false);
+                                onRecall?.(message.id);
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                                <RotateCcw size={15} /> <span>Thu hồi</span>
+                            </button>
+                        )}
+
+                        <button type="button" onClick={() => {
+                            setMenuOpen(false);
+                            onDeleteForMe?.(message.id);
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                            <Trash2 size={15} /> <span>Xoá ở phía tôi</span>
+                        </button>
+
+                        {isOwn && !isRecalled && !isDeleted && (
+                            <button type="button" onClick={() => {
+                                setMenuOpen(false);
+                                onDeleteForEveryone?.(message.id);
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                <Trash2 size={15} /> <span>Xoá ở mọi người</span>
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {!isOwn && hovered && !isDeleted && !isRecalled && (
                     <div
