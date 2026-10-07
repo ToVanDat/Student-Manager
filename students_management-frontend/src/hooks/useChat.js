@@ -497,15 +497,34 @@ export const useChat = () => {
         }
     }, [activeId]);
 
-    const sendMessage = useCallback((content, replyToMessageId = null) => {
+    const sendMessage = useCallback(async (content, replyToMessageId = null) => {
         const text = typeof content === 'string' ? content.trim() : '';
-        if (!activeId || !text || !socket.connected) return;
+        if (!activeId || !text) return;
 
-        socket.emit('message:send', {
-            conversationId: activeId,
-            content: text,
-            replyToMessageId
-        });
+        if (socket.connected) {
+            socket.emit('message:send', {
+                conversationId: activeId,
+                content: text,
+                replyToMessageId
+            });
+            return;
+        }
+
+        // Socket đang reconnect/offline: fallback sang REST để tin nhắn không bị mất.
+        try {
+            const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
+            const saved = res.data?.data;
+
+            if (saved) {
+                setMessages(prev =>
+                    prev.some(item => Number(item.id) === Number(saved.id))
+                        ? prev
+                        : [...prev, saved]
+                );
+            }
+        } catch (error) {
+            console.error('Không thể gửi message:', error);
+        }
     }, [activeId]);
 
     const loadOlderMessages = useCallback(async () => {
