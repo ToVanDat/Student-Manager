@@ -132,6 +132,10 @@ const addGroupMember = async (req, res) => {
         const io = getIO();
 
         for (const memberId of memberIds) {
+            io.to(`user:${memberId}`).emit('member:added', {
+                conversationId,
+                member: data
+            });
             io.to(`user:${memberId}`).emit('conversation:updated', {
                 conversationId,
                 action: 'member-added',
