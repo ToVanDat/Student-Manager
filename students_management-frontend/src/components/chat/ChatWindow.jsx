@@ -48,7 +48,7 @@ export default function ChatWindow({
             day: '2-digit',
             month: '2-digit'
         })
-        : 'Chưa có dữ liệu;
+        : 'Chưa có dữ liệu';
 
     const [isDarkMode, setIsDarkMode] = useState(
         document.documentElement.classList.contains('dark')
