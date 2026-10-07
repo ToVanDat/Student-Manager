@@ -21,6 +21,7 @@ export default function MessageBubble({
     onDeleteForMe,
     onDeleteForEveryone,
     onDownloadFile,
+    onDeleteFile,
     onReply,
     onToggleReaction,
     currentUserId
@@ -210,6 +211,16 @@ export default function MessageBubble({
                                                     >
                                                         <Download size={15} />
                                                     </button>
+                                                    {isOwn && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onDeleteFile?.(file)}
+                                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                            title="Xoá file"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
