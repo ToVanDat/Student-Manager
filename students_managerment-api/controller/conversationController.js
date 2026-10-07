@@ -4,13 +4,20 @@ const userRepository = require('../repository/userRepository');
 const { getIO } = require('../src/socket/socket');
 
 const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
-    const message = await messageRepository.createSystemMessage(
-        conversationId,
-        actorId,
-        content
-    );
-    getIO().to(`conversation:${conversationId}`).emit('message:new', message);
-    return message;
+    try {
+        const message = await messageRepository.createSystemMessage(
+            conversationId,
+            actorId,
+            content
+        );
+        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
+        return message;
+    } catch (error) {
+        // Group membership changes must not fail just because the optional
+        // system-message migration has not been applied yet.
+        console.error('SYSTEM MESSAGE ERROR:', error);
+        return null;
+    }
 };
 
 const getUsername = async (userId) => {
