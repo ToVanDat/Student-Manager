@@ -23,6 +23,7 @@ export default function ChatPage() {
         setActiveId,
         messages,
         conversationMembers,
+        onlineUserIds,
         sendMessage,
         sendAttachment,
         downloadFile,
@@ -136,6 +137,7 @@ export default function ChatPage() {
                                         onRemoveGroupMember={removeGroupMember}
                                         onUpdateGroupMemberRole={updateGroupMemberRole}
                 onUpdateGroupConversation={updateGroupConversation}
+                onlineUserIds={onlineUserIds}
                                         onLeaveGroup={leaveGroup}
                                         hasMoreMessages={hasMoreMessages}
                                         loadingOlder={loadingOlder}
