@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     Crown,
     Shield,
@@ -34,6 +34,7 @@ export default function GroupInfoPanel({
     onRemoveMember,
     onUpdateRole,
     onUpdateGroupConversation,
+    onlineUserIds = new Set(),
     onLeaveGroup,
     onClose
 }) {
@@ -44,6 +45,10 @@ export default function GroupInfoPanel({
     const [editingGroup, setEditingGroup] = useState(false);
     const [groupName, setGroupName] = useState(conversation?.name || '');
     const [savingGroup, setSavingGroup] = useState(false);
+
+    useEffect(() => {
+        if (!editingGroup) setGroupName(conversation?.name || '');
+    }, [conversation?.name, editingGroup]);
 
     const currentMember = members.find(
         member => Number(member.user_id) === Number(currentUserId)
