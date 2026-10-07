@@ -239,7 +239,7 @@ export default function MessageBubble({
 
                 {hovered && !isOwn && !isDeleted && !isRecalled && (
                     <div
-                        className="relative z-50 mt-2 self-start"
+                        className="absolute left-0 top-full z-50 pt-2"
                         onMouseEnter={() => setHovered(true)}
                     >
                         <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
@@ -282,7 +282,7 @@ export default function MessageBubble({
 
                         {reactionPickerOpen && (
                             <div
-                                className="absolute left-0 top-full z-[70] mt-2"
+                                className="absolute left-0 top-full z-[70] pt-2"
                                 onMouseEnter={() => setHovered(true)}
                                 onMouseDown={event => event.stopPropagation()}
                             >
