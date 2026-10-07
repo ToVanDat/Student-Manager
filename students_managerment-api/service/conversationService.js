@@ -80,6 +80,11 @@ const addGroupMember = async (conversationId, actorId, targetUserId) => {
     const target = await userRepository.findActiveUserById(targetUserId);
     if (!target) throw new Error('Người dùng không tồn tại hoặc đã bị khóa');
 
+    const existingRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
+    if (existingRole !== null) {
+        throw new Error('Người dùng đã là thành viên của group');
+    }
+
     return conversationRepository.addMember(conversationId, targetUserId, 'member');
 };
 
