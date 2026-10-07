@@ -73,16 +73,18 @@ export default function MessageBubble({
     return (
         <div
             className={`flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => {
-                if (!reactionPickerOpen) {
-                    setHovered(false);
-                }
-            }}
         >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
-            <div className={`relative max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+            <div
+                className={`relative max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => {
+                    if (!reactionPickerOpen) {
+                        setHovered(false);
+                    }
+                }}
+            >
                 <button
                     type="button"
                     onClick={() => setMenuOpen(prev => !prev)}
