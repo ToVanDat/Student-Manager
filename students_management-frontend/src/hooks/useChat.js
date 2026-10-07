@@ -132,7 +132,30 @@ export const useChat = () => {
             }));
         };
 
-        const handleConversationUpdated = ({ conversationId, lastMessage, senderId, updatedAt }) => {
+        const handleConversationUpdated = async ({ conversationId, lastMessage, senderId, updatedAt, action, member, conversation }) => {
+            if (action === 'member-added' || action === 'member-removed' || action === 'member-left' || action === 'member-role-updated') {
+                if (Number(conversationId) === Number(activeId)) {
+                    await refreshConversationMembers(conversationId);
+                }
+                await fetchConversations();
+
+                if ((action === 'member-removed' || action === 'member-left')
+                    && Number(member?.user_id) === Number(currentUserId)
+                    && Number(conversationId) === Number(activeId)) {
+                    setConversationMembers([]);
+                    setActiveId(null);
+                }
+                return;
+            }
+
+            if (conversation) {
+                await fetchConversations();
+                if (Number(conversationId) === Number(activeId)) {
+                    await refreshConversationMembers(conversationId);
+                }
+                return;
+            }
+
             setConversations(prev => {
                 const exists = prev.some(c => Number(c.id) === Number(conversationId));
 
