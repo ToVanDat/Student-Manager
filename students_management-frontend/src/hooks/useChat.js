@@ -77,6 +77,14 @@ export const useChat = () => {
                 }
             } catch (error) {
                 console.error('Lỗi lấy tin nhắn:', error);
+
+                if (error?.response?.status === 403 || error?.response?.status === 404) {
+                    socket.emit('conversation:leave', { conversationId: activeId });
+                    setMessages([]);
+                    setConversationMembers([]);
+                    setActiveId(null);
+                    toast.error('Bạn không còn quyền truy cập nhóm này');
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
