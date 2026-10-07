@@ -7,7 +7,8 @@ const conversationRepository = require('../repository/conversationRepository');
 const createMessage = async (
     conversationId,
     senderId,
-    content
+    content,
+    replyToMessageId = null
 ) => {
     const isMember =
         await conversationRepository.isConversationMember(
@@ -27,10 +28,34 @@ const createMessage = async (
         );
     }
 
+    let replyTo = null;
+    if (replyToMessageId !== null && replyToMessageId !== undefined) {
+        replyTo = Number(replyToMessageId);
+        if (!Number.isInteger(replyTo) || replyTo <= 0) {
+            const error = new Error('replyToMessageId không hợp lệ');
+            error.statusCode = 400;
+            throw error;
+        }
+
+        const repliedMessage = await messageRepository.getMessageById(replyTo);
+        if (!repliedMessage) {
+            const error = new Error('Message được reply không tồn tại');
+            error.statusCode = 404;
+            throw error;
+        }
+
+        if (Number(repliedMessage.conversation_id) !== Number(conversationId)) {
+            const error = new Error('Message reply không thuộc conversation này');
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+
     return messageRepository.createMessage(
         conversationId,
         senderId,
-        content.trim()
+        content.trim(),
+        replyTo
     );
 };
 
@@ -39,7 +64,9 @@ const createMessage = async (
  */
 const getMessagesByConversation = async (
     conversationId,
-    userId
+    userId,
+    page = 1,
+    limit = 50
 ) => {
     const isMember =
         await conversationRepository.isConversationMember(
@@ -55,7 +82,9 @@ const getMessagesByConversation = async (
 
     return messageRepository.getMessagesByConversation(
         conversationId,
-        userId
+        userId,
+        page,
+        limit
     );
 };
 
@@ -322,11 +351,66 @@ const deleteMessageForEveryone = async (
     return deletedMessage;
 };
 
+
+const addReaction = async (messageId, userId, emoji) => {
+    const message = await messageRepository.getMessageById(messageId);
+    if (!message) {
+        const error = new Error('Message không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (!await conversationRepository.isConversationMember(message.conversation_id, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (message.is_recalled || message.deleted_at) {
+        const error = new Error('Không thể reaction vào message đã thu hồi hoặc xoá');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (typeof emoji !== 'string' || !emoji.trim() || emoji.trim().length > 32) {
+        const error = new Error('Emoji không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return messageRepository.addReaction(messageId, userId, emoji.trim());
+};
+
+const removeReaction = async (messageId, userId, emoji) => {
+    const message = await messageRepository.getMessageById(messageId);
+    if (!message) {
+        const error = new Error('Message không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (!await conversationRepository.isConversationMember(message.conversation_id, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (typeof emoji !== 'string' || !emoji.trim() || emoji.trim().length > 32) {
+        const error = new Error('Emoji không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return messageRepository.removeReaction(messageId, userId, emoji.trim());
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
     updateMessage,
     recallMessage,
     deleteMessageForMe,
-    deleteMessageForEveryone
+    deleteMessageForEveryone,
+    addReaction,
+    removeReaction
 };

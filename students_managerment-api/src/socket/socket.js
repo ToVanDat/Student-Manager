@@ -128,7 +128,7 @@ const initSocket = (server) => {
             if (Number.isInteger(id) && id > 0) socket.leave(`conversation:${id}`);
         });
 
-        socket.on('message:send', async ({ conversationId, content }) => {
+        socket.on('message:send', async ({ conversationId, content, replyToMessageId = null }) => {
             const id = Number(conversationId);
             const text = typeof content === 'string' ? content.trim() : '';
 
@@ -145,7 +145,20 @@ const initSocket = (server) => {
                     return socket.emit('message:error', { message: 'Bạn không thuộc conversation này' });
                 }
 
-                const savedMessage = await messageRepository.createMessage(id, userId, text);
+                let replyTo = null;
+                if (replyToMessageId !== null && replyToMessageId !== undefined) {
+                    replyTo = Number(replyToMessageId);
+                    if (!Number.isInteger(replyTo) || replyTo <= 0) {
+                        return socket.emit('message:error', { message: 'replyToMessageId không hợp lệ' });
+                    }
+
+                    const repliedMessage = await messageRepository.getMessageById(replyTo);
+                    if (!repliedMessage || Number(repliedMessage.conversation_id) !== id) {
+                        return socket.emit('message:error', { message: 'Message reply không thuộc conversation này' });
+                    }
+                }
+
+                const savedMessage = await messageRepository.createMessage(id, userId, text, replyTo);
                 const memberIds = await conversationRepository.getConversationMemberIds(id);
 
                 io.to(`conversation:${id}`).emit('message:new', savedMessage);
@@ -416,6 +429,68 @@ const initSocket = (server) => {
                 socket.emit('message:error', {
                     message: 'Không thể xoá message cho tất cả'
                 });
+            }
+        });
+
+        socket.on('message:reaction:add', async ({ messageId, emoji }) => {
+            const id = Number(messageId);
+            const value = typeof emoji === 'string' ? emoji.trim() : '';
+
+            if (!Number.isInteger(id) || id <= 0 || !value || value.length > 32) {
+                return socket.emit('message:error', { message: 'Reaction không hợp lệ' });
+            }
+
+            try {
+                const message = await messageRepository.getMessageById(id);
+                if (!message) return socket.emit('message:error', { message: 'Message không tồn tại' });
+
+                if (!await conversationRepository.isConversationMember(message.conversation_id, userId)) {
+                    return socket.emit('message:error', { message: 'Bạn không thuộc conversation này' });
+                }
+
+                const reaction = await messageRepository.addReaction(id, userId, value);
+                io.to(`conversation:${message.conversation_id}`).emit('message:reaction:updated', {
+                    messageId: id,
+                    conversationId: message.conversation_id,
+                    action: 'add',
+                    reaction
+                });
+            } catch (error) {
+                console.error('REACTION ADD ERROR:', error);
+                socket.emit('message:error', { message: 'Không thể thêm reaction' });
+            }
+        });
+
+        socket.on('message:reaction:remove', async ({ messageId, emoji }) => {
+            const id = Number(messageId);
+            const value = typeof emoji === 'string' ? emoji.trim() : '';
+
+            if (!Number.isInteger(id) || id <= 0 || !value || value.length > 32) {
+                return socket.emit('message:error', { message: 'Reaction không hợp lệ' });
+            }
+
+            try {
+                const message = await messageRepository.getMessageById(id);
+                if (!message) return socket.emit('message:error', { message: 'Message không tồn tại' });
+
+                if (!await conversationRepository.isConversationMember(message.conversation_id, userId)) {
+                    return socket.emit('message:error', { message: 'Bạn không thuộc conversation này' });
+                }
+
+                const reaction = await messageRepository.removeReaction(id, userId, value);
+                io.to(`conversation:${message.conversation_id}`).emit('message:reaction:updated', {
+                    messageId: id,
+                    conversationId: message.conversation_id,
+                    action: 'remove',
+                    reaction: reaction || {
+                        message_id: id,
+                        user_id: userId,
+                        emoji: value
+                    }
+                });
+            } catch (error) {
+                console.error('REACTION REMOVE ERROR:', error);
+                socket.emit('message:error', { message: 'Không thể xoá reaction' });
             }
         });
 

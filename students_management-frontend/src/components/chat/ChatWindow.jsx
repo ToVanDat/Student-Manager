@@ -4,7 +4,8 @@ import {
     Search,
     Send,
     Paperclip,
-    Smile
+    Smile,
+    Reply
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -18,14 +19,21 @@ export default function ChatWindow({
     onSendMessage,
     onSendAttachment,
     onDownloadFile,
+    onDeleteFile,
     isTyping,
     onTyping,
     onEdit,
     onRecall,
     onDeleteForMe,
-    onDeleteForEveryone
+    onDeleteForEveryone,
+    onReply,
+    onToggleReaction,
+    hasMoreMessages,
+    loadingOlder,
+    onLoadOlder
 }) {
     const [input, setInput] = useState('');
+    const [replyTo, setReplyTo] = useState(null);
     const messagesEndRef = useRef(null);
     const typingTimer = useRef(null);
     const fileInputRef = useRef(null);
@@ -101,9 +109,10 @@ export default function ChatWindow({
 
         if (!input.trim()) return;
 
-        onSendMessage(input);
+        onSendMessage(input, replyTo?.id || null);
 
         setInput('');
+        setReplyTo(null);
         onTyping?.(false);
     };
 
@@ -194,6 +203,18 @@ export default function ChatWindow({
             {/* ================= MESSAGES ================= */}
 
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
+                {hasMoreMessages && (
+                    <div className="flex justify-center mb-4">
+                        <button
+                            type="button"
+                            onClick={onLoadOlder}
+                            disabled={loadingOlder}
+                            className="rounded-full border border-slate-200 px-4 py-1.5 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
+                        >
+                            {loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}
+                        </button>
+                    </div>
+                )}
 
                 {messages.map((msg) => (
                     <MessageBubble
@@ -227,6 +248,10 @@ export default function ChatWindow({
                         onDeleteForMe={onDeleteForMe}
                         onDeleteForEveryone={onDeleteForEveryone}
                         onDownloadFile={onDownloadFile}
+                        onDeleteFile={onDeleteFile}
+                        onReply={onReply ? (message) => { setReplyTo(message); onReply(message); } : undefined}
+                        onToggleReaction={onToggleReaction}
+                        currentUserId={currentUserId}
                     />
                 ))}
 
@@ -241,6 +266,19 @@ export default function ChatWindow({
             </div>
 
             {/* ================= INPUT AREA ================= */}
+
+            {replyTo && (
+                <div className="border-t border-slate-100 dark:border-slate-800 px-5 py-2 bg-slate-50 dark:bg-slate-800/60 flex items-center gap-3">
+                    <Reply size={16} className="text-blue-500 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[11px] text-slate-400">Đang trả lời</p>
+                        <p className="truncate text-sm text-slate-700 dark:text-slate-200">
+                            {replyTo.content || 'Tin nhắn có tệp'}
+                        </p>
+                    </div>
+                    <button type="button" onClick={() => setReplyTo(null)} className="text-xs text-slate-500 hover:text-slate-800">Huỷ</button>
+                </div>
+            )}
 
             <form
                 onSubmit={handleSend}

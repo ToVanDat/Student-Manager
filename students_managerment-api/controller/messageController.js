@@ -1,5 +1,6 @@
 const messageService = require('../service/messageService');
 const { getIO } = require('../src/socket/socket');
+const messageRepository = require('../repository/messageRepository');
 
 /**
  * Gửi message
@@ -11,6 +12,7 @@ const createMessage = async (req, res) => {
             req.body.conversationId
         );
         const content = req.body.content;
+        const replyToMessageId = req.body.replyToMessageId ?? null;
 
         if (!Number.isInteger(senderId) || senderId <= 0) {
             return res.status(401).json({
@@ -40,7 +42,8 @@ const createMessage = async (req, res) => {
             await messageService.createMessage(
                 conversationId,
                 senderId,
-                content
+                content,
+                replyToMessageId
             );
 
         return res.status(201).json({
@@ -89,6 +92,8 @@ const getMessagesByConversation = async (req, res) => {
         const conversationId = Number(
             req.params.conversationId
         );
+        const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 100);
 
         if (!Number.isInteger(userId) || userId <= 0) {
             return res.status(401).json({
@@ -108,11 +113,18 @@ const getMessagesByConversation = async (req, res) => {
         const messages =
             await messageService.getMessagesByConversation(
                 conversationId,
-                userId
+                userId,
+                page,
+                limit
             );
 
         return res.status(200).json({
-            data: messages
+            data: messages,
+            pagination: {
+                page,
+                limit,
+                hasMore: messages.length === limit
+            }
         });
 
     } catch (error) {
@@ -374,11 +386,69 @@ const deleteMessageForEveryone = async (req, res) => {
     }
 };
 
+
+const addReaction = async (req, res) => {
+    try {
+        const messageId = Number(req.params.messageId);
+        const userId = Number(req.user.id);
+        const { emoji } = req.body;
+
+        if (!Number.isInteger(messageId) || messageId <= 0) {
+            return res.status(400).json({ message: 'messageId không hợp lệ' });
+        }
+
+        const reaction = await messageService.addReaction(messageId, userId, emoji);
+        const io = getIO();
+        const target = await messageRepository.getMessageById(messageId);
+        io.to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
+            messageId,
+            conversationId: target.conversation_id,
+            action: 'add',
+            reaction
+        });
+
+        return res.status(201).json({ data: reaction });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ message: error.message || 'Không thể thêm reaction' });
+    }
+};
+
+const removeReaction = async (req, res) => {
+    try {
+        const messageId = Number(req.params.messageId);
+        const userId = Number(req.user.id);
+        const emoji = req.params.emoji;
+
+        if (!Number.isInteger(messageId) || messageId <= 0) {
+            return res.status(400).json({ message: 'messageId không hợp lệ' });
+        }
+
+        const reaction = await messageService.removeReaction(messageId, userId, decodeURIComponent(emoji));
+        const target = await messageRepository.getMessageById(messageId);
+        getIO().to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
+            messageId,
+            conversationId: target.conversation_id,
+            action: 'remove',
+            reaction: reaction || {
+                message_id: messageId,
+                user_id: userId,
+                emoji: decodeURIComponent(emoji)
+            }
+        });
+
+        return res.json({ data: reaction });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({ message: error.message || 'Không thể xoá reaction' });
+    }
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
     updateMessage,
     recallMessage,
     deleteMessageForMe,
-    deleteMessageForEveryone
+    deleteMessageForEveryone,
+    addReaction,
+    removeReaction
 };

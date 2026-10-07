@@ -3,7 +3,7 @@ const pool = require('../src/config/database');
 /**
  * Tạo message mới và tự động cập nhật updated_at cho conversation
  */
-const createMessage = async (conversationId, senderId, content) => {
+const createMessage = async (conversationId, senderId, content, replyToMessageId = null) => {
     const client = await pool.connect();
 
     try {
@@ -13,9 +13,10 @@ const createMessage = async (conversationId, senderId, content) => {
             INSERT INTO messages (
                 conversation_id,
                 sender_id,
-                content
+                content,
+                reply_to_message_id
             )
-            VALUES ($1, $2, $3)
+            VALUES ($1, $2, $3, $4)
             RETURNING
                 id,
                 conversation_id,
@@ -27,6 +28,7 @@ const createMessage = async (conversationId, senderId, content) => {
                 recalled_at,
                 deleted_at,
                 edited_at,
+                reply_to_message_id,
                 created_at,
                 updated_at;
         `;
@@ -34,7 +36,8 @@ const createMessage = async (conversationId, senderId, content) => {
         const { rows } = await client.query(insertMessageQuery, [
             conversationId,
             senderId,
-            content
+            content,
+            replyToMessageId
         ]);
 
         const savedMessage = rows[0];
@@ -62,7 +65,11 @@ const createMessage = async (conversationId, senderId, content) => {
 /**
  * Lấy danh sách message của conversation
  */
-const getMessagesByConversation = async (conversationId, userId) => {
+const getMessagesByConversation = async (conversationId, userId, page = 1, limit = 50) => {
+    const safePage = Math.max(Number(page) || 1, 1);
+    const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
+    const offset = (safePage - 1) * safeLimit;
+
     const query = `
         SELECT
             id,
@@ -77,6 +84,7 @@ const getMessagesByConversation = async (conversationId, userId) => {
             edited_at,
             created_at,
             updated_at,
+            reply_to_message_id,
             COALESCE(
                 (
                     SELECT json_agg(
@@ -94,7 +102,31 @@ const getMessagesByConversation = async (conversationId, userId) => {
                     WHERE mf.message_id = m.id
                 ),
                 '[]'::json
-            ) AS files
+            ) AS files,
+            COALESCE(
+                (
+                    SELECT json_agg(
+                        json_build_object(
+                            'id', mr.id,
+                            'user_id', mr.user_id,
+                            'emoji', mr.emoji,
+                            'created_at', mr.created_at
+                        ) ORDER BY mr.created_at ASC, mr.id ASC
+                    )
+                    FROM message_reactions mr
+                    WHERE mr.message_id = m.id
+                ),
+                '[]'::json
+            ) AS reactions,
+            CASE WHEN m.reply_to_message_id IS NULL THEN NULL ELSE (
+                SELECT json_build_object(
+                    'id', rm.id,
+                    'sender_id', rm.sender_id,
+                    'content', rm.content,
+                    'is_recalled', rm.is_recalled,
+                    'deleted_at', rm.deleted_at
+                ) FROM messages rm WHERE rm.id = m.reply_to_message_id
+            ) END AS reply_to
         FROM messages m
         WHERE m.conversation_id = $1
           AND NOT EXISTS (
@@ -103,11 +135,12 @@ const getMessagesByConversation = async (conversationId, userId) => {
               WHERE md.message_id = m.id
                 AND md.user_id = $2
           )
-        ORDER BY m.created_at ASC;
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT $3 OFFSET $4;
     `;
 
-    const { rows } = await pool.query(query, [conversationId, userId]);
-    return rows;
+    const { rows } = await pool.query(query, [conversationId, userId, safeLimit, offset]);
+    return rows.reverse();
 };
 
 /**
@@ -127,7 +160,8 @@ const getMessageById = async (messageId) => {
             deleted_at,
             edited_at,
             created_at,
-            updated_at
+            updated_at,
+            reply_to_message_id
         FROM messages
         WHERE id = $1
         LIMIT 1;
@@ -283,6 +317,34 @@ const markMessagesAsRead = async (conversationId, userId) => {
     return result.rowCount;
 };
 
+
+const addReaction = async (messageId, userId, emoji) => {
+    const query = `
+        INSERT INTO message_reactions (message_id, user_id, emoji)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (message_id, user_id, emoji) DO NOTHING
+        RETURNING id, message_id, user_id, emoji, created_at;
+    `;
+    const { rows } = await pool.query(query, [messageId, userId, emoji]);
+    if (rows[0]) return rows[0];
+
+    const existing = await pool.query(
+        'SELECT id, message_id, user_id, emoji, created_at FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3 LIMIT 1',
+        [messageId, userId, emoji]
+    );
+    return existing.rows[0] || null;
+};
+
+const removeReaction = async (messageId, userId, emoji) => {
+    const query = `
+        DELETE FROM message_reactions
+        WHERE message_id = $1 AND user_id = $2 AND emoji = $3
+        RETURNING id, message_id, user_id, emoji, created_at;
+    `;
+    const { rows } = await pool.query(query, [messageId, userId, emoji]);
+    return rows[0] || null;
+};
+
 module.exports = {
     createMessage,
     getMessagesByConversation,
@@ -291,5 +353,7 @@ module.exports = {
     recallMessage,
     deleteMessageForMe,
     deleteMessageForEveryone,
-    markMessagesAsRead
+    markMessagesAsRead,
+    addReaction,
+    removeReaction
 };

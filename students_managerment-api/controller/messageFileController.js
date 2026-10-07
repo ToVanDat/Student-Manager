@@ -132,6 +132,24 @@ const deleteFile = async (req, res) => {
                 req.user.id
             );
 
+        const message = await messageRepository.getMessageById(deleted.message_id);
+        if (message) {
+            getIO().to(`conversation:${message.conversation_id}`).emit('message:file:deleted', {
+                messageId: message.id,
+                conversationId: message.conversation_id,
+                fileId: deleted.id
+            });
+        }
+
+        const message = await messageRepository.getMessageById(deleted.message_id);
+        if (message) {
+            getIO().to(`conversation:${message.conversation_id}`).emit('message:file:deleted', {
+                messageId: message.id,
+                conversationId: message.conversation_id,
+                fileId: deleted.id
+            });
+        }
+
         return res.json({
             message: 'Xoá file thành công',
             file: deleted

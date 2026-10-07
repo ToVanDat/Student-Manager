@@ -12,6 +12,9 @@ export const useChat = () => {
     const [messages, setMessages] = useState([]);
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [hasMoreMessages, setHasMoreMessages] = useState(false);
+    const [loadingOlder, setLoadingOlder] = useState(false);
+    const [messagePage, setMessagePage] = useState(1);
     const [isTyping, setIsTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
 
@@ -49,10 +52,12 @@ export const useChat = () => {
         const loadMessages = async () => {
             setLoading(true);
             try {
-                const res = await chatApi.getMessages(activeId);
+                const res = await chatApi.getMessages(activeId, 1, 50);
                 if (cancelled) return;
 
                 setMessages(res.data?.data || []);
+                setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
+                setMessagePage(1);
                 await chatApi.markAsRead(activeId);
                 if (socket.connected) socket.emit('message:read', { conversationId: activeId });
 
@@ -196,9 +201,44 @@ export const useChat = () => {
             ));
         };
 
+        const handleReactionUpdated = ({ messageId, conversationId, action, reaction }) => {
+            if (Number(conversationId) !== Number(activeId)) return;
+
+            setMessages(prev => prev.map(item => {
+                if (Number(item.id) !== Number(messageId)) return item;
+
+                const reactions = Array.isArray(item.reactions) ? item.reactions : [];
+                if (action === 'add') {
+                    if (reactions.some(r => Number(r.id) === Number(reaction?.id))) return item;
+                    return { ...item, reactions: [...reactions, reaction] };
+                }
+
+                return {
+                    ...item,
+                    reactions: reactions.filter(r =>
+                        !(Number(r.user_id) === Number(reaction?.user_id) &&
+                          r.emoji === reaction?.emoji)
+                    )
+                };
+            }));
+        };
+
         const handleMessageDeletedMe = ({ messageId, conversationId }) => {
             if (Number(conversationId) !== Number(activeId)) return;
             setMessages(prev => prev.filter(item => Number(item.id) !== Number(messageId)));
+        };
+
+        const handleMessageFileDeleted = ({ messageId, conversationId, fileId }) => {
+            if (Number(conversationId) !== Number(activeId)) return;
+
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(messageId)
+                    ? {
+                        ...item,
+                        files: (item.files || []).filter(file => Number(file.id) !== Number(fileId))
+                    }
+                    : item
+            ));
         };
 
         const handleMessageFileUploaded = ({ messageId, conversationId, file }) => {
@@ -316,7 +356,9 @@ export const useChat = () => {
         socket.on('message:recalled', handleMessageRecalled);
         socket.on('message:deleted:everyone', handleMessageDeletedEveryone);
         socket.on('message:deleted:me', handleMessageDeletedMe);
+        socket.on('message:reaction:updated', handleReactionUpdated);
         socket.on('message:file:uploaded', handleMessageFileUploaded);
+        socket.on('message:file:deleted', handleMessageFileDeleted);
         socket.on('message:error', handleMessageError);
 
         return () => {
@@ -333,7 +375,9 @@ export const useChat = () => {
             socket.off('message:recalled', handleMessageRecalled);
             socket.off('message:deleted:everyone', handleMessageDeletedEveryone);
             socket.off('message:deleted:me', handleMessageDeletedMe);
+            socket.off('message:reaction:updated', handleReactionUpdated);
             socket.off('message:file:uploaded', handleMessageFileUploaded);
+            socket.off('message:file:deleted', handleMessageFileDeleted);
             socket.off('message:error', handleMessageError);
         };
     }, [activeId, fetchConversations, currentUserId]);
@@ -439,15 +483,68 @@ export const useChat = () => {
         }
     }, [activeId]);
 
-    const sendMessage = useCallback((content) => {
-        const text = content.trim();
+    const sendMessage = useCallback((content, replyToMessageId = null) => {
+        const text = typeof content === 'string' ? content.trim() : '';
         if (!activeId || !text || !socket.connected) return;
 
         socket.emit('message:send', {
             conversationId: activeId,
-            content: text
+            content: text,
+            replyToMessageId
         });
     }, [activeId]);
+
+    const loadOlderMessages = useCallback(async () => {
+        if (!activeId || loadingOlder || !hasMoreMessages) return;
+
+        setLoadingOlder(true);
+        try {
+            const nextPage = messagePage + 1;
+            const res = await chatApi.getMessages(activeId, nextPage, 50);
+            const older = res.data?.data || [];
+
+            setMessages(prev => {
+                const existing = new Set(prev.map(item => Number(item.id)));
+                const uniqueOlder = older.filter(item => !existing.has(Number(item.id)));
+                return [...uniqueOlder, ...prev];
+            });
+            setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
+            setMessagePage(nextPage);
+        } catch (error) {
+            console.error('Không thể tải thêm messages:', error);
+        } finally {
+            setLoadingOlder(false);
+        }
+    }, [activeId, loadingOlder, hasMoreMessages, messagePage]);
+
+    const toggleReaction = useCallback(async (messageId, emoji) => {
+        if (!messageId || !emoji || !socket.connected) return;
+
+        const message = messages.find(item => Number(item.id) === Number(messageId));
+        const mine = (message?.reactions || []).some(
+            reaction => Number(reaction.user_id) === currentUserId && reaction.emoji === emoji
+        );
+
+        socket.emit(mine ? 'message:reaction:remove' : 'message:reaction:add', {
+            messageId,
+            emoji
+        });
+    }, [messages, currentUserId]);
+
+    const deleteFile = useCallback(async (file) => {
+        if (!file?.id) return;
+
+        try {
+            await chatApi.deleteFile(file.id);
+            setMessages(prev => prev.map(item =>
+                Array.isArray(item.files)
+                    ? { ...item, files: item.files.filter(existing => Number(existing.id) !== Number(file.id)) }
+                    : item
+            ));
+        } catch (error) {
+            console.error('Không thể xoá file:', error);
+        }
+    }, []);
 
     const downloadFile = useCallback(async (file) => {
         if (!file?.id) return;
@@ -501,8 +598,13 @@ export const useChat = () => {
         loading,
         isTyping,
         sendMessage,
+        loadOlderMessages,
+        hasMoreMessages,
+        loadingOlder,
+        toggleReaction,
         sendAttachment,
         downloadFile,
+        deleteFile,
         editMessage,
         recallMessage,
         deleteMessageForMe,

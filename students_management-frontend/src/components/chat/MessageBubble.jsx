@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download } from 'lucide-react';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply } from 'lucide-react';
 import AvatarFallback from './AvatarFallback';
 
 const formatFileSize = (size) => {
@@ -20,7 +20,11 @@ export default function MessageBubble({
     onRecall,
     onDeleteForMe,
     onDeleteForEveryone,
-    onDownloadFile
+    onDownloadFile,
+    onDeleteFile,
+    onReply,
+    onToggleReaction,
+    currentUserId
 }) {
     const { content, time, isRead } = message;
     const [menuOpen, setMenuOpen] = useState(false);
@@ -73,6 +77,13 @@ export default function MessageBubble({
                         ref={menuRef}
                         className={`absolute z-40 top-7 ${isOwn ? 'right-0' : 'left-0'} min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800`}
                     >
+                        <button type="button" onClick={() => {
+                            setMenuOpen(false);
+                            onReply?.(message);
+                        }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
+                            <Reply size={15} /> Trả lời
+                        </button>
+
                         {canEdit && (
                             <button type="button" onClick={() => {
                                 setEditing(true);
@@ -114,6 +125,13 @@ export default function MessageBubble({
                         ? 'bg-blue-600 text-white rounded-br-xs'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-xs'
                 }`}>
+                    {message.reply_to && !isDeleted && !isRecalled && (
+                        <div className="mb-2 rounded-lg border-l-2 border-white/50 bg-black/5 px-2.5 py-1.5 text-xs opacity-80">
+                            <p className="font-medium">Tin nhắn được trả lời</p>
+                            <p className="truncate">{message.reply_to.content || 'Tin nhắn có tệp'}</p>
+                        </div>
+                    )}
+
                     {isDeleted ? (
                         <p className="leading-relaxed italic opacity-70">Tin nhắn đã bị xoá</p>
                     ) : isRecalled ? (
@@ -193,6 +211,16 @@ export default function MessageBubble({
                                                     >
                                                         <Download size={15} />
                                                     </button>
+                                                    {isOwn && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onDeleteFile?.(file)}
+                                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                            title="Xoá file"
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -201,6 +229,46 @@ export default function MessageBubble({
                             )}
                         </>
                     )}
+
+                            {Array.isArray(message.reactions) && message.reactions.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-1">
+                                    {Object.entries(
+                                        message.reactions.reduce((groups, reaction) => {
+                                            const key = reaction.emoji;
+                                            if (!groups[key]) groups[key] = [];
+                                            groups[key].push(reaction);
+                                            return groups;
+                                        }, {})
+                                    ).map(([emoji, reactions]) => {
+                                        const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
+                                        return (
+                                            <button
+                                                key={emoji}
+                                                type="button"
+                                                onClick={() => onToggleReaction?.(message.id, emoji)}
+                                                className={`rounded-full border px-2 py-0.5 text-xs ${mine ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-200 dark:border-slate-700'}`}
+                                                title={`${reactions.length} reaction`}
+                                            >
+                                                {emoji} {reactions.length}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <div className="mt-1 flex gap-1">
+                                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                                    <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => onToggleReaction?.(message.id, emoji)}
+                                        className="text-sm opacity-70 hover:opacity-100"
+                                        title={`React ${emoji}`}
+                                    >
+                                        {emoji}
+                                    </button>
+                                ))}
+                            </div>
 
                     <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isOwn ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'}`}>
                         <span>{time}</span>
