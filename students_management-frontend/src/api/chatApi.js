@@ -11,6 +11,24 @@ export const chatApi = {
             userId: targetUserId
         }),
 
+    createGroupConversation: (name, memberIds, avatarUrl = null) =>
+        client.post('/api/conversations/group', { name, memberIds, avatarUrl }),
+
+    getConversationMembers: (conversationId) =>
+        client.get(`/api/conversations/${conversationId}/members`),
+
+    addGroupMember: (conversationId, userId) =>
+        client.post(`/api/conversations/${conversationId}/members`, { userId }),
+
+    removeGroupMember: (conversationId, userId) =>
+        client.delete(`/api/conversations/${conversationId}/members/${userId}`),
+
+    leaveGroup: (conversationId) =>
+        client.post(`/api/conversations/${conversationId}/leave`),
+
+    updateGroupMemberRole: (conversationId, userId, role) =>
+        client.patch(`/api/conversations/${conversationId}/members/${userId}/role`, { role }),
+
     // Lấy lịch sử message toàn bộ 
     getMessages: (conversationId, page = 1, limit = 50) =>
         client.get(`/api/messages/conversation/${conversationId}?page=${page}&limit=${limit}`),
