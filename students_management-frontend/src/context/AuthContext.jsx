@@ -5,6 +5,10 @@ import {
 } from 'react';
 
 import { logoutApi } from '@/api/authApi.js';
+import {
+    refreshAccessToken,
+    setAccessToken as setApiAccessToken
+} from '@/api/client.js';
 import socket from '@/socket/socket.js';
 
 const AuthContext = createContext(null);
@@ -27,15 +31,36 @@ export const AuthProvider = ({ children }) => {
 
     const [user, setUser] = useState(getStoredUser);
 
+    // Đồng bộ khi Axios interceptor refresh token sau một request 401.
+    useEffect(() => {
+        const handleTokenChanged = (event) => {
+            const nextToken = event.detail?.accessToken || null;
+            setAccessToken(nextToken);
+
+            if (!nextToken) {
+                setUser(null);
+            }
+        };
+
+        window.addEventListener(
+            'auth:access-token-changed',
+            handleTokenChanged
+        );
+
+        return () => {
+            window.removeEventListener(
+                'auth:access-token-changed',
+                handleTokenChanged
+            );
+        };
+    }, []);
+
 //login
     const loginUser = (data) => {
 
         console.log('LOGIN DATA:', data);
 
-        localStorage.setItem(
-            'accessToken',
-            data.accessToken
-        );
+        setApiAccessToken(data.accessToken);
 
         localStorage.setItem(
             'user',
@@ -77,6 +102,61 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
         }
     };
+
+    // =========================
+    // PROACTIVE ACCESS TOKEN REFRESH
+    // =========================
+    useEffect(() => {
+        if (!accessToken) return;
+
+        let timerId;
+
+        const scheduleRefresh = (token) => {
+            try {
+                const payload = JSON.parse(
+                    atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+                );
+
+                if (!payload.exp) {
+                    console.warn('Access token không có exp');
+                    return;
+                }
+
+                // Refresh trước khi hết hạn 60 giây.
+                const delay = Math.max(
+                    (payload.exp * 1000) - Date.now() - 60_000,
+                    5_000
+                );
+
+                timerId = window.setTimeout(async () => {
+                    try {
+                        const newToken = await refreshAccessToken();
+                        setAccessToken(newToken);
+                    } catch (error) {
+                        console.error(
+                            'Không thể tự refresh Access Token:',
+                            error
+                        );
+
+                        socket.disconnect();
+                        localStorage.removeItem('accessToken');
+                        localStorage.removeItem('user');
+                        setAccessToken(null);
+                        setUser(null);
+                        window.location.href = '/login';
+                    }
+                }, delay);
+            } catch (error) {
+                console.error('Không thể đọc exp của Access Token:', error);
+            }
+        };
+
+        scheduleRefresh(accessToken);
+
+        return () => {
+            if (timerId) window.clearTimeout(timerId);
+        };
+    }, [accessToken]);
 
     // =========================
     // SOCKET CONNECTION
@@ -147,6 +227,43 @@ export const AuthProvider = ({ children }) => {
                 'Socket connection error:',
                 error.message
             );
+
+            if (
+                /Access Token|token|Session/i.test(error.message || '')
+            ) {
+                refreshAccessToken()
+                    .then((newToken) => {
+                        setAccessToken(newToken);
+                    })
+                    .catch(() => {
+                        localStorage.removeItem('accessToken');
+                        localStorage.removeItem('user');
+                        setAccessToken(null);
+                        setUser(null);
+                        window.location.href = '/login';
+                    });
+            }
+        };
+
+        const handleSocketDisconnect = (reason) => {
+            // Server-side disconnect (ví dụ access token đã hết hạn).
+            // Refresh rồi reconnect với token mới.
+            if (
+                reason === 'io server disconnect' ||
+                reason === 'server namespace disconnect'
+            ) {
+                refreshAccessToken()
+                    .then((newToken) => {
+                        setAccessToken(newToken);
+                    })
+                    .catch(() => {
+                        localStorage.removeItem('accessToken');
+                        localStorage.removeItem('user');
+                        setAccessToken(null);
+                        setUser(null);
+                        window.location.href = '/login';
+                    });
+            }
         };
 
         socket.on(
@@ -162,6 +279,11 @@ export const AuthProvider = ({ children }) => {
         socket.on(
             'connect_error',
             handleConnectError
+        );
+
+        socket.on(
+            'disconnect',
+            handleSocketDisconnect
         );
 
         // =========================
@@ -182,6 +304,11 @@ export const AuthProvider = ({ children }) => {
             socket.off(
                 'connect_error',
                 handleConnectError
+            );
+
+            socket.off(
+                'disconnect',
+                handleSocketDisconnect
             );
 
             socket.disconnect();
