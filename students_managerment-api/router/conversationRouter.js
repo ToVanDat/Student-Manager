@@ -4,19 +4,16 @@ const router = express.Router();
 const conversationController = require('../controller/conversationController');
 const authMiddleware = require('../middleware/authMiddleware');
 
-// Áp dụng middleware xác thực cho toàn bộ route bên dưới
 router.use(authMiddleware);
 
-// Tạo hoặc lấy conversation 1-1
 router.post('/direct', conversationController.createDirectConversation);
-
-// Lấy danh sách conversation của user hiện tại
+router.post('/group', conversationController.createGroup);
 router.get('/', conversationController.getUserConversations);
-
-// Lấy members của conversation
 router.get('/:conversationId/members', conversationController.getConversationMembers);
-
-// Đánh dấu đã đọc tất cả tin nhắn trong conversation
+router.post('/:conversationId/members', conversationController.addGroupMember);
+router.patch('/:conversationId/members/:userId/role', conversationController.updateGroupMemberRole);
+router.delete('/:conversationId/members/:userId', conversationController.removeGroupMember);
+router.post('/:conversationId/leave', conversationController.leaveGroup);
 router.patch('/:id/read', conversationController.markAsRead);
 
 module.exports = router;
