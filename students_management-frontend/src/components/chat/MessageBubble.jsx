@@ -239,7 +239,7 @@ export default function MessageBubble({
                 {hovered && !isDeleted && !isRecalled && (
                     <div
                         ref={reactionAreaRef}
-                        className={`absolute z-50 top-full mt-2 ${isOwn ? 'right-0' : 'left-0'}`}
+                        className={`absolute z-50 bottom-full mb-2 ${isOwn ? 'right-0' : 'left-0'}`}
                         onMouseEnter={() => setHovered(true)}
                         onMouseLeave={() => {
                             if (!reactionPickerOpen) setHovered(false);
@@ -305,7 +305,7 @@ export default function MessageBubble({
 
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`absolute z-20 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${hovered ? 'top-[54px]' : '-bottom-3'} ${isOwn ? 'right-2' : 'left-2'}`}
+                        className={`absolute z-20 -bottom-3 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
