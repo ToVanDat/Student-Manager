@@ -59,6 +59,7 @@ const getUserConversations = async (userId) => {
                 )
             END AS "name",
             CASE WHEN c.type = 'direct' THEN other_user.avatar_url END AS "avatar",
+            CASE WHEN c.type = 'direct' THEN other_user.last_seen_at END AS "lastSeenAt",
             COUNT(DISTINCT cm_all.user_id)::int AS "memberCount",
             COALESCE(latest_message.content, '') AS "lastMessage",
             latest_message.created_at AS "lastMessageAt",
@@ -84,7 +85,7 @@ const getUserConversations = async (userId) => {
         INNER JOIN users member_user
             ON member_user.id = cm_all.user_id
         LEFT JOIN LATERAL (
-            SELECT u.id, u.username, u.avatar_url
+            SELECT u.id, u.username, u.avatar_url, u.last_seen_at
             FROM conversation_members cm_other
             JOIN users u ON u.id = cm_other.user_id
             WHERE cm_other.conversation_id = c.id
@@ -112,7 +113,7 @@ const getUserConversations = async (userId) => {
         ) latest_message ON TRUE
         GROUP BY
             c.id, c.type, c.name, c.avatar_url,
-            other_user.id, other_user.username, other_user.avatar_url,
+            other_user.id, other_user.username, other_user.avatar_url, other_user.last_seen_at,
             latest_message.content, latest_message.created_at
         ORDER BY COALESCE(latest_message.created_at, c.updated_at) DESC;
     `;
@@ -125,6 +126,7 @@ const getUserConversations = async (userId) => {
         userId: row.userId,
         name: row.name || (row.type === 'group' ? 'Nhóm chat' : 'Người dùng'),
         avatar: row.avatar || null,
+        lastSeenAt: row.lastSeenAt || null,
         conversationName: row.conversationName,
         conversationAvatar: row.conversationAvatar,
         memberCount: Number(row.memberCount || 0),
