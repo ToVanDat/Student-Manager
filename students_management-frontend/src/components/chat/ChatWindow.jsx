@@ -295,10 +295,7 @@ export default function ChatWindow({
                         onDeleteForEveryone={onDeleteForEveryone}
                         onDownloadFile={onDownloadFile}
                         onDeleteFile={onDeleteFile}
-                        onReply={(message) => {
-                            setReplyTo(message);
-                            setInput(current => current);
-                        }}
+                        onReply={(message) => setReplyTo(message)}
                         onToggleReaction={onToggleReaction}
                         currentUserId={currentUserId}
                     />
