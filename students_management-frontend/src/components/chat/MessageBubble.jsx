@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
@@ -33,6 +33,24 @@ export default function MessageBubble({
     const [editContent, setEditContent] = useState(content || '');
     const [hovered, setHovered] = useState(false);
     const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
+    const hoverCloseTimer = useRef(null);
+
+    const keepHovered = () => {
+        if (hoverCloseTimer.current) {
+            clearTimeout(hoverCloseTimer.current);
+            hoverCloseTimer.current = null;
+        }
+        setHovered(true);
+    };
+
+    const scheduleHoverClose = () => {
+        if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+        hoverCloseTimer.current = setTimeout(() => {
+            if (!reactionPickerOpen && !menuOpen) {
+                setHovered(false);
+            }
+        }, 180);
+    };
 
     const isRecalled = Boolean(message.is_recalled ?? message.isRecalled);
     const isDeleted = Boolean(message.deleted_at ?? message.deletedAt);
@@ -46,7 +64,10 @@ export default function MessageBubble({
             }
         };
         document.addEventListener('mousedown', close);
-        return () => document.removeEventListener('mousedown', close);
+        return () => {
+            document.removeEventListener('mousedown', close);
+            if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+        };
     }, []);
 
     const submitEdit = () => {
@@ -73,12 +94,8 @@ export default function MessageBubble({
     return (
         <div
             className={`relative flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => {
-                if (!reactionPickerOpen && !menuOpen) {
-                    setHovered(false);
-                }
-            }}
+            onMouseEnter={keepHovered}
+            onMouseLeave={scheduleHoverClose}
         >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
@@ -93,7 +110,10 @@ export default function MessageBubble({
                     {hovered && !isDeleted && !isRecalled && (
                         <button
                             type="button"
+                            data-message-menu
+                            onMouseEnter={keepHovered}
                             onClick={() => {
+                                keepHovered();
                                 setMenuOpen(prev => !prev);
                                 setReactionPickerOpen(false);
                             }}
@@ -253,7 +273,8 @@ export default function MessageBubble({
                 {hovered && !isDeleted && !isRecalled && (
                     <div
                         className={`absolute -top-12 z-50 ${isOwn ? 'right-0' : 'left-0'}`}
-                        onMouseEnter={() => setHovered(true)}
+                        onMouseEnter={keepHovered}
+                        onMouseLeave={scheduleHoverClose}
                     >
                         <div className="flex items-center gap-0.5 rounded-full border border-slate-200/90 bg-white/95 px-1.5 py-1 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
                             {quickReactions.slice(0, 4).map(emoji => (
@@ -290,7 +311,8 @@ export default function MessageBubble({
                             {reactionPickerOpen && (
                                 <div
                                     className={`absolute top-full z-[70] pt-2 ${isOwn ? 'right-0' : 'left-0'}`}
-                                    onMouseEnter={() => setHovered(true)}
+                                    onMouseEnter={keepHovered}
+                                    onMouseLeave={scheduleHoverClose}
                                     onMouseDown={event => event.stopPropagation()}
                                 >
                                     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
