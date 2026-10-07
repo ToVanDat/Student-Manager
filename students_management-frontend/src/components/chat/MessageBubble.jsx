@@ -142,19 +142,19 @@ export default function MessageBubble({
 
                     {message.reply_to && !isDeleted && !isRecalled && (
                         <div
-                            className={`mb-2 max-w-[280px] overflow-hidden rounded-lg border-l-[3px] px-3 py-2 ${
+                            className={`mb-2 w-full max-w-[280px] overflow-hidden rounded-xl border-l-[3px] px-3 py-2 ${
                                 isOwn
-                                    ? 'border-white/70 bg-white/10 text-white/90'
-                                    : 'border-blue-500 bg-white/70 text-slate-700 dark:bg-slate-700/60 dark:text-slate-200'
+                                    ? 'border-blue-200/90 bg-blue-500/25 text-blue-50'
+                                    : 'border-blue-500 bg-slate-200/80 text-slate-700 dark:bg-slate-700/80 dark:text-slate-200'
                             }`}
                             title={message.reply_to.content || 'Tin nhắn có tệp'}
                         >
-                            <p className={`mb-0.5 text-[11px] font-semibold ${
-                                isOwn ? 'text-white' : 'text-blue-600 dark:text-blue-400'
+                            <p className={`mb-0.5 text-[11px] font-semibold leading-4 ${
+                                isOwn
+                                    ? 'text-white'
+                                    : 'text-blue-600 dark:text-blue-400'
                             }`}>
-                                {Number(message.reply_to.sender_id) === Number(currentUserId)
-                                    ? 'Bạn'
-                                    : 'Tin nhắn được trả lời'}
+                                Tin nhắn được trả lời
                             </p>
                             <p className="truncate text-xs leading-5 opacity-90">
                                 {message.reply_to.content || '📎 Tin nhắn có tệp đính kèm'}
