@@ -91,6 +91,21 @@ export default function MessageBubble({
         }, {})
     );
 
+    // System messages are lifecycle/status messages for a group.
+    // They must not behave like normal user messages (no hover actions/reactions).
+    if (message.message_type === 'system' || message.messageType === 'system') {
+        return (
+            <div className="flex justify-center px-4 py-1.5" role="status">
+                <div className="max-w-[85%] rounded-full bg-slate-100 px-3.5 py-1.5 text-center text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
+                    {message.content}
+                    {time && (
+                        <span className="ml-2 font-normal opacity-70">{time}</span>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div
             className={`relative flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
