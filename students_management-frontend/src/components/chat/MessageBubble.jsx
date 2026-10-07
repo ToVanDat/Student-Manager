@@ -129,12 +129,12 @@ export default function MessageBubble({
                         <div
                             data-message-menu
                             onMouseEnter={keepHovered}
-                            className="absolute right-1 top-9 z-[80] min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800"
+                            className="absolute right-0 top-[calc(100%+6px)] z-[80] min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-xl dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                         >
                             <button type="button" onClick={() => {
                                 setMenuOpen(false);
                                 onReply?.(message);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
+                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
                                 <Reply size={15} /> Trả lời
                             </button>
 
@@ -273,7 +273,7 @@ export default function MessageBubble({
 
                 {!isOwn && hovered && !isDeleted && !isRecalled && (
                     <div
-                        className={`absolute z-50 ${groupedReactions.length > 0 ? 'bottom-7' : '-bottom-11'} ${isOwn ? 'right-0' : 'left-0'}`}
+                        className="relative z-50 mt-2 self-start"
                         onMouseEnter={keepHovered}
                         onMouseLeave={scheduleHoverClose}
                     >
@@ -313,7 +313,7 @@ export default function MessageBubble({
 
                             {reactionPickerOpen && (
                                 <div
-                                    className={`absolute top-full z-[70] pt-2 ${isOwn ? 'right-0' : 'left-0'}`}
+                                    className="absolute left-0 top-full z-[70] pt-2"
                                     onMouseEnter={keepHovered}
                                     onMouseLeave={scheduleHoverClose}
                                     onMouseDown={event => event.stopPropagation()}
@@ -339,7 +339,7 @@ export default function MessageBubble({
 
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`absolute -bottom-3 z-30 flex items-center rounded-full border border-slate-200 bg-white/98 px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800/98 ${isOwn ? 'right-2' : 'left-2'}`}
+                        className={`relative z-30 mt-1 flex items-center rounded-full border border-slate-200 bg-white/98 px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800/98 ${isOwn ? 'self-end' : 'self-start'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
