@@ -167,14 +167,18 @@ export default function ChatWindow({
 
                         <p
                             className={`text-[12px] mt-0.5 ${
-                                activeConversation.isOnline
-                                    ? 'text-emerald-500'
-                                    : 'text-slate-400'
+                                activeConversation.type === 'group'
+                                    ? 'text-slate-400'
+                                    : activeConversation.isOnline
+                                        ? 'text-emerald-500'
+                                        : 'text-slate-400'
                             }`}
                         >
-                            {activeConversation.isOnline
-                                ? 'Đang hoạt động'
-                                : 'Ngoại tuyến'}
+                            {activeConversation.type === 'group'
+                                ? `${activeConversation.memberCount || 0} thành viên`
+                                : activeConversation.isOnline
+                                    ? 'Đang hoạt động'
+                                    : 'Ngoại tuyến'}
                         </p>
                     </div>
 
