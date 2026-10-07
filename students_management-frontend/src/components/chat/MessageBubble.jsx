@@ -248,6 +248,7 @@ export default function MessageBubble({
                                     onClick={() => {
                                         onToggleReaction?.(message.id, emoji);
                                         setReactionPickerOpen(false);
+                                        setHovered(false);
                                     }}
                                     className="flex h-8 w-8 items-center justify-center rounded-full text-[20px] leading-none transition-transform duration-150 hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
                                     title={`Thả ${emoji}`}
@@ -288,7 +289,7 @@ export default function MessageBubble({
                                         onEmojiClick={(emojiData) => {
                                             onToggleReaction?.(message.id, emojiData.emoji);
                                             setReactionPickerOpen(false);
-                                            setHovered(true);
+                                            setHovered(false);
                                         }}
                                         width={330}
                                         height={380}
@@ -303,7 +304,7 @@ export default function MessageBubble({
 
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`absolute z-20 -bottom-3 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}
+                        className={`relative z-20 mt-2 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'self-end mr-2' : 'self-start ml-2'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
