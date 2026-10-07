@@ -30,6 +30,8 @@ export default function MessageBubble({
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editContent, setEditContent] = useState(content || '');
+    const [hovered, setHovered] = useState(false);
+    const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
     const menuRef = useRef(null);
 
     const isRecalled = Boolean(message.is_recalled ?? message.isRecalled);
@@ -58,11 +60,78 @@ export default function MessageBubble({
         setEditing(false);
     };
 
+    const quickReactions = ['👍', '❤️', '😂', '😮', '😢', '😡', '🔥'];
+
+    const groupedReactions = Object.entries(
+        (Array.isArray(message.reactions) ? message.reactions : []).reduce((groups, reaction) => {
+            if (!groups[reaction.emoji]) groups[reaction.emoji] = [];
+            groups[reaction.emoji].push(reaction);
+            return groups;
+        }, {})
+    );
+
     return (
-        <div className={`flex items-end gap-2 mb-4 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+        <div
+            className={`flex items-end gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => {
+                setHovered(false);
+                setReactionPickerOpen(false);
+            }}
+        >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
-            <div className="relative max-w-[70%]">
+            <div className={`relative max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
+                {hovered && !isDeleted && !isRecalled && (
+                    <div
+                        className={`absolute z-50 -top-11 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-0' : 'left-0'}`}
+                        onMouseEnter={() => setHovered(true)}
+                    >
+                        {quickReactions.slice(0, 6).map(emoji => (
+                            <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => onToggleReaction?.(message.id, emoji)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-lg transition hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                title={`React ${emoji}`}
+                            >
+                                {emoji}
+                            </button>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={() => setReactionPickerOpen(prev => !prev)}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            title="Thêm reaction"
+                        >
+                            +
+                        </button>
+                    </div>
+                )}
+
+                {reactionPickerOpen && (
+                    <div
+                        className={`absolute z-[60] -top-[105px] rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-0' : 'left-0'}`}
+                        onMouseEnter={() => setHovered(true)}
+                    >
+                        <div className="grid grid-cols-7 gap-1">
+                            {quickReactions.map(emoji => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                        onToggleReaction?.(message.id, emoji);
+                                        setReactionPickerOpen(false);
+                                    }}
+                                    className="flex h-9 w-9 items-center justify-center rounded-xl text-xl hover:bg-slate-100 hover:scale-110 dark:hover:bg-slate-700"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <button
                     type="button"
                     onClick={() => setMenuOpen(prev => !prev)}
@@ -173,51 +242,24 @@ export default function MessageBubble({
                                         const isImage = file.mime_type?.startsWith('image/');
 
                                         return (
-                                            <div
-                                                key={file.id}
-                                                className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden"
-                                            >
+                                            <div key={file.id} className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden">
                                                 {isImage && file.previewUrl ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onDownloadFile?.(file)}
-                                                        className="block w-full text-left"
-                                                        title="Tải ảnh"
-                                                    >
-                                                        <img
-                                                            src={file.previewUrl}
-                                                            alt={file.file_name}
-                                                            className="max-w-[280px] max-h-[280px] object-cover"
-                                                        />
+                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="block w-full text-left" title="Tải ảnh">
+                                                        <img src={file.previewUrl} alt={file.file_name} className="max-w-[280px] max-h-[280px] object-cover" />
                                                     </button>
                                                 ) : null}
 
                                                 <div className="flex items-center gap-2 px-3 py-2">
                                                     <FileText size={18} className="shrink-0" />
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-xs font-medium">
-                                                            {file.file_name}
-                                                        </p>
-                                                        <p className="text-[10px] opacity-70">
-                                                            {formatFileSize(file.file_size)}
-                                                        </p>
+                                                        <p className="truncate text-xs font-medium">{file.file_name}</p>
+                                                        <p className="text-[10px] opacity-70">{formatFileSize(file.file_size)}</p>
                                                     </div>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onDownloadFile?.(file)}
-                                                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                                                        title="Tải xuống"
-                                                    >
+                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10" title="Tải xuống">
                                                         <Download size={15} />
                                                     </button>
                                                     {isOwn && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => onDeleteFile?.(file)}
-                                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                                            title="Xoá file"
-                                                        >
+                                                        <button type="button" onClick={() => onDeleteFile?.(file)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title="Xoá file">
                                                             <Trash2 size={15} />
                                                         </button>
                                                     )}
@@ -230,47 +272,9 @@ export default function MessageBubble({
                         </>
                     )}
 
-                            {Array.isArray(message.reactions) && message.reactions.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                    {Object.entries(
-                                        message.reactions.reduce((groups, reaction) => {
-                                            const key = reaction.emoji;
-                                            if (!groups[key]) groups[key] = [];
-                                            groups[key].push(reaction);
-                                            return groups;
-                                        }, {})
-                                    ).map(([emoji, reactions]) => {
-                                        const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
-                                        return (
-                                            <button
-                                                key={emoji}
-                                                type="button"
-                                                onClick={() => onToggleReaction?.(message.id, emoji)}
-                                                className={`rounded-full border px-2 py-0.5 text-xs ${mine ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-200 dark:border-slate-700'}`}
-                                                title={`${reactions.length} reaction`}
-                                            >
-                                                {emoji} {reactions.length}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-
-                            <div className="mt-1 flex gap-1">
-                                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
-                                    <button
-                                        key={emoji}
-                                        type="button"
-                                        onClick={() => onToggleReaction?.(message.id, emoji)}
-                                        className="text-sm opacity-70 hover:opacity-100"
-                                        title={`React ${emoji}`}
-                                    >
-                                        {emoji}
-                                    </button>
-                                ))}
-                            </div>
-
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isOwn ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'}`}>
+                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
+                        isOwn ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'
+                    }`}>
                         <span>{time}</span>
                         {isOwn && (
                             isRead
@@ -279,6 +283,28 @@ export default function MessageBubble({
                         )}
                     </div>
                 </div>
+
+                {groupedReactions.length > 0 && (
+                    <div className={`absolute -bottom-3 z-20 flex items-center gap-0.5 rounded-full border border-slate-200 bg-white px-1.5 py-0.5 shadow-sm dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}>
+                        {groupedReactions.map(([emoji, reactions]) => {
+                            const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
+                            return (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => onToggleReaction?.(message.id, emoji)}
+                                    className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                                        mine ? 'ring-1 ring-blue-400 bg-blue-50 dark:bg-blue-950/50' : ''
+                                    }`}
+                                    title={`${reactions.length} người thả ${emoji}`}
+                                >
+                                    <span>{emoji}</span>
+                                    {reactions.length > 1 && <span className="font-medium">{reactions.length}</span>}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );
