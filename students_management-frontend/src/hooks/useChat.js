@@ -36,6 +36,7 @@ export const useChat = () => {
         setActiveId(null);
         setSearchResults([]);
         setOnlineUserIds(new Set());
+        setConversationMembers([]);
 
         if (currentUserId > 0) {
             fetchConversations();
