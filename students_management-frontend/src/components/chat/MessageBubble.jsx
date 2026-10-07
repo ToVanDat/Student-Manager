@@ -84,73 +84,6 @@ export default function MessageBubble({
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
             <div className={`relative max-w-[70%] ${isOwn ? 'items-end' : 'items-start'}`}>
-                {hovered && !isDeleted && !isRecalled && (
-                    <div
-                        ref={reactionAreaRef}
-                        className={`absolute z-50 top-full mt-2 ${isOwn ? 'right-0' : 'left-0'}`}
-                        onMouseEnter={() => setHovered(true)}
-                        onMouseLeave={() => {
-                            if (!reactionPickerOpen) setHovered(false);
-                        }}
-                    >
-                        <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
-                            {quickReactions.slice(0, 6).map(emoji => (
-                                <button
-                                    key={emoji}
-                                    type="button"
-                                    onClick={() => {
-                                        onToggleReaction?.(message.id, emoji);
-                                        setReactionPickerOpen(false);
-                                    }}
-                                    className="flex h-8 w-8 items-center justify-center rounded-full text-[20px] leading-none transition-transform duration-150 hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
-                                    title={`Thả ${emoji}`}
-                                >
-                                    {emoji}
-                                </button>
-                            ))}
-
-                            <div className="mx-1 h-6 w-px bg-slate-200 dark:bg-slate-600" />
-
-                            <button
-                                type="button"
-                                onMouseDown={event => event.preventDefault()}
-                                onClick={() => setReactionPickerOpen(prev => !prev)}
-                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
-                                    reactionPickerOpen
-                                        ? 'bg-slate-100 text-blue-600 dark:bg-slate-700'
-                                        : 'text-slate-500'
-                                }`}
-                                title="Thêm reaction"
-                                aria-label="Thêm reaction"
-                            >
-                                +
-                            </button>
-                        </div>
-
-                        {reactionPickerOpen && (
-                            <div
-                                className={`absolute bottom-full mb-2 z-[70] ${isOwn ? 'right-0' : 'left-0'}`}
-                                onMouseEnter={() => setHovered(true)}
-                                onMouseDown={event => event.stopPropagation()}
-                            >
-                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
-                                    <EmojiPicker
-                                        onEmojiClick={(emojiData) => {
-                                            onToggleReaction?.(message.id, emojiData.emoji);
-                                            setReactionPickerOpen(false);
-                                            setHovered(true);
-                                        }}
-                                        width={330}
-                                        height={380}
-                                        lazyLoadEmojis
-                                        previewConfig={{ showPreview: false }}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
                 <button
                     type="button"
                     onClick={() => setMenuOpen(prev => !prev)}
@@ -303,9 +236,76 @@ export default function MessageBubble({
                     </div>
                 </div>
 
+                {hovered && !isDeleted && !isRecalled && (
+                    <div
+                        ref={reactionAreaRef}
+                        className={`absolute z-50 top-full mt-2 ${isOwn ? 'right-0' : 'left-0'}`}
+                        onMouseEnter={() => setHovered(true)}
+                        onMouseLeave={() => {
+                            if (!reactionPickerOpen) setHovered(false);
+                        }}
+                    >
+                        <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/95 px-2 py-1.5 shadow-lg backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
+                            {quickReactions.slice(0, 6).map(emoji => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                        onToggleReaction?.(message.id, emoji);
+                                        setReactionPickerOpen(false);
+                                    }}
+                                    className="flex h-8 w-8 items-center justify-center rounded-full text-[20px] leading-none transition-transform duration-150 hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                    title={`Thả ${emoji}`}
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+
+                            <div className="mx-1 h-6 w-px bg-slate-200 dark:bg-slate-600" />
+
+                            <button
+                                type="button"
+                                onMouseDown={event => event.preventDefault()}
+                                onClick={() => setReactionPickerOpen(prev => !prev)}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full text-xl transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 ${
+                                    reactionPickerOpen
+                                        ? 'bg-slate-100 text-blue-600 dark:bg-slate-700'
+                                        : 'text-slate-500'
+                                }`}
+                                title="Thêm reaction"
+                                aria-label="Thêm reaction"
+                            >
+                                +
+                            </button>
+                        </div>
+
+                        {reactionPickerOpen && (
+                            <div
+                                className={`absolute bottom-full mb-2 z-[70] ${isOwn ? 'right-0' : 'left-0'}`}
+                                onMouseEnter={() => setHovered(true)}
+                                onMouseDown={event => event.stopPropagation()}
+                            >
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+                                    <EmojiPicker
+                                        onEmojiClick={(emojiData) => {
+                                            onToggleReaction?.(message.id, emojiData.emoji);
+                                            setReactionPickerOpen(false);
+                                            setHovered(true);
+                                        }}
+                                        width={330}
+                                        height={380}
+                                        lazyLoadEmojis
+                                        previewConfig={{ showPreview: false }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`absolute -bottom-3 z-20 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${isOwn ? 'right-2' : 'left-2'}`}
+                        className={`absolute z-20 flex items-center rounded-full border border-slate-200 bg-white px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800 ${hovered ? 'top-[54px]' : '-bottom-3'} ${isOwn ? 'right-2' : 'left-2'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
