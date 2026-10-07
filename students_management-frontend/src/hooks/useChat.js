@@ -226,6 +226,19 @@ export const useChat = () => {
             setMessages(prev => prev.filter(item => Number(item.id) !== Number(messageId)));
         };
 
+        const handleMessageFileDeleted = ({ messageId, conversationId, fileId }) => {
+            if (Number(conversationId) !== Number(activeId)) return;
+
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(messageId)
+                    ? {
+                        ...item,
+                        files: (item.files || []).filter(file => Number(file.id) !== Number(fileId))
+                    }
+                    : item
+            ));
+        };
+
         const handleMessageFileUploaded = ({ messageId, conversationId, file }) => {
             if (Number(conversationId) !== Number(activeId)) return;
 
@@ -343,6 +356,7 @@ export const useChat = () => {
         socket.on('message:deleted:me', handleMessageDeletedMe);
         socket.on('message:reaction:updated', handleReactionUpdated);
         socket.on('message:file:uploaded', handleMessageFileUploaded);
+        socket.on('message:file:deleted', handleMessageFileDeleted);
         socket.on('message:error', handleMessageError);
 
         return () => {
@@ -361,6 +375,7 @@ export const useChat = () => {
             socket.off('message:deleted:me', handleMessageDeletedMe);
             socket.off('message:reaction:updated', handleReactionUpdated);
             socket.off('message:file:uploaded', handleMessageFileUploaded);
+            socket.off('message:file:deleted', handleMessageFileDeleted);
             socket.off('message:error', handleMessageError);
         };
     }, [activeId, fetchConversations, currentUserId]);
@@ -514,6 +529,21 @@ export const useChat = () => {
         });
     }, [messages, currentUserId]);
 
+    const deleteFile = useCallback(async (file) => {
+        if (!file?.id) return;
+
+        try {
+            await chatApi.deleteFile(file.id);
+            setMessages(prev => prev.map(item =>
+                Array.isArray(item.files)
+                    ? { ...item, files: item.files.filter(existing => Number(existing.id) !== Number(file.id)) }
+                    : item
+            ));
+        } catch (error) {
+            console.error('Không thể xoá file:', error);
+        }
+    }, []);
+
     const downloadFile = useCallback(async (file) => {
         if (!file?.id) return;
 
@@ -572,6 +602,7 @@ export const useChat = () => {
         toggleReaction,
         sendAttachment,
         downloadFile,
+        deleteFile,
         editMessage,
         recallMessage,
         deleteMessageForMe,
