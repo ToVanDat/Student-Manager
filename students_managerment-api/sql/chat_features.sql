@@ -70,3 +70,22 @@ CREATE INDEX IF NOT EXISTS idx_message_reactions_user
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_message_deletions_message_user
     ON message_deletions (message_id, user_id);
+
+
+-- Persisted system messages for group lifecycle events.
+ALTER TABLE messages
+    ADD COLUMN IF NOT EXISTS message_type VARCHAR(20) NOT NULL DEFAULT 'user';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'messages_message_type_check'
+    ) THEN
+        ALTER TABLE messages
+            ADD CONSTRAINT messages_message_type_check
+            CHECK (message_type IN ('user', 'system'));
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_type
+    ON messages (conversation_id, message_type, created_at, id);
