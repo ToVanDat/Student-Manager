@@ -124,6 +124,13 @@ export default function MessageBubble({
                         ? 'bg-blue-600 text-white rounded-br-xs'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-xs'
                 }`}>
+                    {message.reply_to && !isDeleted && !isRecalled && (
+                        <div className="mb-2 rounded-lg border-l-2 border-white/50 bg-black/5 px-2.5 py-1.5 text-xs opacity-80">
+                            <p className="font-medium">Tin nhắn được trả lời</p>
+                            <p className="truncate">{message.reply_to.content || 'Tin nhắn có tệp'}</p>
+                        </div>
+                    )}
+
                     {isDeleted ? (
                         <p className="leading-relaxed italic opacity-70">Tin nhắn đã bị xoá</p>
                     ) : isRecalled ? (
