@@ -14,6 +14,9 @@ export const chatApi = {
     createGroupConversation: (name, memberIds, avatarUrl = null) =>
         client.post('/api/conversations/group', { name, memberIds, avatarUrl }),
 
+    updateGroupConversation: (conversationId, name, avatarUrl = null) =>
+        client.patch(`/api/conversations/${conversationId}`, { name, avatarUrl }),
+
     getConversationMembers: (conversationId) =>
         client.get(`/api/conversations/${conversationId}/members`),
 
