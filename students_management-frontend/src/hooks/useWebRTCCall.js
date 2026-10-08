@@ -1,6 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
 
+const ICE_SERVERS = [
+    import.meta.env.VITE_STUN_SERVER
+        ? { urls: import.meta.env.VITE_STUN_SERVER }
+        : null,
+    import.meta.env.VITE_TURN_SERVER
+        ? {
+            urls: import.meta.env.VITE_TURN_SERVER,
+            username: import.meta.env.VITE_TURN_USERNAME,
+            credential: import.meta.env.VITE_TURN_CREDENTIAL
+        }
+        : null
+].filter(Boolean);
+
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
@@ -18,7 +31,7 @@ export default function useWebRTCCall() {
     const [localStream, setLocalStream] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
     const [muted, setMuted] = useState(false);
-    const [cameraOn, setCameraOn] = useState(false);
+    const [cameraOn, setCameraOn] = useState(false);\n    const [sharingScreen, setSharingScreen] = useState(false);
     const [error, setError] = useState('');
 
     const cleanup = useCallback(() => {
@@ -33,7 +46,7 @@ export default function useWebRTCCall() {
         setRemoteStream(null);
         setCall(null);
         setMuted(false);
-        setCameraOn(false);
+        setCameraOn(false);\n        setSharingScreen(false);
         setState('idle');
     }, []);
 
@@ -162,6 +175,48 @@ export default function useWebRTCCall() {
         track.enabled = !track.enabled;
         setMuted(!track.enabled);
     }, []);
+
+    const toggleScreenShare = useCallback(async () => {
+        const pc = peerRef.current;
+        const current = localStreamRef.current;
+        if (!pc || !current) return;
+
+        try {
+            if (sharingScreen) {
+                const cameraTrack = current.getVideoTracks().find(track => track.kind === 'video');
+                if (cameraTrack) {
+                    const sender = pc.getSenders().find(item => item.track?.kind === 'video');
+                    if (sender) await sender.replaceTrack(cameraTrack);
+                }
+                setSharingScreen(false);
+                return;
+            }
+
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: false
+            });
+            const screenTrack = screenStream.getVideoTracks()[0];
+            const sender = pc.getSenders().find(item => item.track?.kind === 'video');
+
+            if (!sender) {
+                screenTrack.stop();
+                throw new Error('Screen sharing chỉ khả dụng trong Video Call.');
+            }
+
+            await sender.replaceTrack(screenTrack);
+            setSharingScreen(true);
+            screenTrack.onended = async () => {
+                const cameraTrack = localStreamRef.current?.getVideoTracks()[0];
+                if (cameraTrack) await sender.replaceTrack(cameraTrack);
+                setSharingScreen(false);
+            };
+        } catch (err) {
+            if (err?.name !== 'NotAllowedError') {
+                setError(err.message || 'Không thể chia sẻ màn hình.');
+            }
+        }
+    }, [sharingScreen]);
 
     const toggleCamera = useCallback(() => {
         const track = localStreamRef.current?.getVideoTracks()[0];
