@@ -60,9 +60,61 @@ export default function ChatPage() {
         openSearchResult
     } = useChat();
 
-    const timelineMessages = [...messages, ...callHistory].sort((a, b) =>
-        new Date(a.created_at || a.started_at || 0) - new Date(b.created_at || b.started_at || 0)
-    );
+    const timelineMessages = (() => {
+        const sorted = [...messages, ...callHistory].sort((a, b) =>
+            new Date(a.created_at || a.started_at || 0) - new Date(b.created_at || b.started_at || 0)
+        );
+
+        const getDateKey = value => {
+            const date = new Date(value);
+            return Number.isNaN(date.getTime())
+                ? ''
+                : `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        };
+
+        const formatDateLabel = value => {
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            const today = new Date();
+            const yesterday = new Date(today);
+            yesterday.setDate(today.getDate() - 1);
+
+            const sameDay = (a, b) =>
+                a.getFullYear() === b.getFullYear() &&
+                a.getMonth() === b.getMonth() &&
+                a.getDate() === b.getDate();
+
+            if (sameDay(date, today)) return 'Hôm nay';
+            if (sameDay(date, yesterday)) return 'Hôm qua';
+
+            return date.toLocaleDateString('vi-VN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric'
+            });
+        };
+
+        const result = [];
+        let previousDateKey = null;
+
+        sorted.forEach(item => {
+            const value = item.created_at || item.started_at;
+            const dateKey = getDateKey(value);
+
+            if (dateKey && dateKey !== previousDateKey) {
+                result.push({
+                    id: `timeline-date:${dateKey}`,
+                    _timelineType: 'date',
+                    dateLabel: formatDateLabel(value)
+                });
+                previousDateKey = dateKey;
+            }
+
+            result.push(item);
+        });
+
+        return result;
+    })();
 
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
