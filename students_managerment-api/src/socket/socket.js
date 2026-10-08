@@ -590,7 +590,9 @@ const initSocket = (server) => {
             if (!Number.isInteger(targetId) || targetId <= 0 || targetId === userId) return false;
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
-                return contactIds.map(Number).includes(targetId);
+                if (!contactIds.map(Number).includes(targetId)) return false;
+                if (await conversationRepository.isUserBlocked(userId, targetId)) return false;
+                return true;
             } catch (error) {
                 console.error('CALL PERMISSION ERROR:', error);
                 return false;
