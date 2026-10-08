@@ -11,7 +11,8 @@ export default function ChatSidebar({
     searchResults,
     onStartConversation,
     onStartGroupConversation,
-    onOpenCallCenter
+    onOpenCallCenter,
+    onlineUserIds = new Set()
 }) {
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -31,6 +32,9 @@ export default function ChatSidebar({
         const timer = setTimeout(() => searchUsers(userSearch), 250);
         return () => clearTimeout(timer);
     }, [showNewChat, userSearch, searchUsers]);
+
+    const getIsOnline = conversation => conversation.type === 'direct'
+        && onlineUserIds.has(Number(conversation.userId));
 
     const filteredConversations = conversations.filter(item => {
         const name = item.name || '';
