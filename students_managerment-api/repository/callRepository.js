@@ -122,6 +122,21 @@ const updateCallStatus = async (callId, status, reason = null, answered = false)
     return rows[0] || null;
 };
 
+const getActiveCallsForParticipant = async (userId) => {
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM call_history
+        WHERE (caller_id = $1 OR receiver_id = $1)
+          AND status IN ('ringing', 'connecting')
+          AND ended_at IS NULL
+        ORDER BY started_at DESC;
+        `,
+        [userId]
+    );
+    return rows;
+};
+
 const getCallHistory = async (userId, limit = 50, offset = 0) => {
     const { rows } = await pool.query(
         `
@@ -189,5 +204,6 @@ module.exports = {
     getUnreadCallNotifications,
     markCallNotificationRead,
     getCallByIdForParticipant,
-    updateCallStatusIfCurrent
+    updateCallStatusIfCurrent,
+    getActiveCallsForParticipant
 };
