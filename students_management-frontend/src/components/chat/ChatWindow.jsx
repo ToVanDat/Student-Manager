@@ -119,7 +119,11 @@ export default function ChatWindow({
         return 'Hoạt động ' + date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
-    const presenceLabel = activeConversation?.isOnline
+    const directUserId = Number(activeConversation?.userId);
+    const isDirectOnline = activeConversation?.type === 'direct'
+        && Number.isInteger(directUserId)
+        && onlineUserIds.has(directUserId);
+    const presenceLabel = isDirectOnline
         ? 'Đang hoạt động'
         : formatLastSeen(activeConversation?.lastSeenAt);
 
@@ -402,7 +406,7 @@ export default function ChatWindow({
                         src={activeConversation.avatar}
                         size="lg"
                         showStatus
-                        isOnline={activeConversation.isOnline}
+                        isOnline={isDirectOnline}
                     />
 
                     <div>
@@ -414,7 +418,7 @@ export default function ChatWindow({
                             className={`text-[12px] mt-0.5 ${
                                 activeConversation.type === 'group'
                                     ? 'text-slate-400'
-                                    : activeConversation.isOnline
+                                    : isDirectOnline
                                         ? 'text-emerald-500'
                                         : 'text-slate-400'
                             }`}
@@ -721,10 +725,12 @@ export default function ChatWindow({
                             })
                         }}
                         isOwn={
-                            Number(
-                                msg.sender_id ??
-                                msg.senderId
-                            ) === Number(currentUserId)
+                            msg._timelineType === 'call'
+                                ? Number(msg.caller_id) === Number(currentUserId)
+                                : Number(
+                                    msg.sender_id ??
+                                    msg.senderId
+                                ) === Number(currentUserId)
                         }
                         senderAvatar={activeConversation.avatar}
                         onRedial={onRedial}
