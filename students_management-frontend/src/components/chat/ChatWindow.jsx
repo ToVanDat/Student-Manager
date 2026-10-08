@@ -689,7 +689,18 @@ export default function ChatWindow({
                     </div>
                 )}
 
-                {messages.map((msg) => (
+                {messages.map((msg) => {
+                    if (msg._timelineType === 'date') {
+                        return (
+                            <div key={msg.id} className="flex justify-center py-3">
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
+                                    {msg.dateLabel}
+                                </span>
+                            </div>
+                        );
+                    }
+
+                    return (
                     <MessageBubble
                         key={msg.id}
                         data-message-id={msg.id}
@@ -729,7 +740,8 @@ export default function ChatWindow({
                         onToggleReaction={onToggleReaction}
                         currentUserId={currentUserId}
                     />
-                ))}
+                    );
+                })}
 
                 {isTyping && (
                     <div className="text-[11px] text-slate-400 dark:text-slate-500 mb-3 ml-1">
