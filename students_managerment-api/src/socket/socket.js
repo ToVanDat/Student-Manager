@@ -894,6 +894,36 @@ const initSocket = (server) => {
                     } catch (error) {
                         console.error('PRESENCE OFFLINE ERROR:', error);
                     }
+
+                    // If this was the user's last realtime connection, terminate
+                    // only calls that are still ringing/connecting.
+                    try {
+                        const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
+                        for (const activeCall of activeCalls) {
+                            const targetId = activeCall.caller_id === userId
+                                ? activeCall.receiver_id
+                                : activeCall.caller_id;
+
+                            const ended = await callRepository.updateCallStatusIfCurrent(
+                                activeCall.call_id,
+                                'cancelled',
+                                activeCall.status,
+                                'socket-disconnected'
+                            );
+
+                            if (ended) {
+                                clearCallTimer(activeCall.call_id);
+                                io.to(`user:${targetId}`).emit('call:ended', {
+                                    callId: activeCall.call_id,
+                                    fromUserId: userId,
+                                    toUserId: targetId,
+                                    reason: 'socket-disconnected'
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('ACTIVE CALL DISCONNECT CLEANUP ERROR:', error);
+                    }
                 }
             }
 
