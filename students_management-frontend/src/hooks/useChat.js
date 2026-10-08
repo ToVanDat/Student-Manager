@@ -413,7 +413,7 @@ export const useChat = () => {
             });
         };
 
-        const handlePresenceOffline = ({ userId }) => {
+        const handlePresenceOffline = ({ userId, lastSeenAt = null }) => {
             const id = Number(userId);
             if (!Number.isInteger(id)) return;
 
@@ -425,8 +425,12 @@ export const useChat = () => {
             });
 
             setConversations(prev => prev.map(c =>
-                Number(c.userId) === id && c.isOnline
-                    ? { ...c, isOnline: false }
+                Number(c.userId) === id
+                    ? {
+                        ...c,
+                        isOnline: false,
+                        lastSeenAt: lastSeenAt || c.lastSeenAt || null
+                    }
                     : c
             ));
         };
