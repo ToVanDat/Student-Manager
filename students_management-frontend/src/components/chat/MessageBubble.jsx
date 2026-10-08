@@ -213,6 +213,12 @@ export default function MessageBubble({
                                                     </button>
                                                 ) : null}
 
+                                                {file.mime_type?.startsWith('audio/') && file.downloadUrl ? (
+                                                    <div className="px-3 pt-3">
+                                                        <audio controls preload="metadata" className="w-full max-w-[280px]" src={file.downloadUrl} />
+                                                    </div>
+                                                ) : null}
+
                                                 <div className="flex items-center gap-2 px-3 py-2">
                                                     <FileText size={18} className="shrink-0" />
                                                     <div className="min-w-0 flex-1">
