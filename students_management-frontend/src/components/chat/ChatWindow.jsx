@@ -8,7 +8,16 @@ import {
     Paperclip,
     Smile,
     Reply,
-    X
+    X,
+    Pin,
+    BellOff,
+    Bell,
+    MailOpen,
+    Trash2,
+    Ban,
+    Flag,
+    UserRound,
+    FolderOpen
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -45,7 +54,11 @@ export default function ChatWindow({
     onlineUserIds = new Set(),
     callState = 'idle',
     call = null,
-    onStartCall
+    onStartCall,
+    onUpdateConversationSettings,
+    onBlockUser,
+    onUnblockUser,
+    onReportConversation
 }) {
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
@@ -62,7 +75,11 @@ export default function ChatWindow({
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [showReportDialog, setShowReportDialog] = useState(false);
+    const [reportReason, setReportReason] = useState('spam');
     const emojiPickerRef = useRef(null);
+    const moreMenuRef = useRef(null);
 
     const formatLastSeen = (value) => {
         if (!value) return 'Ngoại tuyến';
@@ -148,6 +165,16 @@ export default function ChatWindow({
 
         return () => observer.disconnect();
     }, []);
+
+    useEffect(() => {
+        const handleClickOutsideMore = (event) => {
+            if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+                setShowMoreMenu(false);
+            }
+        };
+        if (showMoreMenu) document.addEventListener('mousedown', handleClickOutsideMore);
+        return () => document.removeEventListener('mousedown', handleClickOutsideMore);
+    }, [showMoreMenu]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -294,21 +321,79 @@ export default function ChatWindow({
                         </>
                     )}
 
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (activeConversation.type === 'group') {
-                                setShowGroupInfo(true);
-                            }
-                        }}
-                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                        title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
-                    >
-                        <MoreVertical size={18} />
-                    </button>
+                    <div className="relative" ref={moreMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (activeConversation.type === 'group') {
+                                    setShowGroupInfo(true);
+                                    return;
+                                }
+                                setShowMoreMenu(prev => !prev);
+                            }}
+                            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                            title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
+                        >
+                            <MoreVertical size={18} />
+                        </button>
+
+                        {showMoreMenu && activeConversation.type !== 'group' && (
+                            <div className="absolute right-0 top-11 z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                                <button type="button" onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                    <UserRound size={16} /> Xem thông tin
+                                </button>
+                                <button type="button" onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                    <FolderOpen size={16} /> File & Media
+                                </button>
+                                <button type="button" onClick={async () => { await onUpdateConversationSettings?.('pin', !activeConversation.isPinned); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                    <Pin size={16} /> {activeConversation.isPinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
+                                </button>
+                                <button type="button" onClick={async () => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); await onUpdateConversationSettings?.('mute', until); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                    {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? <Bell size={16} /> : <BellOff size={16} />}
+                                    {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? 'Bật lại thông báo' : 'Tắt thông báo 8 giờ'}
+                                </button>
+                                <button type="button" onClick={async () => { await onUpdateConversationSettings?.('unread', true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                    <MailOpen size={16} /> Đánh dấu chưa đọc
+                                </button>
+                                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                                <button type="button" onClick={async () => { if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách?')) { await onUpdateConversationSettings?.('hide', true); } setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                    <Trash2 size={16} /> Xóa cuộc trò chuyện
+                                </button>
+                                <button type="button" onClick={async () => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) { await onBlockUser?.(activeConversation.userId); } setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                    <Ban size={16} /> Chặn người dùng
+                                </button>
+                                <button type="button" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                    <Flag size={16} /> Báo cáo
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
             </header>
+
+            {showReportDialog && (
+                <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
+                    <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900">
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Báo cáo người dùng</h4>
+                            <button type="button" onClick={() => setShowReportDialog(false)}><X size={18} /></button>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">Chọn lý do để gửi báo cáo.</p>
+                        <select value={reportReason} onChange={e => setReportReason(e.target.value)} className="mt-4 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100">
+                            <option value="spam">Spam</option>
+                            <option value="harassment">Quấy rối</option>
+                            <option value="scam">Lừa đảo</option>
+                            <option value="inappropriate">Nội dung không phù hợp</option>
+                            <option value="other">Khác</option>
+                        </select>
+                        <div className="mt-4 flex justify-end gap-2">
+                            <button type="button" onClick={() => setShowReportDialog(false)} className="rounded-xl px-4 py-2 text-sm text-slate-500 hover:bg-slate-100">Hủy</button>
+                            <button type="button" onClick={async () => { await onReportConversation?.(activeConversation.userId, reportReason); setShowReportDialog(false); }} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Gửi báo cáo</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <GroupInfoPanel
                 open={showGroupInfo}
