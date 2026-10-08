@@ -623,18 +623,14 @@ const initSocket = (server) => {
                 return null;
             }
 
-            const call = await callRepository.getCallByIdForParticipant(
+            // Once a call record exists, authorization is based on the immutable
+            // caller/receiver relationship stored on that call. Do not run
+            // canCallUser() again for offer/answer/ICE/connected/end.
+            return callRepository.getCallByIdForParticipant(
                 callId,
                 userId,
                 targetId
             );
-
-            if (!call) return null;
-
-            // Keep block/relationship checks in addition to call ownership.
-            if (!(await canCallUser(targetId))) return null;
-
-            return call;
         };
 
         const emitCallNotification = async (userIdToNotify, call, type, title, body) => {
@@ -655,11 +651,13 @@ const initSocket = (server) => {
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][start]', { callId, userId, targetId, callType });
+
             if (!callId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
-                return socket.emit('call:error', { message: 'Bạn không được phép gọi người dùng này' });
-            }
-            if (!onlineUsers.has(targetId)) {
-                return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_ALLOWED',
+                    message: 'Bạn không được phép gọi người dùng này'
+                });
             }
 
             const conversation = await conversationRepository.findDirectConversation(userId, targetId);
@@ -671,7 +669,40 @@ const initSocket = (server) => {
                 callType
             });
 
-            if (!call) return socket.emit('call:error', { callId, message: 'Không thể tạo cuộc gọi' });
+            if (!call) {
+                return socket.emit('call:error', {
+                    callId,
+                    message: 'Không thể tạo cuộc gọi'
+                });
+            }
+
+            // Offline users cannot receive a realtime call. Persist the call
+            // first and mark it missed so the receiver gets a notification later.
+            if (!onlineUsers.has(targetId)) {
+                const missed = await callRepository.updateCallStatusIfCurrent(
+                    callId,
+                    'missed',
+                    'ringing',
+                    'user-offline'
+                );
+
+                if (missed) {
+                    await emitCallNotification(
+                        targetId,
+                        missed,
+                        'missed-call',
+                        'Cuộc gọi nhỡ',
+                        `Bạn có cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} nhỡ từ ${socket.user.username || 'một người dùng'}.`
+                    );
+                }
+
+                socket.emit('call:timeout', {
+                    callId,
+                    status: 'missed',
+                    reason: 'user-offline'
+                });
+                return;
+            }
 
             io.to(`user:${targetId}`).emit('call:incoming', {
                 callId, fromUserId: userId, fromUsername: socket.user.username, toUserId: targetId, callType
