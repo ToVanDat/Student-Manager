@@ -36,6 +36,9 @@ export const chatApi = {
     getMessages: (conversationId, page = 1, limit = 50) =>
         client.get(`/api/messages/conversation/${conversationId}?page=${page}&limit=${limit}`),
 
+    searchMessages: (conversationId, query, limit = 30) =>
+        client.get(`/api/messages/conversation/${conversationId}/search?q=${encodeURIComponent(query)}&limit=${limit}`),
+
     // Gửi message đến user
     sendMessage: (conversationId, content, replyToMessageId = null) =>
         client.post('/api/messages', {
