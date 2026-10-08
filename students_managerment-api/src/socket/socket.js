@@ -609,6 +609,25 @@ const initSocket = (server) => {
             callTimers.delete(callId);
         };
 
+        const getAuthorizedCall = async (callId, targetId) => {
+            if (!callId || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
+                return null;
+            }
+
+            const call = await callRepository.getCallByIdForParticipant(
+                callId,
+                userId,
+                targetId
+            );
+
+            if (!call) return null;
+
+            // Keep block/relationship checks in addition to call ownership.
+            if (!(await canCallUser(targetId))) return null;
+
+            return call;
+        };
+
         const emitCallNotification = async (userIdToNotify, call, type, title, body) => {
             try {
                 const notification = await callRepository.createCallNotification(
@@ -633,7 +652,6 @@ const initSocket = (server) => {
                 return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
             }
 
-            const conversationIds = await conversationRepository.getConversationContactIds(userId);
             const conversation = await conversationRepository.findDirectConversation(userId, targetId);
             const call = await callRepository.createCall({
                 callId,
@@ -724,7 +742,8 @@ const initSocket = (server) => {
 
         socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId)) || !offer) return;
+            const call = await getAuthorizedCall(callId, targetId);
+            if (!call || !offer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:offer', {
                 callId, fromUserId: userId, toUserId: targetId, offer
             });
@@ -732,7 +751,8 @@ const initSocket = (server) => {
 
         socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId)) || !answer) return;
+            const call = await getAuthorizedCall(callId, targetId);
+            if (!call || !answer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
             });
@@ -740,9 +760,20 @@ const initSocket = (server) => {
 
         socket.on('call:connected', async ({ callId, targetUserId }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId))) return;
+            const call = await getAuthorizedCall(callId, targetId);
+            if (!call) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_FOUND',
+                    message: 'Cuộc gọi không tồn tại hoặc bạn không có quyền.'
+                });
+            }
+
             clearCallTimer(callId);
-            const updated = await callRepository.updateCallStatus(callId, 'completed', null, true);
+            if (!call.ended_at && !['completed', 'rejected', 'missed', 'cancelled', 'failed', 'timeout'].includes(call.status)) {
+                await callRepository.updateCallStatus(callId, 'connecting', null, true);
+            }
+
             io.to(`user:${targetId}`).emit('call:connected', {
                 callId, fromUserId: userId, toUserId: targetId
             });
@@ -750,7 +781,8 @@ const initSocket = (server) => {
 
         socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId)) || !candidate) return;
+            const call = await getAuthorizedCall(callId, targetId);
+            if (!call || !candidate || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:ice-candidate', {
                 callId, fromUserId: userId, toUserId: targetId, candidate
             });
@@ -758,12 +790,19 @@ const initSocket = (server) => {
 
         socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId))) return;
+            const currentCall = await getAuthorizedCall(callId, targetId);
+            if (!currentCall) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_FOUND',
+                    message: 'Cuộc gọi không tồn tại hoặc bạn không có quyền.'
+                });
+            }
+
             clearCallTimer(callId);
-            const currentCall = await callRepository.updateCallStatus(callId, 'connecting');
             const finalStatus = reason === 'cancelled'
                 ? 'cancelled'
-                : (currentCall?.answered_at ? 'completed' : 'cancelled');
+                : (currentCall.answered_at ? 'completed' : 'cancelled');
             const updated = await callRepository.updateCallStatus(callId, finalStatus, reason);
             io.to(`user:${targetId}`).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason
