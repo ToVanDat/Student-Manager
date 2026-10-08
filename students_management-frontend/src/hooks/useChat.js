@@ -582,6 +582,20 @@ export const useChat = () => {
         return res.data?.data || [];
     }, [activeId]);
 
+    const openSearchResult = useCallback((result) => {
+        if (!result?.id) return;
+        setMessages(prev => {
+            if (prev.some(item => Number(item.id) === Number(result.id))) return prev;
+            return [...prev, result].sort(
+                (a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0)
+            );
+        });
+        requestAnimationFrame(() => {
+            const node = document.querySelector(`[data-message-id="${result.id}"]`);
+            node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    }, []);
+
     const updateConversationSettings = useCallback(async (action, value) => {
         if (!activeId) return null;
         const res = await chatApi.updateConversationSettings(activeId, action, value);
@@ -664,6 +678,7 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Không thể thu hồi message:', error);
+            toast.error(error?.response?.data?.message || 'Không thể thu hồi tin nhắn');
         }
     }, []);
 
@@ -677,6 +692,7 @@ export const useChat = () => {
             );
         } catch (error) {
             console.error('Không thể xoá message cho tôi:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn');
         }
     }, []);
 
@@ -696,6 +712,7 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Không thể xoá message cho tất cả:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn cho mọi người');
         }
     }, []);
 
