@@ -4,6 +4,7 @@ const conversationRepository = require('../../repository/conversationRepository.
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
 const userRepository = require('../../repository/userRepository.js');
+const { registerCallSignaling } = require('./callSocket.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -126,6 +127,8 @@ const initSocket = (server) => {
                 console.error('PRESENCE SYNC ERROR:', error);
             }
         });
+
+        registerCallSignaling(io, socket);
 
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
