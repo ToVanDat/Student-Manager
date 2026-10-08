@@ -262,11 +262,50 @@ export default function ChatWindow({
                 </div>
 
                 <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
+                    <button
+                        type="button"
+                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                        title="Tìm kiếm tin nhắn"
+                    >
+                        <Search size={18} />
+                    </button>
+
+                    {activeConversation.type !== 'group' && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => onStartCall?.(activeConversation.userId, 'voice')}
+                                disabled={callState !== 'idle'}
+                                className="p-2 rounded-full hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                title="Gọi thoại"
+                            >
+                                <Phone size={18} />
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => onStartCall?.(activeConversation.userId, 'video')}
+                                disabled={callState !== 'idle'}
+                                className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                title="Gọi video"
+                            >
+                                <Video size={18} />
+                            </button>
+                        </>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (activeConversation.type === 'group') {
+                                setShowGroupInfo(true);
+                            }
+                        }}
+                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                         title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
                     >
                         <MoreVertical size={18} />
                     </button>
-
                 </div>
 
             </header>
