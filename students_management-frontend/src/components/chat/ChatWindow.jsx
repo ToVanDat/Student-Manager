@@ -81,7 +81,7 @@ export default function ChatWindow({
     const [reportReason, setReportReason] = useState('spam');
     const [showSearchPanel, setShowSearchPanel] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState([]);
+    const [messageSearchResults, setMessageSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
     const emojiPickerRef = useRef(null);
     const moreMenuRef = useRef(null);
@@ -174,17 +174,17 @@ export default function ChatWindow({
     useEffect(() => {
         if (!showSearchPanel) return;
         if (!searchQuery.trim()) {
-            setSearchResults([]);
+            setMessageSearchResults([]);
             return;
         }
         const timer = setTimeout(async () => {
             try {
                 setSearching(true);
                 const results = await onSearchMessages?.(searchQuery);
-                setSearchResults(results || []);
+                setMessageSearchResults(results || []);
             } catch (error) {
                 console.error('Không thể tìm kiếm message:', error);
-                setSearchResults([]);
+                setMessageSearchResults([]);
             } finally {
                 setSearching(false);
             }
@@ -413,8 +413,8 @@ export default function ChatWindow({
                     </div>
                     <div className="mt-2 max-h-72 overflow-y-auto">
                         {searching && <p className="px-2 py-4 text-center text-xs text-slate-400">Đang tìm...</p>}
-                        {!searching && searchQuery.trim() && searchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">Không tìm thấy tin nhắn</p>}
-                        {!searching && searchResults.map(result => (
+                        {!searching && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">Không tìm thấy tin nhắn</p>}
+                        {!searching && messageSearchResults.map(result => (
                             <button
                                 type="button"
                                 key={result.id}
