@@ -168,77 +168,46 @@ export const AuthProvider = ({ children }) => {
     // SOCKET CONNECTION
     // =========================
     useEffect(() => {
-
         if (!accessToken) {
             socket.disconnect();
             return;
         }
 
-        // Gửi access token đến backend
-        socket.auth = {
-            accessToken
-        };
+        // Keep the socket lifecycle independent from access-token state.
+        // Updating the JWT must not force a disconnect during an active call.
+        socket.auth = { accessToken };
 
-        // Kết nối Socket.IO
-        socket.connect();
-
-        // =========================
-        // CONNECT
-        // =========================
         const handleConnect = () => {
-
-            console.log(
-                'Socket connected:',
-                socket.id
-            );
+            console.log('[SOCKET][connect]', socket.id);
         };
 
-        // =========================
-        // SESSION REVOKED
-        // =========================
         const handleSessionRevoked = (data) => {
-
-            console.log(
-                'Session revoked:',
-                data
-            );
+            console.log('[SOCKET][session revoked]', data);
 
             alert(
                 'Phiên đăng nhập của bạn đã kết thúc. ' +
                 'Tài khoản vừa được đăng nhập trên một thiết bị khác.'
             );
 
-            localStorage.removeItem(
-                'accessToken'
-            );
-
-            localStorage.removeItem(
-                'user'
-            );
-
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
             setAccessToken(null);
             setUser(null);
-
             socket.disconnect();
-
             window.location.href = '/login';
         };
 
-        // =========================
-        // CONNECTION ERROR
-        // =========================
         const handleConnectError = (error) => {
+            console.error('[SOCKET][connect error]', error.message);
 
-            console.error(
-                'Socket connection error:',
-                error.message
-            );
-
-            if (
-                /Access Token|token|Session/i.test(error.message || '')
-            ) {
+            // Only refresh the token here when the server explicitly rejects
+            // the socket authentication. Normal call/WebRTC errors must not
+            // trigger an auth refresh.
+            if (/Access Token|token|Session/i.test(error.message || '')) {
                 refreshAccessToken()
                     .then((newToken) => {
+                        // Update auth for the next socket handshake.
+                        socket.auth = { accessToken: newToken };
                         setAccessToken(newToken);
                     })
                     .catch(() => {
@@ -246,80 +215,44 @@ export const AuthProvider = ({ children }) => {
                         localStorage.removeItem('user');
                         setAccessToken(null);
                         setUser(null);
+                        socket.disconnect();
                         window.location.href = '/login';
                     });
             }
         };
 
         const handleSocketDisconnect = (reason) => {
-            // Server-side disconnect (ví dụ access token đã hết hạn).
-            // Refresh rồi reconnect với token mới.
-            if (
-                reason === 'io server disconnect' ||
-                reason === 'server namespace disconnect'
-            ) {
-                refreshAccessToken()
-                    .then((newToken) => {
-                        setAccessToken(newToken);
-                    })
-                    .catch(() => {
-                        localStorage.removeItem('accessToken');
-                        localStorage.removeItem('user');
-                        setAccessToken(null);
-                        setUser(null);
-                        window.location.href = '/login';
-                    });
-            }
+            console.warn('[SOCKET][disconnect]', {
+                reason,
+                socketId: socket.id
+            });
+
+            // Do not manually disconnect/reconnect here for ordinary
+            // transport/network disconnects. Socket.IO handles automatic
+            // reconnection. Server namespace disconnect is an auth/session
+            // decision and is handled by connect_error/session:revoked.
         };
 
-        socket.on(
-            'connect',
-            handleConnect
-        );
+        socket.on('connect', handleConnect);
+        socket.on('session:revoked', handleSessionRevoked);
+        socket.on('connect_error', handleConnectError);
+        socket.on('disconnect', handleSocketDisconnect);
 
-        socket.on(
-            'session:revoked',
-            handleSessionRevoked
-        );
+        if (!socket.connected) {
+            socket.connect();
+        }
 
-        socket.on(
-            'connect_error',
-            handleConnectError
-        );
-
-        socket.on(
-            'disconnect',
-            handleSocketDisconnect
-        );
-
-        // =========================
-        // CLEANUP
-        // =========================
         return () => {
+            socket.off('connect', handleConnect);
+            socket.off('session:revoked', handleSessionRevoked);
+            socket.off('connect_error', handleConnectError);
+            socket.off('disconnect', handleSocketDisconnect);
 
-            socket.off(
-                'connect',
-                handleConnect
-            );
-
-            socket.off(
-                'session:revoked',
-                handleSessionRevoked
-            );
-
-            socket.off(
-                'connect_error',
-                handleConnectError
-            );
-
-            socket.off(
-                'disconnect',
-                handleSocketDisconnect
-            );
-
-            socket.disconnect();
+            // IMPORTANT:
+            // Do not disconnect here merely because accessToken changed.
+            // The next render updates socket.auth and Socket.IO can reconnect
+            // without destroying the active call lifecycle.
         };
-
     }, [accessToken]);
 
     return (
