@@ -695,7 +695,10 @@ const initSocket = (server) => {
 
         socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId))) return;
+            const currentCall = await getAuthorizedCall(callId, targetId);
+            if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') {
+                return socket.emit('call:error', { callId, code: 'CALL_NOT_AVAILABLE', message: 'Cuộc gọi không còn khả dụng.' });
+            }
             clearCallTimer(callId);
             const updated = await callRepository.updateCallStatus(callId, 'connecting', null, true);
             io.to(`user:${targetId}`).emit('call:accepted', {
@@ -723,7 +726,8 @@ const initSocket = (server) => {
 
         socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId))) return;
+            const currentCall = await getAuthorizedCall(callId, targetId);
+            if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') return;
             clearCallTimer(callId);
             const updated = await callRepository.updateCallStatus(callId, 'rejected', reason);
             io.to(`user:${targetId}`).emit('call:rejected', {
@@ -755,6 +759,18 @@ const initSocket = (server) => {
             if (!call || !answer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
+            });
+        });
+
+        socket.on('call:reconnect-request', async ({ callId, targetUserId }) => {
+            const targetId = Number(targetUserId);
+            const currentCall = await getAuthorizedCall(callId, targetId);
+            if (!currentCall || !currentCall.answered_at || ['rejected', 'missed', 'cancelled', 'failed', 'timeout'].includes(currentCall.status)) return;
+
+            io.to(`user:${targetId}`).emit('call:reconnect-request', {
+                callId,
+                fromUserId: userId,
+                toUserId: targetId
             });
         });
 
