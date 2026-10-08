@@ -177,10 +177,18 @@ export default function MessageBubble({
     onDeleteFile,
     onReply,
     onToggleReaction,
-    currentUserId
+    currentUserId,
+    onRedial
 }) {
     if (message._timelineType === 'call') {
-        return <CallTimelineItem call={message} isOwn={isOwn} />;
+        return (
+            <CallTimelineItem
+                call={message}
+                isOwn={isOwn}
+                currentUserId={currentUserId}
+                onRedial={onRedial}
+            />
+        );
     }
 
     const { content, time, isRead } = message;
