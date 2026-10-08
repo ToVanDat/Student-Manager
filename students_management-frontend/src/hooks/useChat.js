@@ -624,62 +624,134 @@ export const useChat = () => {
     const sendAttachment = useCallback(async (file) => {
         if (!activeId || !file) return;
 
+        const tempId = `temp-file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const placeholder = `📎 ${file.name}`;
-        const messageResponse = await chatApi.sendMessage(activeId, placeholder);
-        const message = messageResponse.data?.data;
 
-        if (!message?.id) {
-            throw new Error('Không tạo được message cho file');
-        }
+        const optimisticMessage = {
+            id: tempId,
+            tempId,
+            conversation_id: activeId,
+            sender_id: currentUserId,
+            content: placeholder,
+            created_at: new Date().toISOString(),
+            status: 'uploading',
+            uploadProgress: 0,
+            files: [{
+                id: `temp-file-${Date.now()}`,
+                file_name: file.name,
+                file_size: file.size,
+                mime_type: file.type,
+                uploadStatus: 'uploading',
+                uploadProgress: 0
+            }]
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
 
         try {
-            const uploadResponse = await chatApi.uploadFile(message.id, file);
+            const messageResponse = await chatApi.sendMessage(activeId, placeholder);
+            const message = messageResponse.data?.data;
+
+            if (!message?.id) throw new Error('Không tạo được message cho file');
+
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId
+                    ? { ...message, status: 'uploading', uploadProgress: 0 }
+                    : item
+            ));
+
+            const uploadResponse = await chatApi.uploadFile(
+                message.id,
+                file,
+                progressEvent => {
+                    const total = progressEvent.total || file.size;
+                    const progress = Math.min(100, Math.round((progressEvent.loaded / total) * 100));
+
+                    setMessages(prev => prev.map(item =>
+                        Number(item.id) === Number(message.id)
+                            ? {
+                                ...item,
+                                status: progress >= 100 ? 'processing' : 'uploading',
+                                uploadProgress: progress,
+                                files: [{
+                                    id: `temp-upload-${message.id}`,
+                                    file_name: file.name,
+                                    file_size: file.size,
+                                    mime_type: file.type,
+                                    uploadStatus: progress >= 100 ? 'processing' : 'uploading',
+                                    uploadProgress: progress
+                                }]
+                            }
+                            : item
+                    ));
+                }
+            );
+
             const uploadedFile = uploadResponse.data?.file;
 
-            if (uploadedFile) {
-                setMessages(prev => prev.map(item =>
-                    Number(item.id) === Number(message.id)
-                        ? { ...item, files: [uploadedFile] }
-                        : item
-                ));
-            }
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(message.id)
+                    ? {
+                        ...item,
+                        status: 'sent',
+                        uploadProgress: 100,
+                        files: uploadedFile ? [uploadedFile] : item.files
+                    }
+                    : item
+            ));
 
             return uploadedFile;
         } catch (error) {
-            // Không xoá message tự động để tránh xoá nhầm trong race condition.
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId || Number(item.id) === Number(tempId)
+                    ? { ...item, status: 'failed', uploadProgress: 0 }
+                    : item
+            ));
             throw error;
         }
-    }, [activeId]);
+    }, [activeId, currentUserId]);
 
     const sendMessage = useCallback(async (content, replyToMessageId = null) => {
         const text = typeof content === 'string' ? content.trim() : '';
         if (!activeId || !text) return;
 
-        if (socket.connected) {
-            socket.emit('message:send', {
-                conversationId: activeId,
-                content: text,
-                replyToMessageId
-            });
-            return;
-        }
+        const tempId = `temp-message-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const optimisticMessage = {
+            id: tempId,
+            tempId,
+            conversation_id: activeId,
+            sender_id: currentUserId,
+            content: text,
+            reply_to_message_id: replyToMessageId,
+            created_at: new Date().toISOString(),
+            status: 'sending',
+            is_read: false
+        };
 
-        // Socket đang reconnect/offline: fallback sang REST để tin nhắn không bị mất.
+        setMessages(prev => [...prev, optimisticMessage]);
+
         try {
+            // REST là nguồn xác nhận message chính; Socket.IO vẫn dùng để realtime
+            // cho người nhận. Khi socket event quay lại, duplicate sẽ bị bỏ qua.
             const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
             const saved = res.data?.data;
 
-            if (saved) {
-                setMessages(prev =>
-                    prev.some(item => Number(item.id) === Number(saved.id))
-                        ? prev
-                        : [...prev, saved]
-                );
-            }
+            if (!saved?.id) throw new Error('Server không trả về message');
+
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId
+                    ? { ...saved, status: 'sent' }
+                    : item
+            ));
         } catch (error) {
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId
+                    ? { ...item, status: 'failed' }
+                    : item
+            ));
             console.error('Không thể gửi message:', error);
         }
-    }, [activeId]);
+    }, [activeId, currentUserId]);
 
     const loadOlderMessages = useCallback(async () => {
         if (!activeId || loadingOlder || !hasMoreMessages) return;
@@ -695,6 +767,7 @@ export const useChat = () => {
                 const uniqueOlder = older.filter(item => !existing.has(Number(item.id)));
                 return [...uniqueOlder, ...prev];
             });
+
             setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
             setMessagePage(nextPage);
         } catch (error) {

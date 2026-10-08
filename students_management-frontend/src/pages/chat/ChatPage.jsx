@@ -6,6 +6,7 @@ import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import StudentHeader from '@/components/layout/StudentHeader.jsx';
 import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
+import CallPanel from '@/components/call/CallPanel.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -115,6 +116,7 @@ export default function ChatPage() {
                                 />
 
                                 {activeId && activeConversation ? (
+                                    <>
                                     <ChatWindow
                                         activeConversation={activeConversation}
                                         messages={messages}
@@ -142,6 +144,15 @@ export default function ChatPage() {
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
                                     />
+                                    {activeConversation.userId ? (
+                                        <aside className="w-[320px] shrink-0 border-l border-slate-200 p-4 dark:border-slate-800">
+                                            <CallPanel
+                                                targetUserId={Number(activeConversation.userId)}
+                                                targetUsername={activeConversation.name || activeConversation.username || 'User'}
+                                            />
+                                        </aside>
+                                    ) : null}
+                                    </>
                                 ) : (
                                     <EmptyChat />
                                 )}

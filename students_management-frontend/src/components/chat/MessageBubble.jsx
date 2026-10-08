@@ -28,6 +28,8 @@ export default function MessageBubble({
     currentUserId
 }) {
     const { content, time, isRead } = message;
+    const status = message.status;
+    const uploadProgress = Number(message.uploadProgress ?? message.files?.[0]?.uploadProgress ?? 0);
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editContent, setEditContent] = useState(content || '');
@@ -238,9 +240,15 @@ export default function MessageBubble({
                     }`}>
                         <span>{time}</span>
                         {isOwn && (
-                            isRead
-                                ? <CheckCheck size={14} className="text-blue-200" />
-                                : <Check size={14} className="text-blue-300" />
+                            status === 'failed'
+                                ? <span className="text-red-400 font-medium">Gửi thất bại</span>
+                                : status === 'uploading' || status === 'processing'
+                                    ? <span className="text-blue-200">{status === 'processing' ? 'Đang xử lý' : `Đang tải ${uploadProgress}%`}</span>
+                                    : status === 'sending'
+                                        ? <span className="text-blue-200">Đang gửi...</span>
+                                        : isRead
+                                            ? <CheckCheck size={14} className="text-blue-200" />
+                                            : <Check size={14} className="text-blue-300" />
                         )}
                     </div>
                 </div>

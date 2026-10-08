@@ -45,6 +45,13 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+    const previousMessageCountRef = useRef(0);
+    const previousScrollHeightRef = useRef(0);
+    const shouldRestoreScrollRef = useRef(false);
+    const shouldScrollToBottomRef = useRef(true);
+    const previousLastMessageIdRef = useRef(null);
+    const [newMessageCount, setNewMessageCount] = useState(0);
     const typingTimer = useRef(null);
     const fileInputRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -66,10 +73,42 @@ export default function ChatWindow({
     );
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({
-            behavior: 'smooth'
-        });
-    }, [messages, isTyping]);
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        if (shouldRestoreScrollRef.current) {
+            const previousHeight = previousScrollHeightRef.current;
+            container.scrollTop += container.scrollHeight - previousHeight;
+            shouldRestoreScrollRef.current = false;
+            previousMessageCountRef.current = messages.length;
+            return;
+        }
+
+        const lastMessage = messages[messages.length - 1];
+        const lastId = lastMessage?.id ?? null;
+        const isInitialLoad = previousMessageCountRef.current === 0;
+        const lastMessageChanged = previousLastMessageIdRef.current !== lastId;
+
+        if (isInitialLoad) {
+            container.scrollTop = container.scrollHeight;
+        } else if (lastMessageChanged) {
+            if (shouldScrollToBottomRef.current) {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                setNewMessageCount(0);
+            } else {
+                setNewMessageCount(count => count + 1);
+            }
+        }
+
+        previousLastMessageIdRef.current = lastId;
+        previousMessageCountRef.current = messages.length;
+    }, [messages]);
+
+    useEffect(() => {
+        if (shouldScrollToBottomRef.current) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [isTyping]);
 
     useEffect(() => {
         return () => clearTimeout(typingTimer.current);
@@ -248,12 +287,59 @@ export default function ChatWindow({
 
             {/* ================= MESSAGES ================= */}
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
+            <div className="relative flex-1 min-h-0">
+                {newMessageCount > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                            setNewMessageCount(0);
+                            shouldScrollToBottomRef.current = true;
+                        }}
+                        className="absolute bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-full bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-lg hover:bg-blue-700"
+                    >
+                        {newMessageCount} tin nhắn mới ↓
+                    </button>
+                )}
+
+                <div
+                ref={messagesContainerRef}
+                onScroll={(event) => {
+                    const container = event.currentTarget;
+                    const distanceFromBottom =
+                        container.scrollHeight -
+                        container.scrollTop -
+                        container.clientHeight;
+
+                    // 120px là ngưỡng để coi user vẫn đang ở cuối.
+                    const wasNearBottom = distanceFromBottom < 120;
+                    shouldScrollToBottomRef.current = wasNearBottom;
+
+                    if (wasNearBottom) setNewMessageCount(0);
+
+                    if (
+                        container.scrollTop < 80 &&
+                        hasMoreMessages &&
+                        !loadingOlder
+                    ) {
+                        previousScrollHeightRef.current = container.scrollHeight;
+                        shouldRestoreScrollRef.current = true;
+                        onLoadOlder?.();
+                    }
+                }}
+                className="h-full overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
                             type="button"
-                            onClick={onLoadOlder}
+                            onClick={() => {
+                                const container = messagesContainerRef.current;
+                                if (!container) return;
+
+                                previousScrollHeightRef.current = container.scrollHeight;
+                                shouldRestoreScrollRef.current = true;
+                                onLoadOlder?.();
+                            }}
                             disabled={loadingOlder}
                             className="rounded-full border border-slate-200 px-4 py-1.5 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
                         >
