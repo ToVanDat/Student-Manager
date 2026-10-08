@@ -34,8 +34,14 @@ export default function useWebRTCCall() {
     const [cameraOn, setCameraOn] = useState(false);
     const [sharingScreen, setSharingScreen] = useState(false);
     const [error, setError] = useState('');
+    const ringTimeoutRef = useRef(null);
+    const connectTimeoutRef = useRef(null);
 
     const cleanup = useCallback(() => {
+        if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
+        if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+        ringTimeoutRef.current = null;
+        connectTimeoutRef.current = null;
         peerRef.current?.close();
         peerRef.current = null;
         localStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -75,7 +81,18 @@ export default function useWebRTCCall() {
         };
 
         pc.onconnectionstatechange = () => {
-            if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
+            if (pc.connectionState === 'connected') {
+                const current = callRef.current;
+                if (current) {
+                    socket.emit('call:connected', {
+                        callId: current.callId,
+                        targetUserId: current.targetUserId
+                    });
+                }
+                setState('connected');
+            }
+
+            if (['failed', 'closed'].includes(pc.connectionState)) {
                 cleanup();
             }
         };
@@ -119,6 +136,12 @@ export default function useWebRTCCall() {
                 targetUserId: Number(targetUserId),
                 callType
             });
+
+            ringTimeoutRef.current = setTimeout(() => {
+                if (callRef.current?.callId !== callId) return;
+                setError('Không có người trả lời cuộc gọi.');
+                cleanup();
+            }, 31_000);
         } catch (err) {
             setError(err.message || 'Không thể truy cập microphone/camera.');
             cleanup();
@@ -133,6 +156,9 @@ export default function useWebRTCCall() {
             setError('');
             await startMedia(current.callType);
             setState('connecting');
+
+            if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
+            ringTimeoutRef.current = null;
 
             socket.emit('call:accept', {
                 callId: current.callId,
@@ -256,6 +282,11 @@ export default function useWebRTCCall() {
                     offer: pc.localDescription
                 });
                 setState('connecting');
+                connectTimeoutRef.current = setTimeout(() => {
+                    if (callRef.current?.callId !== current.callId) return;
+                    setError('Không thể thiết lập kết nối cuộc gọi.');
+                    cleanup();
+                }, 16_000);
             } catch (err) {
                 setError(err.message || 'Không thể tạo offer.');
                 cleanup();
@@ -325,6 +356,14 @@ export default function useWebRTCCall() {
             cleanup();
         };
 
+        const onTimeout = data => {
+            if (callRef.current?.callId !== data.callId) return;
+            setError(data.status === 'missed'
+                ? 'Cuộc gọi không được trả lời.'
+                : 'Cuộc gọi không thể kết nối.');
+            cleanup();
+        };
+
         const onEnded = data => {
             if (callRef.current?.callId !== data.callId) return;
             cleanup();
@@ -341,6 +380,7 @@ export default function useWebRTCCall() {
         socket.on('call:answer', onAnswer);
         socket.on('call:ice-candidate', onIceCandidate);
         socket.on('call:rejected', onRejected);
+        socket.on('call:timeout', onTimeout);
         socket.on('call:ended', onEnded);
         socket.on('call:error', onError);
 
@@ -351,6 +391,7 @@ export default function useWebRTCCall() {
             socket.off('call:answer', onAnswer);
             socket.off('call:ice-candidate', onIceCandidate);
             socket.off('call:rejected', onRejected);
+            socket.off('call:timeout', onTimeout);
             socket.off('call:ended', onEnded);
             socket.off('call:error', onError);
         };
