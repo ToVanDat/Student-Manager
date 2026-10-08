@@ -396,6 +396,7 @@ export default function ChatWindow({
                 <div ref={messagesEndRef} />
 
             </div>
+            </div>
 
             {/* ================= INPUT AREA ================= */}
 
