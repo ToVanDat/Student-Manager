@@ -399,7 +399,7 @@ export default function useWebRTCCall() {
                     await peerRef.current.addIceCandidate(candidate);
                 }
                 pendingCandidatesRef.current = [];
-                setState('connected');
+                setState('connecting');
             } catch (err) {
                 setError(err.message || 'Không thể xử lý answer.');
                 cleanup();
