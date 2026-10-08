@@ -64,14 +64,29 @@ export default function ChatWindow({
     const [isUploading, setIsUploading] = useState(false);
     const emojiPickerRef = useRef(null);
 
-    const lastSeenLabel = activeConversation?.lastSeenAt
-        ? new Date(activeConversation.lastSeenAt).toLocaleString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit',
-            month: '2-digit'
-        })
-        : 'Chưa có dữ liệu';
+    const formatLastSeen = (value) => {
+        if (!value) return 'Ngoại tuyến';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'Ngoại tuyến';
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfYesterday = new Date(startOfToday);
+        startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+        const diffMs = Math.max(now.getTime() - date.getTime(), 0);
+        const diffMinutes = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMinutes / 60);
+        if (date >= startOfToday) {
+            if (diffMinutes < 1) return 'Hoạt động vừa xong';
+            if (diffMinutes < 60) return 'Hoạt động ' + diffMinutes + ' phút trước';
+            if (diffHours < 24) return 'Hoạt động ' + diffHours + ' giờ trước';
+        }
+        if (date >= startOfYesterday) return 'Hoạt động hôm qua';
+        return 'Hoạt động ' + date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const presenceLabel = activeConversation?.isOnline
+        ? 'Đang hoạt động'
+        : formatLastSeen(activeConversation?.lastSeenAt);
 
     const [isDarkMode, setIsDarkMode] = useState(
         document.documentElement.classList.contains('dark')
@@ -239,55 +254,8 @@ export default function ChatWindow({
                             }`}
                         >
                             {activeConversation.type === 'group'
-                                ? `${activeConversation.memberCount || 0} thành viên`
-                                : activeConversation.isOnline
-                                    ? 'Đang hoạt động'
-                                    : 'Ngoại tuyến'}
-                        </p>
-                    </div>
-
-                </div>
-
-                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
-
-                    <button
-                        type="button"
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
-                        title="Tìm kiếm tin nhắn"
-                    >
-                        <Search size={18} />
-                    </button>
-
-                    {activeConversation.type !== 'group' && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={() => onStartCall?.(activeConversation.userId, 'voice')}
-                                disabled={callState !== 'idle'}
-                                className="p-2 rounded-full hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
-                                title="Gọi thoại"
-                            >
-                                <Phone size={18} />
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={() => onStartCall?.(activeConversation.userId, 'video')}
-                                disabled={callState !== 'idle'}
-                                className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
-                                title="Gọi video"
-                            >
-                                <Video size={18} />
-                            </button>
-                        </>
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (activeConversation.type === 'group') {
-                                setShowGroupInfo(true);
-                            }
+                                ? activeConversation.memberCount + ' thành viên'
+                                : presenceLabel}
                         }}
                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
                         title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
