@@ -248,7 +248,10 @@ export default function ChatSidebar({
                 {filteredConversations.map(item => (
                     <ConversationItem
                         key={item.id}
-                        conversation={item}
+                        conversation={{
+                            ...item,
+                            isOnline: getIsOnline(item)
+                        }}
                         isSelected={Number(item.id) === Number(activeId)}
                         onClick={() => onSelectConversation(item.id)}
                     />
