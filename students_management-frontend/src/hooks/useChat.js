@@ -131,6 +131,21 @@ export const useChat = () => {
         }
     }, [activeId]);
 
+    const refreshCallHistory = useCallback(async (conversationId = activeId) => {
+        if (!conversationId) return;
+        try {
+            const response = await callApi.getHistory(100, 0, conversationId);
+            const calls = (response.data?.data || []).map(call => ({
+                ...call,
+                id: `call:${call.call_id}`,
+                _timelineType: 'call'
+            }));
+            setCallHistory(calls);
+        } catch (error) {
+            console.error('Lỗi lấy lịch sử cuộc gọi:', error);
+        }
+    }, [activeId]);
+
     useEffect(() => {
         const joinActiveConversation = () => {
             if (!socket.connected || !activeId) return;
@@ -144,6 +159,10 @@ export const useChat = () => {
             // AuthContext có thể kết nối socket trước khi useChat được mount.
             // Vì vậy khi socket connect/reconnect, luôn join lại conversation hiện tại.
             joinActiveConversation();
+        };
+
+        const refreshCallsFromSocket = () => {
+            refreshCallHistory();
         };
 
         const handleNewMessage = (message) => {
@@ -548,6 +567,12 @@ export const useChat = () => {
         socket.on('presence:online', handlePresenceOnline);
         socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
+        socket.on('call:incoming', refreshCallsFromSocket);
+        socket.on('call:accepted', refreshCallsFromSocket);
+        socket.on('call:connected', refreshCallsFromSocket);
+        socket.on('call:timeout', refreshCallsFromSocket);
+        socket.on('call:ended', refreshCallsFromSocket);
+        socket.on('call:rejected', refreshCallsFromSocket);
         socket.on('conversation:updated', handleConversationUpdated);
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
@@ -573,6 +598,12 @@ export const useChat = () => {
             socket.off('presence:online', handlePresenceOnline);
             socket.off('presence:offline', handlePresenceOffline);
             socket.off('message:new', handleNewMessage);
+            socket.off('call:incoming', refreshCallsFromSocket);
+            socket.off('call:accepted', refreshCallsFromSocket);
+            socket.off('call:connected', refreshCallsFromSocket);
+            socket.off('call:timeout', refreshCallsFromSocket);
+            socket.off('call:ended', refreshCallsFromSocket);
+            socket.off('call:rejected', refreshCallsFromSocket);
             socket.off('conversation:updated', handleConversationUpdated);
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
@@ -586,7 +617,7 @@ export const useChat = () => {
             socket.off('message:file:deleted', handleMessageFileDeleted);
             socket.off('message:error', handleMessageError);
         };
-    }, [activeId, fetchConversations, currentUserId, refreshConversationMembers]);
+    }, [activeId, fetchConversations, currentUserId, refreshConversationMembers, refreshCallHistory]);
 
     const searchMessages = useCallback(async (query) => {
         if (!activeId || !query?.trim()) return [];
