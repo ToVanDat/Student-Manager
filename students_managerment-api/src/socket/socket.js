@@ -669,8 +669,11 @@ const initSocket = (server) => {
                 if (userSockets.size === 0) {
                     onlineUsers.delete(userId);
 
+                    let lastSeenAt = null;
+
                     try {
-                        await userRepository.updateLastSeenAt(userId);
+                        const presence = await userRepository.updateLastSeenAt(userId);
+                        lastSeenAt = presence?.last_seen_at || null;
                     } catch (error) {
                         console.error('UPDATE LAST SEEN ERROR:', error);
                     }
@@ -678,7 +681,10 @@ const initSocket = (server) => {
                     try {
                         const contactIds = await conversationRepository.getConversationContactIds(userId);
                         for (const contactId of contactIds) {
-                            io.to(`user:${contactId}`).emit('presence:offline', { userId });
+                            io.to(`user:${contactId}`).emit('presence:offline', {
+                                userId,
+                                lastSeenAt
+                            });
                         }
                     } catch (error) {
                         console.error('PRESENCE OFFLINE ERROR:', error);
