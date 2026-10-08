@@ -49,7 +49,11 @@ export default function ChatPage() {
         loadOlderMessages,
         hasMoreMessages,
         loadingOlder,
-        toggleReaction
+        toggleReaction,
+        updateConversationSettings,
+        blockUser,
+        unblockUser,
+        reportConversation
     } = useChat();
 
     const activeConversation = conversations.find(
@@ -152,6 +156,10 @@ export default function ChatPage() {
                                         callState={webRTCCall.state}
                                         call={webRTCCall.call}
                                         onStartCall={webRTCCall.startCall}
+                                        onUpdateConversationSettings={updateConversationSettings}
+                                        onBlockUser={blockUser}
+                                        onUnblockUser={unblockUser}
+                                        onReportConversation={reportConversation}
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
                                     />
