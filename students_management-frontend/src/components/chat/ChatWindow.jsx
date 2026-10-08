@@ -389,7 +389,7 @@ export default function ChatWindow({
 
             {/* ================= HEADER ================= */}
 
-            <header className="h-[84px] px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+            <header className="h-[76px] px-5 flex items-center justify-between border-b border-slate-100 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
 
                 <div className="flex items-center gap-3">
 
@@ -427,6 +427,7 @@ export default function ChatWindow({
                     <button
                         type="button"
                         className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                        onClick={() => setShowSearchPanel(prev => !prev)}
                         title="Tìm kiếm tin nhắn"
                     >
                         <Search size={18} />
@@ -438,7 +439,7 @@ export default function ChatWindow({
                                 type="button"
                                 onClick={() => onStartCall?.(activeConversation.userId, 'voice')}
                                 disabled={callState !== 'idle'}
-                                className="p-2 rounded-full hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                className="h-9 w-9 rounded-xl hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 title="Gọi thoại"
                             >
                                 <Phone size={18} />
@@ -448,7 +449,7 @@ export default function ChatWindow({
                                 type="button"
                                 onClick={() => onStartCall?.(activeConversation.userId, 'video')}
                                 disabled={callState !== 'idle'}
-                                className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 title="Gọi video"
                             >
                                 <Video size={18} />
@@ -466,7 +467,7 @@ export default function ChatWindow({
                                 }
                                 setShowMoreMenu(prev => !prev);
                             }}
-                            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
+                            className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
                             title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
                         >
                             <MoreVertical size={18} />
