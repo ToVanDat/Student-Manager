@@ -40,11 +40,6 @@ const uploadFile = async (req, res) => {
         };
 
         io.to(`conversation:${message.conversation_id}`).emit(
-            'message:new',
-            messageWithFile
-        );
-
-        io.to(`conversation:${message.conversation_id}`).emit(
             'message:file:uploaded',
             {
                 messageId: message.id,
