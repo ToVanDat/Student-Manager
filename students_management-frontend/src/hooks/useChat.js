@@ -1050,6 +1050,7 @@ export const useChat = () => {
         unblockUser,
         reportConversation,
         searchMessages,
+        openSearchResult,
         refetchConversations: fetchConversations
     };
 };
