@@ -285,14 +285,18 @@ export default function useWebRTCCall() {
         try {
             setError('');
             const callId = createCallId();
-            await startMedia(callType);
 
+            // Set the call context before acquiring media. startMedia() uses
+            // this reference to detect a real cancellation/race while the
+            // browser is opening the camera.
             callRef.current = {
                 callId,
                 targetUserId: Number(targetUserId),
                 callType
             };
             setCall(callRef.current);
+
+            await startMedia(callType);
             setState('calling');
 
             socket.emit('call:start', {
