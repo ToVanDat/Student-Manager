@@ -88,7 +88,7 @@ const getUserConversations = async (userId) => {
         INNER JOIN users member_user
             ON member_user.id = cm_all.user_id
         LEFT JOIN LATERAL (
-            SELECT u.id, u.username, u.avatar_url, u.last_seen_at
+            SELECT u.id, u.username, u.email, u.avatar_url, u.last_seen_at
             FROM conversation_members cm_other
             JOIN users u ON u.id = cm_other.user_id
             WHERE cm_other.conversation_id = c.id
