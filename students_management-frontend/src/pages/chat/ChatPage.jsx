@@ -173,6 +173,7 @@ export default function ChatPage() {
                                         onUnblockUser={unblockUser}
                                         onReportConversation={reportConversation}
                                         onSearchMessages={searchMessages}
+                                        onOpenSearchResult={openSearchResult}
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
                                     />
