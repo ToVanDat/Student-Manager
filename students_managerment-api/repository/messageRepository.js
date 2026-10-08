@@ -159,6 +159,8 @@ const searchMessages = async (conversationId, userId, query, limit = 30) => {
                 m.id,
                 m.conversation_id,
                 m.sender_id,
+                sender.username AS sender_username,
+                sender.avatar_url AS sender_avatar,
                 m.content,
                 m.message_type,
                 m.is_recalled,
@@ -166,6 +168,7 @@ const searchMessages = async (conversationId, userId, query, limit = 30) => {
                 m.created_at,
                 m.updated_at
             FROM messages m
+            JOIN users sender ON sender.id = m.sender_id
             WHERE m.conversation_id = $1
               AND m.message_type = 'user'
               AND m.deleted_at IS NULL
