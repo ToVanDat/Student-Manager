@@ -64,7 +64,19 @@ export default function useWebRTCCall() {
         setState('idle');
     }, []);
 
-    const createPeer = useCallback((targetUserId, callId, initiator) => {
+    const addLocalTracksToPeer = useCallback((pc) => {
+        const stream = localStreamRef.current;
+        if (!stream) return;
+
+        for (const track of stream.getTracks()) {
+            const alreadyAdded = pc.getSenders().some(sender => sender.track?.id === track.id);
+            if (!alreadyAdded) {
+                pc.addTrack(track, stream);
+            }
+        }
+    }, []);
+
+    const createPeer = useCallback((targetUserId, callId) => {
         const pc = new RTCPeerConnection({
             iceServers: ICE_SERVERS
         });
@@ -316,8 +328,8 @@ export default function useWebRTCCall() {
             if (!current || current.callId !== data.callId) return;
 
             try {
-                const pc = createPeer(current.targetUserId, current.callId, true);
-                localStreamRef.current?.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+                const pc = createPeer(current.targetUserId, current.callId);
+                addLocalTracksToPeer(pc);
 
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
@@ -367,8 +379,8 @@ export default function useWebRTCCall() {
             if (!current || current.callId !== data.callId) return;
 
             try {
-                const pc = peerRef.current || createPeer(current.targetUserId, current.callId, false);
-                localStreamRef.current?.getTracks().forEach(track => pc.addTrack(track, localStreamRef.current));
+                const pc = peerRef.current || createPeer(current.targetUserId, current.callId);
+                addLocalTracksToPeer(pc);
 
                 await pc.setRemoteDescription(data.offer);
                 for (const candidate of pendingCandidatesRef.current) {
@@ -466,7 +478,7 @@ export default function useWebRTCCall() {
             socket.off('call:ended', onEnded);
             socket.off('call:error', onError);
         };
-    }, [cleanup, createPeer]);
+    }, [cleanup, createPeer, addLocalTracksToPeer]);
 
     return {
         state,
