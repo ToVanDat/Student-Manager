@@ -57,7 +57,8 @@ export default function ChatPage() {
         blockUser,
         unblockUser,
         reportConversation,
-        searchMessages
+        searchMessages,
+        openSearchResult
     } = useChat();
 
     const activeConversation = conversations.find(
