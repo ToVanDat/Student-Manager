@@ -604,9 +604,33 @@ export default function useWebRTCCall() {
 
         const onTimeout = data => {
             if (callRef.current?.callId !== data.callId) return;
-            setError(data.status === 'missed'
-                ? 'Cuộc gọi không được trả lời.'
-                : 'Cuộc gọi không thể kết nối.');
+
+            let message = 'Cuộc gọi đã kết thúc.';
+
+            switch (data.reason) {
+                case 'user-offline':
+                    message = 'Người dùng đang ngoại tuyến. Cuộc gọi đã được ghi nhận là cuộc gọi nhỡ.';
+                    break;
+                case 'ring-timeout':
+                    message = 'Không có người trả lời. Cuộc gọi đã được ghi nhận là cuộc gọi nhỡ.';
+                    break;
+                case 'connection-timeout':
+                    message = 'Hai thiết bị không thể thiết lập kết nối cuộc gọi.';
+                    break;
+                default:
+                    message = data.status === 'missed'
+                        ? 'Cuộc gọi đã được ghi nhận là cuộc gọi nhỡ.'
+                        : 'Cuộc gọi không thể kết nối.';
+            }
+
+            console.warn('[CALL][timeout]', {
+                callId: data.callId,
+                status: data.status,
+                reason: data.reason,
+                message
+            });
+
+            setError(message);
             cleanup();
         };
 
