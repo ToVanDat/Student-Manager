@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 
-export default function CallPanel({ targetUserId, targetUsername }) {
+export default function CallPanel({ targetUserId, targetUsername, showLauncher = true }) {
     const {
         state,
         call,
@@ -55,7 +55,7 @@ export default function CallPanel({ targetUserId, targetUsername }) {
 
     return (
         <>
-            {state === 'idle' && canStartCall && (
+            {state === 'idle' && showLauncher && canStartCall && (
                 <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="mb-3">
                         <h2 className="font-semibold text-slate-900 dark:text-white">
