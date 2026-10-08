@@ -532,8 +532,7 @@ export default function ChatWindow({
                                 type="button"
                                 key={result.id}
                                 onClick={() => {
-                                    const node = document.querySelector(`[data-message-id="${result.id}"]`);
-                                    node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    onOpenSearchResult?.(result);
                                     setShowSearchPanel(false);
                                 }}
                                 className="block w-full rounded-xl px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
