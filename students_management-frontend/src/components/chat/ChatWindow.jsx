@@ -58,7 +58,8 @@ export default function ChatWindow({
     onUpdateConversationSettings,
     onBlockUser,
     onUnblockUser,
-    onReportConversation
+    onReportConversation,
+    onSearchMessages
 }) {
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
@@ -78,6 +79,10 @@ export default function ChatWindow({
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [showReportDialog, setShowReportDialog] = useState(false);
     const [reportReason, setReportReason] = useState('spam');
+    const [showSearchPanel, setShowSearchPanel] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
     const emojiPickerRef = useRef(null);
     const moreMenuRef = useRef(null);
 
@@ -165,6 +170,27 @@ export default function ChatWindow({
 
         return () => observer.disconnect();
     }, []);
+
+    useEffect(() => {
+        if (!showSearchPanel) return;
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            try {
+                setSearching(true);
+                const results = await onSearchMessages?.(searchQuery);
+                setSearchResults(results || []);
+            } catch (error) {
+                console.error('Không thể tìm kiếm message:', error);
+                setSearchResults([]);
+            } finally {
+                setSearching(false);
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [showSearchPanel, searchQuery, onSearchMessages]);
 
     useEffect(() => {
         const handleClickOutsideMore = (event) => {
@@ -372,6 +398,41 @@ export default function ChatWindow({
 
             </header>
 
+            {showSearchPanel && (
+                <div className="absolute right-5 top-[74px] z-50 w-[360px] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 dark:bg-slate-800">
+                        <Search size={16} className="text-slate-400" />
+                        <input
+                            autoFocus
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Tìm tin nhắn trong cuộc trò chuyện..."
+                            className="h-10 flex-1 bg-transparent text-sm outline-none dark:text-slate-100"
+                        />
+                        <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); }}><X size={15} className="text-slate-400" /></button>
+                    </div>
+                    <div className="mt-2 max-h-72 overflow-y-auto">
+                        {searching && <p className="px-2 py-4 text-center text-xs text-slate-400">Đang tìm...</p>}
+                        {!searching && searchQuery.trim() && searchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">Không tìm thấy tin nhắn</p>}
+                        {!searching && searchResults.map(result => (
+                            <button
+                                type="button"
+                                key={result.id}
+                                onClick={() => {
+                                    const node = document.querySelector(`[data-message-id="${result.id}"]`);
+                                    node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    setShowSearchPanel(false);
+                                }}
+                                className="block w-full rounded-xl px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
+                            >
+                                <p className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{result.content}</p>
+                                <p className="mt-1 text-[10px] text-slate-400">{new Date(result.created_at).toLocaleString('vi-VN')}</p>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {showReportDialog && (
                 <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
                     <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900">
@@ -477,6 +538,7 @@ export default function ChatWindow({
                 {messages.map((msg) => (
                     <MessageBubble
                         key={msg.id}
+                        data-message-id={msg.id}
                         message={{
                             ...msg,
                             senderId: Number(
