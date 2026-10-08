@@ -25,6 +25,7 @@ export default function ChatPage() {
         activeId,
         setActiveId,
         messages,
+        callHistory,
         conversationMembers,
         onlineUserIds,
         sendMessage,
@@ -58,6 +59,10 @@ export default function ChatPage() {
         searchMessages,
         openSearchResult
     } = useChat();
+
+    const timelineMessages = [...messages, ...callHistory].sort((a, b) =>
+        new Date(a.created_at || a.started_at || 0) - new Date(b.created_at || b.started_at || 0)
+    );
 
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
@@ -135,7 +140,7 @@ export default function ChatPage() {
                                     <>
                                     <ChatWindow
                                         activeConversation={activeConversation}
-                                        messages={messages}
+                                        messages={timelineMessages}
                                         currentUserId={Number(user?.id)}
                                         onSendMessage={sendMessage}
                                         onSendAttachment={sendAttachment}
