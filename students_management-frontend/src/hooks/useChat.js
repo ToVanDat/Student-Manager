@@ -554,6 +554,12 @@ export const useChat = () => {
         };
     }, [activeId, fetchConversations, currentUserId, refreshConversationMembers]);
 
+    const searchMessages = useCallback(async (query) => {
+        if (!activeId || !query?.trim()) return [];
+        const res = await chatApi.searchMessages(activeId, query.trim());
+        return res.data?.data || [];
+    }, [activeId]);
+
     const updateConversationSettings = useCallback(async (action, value) => {
         if (!activeId) return null;
         const res = await chatApi.updateConversationSettings(activeId, action, value);
@@ -997,6 +1003,7 @@ export const useChat = () => {
         blockUser,
         unblockUser,
         reportConversation,
+        searchMessages,
         refetchConversations: fetchConversations
     };
 };
