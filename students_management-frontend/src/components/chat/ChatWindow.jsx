@@ -17,7 +17,9 @@ import {
     Ban,
     Flag,
     UserRound,
-    FolderOpen
+    FolderOpen,
+    Mic,
+    Square
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 
@@ -85,6 +87,11 @@ export default function ChatWindow({
     const [searching, setSearching] = useState(false);
     const emojiPickerRef = useRef(null);
     const moreMenuRef = useRef(null);
+    const mediaRecorderRef = useRef(null);
+    const recordedChunksRef = useRef([]);
+    const [recordingVoice, setRecordingVoice] = useState(false);
+    const [recordingSeconds, setRecordingSeconds] = useState(0);
+    const recordingTimerRef = useRef(null);
 
     const formatLastSeen = (value) => {
         if (!value) return 'Ngoại tuyến';
@@ -274,6 +281,101 @@ export default function ChatWindow({
             setIsUploading(false);
         }
     };
+
+    const stopVoiceRecording = async (cancel = false) => {
+        const recorder = mediaRecorderRef.current;
+        if (!recorder) return;
+
+        if (cancel) {
+            recorder.ondataavailable = null;
+            recorder.onstop = null;
+            if (recorder.state !== 'inactive') recorder.stop();
+            recorder.stream?.getTracks().forEach(track => track.stop());
+            mediaRecorderRef.current = null;
+            recordedChunksRef.current = [];
+            setRecordingVoice(false);
+            setRecordingSeconds(0);
+            clearInterval(recordingTimerRef.current);
+            return;
+        }
+
+        if (recorder.state !== 'inactive') recorder.stop();
+    };
+
+    const startVoiceRecording = async () => {
+        if (recordingVoice || isUploading || !onSendAttachment) return;
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : 'audio/webm';
+            const recorder = new MediaRecorder(stream, { mimeType });
+
+            recordedChunksRef.current = [];
+            mediaRecorderRef.current = recorder;
+            setRecordingVoice(true);
+            setRecordingSeconds(0);
+
+            recorder.ondataavailable = event => {
+                if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+            };
+
+            recorder.onstop = async () => {
+                stream.getTracks().forEach(track => track.stop());
+                mediaRecorderRef.current = null;
+                clearInterval(recordingTimerRef.current);
+                setRecordingVoice(false);
+
+                const chunks = recordedChunksRef.current;
+                recordedChunksRef.current = [];
+                const seconds = recordingSeconds;
+
+                if (!chunks.length || seconds < 1) {
+                    setRecordingSeconds(0);
+                    return;
+                }
+
+                const blob = new Blob(chunks, { type: mimeType });
+                const file = new File(
+                    [blob],
+                    `voice-${Date.now()}.webm`,
+                    { type: 'audio/webm' }
+                );
+
+                try {
+                    setIsUploading(true);
+                    await onSendAttachment(file);
+                } catch (error) {
+                    console.error('Lỗi gửi voice message:', error);
+                } finally {
+                    setIsUploading(false);
+                    setRecordingSeconds(0);
+                }
+            };
+
+            recorder.start();
+
+            recordingTimerRef.current = setInterval(() => {
+                setRecordingSeconds(value => {
+                    if (value >= 59) {
+                        stopVoiceRecording();
+                        return value;
+                    }
+                    return value + 1;
+                });
+            }, 1000);
+        } catch (error) {
+            console.error('Không thể ghi âm:', error);
+        }
+    };
+
+    useEffect(() => () => {
+        clearInterval(recordingTimerRef.current);
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== 'inactive') recorder.stop();
+        recorder?.stream?.getTracks().forEach(track => track.stop());
+    }, []);
 
     return (
         <section className="relative flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
@@ -637,6 +739,17 @@ export default function ChatWindow({
                     onClick={handleAttachmentClick}
                 >
                     <Paperclip size={20} />
+                </button>
+
+                <button
+                    type="button"
+                    title={recordingVoice ? 'Dừng ghi âm' : 'Ghi âm'}
+                    disabled={isUploading}
+                    onClick={() => recordingVoice ? stopVoiceRecording() : startVoiceRecording()}
+                    className={`flex items-center gap-1 rounded-full p-2 ${recordingVoice ? 'bg-red-50 text-red-600 dark:bg-red-950/30' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-800'} disabled:opacity-50`}
+                >
+                    {recordingVoice ? <Square size={18} /> : <Mic size={20} />}
+                    {recordingVoice && <span className="text-[11px]">{recordingSeconds}s</span>}
                 </button>
 
                 {/* ================= EMOJI ================= */}
