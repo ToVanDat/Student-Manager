@@ -139,7 +139,26 @@ export const useChat = () => {
 
             if (conversationId === Number(activeId)) {
                 setMessages(prev => {
-                    if (prev.some(item => item.id === message.id)) return prev;
+                    // The sender receives the same Socket.IO event that the
+                    // REST request also confirms. Reconcile the optimistic
+                    // placeholder instead of appending a second message.
+                    const optimisticIndex = prev.findIndex(item =>
+                        String(item.id).startsWith('temp-') &&
+                        Number(item.sender_id ?? item.senderId) === Number(currentUserId) &&
+                        String(item.content ?? '') === String(message.content ?? '') &&
+                        (item.status === 'sending' || item.status === 'uploading' || item.status === 'processing')
+                    );
+
+                    if (optimisticIndex !== -1) {
+                        const next = [...prev];
+                        next[optimisticIndex] = { ...message, status: 'sent' };
+                        return next;
+                    }
+
+                    if (prev.some(item => Number(item.id) === Number(message.id))) {
+                        return prev;
+                    }
+
                     return [...prev, message];
                 });
                 chatApi.markAsRead(conversationId).catch(() => {});
