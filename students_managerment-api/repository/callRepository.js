@@ -137,7 +137,7 @@ const getActiveCallsForParticipant = async (userId) => {
     return rows;
 };
 
-const getCallHistory = async (userId, limit = 50, offset = 0) => {
+const getCallHistory = async (userId, limit = 50, offset = 0, conversationId = null) => {
     const { rows } = await pool.query(
         `
         SELECT
@@ -147,11 +147,12 @@ const getCallHistory = async (userId, limit = 50, offset = 0) => {
         FROM call_history ch
         JOIN users caller ON caller.id = ch.caller_id
         JOIN users receiver ON receiver.id = ch.receiver_id
-        WHERE ch.caller_id = $1 OR ch.receiver_id = $1
+        WHERE (ch.caller_id = $1 OR ch.receiver_id = $1)
+          AND ($4::BIGINT IS NULL OR ch.conversation_id = $4)
         ORDER BY ch.started_at DESC
         LIMIT $2 OFFSET $3;
         `,
-        [userId, limit, offset]
+        [userId, limit, offset, conversationId]
     );
     return rows;
 };
