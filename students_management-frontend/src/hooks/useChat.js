@@ -554,6 +554,52 @@ export const useChat = () => {
         };
     }, [activeId, fetchConversations, currentUserId, refreshConversationMembers]);
 
+    const updateConversationSettings = useCallback(async (action, value) => {
+        if (!activeId) return null;
+        const res = await chatApi.updateConversationSettings(activeId, action, value);
+        const settings = res.data?.data;
+
+        setConversations(prev => prev.map(item =>
+            Number(item.id) === Number(activeId)
+                ? {
+                    ...item,
+                    ...(settings ? {
+                        isPinned: Boolean(settings.pinned),
+                        mutedUntil: settings.muted_until || null,
+                        markedUnread: Boolean(settings.marked_unread)
+                    } : {})
+                }
+                : item
+        ));
+
+        if (action === 'hide' && value) {
+            setActiveId(null);
+            setMessages([]);
+            setConversationMembers([]);
+        }
+
+        return settings;
+    }, [activeId]);
+
+    const blockUser = useCallback(async (targetUserId) => {
+        if (!activeId || !targetUserId) return;
+        await chatApi.blockUser(activeId, targetUserId);
+        setConversations(prev => prev.filter(item => Number(item.id) !== Number(activeId)));
+        setActiveId(null);
+        setMessages([]);
+        setConversationMembers([]);
+    }, [activeId]);
+
+    const unblockUser = useCallback(async (targetUserId) => {
+        if (!activeId || !targetUserId) return;
+        return chatApi.unblockUser(activeId, targetUserId);
+    }, [activeId]);
+
+    const reportConversation = useCallback(async (targetUserId, reason, details = null) => {
+        if (!activeId || !targetUserId) return;
+        return chatApi.reportConversation(activeId, targetUserId, reason, details);
+    }, [activeId]);
+
     const editMessage = useCallback(async (messageId, content) => {
         const text = typeof content === 'string' ? content.trim() : '';
         if (!messageId || !text) return;
@@ -947,6 +993,10 @@ export const useChat = () => {
         startConversation,
         startGroupConversation,
         setTyping,
+        updateConversationSettings,
+        blockUser,
+        unblockUser,
+        reportConversation,
         refetchConversations: fetchConversations
     };
 };
