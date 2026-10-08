@@ -127,8 +127,6 @@ const initSocket = (server) => {
             }
         });
 
-        registerCallSignaling(io, socket);
-
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
