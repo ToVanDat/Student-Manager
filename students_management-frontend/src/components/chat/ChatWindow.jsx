@@ -45,6 +45,11 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
     const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
+    const previousMessageCountRef = useRef(0);
+    const previousScrollHeightRef = useRef(0);
+    const shouldRestoreScrollRef = useRef(false);
+    const shouldScrollToBottomRef = useRef(true);
     const typingTimer = useRef(null);
     const fileInputRef = useRef(null);
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
@@ -66,10 +71,39 @@ export default function ChatWindow({
     );
 
     useEffect(() => {
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        // Khi vừa prepend tin cũ: giữ nguyên message mà user đang nhìn.
+        if (shouldRestoreScrollRef.current) {
+            const previousHeight = previousScrollHeightRef.current;
+            const newHeight = container.scrollHeight;
+
+            container.scrollTop += newHeight - previousHeight;
+
+            shouldRestoreScrollRef.current = false;
+            previousMessageCountRef.current = messages.length;
+            return;
+        }
+
+        // Chỉ tự cuộn khi đang ở gần cuối hoặc vừa mở conversation.
+        if (shouldScrollToBottomRef.current) {
+            messagesEndRef.current?.scrollIntoView({
+                behavior: previousMessageCountRef.current === 0 ? 'auto' : 'smooth'
+            });
+        }
+
+        previousMessageCountRef.current = messages.length;
+    }, [messages]);
+
+    useEffect(() => {
+        // Typing indicator chỉ được cuộn xuống nếu user đang ở gần cuối.
+        if (!shouldScrollToBottomRef.current) return;
+
         messagesEndRef.current?.scrollIntoView({
             behavior: 'smooth'
         });
-    }, [messages, isTyping]);
+    }, [isTyping]);
 
     useEffect(() => {
         return () => clearTimeout(typingTimer.current);
@@ -248,12 +282,41 @@ export default function ChatWindow({
 
             {/* ================= MESSAGES ================= */}
 
-            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
+            <div
+                ref={messagesContainerRef}
+                onScroll={(event) => {
+                    const container = event.currentTarget;
+                    const distanceFromBottom =
+                        container.scrollHeight -
+                        container.scrollTop -
+                        container.clientHeight;
+
+                    // 120px là ngưỡng để coi user vẫn đang ở cuối.
+                    shouldScrollToBottomRef.current = distanceFromBottom < 120;
+
+                    if (
+                        container.scrollTop < 80 &&
+                        hasMoreMessages &&
+                        !loadingOlder
+                    ) {
+                        previousScrollHeightRef.current = container.scrollHeight;
+                        shouldRestoreScrollRef.current = true;
+                        onLoadOlder?.();
+                    }
+                }}
+                className="flex-1 min-h-0 overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
                             type="button"
-                            onClick={onLoadOlder}
+                            onClick={() => {
+                                const container = messagesContainerRef.current;
+                                if (!container) return;
+
+                                previousScrollHeightRef.current = container.scrollHeight;
+                                shouldRestoreScrollRef.current = true;
+                                onLoadOlder?.();
+                            }}
                             disabled={loadingOlder}
                             className="rounded-full border border-slate-200 px-4 py-1.5 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:hover:bg-slate-800"
                         >
