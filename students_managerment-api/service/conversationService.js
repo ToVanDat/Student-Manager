@@ -11,6 +11,12 @@ const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
         throw new Error('Người dùng không tồn tại hoặc đã bị khóa');
     }
 
+    if (await conversationRepository.isUserBlocked(currentUserId, targetUserId)) {
+        const error = new Error('Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn');
+        error.statusCode = 403;
+        throw error;
+    }
+
     const existingConversation = await conversationRepository.findDirectConversation(
         currentUserId,
         targetUserId
