@@ -36,12 +36,18 @@ export default function useWebRTCCall() {
     const [error, setError] = useState('');
     const ringTimeoutRef = useRef(null);
     const connectTimeoutRef = useRef(null);
+    const recoveryTimerRef = useRef(null);
+    const recoveryAttemptsRef = useRef(0);
+    const MAX_RECOVERY_ATTEMPTS = 2;
 
     const cleanup = useCallback(() => {
         if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
         if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+        if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
         ringTimeoutRef.current = null;
         connectTimeoutRef.current = null;
+        recoveryTimerRef.current = null;
+        recoveryAttemptsRef.current = 0;
         peerRef.current?.close();
         peerRef.current = null;
         localStreamRef.current?.getTracks().forEach(track => track.stop());
@@ -81,8 +87,13 @@ export default function useWebRTCCall() {
         };
 
         pc.onconnectionstatechange = () => {
+            const current = callRef.current;
+
             if (pc.connectionState === 'connected') {
-                const current = callRef.current;
+                recoveryAttemptsRef.current = 0;
+                if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+                recoveryTimerRef.current = null;
+
                 if (current) {
                     socket.emit('call:connected', {
                         callId: current.callId,
@@ -90,9 +101,44 @@ export default function useWebRTCCall() {
                     });
                 }
                 setState('connected');
+                return;
             }
 
-            if (['failed', 'closed'].includes(pc.connectionState)) {
+            if (pc.connectionState === 'disconnected' && current && !recoveryTimerRef.current) {
+                setState('reconnecting');
+                recoveryTimerRef.current = setTimeout(() => {
+                    recoveryTimerRef.current = null;
+                    if (!callRef.current || peerRef.current !== pc) return;
+
+                    if (recoveryAttemptsRef.current >= MAX_RECOVERY_ATTEMPTS) {
+                        setError('Kết nối cuộc gọi bị gián đoạn.');
+                        cleanup();
+                        return;
+                    }
+
+                    recoveryAttemptsRef.current += 1;
+                    socket.emit('call:reconnect-request', {
+                        callId: current.callId,
+                        targetUserId: current.targetUserId
+                    });
+                }, 2000);
+            }
+
+            if (pc.connectionState === 'failed') {
+                setError('Đang thử khôi phục kết nối cuộc gọi...');
+                if (current && recoveryAttemptsRef.current < MAX_RECOVERY_ATTEMPTS) {
+                    recoveryAttemptsRef.current += 1;
+                    socket.emit('call:reconnect-request', {
+                        callId: current.callId,
+                        targetUserId: current.targetUserId
+                    });
+                } else {
+                    setError('Không thể khôi phục kết nối cuộc gọi.');
+                    cleanup();
+                }
+            }
+
+            if (pc.connectionState === 'closed') {
                 cleanup();
             }
         };
@@ -293,6 +339,29 @@ export default function useWebRTCCall() {
             }
         };
 
+        const onReconnectRequest = async data => {
+            const current = callRef.current;
+            const pc = peerRef.current;
+            if (!current || !pc || current.callId !== data.callId) return;
+
+            if (current.callType && pc.connectionState === 'connected') return;
+
+            try {
+                setState('reconnecting');
+                pc.restartIce();
+                const offer = await pc.createOffer({ iceRestart: true });
+                await pc.setLocalDescription(offer);
+
+                socket.emit('call:offer', {
+                    callId: current.callId,
+                    targetUserId: current.targetUserId,
+                    offer: pc.localDescription
+                });
+            } catch (err) {
+                setError(err.message || 'Không thể khôi phục kết nối.');
+            }
+        };
+
         const onOffer = async data => {
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
@@ -315,7 +384,7 @@ export default function useWebRTCCall() {
                     targetUserId: current.targetUserId,
                     answer: pc.localDescription
                 });
-                setState('connected');
+                setState('reconnecting');
             } catch (err) {
                 setError(err.message || 'Không thể xử lý offer.');
                 cleanup();
@@ -375,6 +444,7 @@ export default function useWebRTCCall() {
         };
 
         socket.on('call:incoming', onIncoming);
+        socket.on('call:reconnect-request', onReconnectRequest);
         socket.on('call:accepted', onAccepted);
         socket.on('call:offer', onOffer);
         socket.on('call:answer', onAnswer);
@@ -386,6 +456,7 @@ export default function useWebRTCCall() {
 
         return () => {
             socket.off('call:incoming', onIncoming);
+            socket.off('call:reconnect-request', onReconnectRequest);
             socket.off('call:accepted', onAccepted);
             socket.off('call:offer', onOffer);
             socket.off('call:answer', onAnswer);
