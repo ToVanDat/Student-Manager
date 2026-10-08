@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, SquarePen, X, Users, Check } from 'lucide-react';
+import { Search, SquarePen, X, Users, Check, Phone } from 'lucide-react';
 import ConversationItem from './ConversationItem';
 import AvatarFallback from './AvatarFallback';
 
@@ -10,7 +10,8 @@ export default function ChatSidebar({
     searchUsers,
     searchResults,
     onStartConversation,
-    onStartGroupConversation
+    onStartGroupConversation,
+    onOpenCallCenter
 }) {
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -78,6 +79,14 @@ export default function ChatSidebar({
                         <Users size={18} />
                     </button>
                     <button
+                        onClick={onOpenCallCenter}
+                        className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl"
+                        title="Cuộc gọi"
+                    >
+                        <Phone size={18} />
+                    </button>
+                    <button
+                        data-new-chat
                         onClick={() => { setShowNewChat(true); setMode('direct'); }}
                         className="w-10 h-10 flex items-center justify-center text-white bg-[#4b63f5] hover:bg-[#3f56e8] rounded-xl shadow-sm"
                         title="Tin nhắn mới"
