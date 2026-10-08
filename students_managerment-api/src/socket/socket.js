@@ -541,6 +541,71 @@ const initSocket = (server) => {
             }
         });
 
+        // =====================================================
+        // WEBRTC 1-1 CALL SIGNALING
+        // Socket.IO transports signaling only; WebRTC transports media.
+        // =====================================================
+        socket.on('call:start', ({ callId, targetUserId, callType = 'voice' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
+                return socket.emit('call:error', { message: 'Thông tin cuộc gọi không hợp lệ' });
+            }
+            if (!onlineUsers.has(targetId)) {
+                return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
+            }
+            io.to('user:' + targetId).emit('call:incoming', {
+                callId, fromUserId: userId, fromUsername: socket.user.username, toUserId: targetId, callType
+            });
+        });
+
+        socket.on('call:accept', ({ callId, targetUserId, callType = 'voice' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || targetId <= 0) return;
+            io.to('user:' + targetId).emit('call:accepted', {
+                callId, fromUserId: userId, toUserId: targetId, callType
+            });
+        });
+
+        socket.on('call:reject', ({ callId, targetUserId, reason = 'rejected' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || targetId <= 0) return;
+            io.to('user:' + targetId).emit('call:rejected', {
+                callId, fromUserId: userId, toUserId: targetId, reason
+            });
+        });
+
+        socket.on('call:offer', ({ callId, targetUserId, offer }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || !offer) return;
+            io.to('user:' + targetId).emit('call:offer', {
+                callId, fromUserId: userId, toUserId: targetId, offer
+            });
+        });
+
+        socket.on('call:answer', ({ callId, targetUserId, answer }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || !answer) return;
+            io.to('user:' + targetId).emit('call:answer', {
+                callId, fromUserId: userId, toUserId: targetId, answer
+            });
+        });
+
+        socket.on('call:ice-candidate', ({ callId, targetUserId, candidate }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || !candidate) return;
+            io.to('user:' + targetId).emit('call:ice-candidate', {
+                callId, fromUserId: userId, toUserId: targetId, candidate
+            });
+        });
+
+        socket.on('call:end', ({ callId, targetUserId, reason = 'ended' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !Number.isInteger(targetId) || targetId <= 0) return;
+            io.to('user:' + targetId).emit('call:ended', {
+                callId, fromUserId: userId, toUserId: targetId, reason
+            });
+        });
+
         socket.on('disconnect', async (reason) => {
             const count = Math.max((onlineUsers.get(userId) || 1) - 1, 0);
             if (count === 0) {
