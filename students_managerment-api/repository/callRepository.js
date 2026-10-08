@@ -48,21 +48,21 @@ const updateCallStatus = async (callId, status, reason = null, answered = false)
     const { rows } = await pool.query(
         `
         UPDATE call_history
-        SET status = $2,
-            end_reason = COALESCE($3, end_reason),
+        SET status = $2::varchar,
+            end_reason = COALESCE($3::varchar, end_reason),
             answered_at = CASE
                 WHEN $4 = TRUE AND answered_at IS NULL THEN NOW()
                 ELSE answered_at
             END,
             ended_at = CASE
-                WHEN $2 IN ('rejected','missed','cancelled','failed','timeout')
+                WHEN $2::varchar IN ('rejected','missed','cancelled','failed','timeout')
                     THEN COALESCE(ended_at, NOW())
-                WHEN $2 = 'completed'
+                WHEN $2::varchar = 'completed'
                     THEN COALESCE(ended_at, NOW())
                 ELSE ended_at
             END,
             duration_seconds = CASE
-                WHEN $2 = 'completed' AND answered_at IS NOT NULL
+                WHEN $2::varchar = 'completed' AND answered_at IS NOT NULL
                     THEN GREATEST(
                         0,
                         FLOOR(EXTRACT(EPOCH FROM (
