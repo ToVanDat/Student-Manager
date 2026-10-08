@@ -880,6 +880,12 @@ export const useChat = () => {
         window.URL.revokeObjectURL(blobUrl);
     }, []);
 
+    const previewFile = useCallback(async (file) => {
+        if (!file?.id) return null;
+        const response = await chatApi.downloadFile(file.id);
+        return window.URL.createObjectURL(response.data);
+    }, []);
+
     const searchUsers = useCallback(async (search) => {
         try {
             const res = await userApi.searchForChat(search);
@@ -992,6 +998,7 @@ export const useChat = () => {
         toggleReaction,
         sendAttachment,
         downloadFile,
+        previewFile,
         deleteFile,
         editMessage,
         recallMessage,
