@@ -3,9 +3,10 @@ const jwt = require('jsonwebtoken');
 const conversationRepository = require('../../repository/conversationRepository.js');
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
+const userRepository = require('../../repository/userRepository.js');
 
 let io = null;
-const onlineUsers = new Map();
+const onlineUsers = new Map(); // userId -> Set<socketId>
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -58,22 +59,53 @@ const initSocket = (server) => {
         const userId = Number(socket.user.id);
         const sessionId = socket.user.sessionId;
 
+        // Socket authentication is checked only when the connection is
+        // established. Schedule a hard disconnect at JWT expiry so an
+        // expired access token can never keep using realtime events.
+        const tokenExpiresAt = Number(socket.handshake.auth?.accessToken
+            ? jwt.decode(socket.handshake.auth.accessToken)?.exp
+            : 0);
+
+        const tokenLifetimeMs = tokenExpiresAt > 0
+            ? Math.max(tokenExpiresAt * 1000 - Date.now(), 0)
+            : 0;
+
+        const tokenExpiryTimer = tokenLifetimeMs > 0
+            ? setTimeout(() => {
+                socket.disconnect(true);
+            }, tokenLifetimeMs)
+            : null;
+
+        socket.once('disconnect', () => {
+            if (tokenExpiryTimer) {
+                clearTimeout(tokenExpiryTimer);
+            }
+        });
+
         socket.join(`session:${sessionId}`);
         socket.join(`user:${userId}`);
 
-        const previousSocketCount = onlineUsers.get(userId) || 0;
-    onlineUsers.set(userId, previousSocketCount + 1);
+        // Một user có thể mở nhiều tab/device. Chỉ khi socket đầu tiên kết nối
+        // mới chuyển trạng thái offline -> online.
+        let userSockets = onlineUsers.get(userId);
+        const wasOffline = !userSockets || userSockets.size === 0;
 
-        // Chỉ phát ONLINE khi user thực sự chuyển từ offline -> online.
-        if (previousSocketCount === 0) {
-        try {
-            const contactIds = await conversationRepository.getConversationContactIds(userId);
-            for (const contactId of contactIds) {
-                io.to(`user:${contactId}`).emit('presence:online', { userId });
-            }
-        } catch (error) {
-            console.error('PRESENCE ONLINE ERROR:', error);
+        if (!userSockets) {
+            userSockets = new Set();
+            onlineUsers.set(userId, userSockets);
         }
+
+        userSockets.add(socket.id);
+
+        if (wasOffline) {
+            try {
+                const contactIds = await conversationRepository.getConversationContactIds(userId);
+                for (const contactId of contactIds) {
+                    io.to(`user:${contactId}`).emit('presence:online', { userId });
+                }
+            } catch (error) {
+                console.error('PRESENCE ONLINE ERROR:', error);
+            }
         }
 
         // Gửi snapshot presence cho client vừa kết nối.
@@ -95,6 +127,8 @@ const initSocket = (server) => {
             }
         });
 
+        registerCallSignaling(io, socket);
+
         socket.on('conversation:join', async ({ conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
@@ -104,7 +138,11 @@ const initSocket = (server) => {
             try {
                 const isMember = await conversationRepository.isConversationMember(id, userId);
                 if (!isMember) {
-                    return socket.emit('conversation:error', { message: 'Bạn không thuộc conversation này' });
+                    return socket.emit('conversation:error', {
+                        code: 'NOT_MEMBER',
+                        conversationId: id,
+                        message: 'Bạn không còn quyền truy cập nhóm này'
+                    });
                 }
 
                 socket.join(`conversation:${id}`);
@@ -161,7 +199,10 @@ const initSocket = (server) => {
                 const savedMessage = await messageRepository.createMessage(id, userId, text, replyTo);
                 const memberIds = await conversationRepository.getConversationMemberIds(id);
 
-                io.to(`conversation:${id}`).emit('message:new', savedMessage);
+                // Gửi cho các client khác trong conversation và luôn gửi lại cho sender.
+                // Không phụ thuộc việc sender đã kịp join room hay chưa.
+                socket.to(`conversation:${id}`).emit('message:new', savedMessage);
+                socket.emit('message:new', savedMessage);
 
                 for (const memberId of memberIds) {
                     io.to(`user:${memberId}`).emit('conversation:updated', {
@@ -448,6 +489,12 @@ const initSocket = (server) => {
                     return socket.emit('message:error', { message: 'Bạn không thuộc conversation này' });
                 }
 
+                if (message.is_recalled || message.deleted_at) {
+                    return socket.emit('message:error', {
+                        message: 'Không thể reaction vào message đã thu hồi hoặc xoá'
+                    });
+                }
+
                 const reaction = await messageRepository.addReaction(id, userId, value);
                 io.to(`conversation:${message.conversation_id}`).emit('message:reaction:updated', {
                     messageId: id,
@@ -552,11 +599,7 @@ const initSocket = (server) => {
             }
         };
 
-        // =====================================================
-        // WEBRTC 1-1 CALL SIGNALING
-        // Socket.IO transports signaling only; WebRTC transports media.
-        // =====================================================
-        socket.on('call:start', ({ callId, targetUserId, callType = 'voice' }) => {
+        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) {
                 return socket.emit('call:error', { message: 'Bạn không được phép gọi người dùng này' });
@@ -564,77 +607,88 @@ const initSocket = (server) => {
             if (!onlineUsers.has(targetId)) {
                 return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
             }
-            io.to('user:' + targetId).emit('call:incoming', {
+            io.to(`user:${targetId}`).emit('call:incoming', {
                 callId, fromUserId: userId, fromUsername: socket.user.username, toUserId: targetId, callType
             });
         });
 
-        socket.on('call:accept', ({ callId, targetUserId, callType = 'voice' }) => {
+        socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
-            io.to('user:' + targetId).emit('call:accepted', {
+            io.to(`user:${targetId}`).emit('call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType
             });
         });
 
-        socket.on('call:reject', ({ callId, targetUserId, reason = 'rejected' }) => {
+        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
-            io.to('user:' + targetId).emit('call:rejected', {
+            io.to(`user:${targetId}`).emit('call:rejected', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
         });
 
-        socket.on('call:offer', ({ callId, targetUserId, offer }) => {
+        socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || !offer) return;
-            io.to('user:' + targetId).emit('call:offer', {
+            if (!callId || !(await canCallUser(targetId)) || !offer) return;
+            io.to(`user:${targetId}`).emit('call:offer', {
                 callId, fromUserId: userId, toUserId: targetId, offer
             });
         });
 
-        socket.on('call:answer', ({ callId, targetUserId, answer }) => {
+        socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || !answer) return;
-            io.to('user:' + targetId).emit('call:answer', {
+            if (!callId || !(await canCallUser(targetId)) || !answer) return;
+            io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
             });
         });
 
-        socket.on('call:ice-candidate', ({ callId, targetUserId, candidate }) => {
+        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || !candidate) return;
-            io.to('user:' + targetId).emit('call:ice-candidate', {
+            if (!callId || !(await canCallUser(targetId)) || !candidate) return;
+            io.to(`user:${targetId}`).emit('call:ice-candidate', {
                 callId, fromUserId: userId, toUserId: targetId, candidate
             });
         });
 
-        socket.on('call:end', ({ callId, targetUserId, reason = 'ended' }) => {
+        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
-            io.to('user:' + targetId).emit('call:ended', {
+            io.to(`user:${targetId}`).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
         });
 
         socket.on('disconnect', async (reason) => {
-            const count = Math.max((onlineUsers.get(userId) || 1) - 1, 0);
-            if (count === 0) {
-                onlineUsers.delete(userId);
+            const userSockets = onlineUsers.get(userId);
 
-                try {
-                    const contactIds = await conversationRepository.getConversationContactIds(userId);
-                    for (const contactId of contactIds) {
-                        io.to(`user:${contactId}`).emit('presence:offline', { userId });
+            if (userSockets) {
+                userSockets.delete(socket.id);
+
+                // Chỉ khi socket cuối cùng của user biến mất mới phát OFFLINE
+                // và ghi last_seen_at.
+                if (userSockets.size === 0) {
+                    onlineUsers.delete(userId);
+
+                    try {
+                        await userRepository.updateLastSeenAt(userId);
+                    } catch (error) {
+                        console.error('UPDATE LAST SEEN ERROR:', error);
                     }
-                } catch (error) {
-                    console.error('PRESENCE OFFLINE ERROR:', error);
+
+                    try {
+                        const contactIds = await conversationRepository.getConversationContactIds(userId);
+                        for (const contactId of contactIds) {
+                            io.to(`user:${contactId}`).emit('presence:offline', { userId });
+                        }
+                    } catch (error) {
+                        console.error('PRESENCE OFFLINE ERROR:', error);
+                    }
                 }
-            } else {
-                onlineUsers.set(userId, count);
             }
 
-            console.log(`Socket disconnected: user=${userId}, reason=${reason}`);
+            console.log(`Socket disconnected: user=${userId}, socket=${socket.id}, reason=${reason}`);
         });
     });
 
