@@ -670,6 +670,7 @@ export const useChat = () => {
                 const uniqueOlder = older.filter(item => !existing.has(Number(item.id)));
                 return [...uniqueOlder, ...prev];
             });
+
             setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
             setMessagePage(nextPage);
         } catch (error) {
