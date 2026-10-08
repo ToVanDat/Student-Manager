@@ -645,6 +645,7 @@ const initSocket = (server) => {
 
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
+            console.log('[CALL][start]', { callId, userId, targetId, callType });
             if (!callId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
                 return socket.emit('call:error', { message: 'Bạn không được phép gọi người dùng này' });
             }
@@ -700,8 +701,17 @@ const initSocket = (server) => {
 
         socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
+            console.log('[CALL][accept]', { callId, userId, targetId, callType });
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') {
+                console.warn('[CALL][accept rejected]', {
+                    callId,
+                    userId,
+                    targetId,
+                    dbStatus: currentCall?.status,
+                    callerId: currentCall?.caller_id,
+                    receiverId: currentCall?.receiver_id
+                });
                 return socket.emit('call:error', { callId, code: 'CALL_NOT_AVAILABLE', message: 'Cuộc gọi không còn khả dụng.' });
             }
             clearCallTimer(callId);
@@ -774,6 +784,7 @@ const initSocket = (server) => {
 
         socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
             const targetId = Number(targetUserId);
+            console.log('[CALL][offer]', { callId, userId, targetId, hasOffer: !!offer });
             const call = await getAuthorizedCall(callId, targetId);
             if (!call || !offer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:offer', {
@@ -783,6 +794,7 @@ const initSocket = (server) => {
 
         socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
+            console.log('[CALL][answer]', { callId, userId, targetId, hasAnswer: !!answer });
             const call = await getAuthorizedCall(callId, targetId);
             if (!call || !answer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:answer', {
@@ -825,6 +837,7 @@ const initSocket = (server) => {
 
         socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
             const targetId = Number(targetUserId);
+            console.log('[CALL][ice]', { callId, userId, targetId, hasCandidate: !!candidate });
             const call = await getAuthorizedCall(callId, targetId);
             if (!call || !candidate || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:ice-candidate', {
@@ -847,7 +860,43 @@ const initSocket = (server) => {
             const finalStatus = reason === 'cancelled'
                 ? 'cancelled'
                 : (currentCall.answered_at ? 'completed' : 'cancelled');
-            const updated = await callRepository.updateCallStatus(callId, finalStatus, reason);
+
+            const terminalStatuses = ['completed', 'rejected', 'missed', 'cancelled', 'failed', 'timeout'];
+            if (terminalStatuses.includes(currentCall.status)) {
+                console.warn('[CALL][end ignored] already terminal', {
+                    callId,
+                    userId,
+                    status: currentCall.status,
+                    reason
+                });
+                return;
+            }
+
+            const updated = await callRepository.updateCallStatusIfCurrent(
+                callId,
+                finalStatus,
+                currentCall.status,
+                reason
+            );
+
+            if (!updated) {
+                console.warn('[CALL][end race] status changed before end', {
+                    callId,
+                    userId,
+                    expectedStatus: currentCall.status
+                });
+                return;
+            }
+
+            console.log('[CALL][end]', {
+                callId,
+                userId,
+                targetId,
+                previousStatus: currentCall.status,
+                status: updated.status,
+                reason
+            });
+
             io.to(`user:${targetId}`).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
