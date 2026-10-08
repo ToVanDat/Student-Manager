@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply } from 'lucide-react';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
 
@@ -10,6 +10,55 @@ const formatFileSize = (size) => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+
+const formatCallTime = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatCallDuration = seconds => {
+    const total = Math.max(Number(seconds) || 0, 0);
+    const minutes = Math.floor(total / 60);
+    const secs = total % 60;
+    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+const CallTimelineItem = ({ call, isOwn }) => {
+    const isVideo = call.call_type === 'video';
+    const isMissed = call.status === 'missed';
+    const isRejected = call.status === 'rejected';
+    const isCancelled = call.status === 'cancelled';
+    const outgoing = isOwn;
+    const icon = isMissed ? <PhoneMissed size={18} /> : isRejected || isCancelled ? <PhoneOff size={18} /> : isVideo ? <Video size={18} /> : <Phone size={18} />;
+
+    let title = outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến';
+    if (isMissed) title = outgoing ? 'Cuộc gọi nhỡ' : 'Cuộc gọi nhỡ';
+    if (isRejected) title = outgoing ? 'Cuộc gọi bị từ chối' : 'Cuộc gọi bị từ chối';
+    if (isCancelled) title = outgoing ? 'Đã huỷ cuộc gọi' : 'Cuộc gọi đã bị huỷ';
+
+    const endedAt = call.ended_at || call.updated_at || call.started_at;
+    const duration = call.status === 'completed' ? formatCallDuration(call.duration_seconds) : null;
+
+    return (
+        <div className="flex justify-center px-4 py-2">
+            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800/70">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${isMissed ? 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'}`}>
+                    {icon}
+                </div>
+                <div className="min-w-[150px]">
+                    <p className={`text-sm font-semibold ${isMissed ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                        {title} {isVideo ? 'video' : 'thoại'}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        {formatCallTime(call.started_at)}
+                        {duration ? ` • ${duration}` : endedAt ? ` • ${formatCallTime(endedAt)}` : ''}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default function MessageBubble({
@@ -28,6 +77,10 @@ export default function MessageBubble({
     onToggleReaction,
     currentUserId
 }) {
+    if (message._timelineType === 'call') {
+        return <CallTimelineItem call={message} isOwn={isOwn} />;
+    }
+
     const { content, time, isRead } = message;
     const status = message.status;
     const uploadProgress = Number(message.uploadProgress ?? message.files?.[0]?.uploadProgress ?? 0);
