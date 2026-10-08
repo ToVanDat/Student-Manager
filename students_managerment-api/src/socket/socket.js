@@ -734,10 +734,18 @@ const initSocket = (server) => {
         socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId)) || !answer) return;
-            clearCallTimer(callId);
-            await callRepository.updateCallStatus(callId, 'completed');
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
+            });
+        });
+
+        socket.on('call:connected', async ({ callId, targetUserId }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId))) return;
+            clearCallTimer(callId);
+            const updated = await callRepository.updateCallStatus(callId, 'completed', null, true);
+            io.to(`user:${targetId}`).emit('call:connected', {
+                callId, fromUserId: userId, toUserId: targetId
             });
         });
 
@@ -753,7 +761,11 @@ const initSocket = (server) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
             clearCallTimer(callId);
-            const updated = await callRepository.updateCallStatus(callId, reason === 'cancelled' ? 'cancelled' : 'completed', reason);
+            const currentCall = await callRepository.updateCallStatus(callId, 'connecting');
+            const finalStatus = reason === 'cancelled'
+                ? 'cancelled'
+                : (currentCall?.answered_at ? 'completed' : 'cancelled');
+            const updated = await callRepository.updateCallStatus(callId, finalStatus, reason);
             io.to(`user:${targetId}`).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
