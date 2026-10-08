@@ -37,8 +37,10 @@ export default function useWebRTCCall() {
     const ringTimeoutRef = useRef(null);
     const connectTimeoutRef = useRef(null);
     const recoveryTimerRef = useRef(null);
+    const recoveryDeadlineRef = useRef(null);
     const recoveryAttemptsRef = useRef(0);
     const MAX_RECOVERY_ATTEMPTS = 2;
+    const RECOVERY_TIMEOUT_MS = 10_000;
 
     const releaseLocalMedia = useCallback(() => {
         const stream = localStreamRef.current;
@@ -69,9 +71,11 @@ export default function useWebRTCCall() {
         if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
         if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
         if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+        if (recoveryDeadlineRef.current) clearTimeout(recoveryDeadlineRef.current);
         ringTimeoutRef.current = null;
         connectTimeoutRef.current = null;
         recoveryTimerRef.current = null;
+        recoveryDeadlineRef.current = null;
         recoveryAttemptsRef.current = 0;
 
         const pc = peerRef.current;
@@ -172,7 +176,9 @@ export default function useWebRTCCall() {
             if (pc.connectionState === 'connected') {
                 recoveryAttemptsRef.current = 0;
                 if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+                if (recoveryDeadlineRef.current) clearTimeout(recoveryDeadlineRef.current);
                 recoveryTimerRef.current = null;
+                recoveryDeadlineRef.current = null;
 
                 if (current) {
                     socket.emit('call:connected', {
@@ -184,37 +190,51 @@ export default function useWebRTCCall() {
                 return;
             }
 
-            if (pc.connectionState === 'disconnected' && current && !recoveryTimerRef.current) {
+            if (
+                (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') &&
+                current
+            ) {
                 setState('reconnecting');
-                recoveryTimerRef.current = setTimeout(() => {
-                    recoveryTimerRef.current = null;
-                    if (!callRef.current || peerRef.current !== pc) return;
 
-                    if (recoveryAttemptsRef.current >= MAX_RECOVERY_ATTEMPTS) {
-                        setError('Kết nối cuộc gọi bị gián đoạn.');
+                // A peer can remain in "disconnected" without firing another
+                // connection-state event. Keep a hard deadline so the UI can
+                // never stay in reconnecting forever.
+                if (!recoveryDeadlineRef.current) {
+                    recoveryDeadlineRef.current = setTimeout(() => {
+                        recoveryDeadlineRef.current = null;
+                        const activeCall = callRef.current;
+
+                        if (!activeCall || peerRef.current !== pc) return;
+
+                        setError('Không thể khôi phục kết nối cuộc gọi.');
+                        socket.emit('call:end', {
+                            callId: activeCall.callId,
+                            targetUserId: activeCall.targetUserId,
+                            reason: 'reconnect-timeout'
+                        });
                         cleanup();
-                        return;
-                    }
+                    }, RECOVERY_TIMEOUT_MS);
+                }
 
-                    recoveryAttemptsRef.current += 1;
-                    socket.emit('call:reconnect-request', {
-                        callId: current.callId,
-                        targetUserId: current.targetUserId
-                    });
-                }, 2000);
-            }
+                if (!recoveryTimerRef.current && recoveryAttemptsRef.current < MAX_RECOVERY_ATTEMPTS) {
+                    recoveryTimerRef.current = setTimeout(() => {
+                        recoveryTimerRef.current = null;
+                        const activeCall = callRef.current;
 
-            if (pc.connectionState === 'failed') {
-                setError('Đang thử khôi phục kết nối cuộc gọi...');
-                if (current && recoveryAttemptsRef.current < MAX_RECOVERY_ATTEMPTS) {
-                    recoveryAttemptsRef.current += 1;
-                    socket.emit('call:reconnect-request', {
-                        callId: current.callId,
-                        targetUserId: current.targetUserId
-                    });
-                } else {
-                    setError('Không thể khôi phục kết nối cuộc gọi.');
-                    cleanup();
+                        if (!activeCall || peerRef.current !== pc) return;
+
+                        recoveryAttemptsRef.current += 1;
+                        console.log('[WebRTC][reconnect attempt]', {
+                            callId: activeCall.callId,
+                            attempt: recoveryAttemptsRef.current,
+                            maxAttempts: MAX_RECOVERY_ATTEMPTS
+                        });
+
+                        socket.emit('call:reconnect-request', {
+                            callId: activeCall.callId,
+                            targetUserId: activeCall.targetUserId
+                        });
+                    }, 2000);
                 }
             }
 
