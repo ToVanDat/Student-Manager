@@ -62,7 +62,8 @@ export default function ChatWindow({
     onBlockUser,
     onUnblockUser,
     onReportConversation,
-    onSearchMessages
+    onSearchMessages,
+    onOpenSearchResult
 }) {
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
