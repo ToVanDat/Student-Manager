@@ -97,4 +97,20 @@ export const chatApi = {
         client.patch(
             `/api/conversations/${conversationId}/read`
         ),
+
+    updateConversationSettings: (conversationId, action, value) =>
+        client.patch(`/api/conversations/${conversationId}/settings`, { action, value }),
+
+    blockUser: (conversationId, targetUserId) =>
+        client.post(`/api/conversations/${conversationId}/block`, { targetUserId }),
+
+    unblockUser: (conversationId, targetUserId) =>
+        client.post(`/api/conversations/${conversationId}/unblock`, { targetUserId }),
+
+    reportConversation: (conversationId, targetUserId, reason, details = null) =>
+        client.post(`/api/conversations/${conversationId}/report`, {
+            targetUserId,
+            reason,
+            details
+        }),
 };
