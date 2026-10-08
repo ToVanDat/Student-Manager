@@ -44,6 +44,48 @@ const getCallByIdForParticipant = async (callId, userId, targetUserId = null) =>
     return rows[0] || null;
 };
 
+
+const updateCallStatusIfCurrent = async (
+    callId,
+    status,
+    expectedStatus,
+    reason = null,
+    answered = false
+) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = $2::text,
+            end_reason = COALESCE($4::text, end_reason),
+            answered_at = CASE
+                WHEN $5 = TRUE AND answered_at IS NULL THEN NOW()
+                ELSE answered_at
+            END,
+            ended_at = CASE
+                WHEN $2::text IN ('rejected','missed','cancelled','failed','timeout','completed')
+                    THEN COALESCE(ended_at, NOW())
+                ELSE ended_at
+            END,
+            duration_seconds = CASE
+                WHEN $2::text = 'completed' AND answered_at IS NOT NULL
+                    THEN GREATEST(
+                        0,
+                        FLOOR(EXTRACT(EPOCH FROM (
+                            COALESCE(ended_at, NOW()) - answered_at
+                        )))::INT
+                    )
+                ELSE duration_seconds
+            END,
+            updated_at = NOW()
+        WHERE call_id = $1
+          AND status = $3::text
+        RETURNING *;
+        `,
+        [callId, status, expectedStatus, reason, Boolean(answered)]
+    );
+    return rows[0] || null;
+};
+
 const updateCallStatus = async (callId, status, reason = null, answered = false) => {
     const { rows } = await pool.query(
         `
@@ -62,7 +104,7 @@ const updateCallStatus = async (callId, status, reason = null, answered = false)
                 ELSE ended_at
             END,
             duration_seconds = CASE
-                WHEN $2::varchar = 'completed' AND answered_at IS NOT NULL
+                WHEN $2::text = 'completed' AND answered_at IS NOT NULL
                     THEN GREATEST(
                         0,
                         FLOOR(EXTRACT(EPOCH FROM (
@@ -146,5 +188,6 @@ module.exports = {
     createCallNotification,
     getUnreadCallNotifications,
     markCallNotificationRead,
-    getCallByIdForParticipant
+    getCallByIdForParticipant,
+    updateCallStatusIfCurrent
 };
