@@ -112,14 +112,6 @@ export default function ChatPage() {
                         onOpenNotifications={() => setSidebarOpen(false)}
                     />
 
-                    <button
-                        type="button"
-                        onClick={() => setCallCenterOpen(true)}
-                        className="fixed right-6 top-[82px] z-[120] flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-lg hover:border-blue-200 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                        📞 Cuộc gọi
-                    </button>
-
                     <CallCenterPanel
                         open={callCenterOpen}
                         onClose={() => setCallCenterOpen(false)}
@@ -136,6 +128,7 @@ export default function ChatPage() {
                             <div className="flex h-full min-h-0">
                                 <ChatSidebar
                                     conversations={conversations}
+                                    onOpenCallCenter={() => setCallCenterOpen(true)}
                                     activeId={activeId}
                                     onSelectConversation={setActiveId}
                                     searchUsers={searchUsers}
@@ -186,7 +179,12 @@ export default function ChatPage() {
 
                                     </>
                                 ) : (
-                                    <EmptyChat />
+                                    <EmptyChat
+                                        onStartConversation={() => {
+                                            const newChatButton = document.querySelector('[data-new-chat]');
+                                            newChatButton?.click();
+                                        }}
+                                    />
                                 )}
                             </div>
                         </div>
