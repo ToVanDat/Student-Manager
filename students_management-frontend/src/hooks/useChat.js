@@ -996,11 +996,23 @@ export const useChat = () => {
     }, [activeId, fetchConversations, refreshConversationMembers]);
 
     const startConversation = useCallback(async (targetUserId) => {
-        const res = await chatApi.createDirectConversation(targetUserId);
+        const normalizedUserId = Number(targetUserId);
+        if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+            throw new Error('Người dùng không hợp lệ');
+        }
+
+        const res = await chatApi.createDirectConversation(normalizedUserId);
         const conversation = res.data?.data;
 
+        if (!conversation?.id) {
+            throw new Error('Server không trả về conversation');
+        }
+
+        // Chuyển ngay sang conversation vừa tạo/lấy được.
+        setActiveId(Number(conversation.id));
+
+        // Đồng bộ sidebar sau khi conversation đã được chọn.
         await fetchConversations();
-        if (conversation?.id) setActiveId(conversation.id);
 
         return conversation;
     }, [fetchConversations]);
