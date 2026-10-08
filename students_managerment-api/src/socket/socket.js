@@ -669,7 +669,12 @@ const initSocket = (server) => {
 
             callTimers.set(callId, setTimeout(async () => {
                 try {
-                    const updated = await callRepository.updateCallStatus(callId, 'missed', 'ring-timeout');
+                    const updated = await callRepository.updateCallStatusIfCurrent(
+                        callId,
+                        'missed',
+                        'ringing',
+                        'ring-timeout'
+                    );
                     if (updated) {
                         io.to(`user:${targetId}`).emit('call:ended', {
                             callId, fromUserId: userId, toUserId: targetId, reason: 'ring-timeout'
@@ -700,14 +705,32 @@ const initSocket = (server) => {
                 return socket.emit('call:error', { callId, code: 'CALL_NOT_AVAILABLE', message: 'Cuộc gọi không còn khả dụng.' });
             }
             clearCallTimer(callId);
-            const updated = await callRepository.updateCallStatus(callId, 'connecting', null, true);
+            const updated = await callRepository.updateCallStatusIfCurrent(
+                callId,
+                'connecting',
+                'ringing',
+                null,
+                true
+            );
+            if (!updated) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_AVAILABLE',
+                    message: 'Cuộc gọi không còn khả dụng.'
+                });
+            }
             io.to(`user:${targetId}`).emit('call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType
             });
 
             callTimers.set(callId, setTimeout(async () => {
                 try {
-                    const failed = await callRepository.updateCallStatus(callId, 'failed', 'connection-timeout');
+                    const failed = await callRepository.updateCallStatusIfCurrent(
+                        callId,
+                        'failed',
+                        'connecting',
+                        'connection-timeout'
+                    );
                     if (failed) {
                         io.to(`user:${targetId}`).emit('call:ended', {
                             callId, fromUserId: userId, toUserId: targetId, reason: 'connection-timeout'
@@ -729,7 +752,12 @@ const initSocket = (server) => {
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') return;
             clearCallTimer(callId);
-            const updated = await callRepository.updateCallStatus(callId, 'rejected', reason);
+            const updated = await callRepository.updateCallStatusIfCurrent(
+                callId,
+                'rejected',
+                'ringing',
+                reason
+            );
             io.to(`user:${targetId}`).emit('call:rejected', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
