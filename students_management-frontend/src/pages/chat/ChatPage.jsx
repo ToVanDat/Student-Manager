@@ -102,6 +102,12 @@ export default function ChatPage() {
                         onOpenNotifications={() => setSidebarOpen(false)}
                     />
 
+                    <CallPanel
+                        targetUserId={activeConversation?.userId}
+                        targetUsername={activeConversation?.name || activeConversation?.username || 'User'}
+                        showLauncher={Boolean(activeConversation?.userId)}
+                    />
+
                     <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
                         <div className="h-full min-h-0 overflow-hidden rounded-2xl border border-[#e7ebf3] bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-900">
                             <div className="flex h-full min-h-0">
@@ -145,14 +151,7 @@ export default function ChatPage() {
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
                                     />
-                                    {activeConversation.userId ? (
-                                        <aside className="w-[320px] shrink-0 border-l border-slate-200 p-4 dark:border-slate-800">
-                                            <CallPanel
-                                                targetUserId={Number(activeConversation.userId)}
-                                                targetUsername={activeConversation.name || activeConversation.username || 'User'}
-                                            />
-                                        </aside>
-                                    ) : null}
+
                                     </>
                                 ) : (
                                     <EmptyChat />
