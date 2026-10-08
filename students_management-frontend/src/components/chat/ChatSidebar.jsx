@@ -21,6 +21,8 @@ export default function ChatSidebar({
     const [groupName, setGroupName] = useState('');
     const [selectedIds, setSelectedIds] = useState([]);
     const [creatingGroup, setCreatingGroup] = useState(false);
+    const [startingDirectId, setStartingDirectId] = useState(null);
+    const [newChatError, setNewChatError] = useState('');
 
     const unreadTotal = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
 
@@ -38,6 +40,8 @@ export default function ChatSidebar({
 
     const closeNewChat = () => {
         setShowNewChat(false);
+        setNewChatError('');
+        setStartingDirectId(null);
         setMode('direct');
         setUserSearch('');
         setGroupName('');
@@ -50,6 +54,31 @@ export default function ChatSidebar({
             ? prev.filter(item => item !== id)
             : [...prev, id]
         );
+    };
+
+    const handleStartDirectConversation = async (userId) => {
+        if (!userId || !onStartConversation || startingDirectId) return;
+
+        try {
+            setNewChatError('');
+            setStartingDirectId(Number(userId));
+            const conversation = await onStartConversation(Number(userId));
+
+            if (!conversation?.id) {
+                throw new Error('Không nhận được conversation từ server');
+            }
+
+            closeNewChat();
+        } catch (error) {
+            console.error('Không thể mở cuộc trò chuyện:', error);
+            setNewChatError(
+                error?.response?.data?.message ||
+                error?.message ||
+                'Không thể bắt đầu cuộc trò chuyện'
+            );
+        } finally {
+            setStartingDirectId(null);
+        }
     };
 
     const handleCreateGroup = async () => {
@@ -137,6 +166,11 @@ export default function ChatSidebar({
                     {mode === 'group' && selectedIds.length > 0 && (
                         <p className="text-xs text-blue-500 mt-2">Đã chọn {selectedIds.length} thành viên</p>
                     )}
+                    {newChatError && (
+                        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                            {newChatError}
+                        </p>
+                    )}
 
                     <div className="mt-2 max-h-52 overflow-y-auto">
                         {searchResults.map(user => {
@@ -149,14 +183,16 @@ export default function ChatSidebar({
                                             toggleMember(user.id);
                                             return;
                                         }
-                                        await onStartConversation(user.id);
-                                        closeNewChat();
+                                        await handleStartDirectConversation(user.id);
                                     }}
                                     className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
                                 >
                                     <AvatarFallback name={user.username} src={user.avatar} size="md" />
                                     <span className="text-sm font-medium text-slate-800 dark:text-slate-100 flex-1">{user.username}</span>
                                     {mode === 'group' && selected && <Check size={16} className="text-blue-500" />}
+                                    {mode === 'direct' && startingDirectId === Number(user.id) && (
+                                        <span className="text-xs text-blue-500">Đang mở...</span>
+                                    )}
                                 </button>
                             );
                         })}
