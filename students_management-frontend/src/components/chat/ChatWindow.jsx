@@ -409,7 +409,7 @@ export default function ChatWindow({
                             placeholder="Tìm tin nhắn trong cuộc trò chuyện..."
                             className="h-10 flex-1 bg-transparent text-sm outline-none dark:text-slate-100"
                         />
-                        <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); }}><X size={15} className="text-slate-400" /></button>
+                        <button type="button" onClick={() => { setSearchQuery(''); setMessageSearchResults([]); }}><X size={15} className="text-slate-400" /></button>
                     </div>
                     <div className="mt-2 max-h-72 overflow-y-auto">
                         {searching && <p className="px-2 py-4 text-center text-xs text-slate-400">Đang tìm...</p>}
