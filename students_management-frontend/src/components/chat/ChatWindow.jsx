@@ -46,6 +46,7 @@ export default function ChatWindow({
     hasMoreMessages,
     loadingOlder,
     onLoadOlder,
+    onRedial,
     conversationMembers = [],
     searchUsers,
     searchResults = [],
@@ -715,6 +716,7 @@ export default function ChatWindow({
                             ) === Number(currentUserId)
                         }
                         senderAvatar={activeConversation.avatar}
+                        onRedial={onRedial}
                         senderName={activeConversation.name}
                         onEdit={onEdit}
                         onRecall={onRecall}
