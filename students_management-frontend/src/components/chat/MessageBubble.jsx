@@ -48,6 +48,8 @@ const formatCallDate = value => {
 };
 
 const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
+    const [redialed, setRedialed] = useState(false);
+
     const isVideo = call.call_type === 'video';
     const isMissed = call.status === 'missed';
     const isRejected = call.status === 'rejected';
@@ -75,7 +77,9 @@ const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
         ? 'text-red-600 dark:text-red-400'
         : isRejected || isCancelled
             ? 'text-amber-600 dark:text-amber-400'
-            : 'text-slate-700 dark:text-slate-100';
+            : isVideo
+                ? 'text-violet-600 dark:text-violet-400'
+                : 'text-slate-700 dark:text-slate-100';
 
     const iconClass = isMissed
         ? 'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400'
@@ -95,45 +99,66 @@ const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
     const handleRedial = event => {
         event?.preventDefault();
         event?.stopPropagation();
-        if (canRedial) onRedial?.(otherUserId, isVideo ? 'video' : 'voice');
+        if (!canRedial || redialed) return;
+        onRedial?.(otherUserId, isVideo ? 'video' : 'voice');
+        setRedialed(true);
     };
 
+    const card = (
+        <button
+            type="button"
+            onClick={handleRedial}
+            disabled={!canRedial}
+            className={[
+                'group flex w-full max-w-[350px] items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left shadow-sm transition-all active:scale-[0.99]',
+                'hover:-translate-y-px hover:shadow-md',
+                outgoing
+                    ? 'border-blue-100 bg-blue-50/70 hover:border-blue-200 dark:border-blue-900/50 dark:bg-blue-950/20 dark:hover:border-blue-800'
+                    : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/80 dark:hover:border-slate-600'
+            ].join(' ')}
+            title={redialed ? 'Đã gọi lại' : canRedial ? `Gọi lại ${isVideo ? 'video' : 'thoại'}` : 'Không thể gọi lại'}
+        >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
+                {icon}
+            </span>
+
+            <span className="min-w-0 flex-1">
+                <span className={`block truncate text-[13px] font-semibold ${statusClass}`}>
+                    {title}
+                </span>
+                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                    <span>{formatCallDate(startedAt)}</span>
+                    <span>•</span>
+                    <span>{formatCallTime(startedAt)}</span>
+                    {duration && (
+                        <>
+                            <span>•</span>
+                            <span>{duration}</span>
+                        </>
+                    )}
+                </span>
+            </span>
+
+            {canRedial && (
+                <span className={[
+                    'flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-semibold transition',
+                    redialed
+                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400'
+                        : 'text-slate-400 group-hover:bg-white group-hover:text-blue-600 dark:group-hover:bg-slate-800 dark:group-hover:text-blue-400'
+                ].join(' ')}>
+                    {redialed
+                        ? <><Check size={13} /> Đã gọi lại</>
+                        : isVideo
+                            ? <><Video size={13} /> Gọi lại</>
+                            : <><Phone size={13} /> Gọi lại</>}
+                </span>
+            )}
+        </button>
+    );
+
     return (
-        <div className="flex justify-center px-3 py-1.5">
-            <button
-                type="button"
-                onClick={handleRedial}
-                disabled={!canRedial}
-                className="group flex w-full max-w-[360px] items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-left shadow-sm transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-md active:translate-y-0 dark:border-slate-700/80 dark:bg-slate-900/80 dark:hover:border-slate-600"
-                title={canRedial ? `Gọi lại ${isVideo ? 'video' : 'thoại'}` : 'Không thể gọi lại'}
-            >
-                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
-                    {icon}
-                </span>
-
-                <span className="min-w-0 flex-1">
-                    <span className={`block truncate text-[13px] font-semibold ${statusClass}`}>
-                        {title}
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                        <span>{formatCallDate(startedAt)}</span>
-                        <span>•</span>
-                        <span>{formatCallTime(startedAt)}</span>
-                        {duration && (
-                            <>
-                                <span>•</span>
-                                <span>{duration}</span>
-                            </>
-                        )}
-                    </span>
-                </span>
-
-                {canRedial && (
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition group-hover:bg-slate-100 group-hover:text-blue-600 dark:group-hover:bg-slate-800 dark:group-hover:text-blue-400">
-                        {isVideo ? <Video size={16} /> : <Phone size={16} />}
-                    </span>
-                )}
-            </button>
+        <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
+            {card}
         </div>
     );
 };
