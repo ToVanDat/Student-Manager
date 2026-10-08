@@ -92,6 +92,75 @@ const markAsRead = async (req, res, next) => {
     }
 };
 
+const updateConversationSettings = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        const userId = Number(req.user.id);
+        const { action, value } = req.body || {};
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+        const data = await conversationService.updateConversationSettings(
+            conversationId,
+            userId,
+            action,
+            value
+        );
+        return res.status(200).json({ message: 'Đã cập nhật cài đặt cuộc trò chuyện', data });
+    } catch (error) {
+        if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+        next(error);
+    }
+};
+
+const blockUser = async (req, res, next) => {
+    try {
+        const data = await conversationService.blockUser(
+            Number(req.params.conversationId),
+            Number(req.user.id),
+            Number(req.body.targetUserId)
+        );
+        return res.status(200).json({ message: 'Đã chặn người dùng', data });
+    } catch (error) {
+        if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+        next(error);
+    }
+};
+
+const unblockUser = async (req, res, next) => {
+    try {
+        const data = await conversationService.unblockUser(
+            Number(req.params.conversationId),
+            Number(req.user.id),
+            Number(req.body.targetUserId)
+        );
+        return res.status(200).json({ message: 'Đã bỏ chặn người dùng', data });
+    } catch (error) {
+        if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+        next(error);
+    }
+};
+
+const reportConversation = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        const userId = Number(req.user.id);
+        const targetUserId = Number(req.body.targetUserId);
+        const { reason, details = null } = req.body || {};
+        const data = await conversationService.reportConversation(
+            conversationId,
+            userId,
+            targetUserId,
+            reason,
+            details
+        );
+        return res.status(201).json({ message: 'Đã gửi báo cáo', data });
+    } catch (error) {
+        if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+        next(error);
+    }
+};
+
 const createGroup = async (req, res) => {
     try {
         const data = await conversationService.createGroupConversation(
@@ -350,5 +419,9 @@ module.exports = {
     addGroupMember,
     removeGroupMember,
     leaveGroup,
-    updateGroupMemberRole
+    updateGroupMemberRole,
+    updateConversationSettings,
+    blockUser,
+    unblockUser,
+    reportConversation
 };
