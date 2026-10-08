@@ -151,6 +151,40 @@ const getMessagesByConversation = async (conversationId, userId, page = 1, limit
 /**
  * Lấy một message theo ID
  */
+const searchMessages = async (conversationId, userId, query, limit = 30) => {
+    const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 50);
+    const { rows } = await pool.query(
+        `
+            SELECT
+                m.id,
+                m.conversation_id,
+                m.sender_id,
+                m.content,
+                m.message_type,
+                m.is_recalled,
+                m.deleted_at,
+                m.created_at,
+                m.updated_at
+            FROM messages m
+            WHERE m.conversation_id = $1
+              AND m.message_type = 'user'
+              AND m.deleted_at IS NULL
+              AND NOT m.is_recalled
+              AND m.content ILIKE '%' || $2 || '%'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM message_deletions md
+                  WHERE md.message_id = m.id
+                    AND md.user_id = $3
+              )
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT $4;
+        `,
+        [conversationId, query, userId, safeLimit]
+    );
+    return rows;
+};
+
 const getMessageById = async (messageId) => {
     const query = `
         SELECT
@@ -404,6 +438,7 @@ const removeReaction = async (messageId, userId, emoji) => {
 module.exports = {
     createMessage,
     getMessagesByConversation,
+    searchMessages,
     getMessageById,
     updateMessageContent,
     recallMessage,
