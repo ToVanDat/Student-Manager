@@ -158,7 +158,9 @@ const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
 
     return (
         <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
-            {card}
+            <div className={`flex w-full max-w-[350px] ${outgoing ? 'ml-auto justify-end' : 'mr-auto justify-start'}`}>
+                {card}
+            </div>
         </div>
     );
 };
