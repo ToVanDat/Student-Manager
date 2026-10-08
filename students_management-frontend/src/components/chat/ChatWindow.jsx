@@ -91,6 +91,7 @@ export default function ChatWindow({
     const recordedChunksRef = useRef([]);
     const [recordingVoice, setRecordingVoice] = useState(false);
     const [recordingSeconds, setRecordingSeconds] = useState(0);
+    const recordingSecondsRef = useRef(0);
     const recordingTimerRef = useRef(null);
 
     const formatLastSeen = (value) => {
@@ -295,6 +296,7 @@ export default function ChatWindow({
             recordedChunksRef.current = [];
             setRecordingVoice(false);
             setRecordingSeconds(0);
+            recordingSecondsRef.current = 0;
             clearInterval(recordingTimerRef.current);
             return;
         }
@@ -316,6 +318,7 @@ export default function ChatWindow({
             mediaRecorderRef.current = recorder;
             setRecordingVoice(true);
             setRecordingSeconds(0);
+            recordingSecondsRef.current = 0;
 
             recorder.ondataavailable = event => {
                 if (event.data.size > 0) recordedChunksRef.current.push(event.data);
@@ -329,7 +332,7 @@ export default function ChatWindow({
 
                 const chunks = recordedChunksRef.current;
                 recordedChunksRef.current = [];
-                const seconds = recordingSeconds;
+                const seconds = recordingSecondsRef.current;
 
                 if (!chunks.length || seconds < 1) {
                     setRecordingSeconds(0);
@@ -351,6 +354,7 @@ export default function ChatWindow({
                 } finally {
                     setIsUploading(false);
                     setRecordingSeconds(0);
+                    recordingSecondsRef.current = 0;
                 }
             };
 
@@ -362,7 +366,9 @@ export default function ChatWindow({
                         stopVoiceRecording();
                         return value;
                     }
-                    return value + 1;
+                    const next = value + 1;
+                    recordingSecondsRef.current = next;
+                    return next;
                 });
             }, 1000);
         } catch (error) {
