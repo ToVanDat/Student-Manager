@@ -120,7 +120,7 @@ const getUserConversations = async (userId) => {
         WHERE cus.hidden_at IS NULL
         GROUP BY
             c.id, c.type, c.name, c.avatar_url,
-            other_user.id, other_user.username, other_user.avatar_url, other_user.last_seen_at,
+            other_user.id, other_user.username, other_user.email, other_user.avatar_url, other_user.last_seen_at,
             latest_message.content, latest_message.created_at,
             cus.pinned, cus.muted_until, cus.marked_unread
         ORDER BY COALESCE(cus.pinned, FALSE) DESC,
@@ -134,6 +134,7 @@ const getUserConversations = async (userId) => {
         type: row.type,
         userId: row.userId,
         name: row.name || (row.type === 'group' ? 'Nhóm chat' : 'Người dùng'),
+        email: row.email || null,
         avatar: row.avatar || null,
         lastSeenAt: row.lastSeenAt || null,
         conversationName: row.conversationName,
