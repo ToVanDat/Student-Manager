@@ -4,7 +4,7 @@ import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 export default function CallPanel({ targetUserId, targetUsername }) {
     const {
         state, call, localStream, remoteStream, muted, cameraOn, sharingScreen, error,
-        startCall, acceptCall, rejectCall, endCall, toggleMute, toggleCamera
+        startCall, acceptCall, rejectCall, endCall, toggleMute, toggleCamera, toggleScreenShare
     } = useWebRTCCall();
 
     const remoteAudioRef = useRef(null);
@@ -82,9 +82,14 @@ export default function CallPanel({ targetUserId, targetUsername }) {
                         </button>
 
                         {call?.callType === 'video' && (
-                            <button className="px-3 py-2 rounded border" onClick={toggleCamera}>
-                                {cameraOn ? 'Camera Off' : 'Camera On'}
-                            </button>
+                            <>
+                                <button className="px-3 py-2 rounded border" onClick={toggleCamera}>
+                                    {cameraOn ? 'Camera Off' : 'Camera On'}
+                                </button>
+                                <button className="px-3 py-2 rounded border" onClick={toggleScreenShare}>
+                                    {sharingScreen ? 'Stop Sharing' : 'Share Screen'}
+                                </button>
+                            </>
                         )}
 
                         <button className="px-3 py-2 rounded bg-red-600 text-white" onClick={endCall}>
