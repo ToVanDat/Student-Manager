@@ -9,6 +9,7 @@ const callRepository = require('../../repository/callRepository.js');
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
 const callTimers = new Map(); // callId -> timeout
+const disconnectGraceTimers = new Map(); // userId -> timeout
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -98,6 +99,14 @@ const initSocket = (server) => {
         }
 
         userSockets.add(socket.id);
+
+        // Token refresh/reconnect can briefly remove the last socket.
+        const pendingDisconnectTimer = disconnectGraceTimers.get(userId);
+        if (pendingDisconnectTimer) {
+            clearTimeout(pendingDisconnectTimer);
+            disconnectGraceTimers.delete(userId);
+            console.log('[CALL][disconnect grace cancelled]', { userId, socketId: socket.id });
+        }
 
         if (wasOffline) {
             try {
@@ -944,35 +953,52 @@ const initSocket = (server) => {
                         console.error('PRESENCE OFFLINE ERROR:', error);
                     }
 
-                    // If this was the user's last realtime connection, terminate
-                    // only calls that are still ringing/connecting.
-                    try {
-                        const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
-                        for (const activeCall of activeCalls) {
-                            const targetId = activeCall.caller_id === userId
-                                ? activeCall.receiver_id
-                                : activeCall.caller_id;
+                    // A realtime disconnect can be transient (token refresh,
+                    // browser reconnect, network handoff, laptop sleep, etc.).
+                    // Give the client 7 seconds to reconnect before cancelling calls.
+                    const existingTimer = disconnectGraceTimers.get(userId);
+                    if (existingTimer) clearTimeout(existingTimer);
 
-                            const ended = await callRepository.updateCallStatusIfCurrent(
-                                activeCall.call_id,
-                                'cancelled',
-                                activeCall.status,
-                                'socket-disconnected'
-                            );
+                    const timer = setTimeout(async () => {
+                        disconnectGraceTimers.delete(userId);
 
-                            if (ended) {
-                                clearCallTimer(activeCall.call_id);
-                                io.to(`user:${targetId}`).emit('call:ended', {
-                                    callId: activeCall.call_id,
-                                    fromUserId: userId,
-                                    toUserId: targetId,
-                                    reason: 'socket-disconnected'
-                                });
-                            }
+                        const currentSockets = onlineUsers.get(userId);
+                        if (currentSockets && currentSockets.size > 0) {
+                            console.log('[CALL][disconnect grace skipped]', { userId });
+                            return;
                         }
-                    } catch (error) {
-                        console.error('ACTIVE CALL DISCONNECT CLEANUP ERROR:', error);
-                    }
+
+                        try {
+                            const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
+
+                            for (const activeCall of activeCalls) {
+                                const targetId = activeCall.caller_id === userId
+                                    ? activeCall.receiver_id
+                                    : activeCall.caller_id;
+
+                                const ended = await callRepository.updateCallStatusIfCurrent(
+                                    activeCall.call_id,
+                                    'cancelled',
+                                    activeCall.status,
+                                    'socket-disconnected'
+                                );
+
+                                if (ended) {
+                                    clearCallTimer(activeCall.call_id);
+                                    io.to(`user:${targetId}`).emit('call:ended', {
+                                        callId: activeCall.call_id,
+                                        fromUserId: userId,
+                                        toUserId: targetId,
+                                        reason: 'socket-disconnected'
+                                    });
+                                }
+                            }
+                        } catch (error) {
+                            console.error('ACTIVE CALL DISCONNECT CLEANUP ERROR:', error);
+                        }
+                    }, 7000);
+                    
+                    disconnectGraceTimers.set(userId, timer);
                 }
             }
 
