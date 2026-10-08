@@ -29,7 +29,7 @@ const createConversation = async (type = 'direct', name = null, avatarUrl = null
     return rows[0];
 };
 
-const addMember = async (conversationId, userId, role = null) => {
+const addMember = async (conversationId, userId, role = 'member') => {
     const { rows } = await pool.query(
         `
             INSERT INTO conversation_members (conversation_id, user_id, role)
