@@ -22,6 +22,7 @@ export default function MessageBubble({
     onDeleteForMe,
     onDeleteForEveryone,
     onDownloadFile,
+    onPreviewFile,
     onDeleteFile,
     onReply,
     onToggleReaction,
@@ -36,6 +37,7 @@ export default function MessageBubble({
     const [hovered, setHovered] = useState(false);
     const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
     const hoverCloseTimer = useRef(null);
+    const [audioUrl, setAudioUrl] = useState(null);
 
     const keepHovered = () => {
         if (hoverCloseTimer.current) {
@@ -69,6 +71,7 @@ export default function MessageBubble({
         return () => {
             document.removeEventListener('mousedown', close);
             if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
         };
     }, []);
 
@@ -213,9 +216,26 @@ export default function MessageBubble({
                                                     </button>
                                                 ) : null}
 
-                                                {file.mime_type?.startsWith('audio/') && file.downloadUrl ? (
+                                                {file.mime_type?.startsWith('audio/') ? (
                                                     <div className="px-3 pt-3">
-                                                        <audio controls preload="metadata" className="w-full max-w-[280px]" src={file.downloadUrl} />
+                                                        {audioUrl ? (
+                                                            <audio controls autoPlay preload="metadata" className="w-full max-w-[280px]" src={audioUrl} />
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const url = await onPreviewFile?.(file);
+                                                                        if (url) setAudioUrl(url);
+                                                                    } catch (error) {
+                                                                        console.error('Không thể phát voice message:', error);
+                                                                    }
+                                                                }}
+                                                                className="rounded-lg bg-slate-900/10 px-3 py-2 text-xs font-medium hover:bg-slate-900/20 dark:bg-white/10 dark:hover:bg-white/20"
+                                                            >
+                                                                ▶ Phát voice message
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 ) : null}
 
