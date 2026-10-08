@@ -4,7 +4,6 @@ const conversationRepository = require('../../repository/conversationRepository.
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
 const userRepository = require('../../repository/userRepository.js');
-const { registerCallSignaling } = require('./callSocket.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -587,6 +586,78 @@ const initSocket = (server) => {
             } catch (error) {
                 console.error('TYPING STOP ERROR:', error);
             }
+        });
+
+        const canCallUser = async (targetId) => {
+            if (!Number.isInteger(targetId) || targetId <= 0 || targetId === userId) return false;
+            try {
+                const contactIds = await conversationRepository.getConversationContactIds(userId);
+                return contactIds.map(Number).includes(targetId);
+            } catch (error) {
+                console.error('CALL PERMISSION ERROR:', error);
+                return false;
+            }
+        };
+
+        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId))) {
+                return socket.emit('call:error', { message: 'Bạn không được phép gọi người dùng này' });
+            }
+            if (!onlineUsers.has(targetId)) {
+                return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
+            }
+            io.to(`user:${targetId}`).emit('call:incoming', {
+                callId, fromUserId: userId, fromUsername: socket.user.username, toUserId: targetId, callType
+            });
+        });
+
+        socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId))) return;
+            io.to(`user:${targetId}`).emit('call:accepted', {
+                callId, fromUserId: userId, toUserId: targetId, callType
+            });
+        });
+
+        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId))) return;
+            io.to(`user:${targetId}`).emit('call:rejected', {
+                callId, fromUserId: userId, toUserId: targetId, reason
+            });
+        });
+
+        socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId)) || !offer) return;
+            io.to(`user:${targetId}`).emit('call:offer', {
+                callId, fromUserId: userId, toUserId: targetId, offer
+            });
+        });
+
+        socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId)) || !answer) return;
+            io.to(`user:${targetId}`).emit('call:answer', {
+                callId, fromUserId: userId, toUserId: targetId, answer
+            });
+        });
+
+        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId)) || !candidate) return;
+            io.to(`user:${targetId}`).emit('call:ice-candidate', {
+                callId, fromUserId: userId, toUserId: targetId, candidate
+            });
+        });
+
+        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' }) => {
+            const targetId = Number(targetUserId);
+            if (!callId || !(await canCallUser(targetId))) return;
+            io.to(`user:${targetId}`).emit('call:ended', {
+                callId, fromUserId: userId, toUserId: targetId, reason
+            });
         });
 
         socket.on('disconnect', async (reason) => {
