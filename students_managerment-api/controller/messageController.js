@@ -47,6 +47,11 @@ const createMessage = async (req, res) => {
                 replyToMessageId
             );
 
+        await conversationRepository.unhideConversationForMembers(
+            conversationId,
+            senderId
+        );
+
         // REST fallback cũng đồng bộ realtime cho các client đang trong conversation.
         getIO().to(`conversation:${conversationId}`).emit('message:new', message);
 
