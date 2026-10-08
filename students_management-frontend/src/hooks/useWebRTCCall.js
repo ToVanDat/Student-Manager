@@ -329,6 +329,9 @@ export default function useWebRTCCall() {
 
     useEffect(() => {
         const onIncoming = data => {
+            // A previous call may have left an error message in state.
+            // Never carry that stale error into a new incoming-call dialog.
+            setError('');
             callRef.current = {
                 callId: data.callId,
                 targetUserId: Number(data.fromUserId),
