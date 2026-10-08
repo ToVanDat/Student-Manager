@@ -40,6 +40,31 @@ export default function useWebRTCCall() {
     const recoveryAttemptsRef = useRef(0);
     const MAX_RECOVERY_ATTEMPTS = 2;
 
+    const releaseLocalMedia = useCallback(() => {
+        const stream = localStreamRef.current;
+        if (!stream) return;
+
+        // Always stop every track before dropping the stream reference.
+        // This is especially important for cameras: browsers can keep the
+        // hardware locked while a MediaStreamTrack is still live.
+        stream.getTracks().forEach(track => {
+            try {
+                track.stop();
+            } catch (err) {
+                console.warn('[CALL][media] failed to stop local track', {
+                    kind: track.kind,
+                    trackId: track.id,
+                    error: err
+                });
+            }
+        });
+
+        localStreamRef.current = null;
+        setLocalStream(null);
+        setCameraOn(false);
+        setMuted(false);
+    }, []);
+
     const cleanup = useCallback(() => {
         if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
         if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
@@ -48,21 +73,48 @@ export default function useWebRTCCall() {
         connectTimeoutRef.current = null;
         recoveryTimerRef.current = null;
         recoveryAttemptsRef.current = 0;
-        peerRef.current?.close();
+
+        const pc = peerRef.current;
         peerRef.current = null;
-        localStreamRef.current?.getTracks().forEach(track => track.stop());
-        localStreamRef.current = null;
+
+        // Close the peer first so no sender keeps the media pipeline alive.
+        if (pc) {
+            try {
+                pc.getSenders().forEach(sender => {
+                    if (sender.track) {
+                        try {
+                            sender.track.stop();
+                        } catch (err) {
+                            console.warn('[CALL][media] failed to stop sender track', err);
+                        }
+                    }
+                });
+                pc.close();
+            } catch (err) {
+                console.warn('[CALL][cleanup] failed to close peer connection', err);
+            }
+        }
+
+        // Release camera + microphone every time a call ends, is rejected,
+        // times out, or the hook is unmounted.
+        releaseLocalMedia();
+
+        remoteStreamRef.current.getTracks().forEach(track => {
+            try {
+                track.stop();
+            } catch (err) {
+                console.warn('[CALL][media] failed to stop remote track', err);
+            }
+        });
         remoteStreamRef.current = new MediaStream();
+
         pendingCandidatesRef.current = [];
         callRef.current = null;
-        setLocalStream(null);
         setRemoteStream(null);
         setCall(null);
-        setMuted(false);
-        setCameraOn(false);
         setSharingScreen(false);
         setState('idle');
-    }, []);
+    }, [releaseLocalMedia]);
 
     const addLocalTracksToPeer = useCallback((pc) => {
         const stream = localStreamRef.current;
@@ -176,15 +228,53 @@ export default function useWebRTCCall() {
     }, [cleanup]);
 
     const startMedia = useCallback(async (callType) => {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        // A previous call can leave a live MediaStreamTrack behind if the
+        // component was reused without a full page reload. Release it before
+        // asking the browser for the camera again.
+        if (localStreamRef.current) {
+            console.log('[CALL][media] releasing previous local stream before acquire');
+            releaseLocalMedia();
+        }
+
+        const constraints = {
             audio: true,
             video: callType === 'video'
-        });
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-        setCameraOn(callType === 'video');
-        return stream;
-    }, []);
+        };
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+            // Guard against a race where another cleanup happened while
+            // getUserMedia() was resolving.
+            if (!callRef.current && callType === 'video') {
+                stream.getTracks().forEach(track => track.stop());
+                throw new Error('Cuộc gọi đã kết thúc trước khi camera sẵn sàng.');
+            }
+
+            localStreamRef.current = stream;
+            setLocalStream(stream);
+            setCameraOn(callType === 'video');
+
+            console.log('[CALL][media] acquired', {
+                callType,
+                audioTracks: stream.getAudioTracks().length,
+                videoTracks: stream.getVideoTracks().length
+            });
+
+            return stream;
+        } catch (err) {
+            console.error('[CALL][media] getUserMedia failed', {
+                callType,
+                name: err?.name,
+                message: err?.message
+            });
+
+            // If acquisition partially created tracks before failing, make
+            // sure those tracks are released as well.
+            releaseLocalMedia();
+            throw err;
+        }
+    }, [releaseLocalMedia]);
 
     const startCall = useCallback(async (targetUserId, callType = 'voice') => {
         if (!socket.connected) {
@@ -360,6 +450,14 @@ export default function useWebRTCCall() {
         track.enabled = !track.enabled;
         setCameraOn(track.enabled);
     }, []);
+
+    useEffect(() => {
+        return () => {
+            // Socket listener cleanup is not enough: MediaStreams and
+            // RTCPeerConnections survive independently of React listeners.
+            cleanup();
+        };
+    }, [cleanup]);
 
     useEffect(() => {
         const onIncoming = data => {
