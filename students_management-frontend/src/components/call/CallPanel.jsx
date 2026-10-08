@@ -44,6 +44,7 @@ export default function CallPanel({
     const isActiveCall =
         state === 'calling' ||
         state === 'connecting' ||
+        state === 'reconnecting' ||
         state === 'connected';
 
     return (
@@ -112,7 +113,9 @@ export default function CallPanel({
                                             ? 'Đang gọi...'
                                             : state === 'connecting'
                                                 ? 'Đang kết nối...'
-                                                : 'Đã kết nối'
+                                                : state === 'reconnecting'
+                                                    ? 'Đang khôi phục kết nối...'
+                                                    : 'Đã kết nối'
                                     }
                                 </p>
                             </div>
@@ -151,7 +154,9 @@ export default function CallPanel({
                                     <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-300">
                                         {state === 'calling'
                                             ? 'Đang chờ người nhận...'
-                                            : 'Đang thiết lập kết nối...'}
+                                            : state === 'reconnecting'
+                                                ? 'Đang khôi phục kết nối...'
+                                                : 'Đang thiết lập kết nối...'}
                                     </div>
                                 )}
                             </div>
@@ -166,7 +171,9 @@ export default function CallPanel({
                                         ? 'Đang gọi...'
                                         : state === 'connecting'
                                             ? 'Đang kết nối...'
-                                            : 'Cuộc gọi đang diễn ra'}
+                                            : state === 'reconnecting'
+                                                ? 'Đang khôi phục kết nối...'
+                                                : 'Cuộc gọi đang diễn ra'}
                                 </p>
                                 <audio ref={remoteAudioRef} autoPlay />
                             </div>
