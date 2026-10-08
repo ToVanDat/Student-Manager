@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     MoreVertical,
     Search,
+    Phone,
+    Video,
     Send,
     Paperclip,
     Smile,
@@ -265,7 +267,7 @@ export default function ChatWindow({
                                 className="p-2 rounded-full hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 title="Gọi thoại"
                             >
-                                <span aria-hidden="true">📞</span>
+                                <Phone size={18} />
                             </button>
 
                             <button
@@ -275,7 +277,7 @@ export default function ChatWindow({
                                 className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 title="Gọi video"
                             >
-                                <span aria-hidden="true">📹</span>
+                                <Video size={18} />
                             </button>
                         </>
                     )}
