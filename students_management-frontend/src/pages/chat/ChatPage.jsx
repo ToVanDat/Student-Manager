@@ -32,6 +32,7 @@ export default function ChatPage() {
         sendMessage,
         sendAttachment,
         downloadFile,
+        previewFile,
         deleteFile,
         isTyping,
         searchResults,
@@ -152,7 +153,7 @@ export default function ChatPage() {
                                         onSendMessage={sendMessage}
                                         onSendAttachment={sendAttachment}
                                         onDownloadFile={downloadFile}
-                                        onPreviewFile={downloadFile}
+                                        onPreviewFile={previewFile}
                                         onDeleteFile={deleteFile}
                                         isTyping={isTyping}
                                         onTyping={setTyping}
