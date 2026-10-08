@@ -4,6 +4,7 @@ const conversationRepository = require('../../repository/conversationRepository.
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
 const userRepository = require('../../repository/userRepository.js');
+const callRepository = require('../../repository/callRepository.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -586,6 +587,10 @@ const initSocket = (server) => {
             }
         });
 
+        const CALL_RING_TIMEOUT_MS = 30_000;
+        const CALL_CONNECT_TIMEOUT_MS = 15_000;
+        const callTimers = new Map();
+
         const canCallUser = async (targetId) => {
             if (!Number.isInteger(targetId) || targetId <= 0 || targetId === userId) return false;
             try {
@@ -599,33 +604,123 @@ const initSocket = (server) => {
             }
         };
 
+        const clearCallTimer = callId => {
+            const timer = callTimers.get(callId);
+            if (timer) clearTimeout(timer);
+            callTimers.delete(callId);
+        };
+
+        const emitCallNotification = async (userIdToNotify, call, type, title, body) => {
+            try {
+                const notification = await callRepository.createCallNotification(
+                    userIdToNotify,
+                    call.id,
+                    type,
+                    title,
+                    body
+                );
+                io.to(`user:${userIdToNotify}`).emit('call:notification', notification);
+            } catch (error) {
+                console.error('CALL NOTIFICATION ERROR:', error);
+            }
+        };
+
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !(await canCallUser(targetId))) {
+            if (!callId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
                 return socket.emit('call:error', { message: 'Bạn không được phép gọi người dùng này' });
             }
             if (!onlineUsers.has(targetId)) {
                 return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
             }
+
+            const conversationIds = await conversationRepository.getConversationContactIds(userId);
+            const conversation = await conversationRepository.findDirectConversation(userId, targetId);
+            const call = await callRepository.createCall({
+                callId,
+                callerId: userId,
+                receiverId: targetId,
+                conversationId: conversation?.id || null,
+                callType
+            });
+
+            if (!call) return socket.emit('call:error', { callId, message: 'Không thể tạo cuộc gọi' });
+
             io.to(`user:${targetId}`).emit('call:incoming', {
                 callId, fromUserId: userId, fromUsername: socket.user.username, toUserId: targetId, callType
             });
+
+            callTimers.set(callId, setTimeout(async () => {
+                try {
+                    const updated = await callRepository.updateCallStatus(callId, 'missed', 'ring-timeout');
+                    if (updated) {
+                        io.to(`user:${targetId}`).emit('call:ended', {
+                            callId, fromUserId: userId, toUserId: targetId, reason: 'ring-timeout'
+                        });
+                        io.to(`user:${userId}`).emit('call:timeout', {
+                            callId, status: 'missed', reason: 'ring-timeout'
+                        });
+                        await emitCallNotification(
+                            targetId,
+                            updated,
+                            'missed-call',
+                            'Cuộc gọi nhỡ',
+                            `Bạn có cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} nhỡ.`
+                        );
+                    }
+                } catch (error) {
+                    console.error('CALL RING TIMEOUT ERROR:', error);
+                } finally {
+                    clearCallTimer(callId);
+                }
+            }, CALL_RING_TIMEOUT_MS));
         });
 
         socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
+            clearCallTimer(callId);
+            const updated = await callRepository.updateCallStatus(callId, 'connecting', null, true);
             io.to(`user:${targetId}`).emit('call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType
             });
+
+            callTimers.set(callId, setTimeout(async () => {
+                try {
+                    const failed = await callRepository.updateCallStatus(callId, 'failed', 'connection-timeout');
+                    if (failed) {
+                        io.to(`user:${targetId}`).emit('call:ended', {
+                            callId, fromUserId: userId, toUserId: targetId, reason: 'connection-timeout'
+                        });
+                        io.to(`user:${userId}`).emit('call:timeout', {
+                            callId, status: 'failed', reason: 'connection-timeout'
+                        });
+                    }
+                } catch (error) {
+                    console.error('CALL CONNECT TIMEOUT ERROR:', error);
+                } finally {
+                    clearCallTimer(callId);
+                }
+            }, CALL_CONNECT_TIMEOUT_MS));
         });
 
         socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
+            clearCallTimer(callId);
+            const updated = await callRepository.updateCallStatus(callId, 'rejected', reason);
             io.to(`user:${targetId}`).emit('call:rejected', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
+            if (updated) {
+                await emitCallNotification(
+                    targetId,
+                    updated,
+                    'call-rejected',
+                    'Cuộc gọi bị từ chối',
+                    'Cuộc gọi của bạn đã bị từ chối.'
+                );
+            }
         });
 
         socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
@@ -639,6 +734,8 @@ const initSocket = (server) => {
         socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId)) || !answer) return;
+            clearCallTimer(callId);
+            await callRepository.updateCallStatus(callId, 'completed');
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
             });
@@ -655,9 +752,21 @@ const initSocket = (server) => {
         socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' }) => {
             const targetId = Number(targetUserId);
             if (!callId || !(await canCallUser(targetId))) return;
+            clearCallTimer(callId);
+            const updated = await callRepository.updateCallStatus(callId, reason === 'cancelled' ? 'cancelled' : 'completed', reason);
             io.to(`user:${targetId}`).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
+            if (updated?.status === 'completed') {
+                const duration = updated.duration_seconds || 0;
+                await emitCallNotification(
+                    targetId,
+                    updated,
+                    'call-ended',
+                    'Cuộc gọi đã kết thúc',
+                    `Thời lượng: ${duration} giây.`
+                );
+            }
         });
 
         socket.on('disconnect', async (reason) => {
