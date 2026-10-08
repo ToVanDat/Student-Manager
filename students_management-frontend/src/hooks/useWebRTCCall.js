@@ -476,8 +476,14 @@ export default function useWebRTCCall() {
         };
 
         const onError = data => {
+            // Ignore stale errors from another/previous call. Backend always
+            // includes callId for call lifecycle errors.
+            if (data?.callId && callRef.current?.callId !== data.callId) return;
+
             setError(data.message || 'Cuộc gọi không thể thực hiện.');
-            cleanup();
+            if (!data?.callId || callRef.current?.callId === data.callId) {
+                cleanup();
+            }
         };
 
         socket.on('call:incoming', onIncoming);
