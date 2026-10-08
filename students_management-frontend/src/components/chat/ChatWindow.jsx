@@ -40,7 +40,10 @@ export default function ChatWindow({
     onUpdateGroupMemberRole,
     onUpdateGroupConversation,
     onLeaveGroup,
-    onlineUserIds = new Set()
+    onlineUserIds = new Set(),
+    callState = 'idle',
+    call = null,
+    onStartCall
 }) {
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
@@ -248,9 +251,34 @@ export default function ChatWindow({
                     <button
                         type="button"
                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                        title="Tìm kiếm tin nhắn"
                     >
                         <Search size={18} />
                     </button>
+
+                    {activeConversation.type !== 'group' && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => onStartCall?.(activeConversation.userId, 'voice')}
+                                disabled={callState !== 'idle'}
+                                className="p-2 rounded-full hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                title="Gọi thoại"
+                            >
+                                <span aria-hidden="true">📞</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => onStartCall?.(activeConversation.userId, 'video')}
+                                disabled={callState !== 'idle'}
+                                className="p-2 rounded-full hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
+                                title="Gọi video"
+                            >
+                                <span aria-hidden="true">📹</span>
+                            </button>
+                        </>
+                    )}
 
                     <button
                         type="button"
