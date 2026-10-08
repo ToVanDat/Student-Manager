@@ -53,7 +53,8 @@ export default function ChatPage() {
         updateConversationSettings,
         blockUser,
         unblockUser,
-        reportConversation
+        reportConversation,
+        searchMessages
     } = useChat();
 
     const activeConversation = conversations.find(
@@ -160,6 +161,7 @@ export default function ChatPage() {
                                         onBlockUser={blockUser}
                                         onUnblockUser={unblockUser}
                                         onReportConversation={reportConversation}
+                                        onSearchMessages={searchMessages}
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
                                     />
