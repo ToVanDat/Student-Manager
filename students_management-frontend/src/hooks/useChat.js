@@ -19,6 +19,7 @@ export const useChat = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
     const [conversationMembers, setConversationMembers] = useState([]);
+    const searchJumpIdRef = useRef(null);
 
     const fetchConversations = useCallback(async () => {
         try {
@@ -584,17 +585,35 @@ export const useChat = () => {
 
     const openSearchResult = useCallback((result) => {
         if (!result?.id) return;
+
+        const targetId = Number(result.id);
+        searchJumpIdRef.current = targetId;
+
         setMessages(prev => {
-            if (prev.some(item => Number(item.id) === Number(result.id))) return prev;
+            if (prev.some(item => Number(item.id) === targetId)) return prev;
             return [...prev, result].sort(
                 (a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0)
             );
         });
-        requestAnimationFrame(() => {
-            const node = document.querySelector(`[data-message-id="${result.id}"]`);
-            node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        });
     }, []);
+
+    useEffect(() => {
+        const targetId = searchJumpIdRef.current;
+        if (!targetId) return;
+
+        const node = document.querySelector(`[data-message-id="${targetId}"]`);
+        if (!node) return;
+
+        searchJumpIdRef.current = null;
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        node.classList.add('ring-2', 'ring-blue-400', 'rounded-2xl');
+
+        const timer = window.setTimeout(() => {
+            node.classList.remove('ring-2', 'ring-blue-400', 'rounded-2xl');
+        }, 1800);
+
+        return () => window.clearTimeout(timer);
+    }, [messages]);
 
     const updateConversationSettings = useCallback(async (action, value) => {
         if (!activeId) return null;
