@@ -31,7 +31,8 @@ export default function useWebRTCCall() {
     const [localStream, setLocalStream] = useState(null);
     const [remoteStream, setRemoteStream] = useState(null);
     const [muted, setMuted] = useState(false);
-    const [cameraOn, setCameraOn] = useState(false);\n    const [sharingScreen, setSharingScreen] = useState(false);
+    const [cameraOn, setCameraOn] = useState(false);
+    const [sharingScreen, setSharingScreen] = useState(false);
     const [error, setError] = useState('');
 
     const cleanup = useCallback(() => {
@@ -46,13 +47,14 @@ export default function useWebRTCCall() {
         setRemoteStream(null);
         setCall(null);
         setMuted(false);
-        setCameraOn(false);\n        setSharingScreen(false);
+        setCameraOn(false);
+        setSharingScreen(false);
         setState('idle');
     }, []);
 
     const createPeer = useCallback((targetUserId, callId, initiator) => {
         const pc = new RTCPeerConnection({
-            iceServers: []
+            iceServers: ICE_SERVERS
         });
 
         pc.onicecandidate = event => {
@@ -368,6 +370,8 @@ export default function useWebRTCCall() {
         endCall,
         toggleMute,
         toggleCamera,
+        toggleScreenShare,
+        sharingScreen,
         cleanup
     };
 }
