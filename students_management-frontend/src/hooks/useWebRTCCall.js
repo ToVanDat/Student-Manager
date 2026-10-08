@@ -234,6 +234,11 @@ export default function useWebRTCCall() {
             if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
             ringTimeoutRef.current = null;
 
+            console.log('[CALL][accept emit]', {
+                callId: current.callId,
+                targetUserId: current.targetUserId,
+                callType: current.callType
+            });
             socket.emit('call:accept', {
                 callId: current.callId,
                 targetUserId: current.targetUserId,
@@ -329,6 +334,7 @@ export default function useWebRTCCall() {
 
     useEffect(() => {
         const onIncoming = data => {
+            console.log('[CALL][incoming]', data);
             // A previous call may have left an error message in state.
             // Never carry that stale error into a new incoming-call dialog.
             setError('');
@@ -343,6 +349,7 @@ export default function useWebRTCCall() {
         };
 
         const onAccepted = async data => {
+            console.log('[CALL][accepted]', data);
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
 
@@ -394,6 +401,7 @@ export default function useWebRTCCall() {
         };
 
         const onOffer = async data => {
+            console.log('[CALL][offer received]', { callId: data?.callId, fromUserId: data?.fromUserId });
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
 
@@ -425,6 +433,7 @@ export default function useWebRTCCall() {
         };
 
         const onAnswer = async data => {
+            console.log('[CALL][answer received]', { callId: data?.callId, fromUserId: data?.fromUserId });
             if (!peerRef.current || callRef.current?.callId !== data.callId) return;
             try {
                 await peerRef.current.setRemoteDescription(data.answer);
@@ -471,11 +480,13 @@ export default function useWebRTCCall() {
         };
 
         const onEnded = data => {
+            console.warn('[CALL][ended]', data);
             if (callRef.current?.callId !== data.callId) return;
             cleanup();
         };
 
         const onError = data => {
+            console.error('[CALL][error]', data);
             // Ignore stale errors from another/previous call. Backend always
             // includes callId for call lifecycle errors.
             if (data?.callId && callRef.current?.callId !== data.callId) return;
