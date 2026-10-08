@@ -6,6 +6,7 @@ import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import StudentHeader from '@/components/layout/StudentHeader.jsx';
 import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
+import CallPanel from '@/components/call/CallPanel.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -106,25 +107,33 @@ export default function ChatPage() {
                                 />
 
                                 {activeId && activeConversation ? (
-                                    <ChatWindow
-                                        activeConversation={activeConversation}
-                                        messages={messages}
-                                        currentUserId={Number(user?.id)}
-                                        onSendMessage={sendMessage}
-                                        onSendAttachment={sendAttachment}
-                                        onDownloadFile={downloadFile}
-                                        isTyping={isTyping}
-                                        onTyping={setTyping}
-                                        onEdit={editMessage}
-                                        onRecall={recallMessage}
-                                        onDeleteForMe={deleteMessageForMe}
-                                        onDeleteForEveryone={deleteMessageForEveryone}
-                                        onReply={() => {}}
-                                        onToggleReaction={toggleReaction}
-                                        hasMoreMessages={hasMoreMessages}
-                                        loadingOlder={loadingOlder}
-                                        onLoadOlder={loadOlderMessages}
-                                    />
+                                    <>
+                                        <ChatWindow
+                                            activeConversation={activeConversation}
+                                            messages={messages}
+                                            currentUserId={Number(user?.id)}
+                                            onSendMessage={sendMessage}
+                                            onSendAttachment={sendAttachment}
+                                            onDownloadFile={downloadFile}
+                                            isTyping={isTyping}
+                                            onTyping={setTyping}
+                                            onEdit={editMessage}
+                                            onRecall={recallMessage}
+                                            onDeleteForMe={deleteMessageForMe}
+                                            onDeleteForEveryone={deleteMessageForEveryone}
+                                            onReply={() => {}}
+                                            onToggleReaction={toggleReaction}
+                                            hasMoreMessages={hasMoreMessages}
+                                            loadingOlder={loadingOlder}
+                                            onLoadOlder={loadOlderMessages}
+                                        />
+                                        <aside className="w-[320px] shrink-0 border-l border-slate-200 p-4 dark:border-slate-800">
+                                            <CallPanel
+                                                targetUserId={Number(activeConversation.userId)}
+                                                targetUsername={activeConversation.name}
+                                            />
+                                        </aside>
+                                    </>
                                 ) : (
                                     <EmptyChat />
                                 )}
