@@ -902,7 +902,7 @@ const initSocket = (server) => {
 
             clearCallTimer(callId);
             if (!call.ended_at && !['completed', 'rejected', 'missed', 'cancelled', 'failed', 'timeout'].includes(call.status)) {
-                await callRepository.updateCallStatus(callId, 'connecting', null, true);
+                await callRepository.updateCallStatus(callId, 'connected', null, true);
             }
 
             io.to(`user:${targetId}`).emit('call:connected', {
