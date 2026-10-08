@@ -167,6 +167,32 @@ const getMessagesByConversation = async (req, res) => {
 /**
  * Chỉnh sửa message
  */
+const searchMessages = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const conversationId = Number(req.params.conversationId);
+        const query = req.query.q;
+        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 30, 1), 50);
+
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+
+        const data = await messageService.searchMessages(
+            conversationId,
+            userId,
+            query,
+            limit
+        );
+
+        return res.status(200).json({ data });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            message: error.message || 'Không thể tìm kiếm message'
+        });
+    }
+};
+
 const updateMessage = async (req, res) => {
     try {
         const userId = Number(req.user.id);
@@ -459,6 +485,7 @@ const removeReaction = async (req, res) => {
 module.exports = {
     createMessage,
     getMessagesByConversation,
+    searchMessages,
     updateMessage,
     recallMessage,
     deleteMessageForMe,
