@@ -28,6 +28,105 @@ const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
 const getUserConversations = async (userId) =>
     conversationRepository.getUserConversations(userId);
 
+const updateConversationSettings = async (conversationId, userId, action, value) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation) {
+        const error = new Error('Conversation không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const current = await conversationRepository.getConversationSettings(conversationId, userId);
+
+    switch (action) {
+        case 'pin':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: Boolean(value),
+                mutedUntil: current.muted_until,
+                markedUnread: current.marked_unread,
+                hidden: Boolean(current.hidden_at)
+            });
+        case 'mute':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: current.pinned,
+                mutedUntil: value ? new Date(value) : null,
+                markedUnread: current.marked_unread,
+                hidden: Boolean(current.hidden_at)
+            });
+        case 'unread':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: current.pinned,
+                mutedUntil: current.muted_until,
+                markedUnread: Boolean(value),
+                hidden: Boolean(current.hidden_at)
+            });
+        case 'hide':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: current.pinned,
+                mutedUntil: current.muted_until,
+                markedUnread: current.marked_unread,
+                hidden: Boolean(value)
+            });
+        default: {
+            const error = new Error('Action không hợp lệ');
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+};
+
+const blockUser = async (conversationId, userId, targetUserId) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    if (Number(userId) === Number(targetUserId)) {
+        const error = new Error('Không thể chặn chính mình');
+        error.statusCode = 400;
+        throw error;
+    }
+    return conversationRepository.setUserBlocked(userId, targetUserId);
+};
+
+const unblockUser = async (conversationId, userId, targetUserId) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    return conversationRepository.removeUserBlocked(userId, targetUserId);
+};
+
+const reportConversation = async (conversationId, userId, targetUserId, reason, details = null) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const allowed = ['spam', 'harassment', 'scam', 'inappropriate', 'other'];
+    if (!allowed.includes(reason)) {
+        const error = new Error('Lý do báo cáo không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return conversationRepository.createConversationReport(
+        conversationId,
+        userId,
+        targetUserId,
+        reason,
+        typeof details === 'string' ? details.trim().slice(0, 1000) : null
+    );
+};
+
 const getConversationMembers = async (conversationId, userId) => {
     if (!await conversationRepository.isConversationMember(conversationId, userId)) {
         throw new Error('Bạn không thuộc conversation này');
@@ -182,5 +281,9 @@ module.exports = {
     addGroupMember,
     removeGroupMember,
     leaveGroup,
-    updateGroupMemberRole
+    updateGroupMemberRole,
+    updateConversationSettings,
+    blockUser,
+    unblockUser,
+    reportConversation
 };
