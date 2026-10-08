@@ -55,13 +55,20 @@ const updateCallStatus = async (callId, status, reason = null, answered = false)
                 ELSE answered_at
             END,
             ended_at = CASE
-                WHEN $2 IN ('completed','rejected','missed','cancelled','failed','timeout')
+                WHEN $2 IN ('rejected','missed','cancelled','failed','timeout')
+                    THEN COALESCE(ended_at, NOW())
+                WHEN $2 = 'completed'
                     THEN COALESCE(ended_at, NOW())
                 ELSE ended_at
             END,
             duration_seconds = CASE
                 WHEN $2 = 'completed' AND answered_at IS NOT NULL
-                    THEN GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (COALESCE(ended_at, NOW()) - answered_at)))::INT)
+                    THEN GREATEST(
+                        0,
+                        FLOOR(EXTRACT(EPOCH FROM (
+                            COALESCE(ended_at, NOW()) - answered_at
+                        )))::INT
+                    )
                 ELSE duration_seconds
             END,
             updated_at = NOW()
