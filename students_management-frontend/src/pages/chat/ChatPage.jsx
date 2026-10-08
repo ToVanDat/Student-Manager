@@ -6,7 +6,6 @@ import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import StudentHeader from '@/components/layout/StudentHeader.jsx';
 import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
-import CallPanel from '@/components/call/CallPanel.jsx';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
 
@@ -15,11 +14,10 @@ import { useAuth } from '@/hooks/useAuth.js';
 
 export default function ChatPage() {
     const navigate = useNavigate();
-    const { user, logoutUser } = useAuth();
+    const { user, logoutUser, webRTCCall } = useAuth();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [headerSearch, setHeaderSearch] = useState('');
-    const webRTCCall = useWebRTCCall();
     const [callCenterOpen, setCallCenterOpen] = useState(false);
 
     const {
@@ -117,11 +115,6 @@ export default function ChatPage() {
                         open={callCenterOpen}
                         onClose={() => setCallCenterOpen(false)}
                         currentUserId={Number(user?.id)}
-                    />
-
-                    <CallPanel
-                        {...webRTCCall}
-                        targetUsername={activeConversation?.name || activeConversation?.username || 'User'}
                     />
 
                     <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
