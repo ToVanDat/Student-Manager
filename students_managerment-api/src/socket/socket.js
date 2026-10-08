@@ -8,6 +8,7 @@ const callRepository = require('../../repository/callRepository.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
+const callTimers = new Map(); // callId -> timeout
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -589,8 +590,6 @@ const initSocket = (server) => {
 
         const CALL_RING_TIMEOUT_MS = 30_000;
         const CALL_CONNECT_TIMEOUT_MS = 15_000;
-        const callTimers = new Map();
-
         const canCallUser = async (targetId) => {
             if (!Number.isInteger(targetId) || targetId <= 0 || targetId === userId) return false;
             try {
