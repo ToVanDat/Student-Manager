@@ -3,7 +3,7 @@ import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 
 export default function CallPanel({ targetUserId, targetUsername }) {
     const {
-        state, call, localStream, remoteStream, muted, cameraOn, error,
+        state, call, localStream, remoteStream, muted, cameraOn, sharingScreen, error,
         startCall, acceptCall, rejectCall, endCall, toggleMute, toggleCamera
     } = useWebRTCCall();
 
