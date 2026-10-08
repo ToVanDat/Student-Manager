@@ -8,6 +8,7 @@ import StudentHeader from '@/components/layout/StudentHeader.jsx';
 import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
 import CallPanel from '@/components/call/CallPanel.jsx';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
+import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -19,6 +20,7 @@ export default function ChatPage() {
     const [darkMode, setDarkMode] = useState(false);
     const [headerSearch, setHeaderSearch] = useState('');
     const webRTCCall = useWebRTCCall();
+    const [callCenterOpen, setCallCenterOpen] = useState(false);
 
     const {
         conversations,
@@ -107,6 +109,20 @@ export default function ChatPage() {
                         onToggleSidebar={() => setSidebarOpen(open => !open)}
                         unreadCount={unreadCount}
                         onOpenNotifications={() => setSidebarOpen(false)}
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() => setCallCenterOpen(true)}
+                        className="fixed right-6 top-[82px] z-[120] flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-lg hover:border-blue-200 hover:text-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                        📞 Cuộc gọi
+                    </button>
+
+                    <CallCenterPanel
+                        open={callCenterOpen}
+                        onClose={() => setCallCenterOpen(false)}
+                        currentUserId={Number(user?.id)}
                     />
 
                     <CallPanel
