@@ -25,7 +25,7 @@ const formatCallDuration = seconds => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-const CallTimelineItem = ({ call, isOwn }) => {
+const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
     const isVideo = call.call_type === 'video';
     const isMissed = call.status === 'missed';
     const isRejected = call.status === 'rejected';
