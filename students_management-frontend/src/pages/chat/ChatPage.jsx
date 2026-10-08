@@ -167,6 +167,7 @@ export default function ChatPage() {
                                         callState={webRTCCall.state}
                                         call={webRTCCall.call}
                                         onStartCall={webRTCCall.startCall}
+                                        onRedial={webRTCCall.startCall}
                                         onUpdateConversationSettings={updateConversationSettings}
                                         onBlockUser={blockUser}
                                         onUnblockUser={unblockUser}
