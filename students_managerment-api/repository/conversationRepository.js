@@ -63,6 +63,9 @@ const getUserConversations = async (userId) => {
             COUNT(DISTINCT cm_all.user_id)::int AS "memberCount",
             COALESCE(latest_message.content, '') AS "lastMessage",
             latest_message.created_at AS "lastMessageAt",
+            COALESCE(cus.pinned, FALSE) AS "isPinned",
+            cus.muted_until AS "mutedUntil",
+            COALESCE(cus.marked_unread, FALSE) AS "markedUnread",
             (
                 SELECT COUNT(*)
                 FROM messages m2
@@ -94,6 +97,9 @@ const getUserConversations = async (userId) => {
             ORDER BY cm_other.joined_at ASC
             LIMIT 1
         ) other_user ON TRUE
+        LEFT JOIN conversation_user_settings cus
+            ON cus.conversation_id = c.id
+           AND cus.user_id = $1
         LEFT JOIN LATERAL (
             SELECT
                 CASE
@@ -114,8 +120,11 @@ const getUserConversations = async (userId) => {
         GROUP BY
             c.id, c.type, c.name, c.avatar_url,
             other_user.id, other_user.username, other_user.avatar_url, other_user.last_seen_at,
-            latest_message.content, latest_message.created_at
-        ORDER BY COALESCE(latest_message.created_at, c.updated_at) DESC;
+            latest_message.content, latest_message.created_at,
+            cus.pinned, cus.muted_until, cus.marked_unread
+        HAVING cus.hidden_at IS NULL
+        ORDER BY COALESCE(cus.pinned, FALSE) DESC,
+                 COALESCE(latest_message.created_at, c.updated_at) DESC;
     `;
 
     const { rows } = await pool.query(query, [userId]);
@@ -133,8 +142,124 @@ const getUserConversations = async (userId) => {
         lastMessage: row.lastMessage || '',
         lastMessageAt: row.lastMessageAt,
         unreadCount: Number(row.unreadCount || 0),
+        isPinned: Boolean(row.isPinned),
+        mutedUntil: row.mutedUntil || null,
+        markedUnread: Boolean(row.markedUnread),
         isOnline: false
     }));
+};
+
+const getConversationSettings = async (conversationId, userId) => {
+    const { rows } = await pool.query(
+        `
+            SELECT conversation_id, user_id, pinned, muted_until, marked_unread, hidden_at
+            FROM conversation_user_settings
+            WHERE conversation_id = $1 AND user_id = $2
+            LIMIT 1;
+        `,
+        [conversationId, userId]
+    );
+    return rows[0] || {
+        conversation_id: conversationId,
+        user_id: userId,
+        pinned: false,
+        muted_until: null,
+        marked_unread: false,
+        hidden_at: null
+    };
+};
+
+const updateConversationSettings = async (
+    conversationId,
+    userId,
+    { pinned = false, mutedUntil = null, markedUnread = false, hidden = false } = {}
+) => {
+    const { rows } = await pool.query(
+        `
+            INSERT INTO conversation_user_settings
+                (conversation_id, user_id, pinned, muted_until, marked_unread, hidden_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            ON CONFLICT (conversation_id, user_id)
+            DO UPDATE SET
+                pinned = EXCLUDED.pinned,
+                muted_until = EXCLUDED.muted_until,
+                marked_unread = EXCLUDED.marked_unread,
+                hidden_at = EXCLUDED.hidden_at,
+                updated_at = NOW()
+            RETURNING conversation_id, user_id, pinned, muted_until, marked_unread, hidden_at;
+        `,
+        [conversationId, userId, Boolean(pinned), mutedUntil, Boolean(markedUnread), hidden ? new Date() : null]
+    );
+    return rows[0];
+};
+
+const clearMarkedUnread = async (conversationId, userId) => {
+    await pool.query(
+        `
+            UPDATE conversation_user_settings
+            SET marked_unread = FALSE, updated_at = NOW()
+            WHERE conversation_id = $1 AND user_id = $2
+        `,
+        [conversationId, userId]
+    );
+};
+
+const isUserBlocked = async (userId1, userId2) => {
+    const { rows } = await pool.query(
+        `
+            SELECT 1
+            FROM blocked_users
+            WHERE (blocker_id = $1 AND blocked_id = $2)
+               OR (blocker_id = $2 AND blocked_id = $1)
+            LIMIT 1;
+        `,
+        [userId1, userId2]
+    );
+    return rows.length > 0;
+};
+
+const setUserBlocked = async (blockerId, blockedId) => {
+    const { rows } = await pool.query(
+        `
+            INSERT INTO blocked_users (blocker_id, blocked_id)
+            VALUES ($1, $2)
+            ON CONFLICT (blocker_id, blocked_id) DO NOTHING
+            RETURNING blocker_id, blocked_id, created_at;
+        `,
+        [blockerId, blockedId]
+    );
+    return rows[0] || null;
+};
+
+const removeUserBlocked = async (blockerId, blockedId) => {
+    const { rows } = await pool.query(
+        `
+            DELETE FROM blocked_users
+            WHERE blocker_id = $1 AND blocked_id = $2
+            RETURNING blocker_id, blocked_id;
+        `,
+        [blockerId, blockedId]
+    );
+    return rows[0] || null;
+};
+
+const createConversationReport = async (
+    conversationId,
+    reporterId,
+    targetUserId,
+    reason,
+    details = null
+) => {
+    const { rows } = await pool.query(
+        `
+            INSERT INTO conversation_reports
+                (conversation_id, reporter_id, target_user_id, reason, details)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, conversation_id, reporter_id, target_user_id, reason, details, created_at;
+        `,
+        [conversationId, reporterId, targetUserId, reason, details]
+    );
+    return rows[0];
 };
 
 const getConversationMembers = async (conversationId) => {
@@ -423,5 +548,12 @@ module.exports = {
     getConversationMemberIds,
     getConversationContactIds,
     updateGroupConversation,
-    createGroupConversation
+    createGroupConversation,
+    getConversationSettings,
+    updateConversationSettings,
+    clearMarkedUnread,
+    isUserBlocked,
+    setUserBlocked,
+    removeUserBlocked,
+    createConversationReport
 };
