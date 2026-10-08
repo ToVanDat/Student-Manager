@@ -179,6 +179,7 @@ export default function ChatPage() {
                             <div className="flex h-full min-h-0">
                                 <ChatSidebar
                                     conversations={conversations}
+                                    onlineUserIds={onlineUserIds}
                                     onOpenCallCenter={() => setCallCenterOpen(true)}
                                     activeId={activeId}
                                     onSelectConversation={setActiveId}
