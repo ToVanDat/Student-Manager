@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp } from 'lucide-react';
+
 
 export default function CallPanel({
     targetUsername,
@@ -121,7 +123,7 @@ export default function CallPanel({
                             </div>
 
                             <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
-                                {state}
+                                {state === 'calling' ? 'Đang gọi' : state === 'connecting' ? 'Đang kết nối' : state === 'reconnecting' ? 'Đang khôi phục' : 'Đã kết nối'}
                             </span>
                         </div>
 
@@ -179,13 +181,15 @@ export default function CallPanel({
                             </div>
                         )}
 
-                        <div className="flex items-center justify-center gap-3 border-t border-slate-800 px-4 py-4">
+                        <div className="flex items-center justify-center gap-3 border-t border-slate-800 bg-slate-950 px-4 py-4">
                             <button
                                 type="button"
                                 onClick={toggleMute}
-                                className="rounded-full bg-slate-800 px-4 py-2 text-sm text-white transition hover:bg-slate-700"
+                                aria-label={muted ? 'Bật microphone' : 'Tắt microphone'}
+                                title={muted ? 'Bật microphone' : 'Tắt microphone'}
+                                className={`flex h-11 w-11 items-center justify-center rounded-full text-white transition ${muted ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-800 hover:bg-slate-700'}`}
                             >
-                                {muted ? 'Bật mic' : 'Tắt mic'}
+                                {muted ? <MicOff size={18} /> : <Mic size={18} />}
                             </button>
 
                             {call?.callType === 'video' && (
@@ -193,17 +197,21 @@ export default function CallPanel({
                                     <button
                                         type="button"
                                         onClick={toggleCamera}
-                                        className="rounded-full bg-slate-800 px-4 py-2 text-sm text-white transition hover:bg-slate-700"
+                                        aria-label={cameraOn ? 'Tắt camera' : 'Bật camera'}
+                                        title={cameraOn ? 'Tắt camera' : 'Bật camera'}
+                                        className={`flex h-11 w-11 items-center justify-center rounded-full text-white transition ${cameraOn ? 'bg-slate-800 hover:bg-slate-700' : 'bg-red-600 hover:bg-red-700'}`}
                                     >
-                                        {cameraOn ? 'Tắt camera' : 'Bật camera'}
+                                        {cameraOn ? <Video size={18} /> : <VideoOff size={18} />}
                                     </button>
 
                                     <button
                                         type="button"
                                         onClick={toggleScreenShare}
-                                        className="rounded-full bg-slate-800 px-4 py-2 text-sm text-white transition hover:bg-slate-700"
+                                        aria-label={sharingScreen ? 'Dừng chia sẻ màn hình' : 'Chia sẻ màn hình'}
+                                        title={sharingScreen ? 'Dừng chia sẻ màn hình' : 'Chia sẻ màn hình'}
+                                        className={`flex h-11 w-11 items-center justify-center rounded-full text-white transition ${sharingScreen ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-800 hover:bg-slate-700'}`}
                                     >
-                                        {sharingScreen ? 'Dừng chia sẻ' : 'Chia sẻ màn hình'}
+                                        <MonitorUp size={18} />
                                     </button>
                                 </>
                             )}
@@ -211,9 +219,11 @@ export default function CallPanel({
                             <button
                                 type="button"
                                 onClick={endCall}
-                                className="rounded-full bg-red-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+                                aria-label="Kết thúc cuộc gọi"
+                                title="Kết thúc cuộc gọi"
+                                className="flex h-11 w-11 items-center justify-center rounded-full bg-red-600 text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700"
                             >
-                                Kết thúc
+                                <PhoneOff size={18} />
                             </button>
                         </div>
                     </section>
