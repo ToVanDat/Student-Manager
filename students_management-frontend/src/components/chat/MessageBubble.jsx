@@ -25,38 +25,115 @@ const formatCallDuration = seconds => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
+const formatCallDate = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    const sameDay = (a, b) =>
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
+
+    if (sameDay(date, today)) return 'Hôm nay';
+    if (sameDay(date, yesterday)) return 'Hôm qua';
+
+    return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric'
+    });
+};
+
 const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
     const isVideo = call.call_type === 'video';
     const isMissed = call.status === 'missed';
     const isRejected = call.status === 'rejected';
     const isCancelled = call.status === 'cancelled';
+    const isCompleted = call.status === 'completed';
     const outgoing = isOwn;
-    const icon = isMissed ? <PhoneMissed size={18} /> : isRejected || isCancelled ? <PhoneOff size={18} /> : isVideo ? <Video size={18} /> : <Phone size={18} />;
 
-    let title = outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến';
-    if (isMissed) title = outgoing ? 'Cuộc gọi nhỡ' : 'Cuộc gọi nhỡ';
-    if (isRejected) title = outgoing ? 'Cuộc gọi bị từ chối' : 'Cuộc gọi bị từ chối';
-    if (isCancelled) title = outgoing ? 'Đã huỷ cuộc gọi' : 'Cuộc gọi đã bị huỷ';
+    const icon = isMissed
+        ? <PhoneMissed size={17} strokeWidth={2.2} />
+        : isRejected || isCancelled
+            ? <PhoneOff size={17} strokeWidth={2.2} />
+            : isVideo
+                ? <Video size={17} strokeWidth={2.2} />
+                : <Phone size={17} strokeWidth={2.2} />;
 
-    const endedAt = call.ended_at || call.updated_at || call.started_at;
-    const duration = call.status === 'completed' ? formatCallDuration(call.duration_seconds) : null;
+    const title = isMissed
+        ? 'Cuộc gọi nhỡ'
+        : isRejected
+            ? 'Cuộc gọi bị từ chối'
+            : isCancelled
+                ? 'Đã huỷ cuộc gọi'
+                : `${outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'} ${isVideo ? 'video' : 'thoại'}`;
+
+    const statusClass = isMissed
+        ? 'text-red-600 dark:text-red-400'
+        : isRejected || isCancelled
+            ? 'text-amber-600 dark:text-amber-400'
+            : 'text-slate-700 dark:text-slate-100';
+
+    const iconClass = isMissed
+        ? 'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400'
+        : isRejected || isCancelled
+            ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400'
+            : isVideo
+                ? 'bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400'
+                : 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400';
+
+    const startedAt = call.started_at || call.created_at;
+    const duration = isCompleted ? formatCallDuration(call.duration_seconds) : null;
+    const otherUserId = Number(call.caller_id) === Number(currentUserId)
+        ? call.receiver_id
+        : call.caller_id;
+    const canRedial = Boolean(otherUserId);
+
+    const handleRedial = event => {
+        event?.preventDefault();
+        event?.stopPropagation();
+        if (canRedial) onRedial?.(otherUserId, isVideo ? 'video' : 'voice');
+    };
 
     return (
-        <div className="flex justify-center px-4 py-2">
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800/70">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-full ${isMissed ? 'bg-red-100 text-red-600 dark:bg-red-950/40 dark:text-red-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400'}`}>
+        <div className="flex justify-center px-3 py-1.5">
+            <button
+                type="button"
+                onClick={handleRedial}
+                disabled={!canRedial}
+                className="group flex w-full max-w-[360px] items-center gap-3 rounded-2xl border border-slate-200/80 bg-white px-3.5 py-2.5 text-left shadow-sm transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-md active:translate-y-0 dark:border-slate-700/80 dark:bg-slate-900/80 dark:hover:border-slate-600"
+                title={canRedial ? `Gọi lại ${isVideo ? 'video' : 'thoại'}` : 'Không thể gọi lại'}
+            >
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
                     {icon}
-                </div>
-                <div className="min-w-[150px]">
-                    <p className={`text-sm font-semibold ${isMissed ? 'text-red-600 dark:text-red-400' : 'text-slate-800 dark:text-slate-100'}`}>
-                        {title} {isVideo ? 'video' : 'thoại'}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                        {formatCallTime(call.started_at)}
-                        {duration ? ` • ${duration}` : endedAt ? ` • ${formatCallTime(endedAt)}` : ''}
-                    </p>
-                </div>
-            </div>
+                </span>
+
+                <span className="min-w-0 flex-1">
+                    <span className={`block truncate text-[13px] font-semibold ${statusClass}`}>
+                        {title}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
+                        <span>{formatCallDate(startedAt)}</span>
+                        <span>•</span>
+                        <span>{formatCallTime(startedAt)}</span>
+                        {duration && (
+                            <>
+                                <span>•</span>
+                                <span>{duration}</span>
+                            </>
+                        )}
+                    </span>
+                </span>
+
+                {canRedial && (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 transition group-hover:bg-slate-100 group-hover:text-blue-600 dark:group-hover:bg-slate-800 dark:group-hover:text-blue-400">
+                        {isVideo ? <Video size={16} /> : <Phone size={16} />}
+                    </span>
+                )}
+            </button>
         </div>
     );
 };
