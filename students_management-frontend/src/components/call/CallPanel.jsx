@@ -1,24 +1,22 @@
 import { useEffect, useRef } from 'react';
-import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 
-export default function CallPanel({ targetUserId, targetUsername, showLauncher = true }) {
-    const {
-        state,
-        call,
-        localStream,
-        remoteStream,
-        muted,
-        cameraOn,
-        sharingScreen,
-        error,
-        startCall,
-        acceptCall,
-        rejectCall,
-        endCall,
-        toggleMute,
-        toggleCamera,
-        toggleScreenShare
-    } = useWebRTCCall();
+export default function CallPanel({
+    targetUsername,
+    state,
+    call,
+    localStream,
+    remoteStream,
+    muted,
+    cameraOn,
+    sharingScreen,
+    error,
+    acceptCall,
+    rejectCall,
+    endCall,
+    toggleMute,
+    toggleCamera,
+    toggleScreenShare
+}) {
 
     const remoteAudioRef = useRef(null);
     const localVideoRef = useRef(null);
@@ -43,11 +41,6 @@ export default function CallPanel({ targetUserId, targetUsername, showLauncher =
         targetUsername ||
         'User';
 
-    const canStartCall =
-        targetUserId != null &&
-        Number.isInteger(Number(targetUserId)) &&
-        Number(targetUserId) > 0;
-
     const isActiveCall =
         state === 'calling' ||
         state === 'connecting' ||
@@ -55,43 +48,6 @@ export default function CallPanel({ targetUserId, targetUsername, showLauncher =
 
     return (
         <>
-            {state === 'idle' && showLauncher && canStartCall && (
-                <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div className="mb-3">
-                        <h2 className="font-semibold text-slate-900 dark:text-white">
-                            Gọi 1-1
-                        </h2>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {displayName}
-                        </p>
-                    </div>
-
-                    {error && (
-                        <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
-                            {error}
-                        </p>
-                    )}
-
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            className="flex-1 rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-                            onClick={() => startCall(targetUserId, 'voice')}
-                        >
-                            Gọi thoại
-                        </button>
-
-                        <button
-                            type="button"
-                            className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-                            onClick={() => startCall(targetUserId, 'video')}
-                        >
-                            Video Call
-                        </button>
-                    </div>
-                </section>
-            )}
-
             {state === 'incoming' && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
                     <section className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
