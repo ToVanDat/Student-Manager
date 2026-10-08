@@ -296,6 +296,7 @@ const getConversationMembers = async (conversationId) => {
                 cm.joined_at,
                 cm.left_at,
                 u.username,
+                u.email,
                 u.avatar_url AS avatar,
                 u.last_seen_at
             FROM conversation_members cm
