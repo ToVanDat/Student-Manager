@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { chatApi } from '@/api/chatApi';
+import { callApi } from '@/api/callApi';
 import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
 import { toast } from 'sonner';
@@ -19,6 +20,7 @@ export const useChat = () => {
     const [isTyping, setIsTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
     const [conversationMembers, setConversationMembers] = useState([]);
+    const [callHistory, setCallHistory] = useState([]);
     const searchJumpIdRef = useRef(null);
 
     const fetchConversations = useCallback(async () => {
@@ -39,6 +41,7 @@ export const useChat = () => {
         setSearchResults([]);
         setOnlineUserIds(new Set());
         setConversationMembers([]);
+        setCallHistory([]);
 
         if (currentUserId > 0) {
             fetchConversations();
@@ -60,7 +63,15 @@ export const useChat = () => {
                 const res = await chatApi.getMessages(activeId, 1, 50);
                 if (cancelled) return;
 
-                setMessages(res.data?.data || []);
+                const loadedMessages = res.data?.data || [];
+                const callsResponse = await callApi.getHistory(100, 0, activeId);
+                const loadedCalls = (callsResponse.data?.data || []).map(call => ({
+                    ...call,
+                    id: `call:${call.call_id}`,
+                    _timelineType: 'call'
+                }));
+                setCallHistory(loadedCalls);
+                setMessages(loadedMessages);
                 const membersResponse = await chatApi.getConversationMembers(activeId);
                 if (cancelled) return;
                 setConversationMembers(membersResponse.data?.data || []);
@@ -1055,6 +1066,7 @@ export const useChat = () => {
         updateGroupMemberRole,
         updateGroupConversation,
         messages,
+        callHistory,
         onlineUserIds,
         loading,
         isTyping,
