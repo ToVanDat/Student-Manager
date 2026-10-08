@@ -20,6 +20,30 @@ const createCall = async ({
     return rows[0] || null;
 };
 
+const getCallByIdForParticipant = async (callId, userId, targetUserId = null) => {
+    const params = [callId, userId];
+    let targetClause = '';
+    if (targetUserId !== null) {
+        params.push(targetUserId);
+        targetClause = ' AND ((caller_id = $2 AND receiver_id = $3) OR (caller_id = $3 AND receiver_id = $2))';
+    } else {
+        targetClause = ' AND (caller_id = $2 OR receiver_id = $2)';
+    }
+
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM call_history
+        WHERE call_id = $1
+          ${targetClause}
+        LIMIT 1;
+        `,
+        params
+    );
+
+    return rows[0] || null;
+};
+
 const updateCallStatus = async (callId, status, reason = null, answered = false) => {
     const { rows } = await pool.query(
         `
@@ -114,5 +138,6 @@ module.exports = {
     getCallHistory,
     createCallNotification,
     getUnreadCallNotifications,
-    markCallNotificationRead
+    markCallNotificationRead,
+    getCallByIdForParticipant
 };
