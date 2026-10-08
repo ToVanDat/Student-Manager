@@ -98,7 +98,23 @@ export default function useWebRTCCall() {
             setRemoteStream(stream);
         };
 
+        pc.oniceconnectionstatechange = () => {
+            console.log('[WebRTC][ICE]', callId, pc.iceConnectionState);
+            if (pc.iceConnectionState === 'failed') {
+                setError('ICE không thể tìm được đường kết nối. Kiểm tra STUN/TURN hoặc mạng.');
+            }
+        };
+
+        pc.onicegatheringstatechange = () => {
+            console.log('[WebRTC][ICE gathering]', callId, pc.iceGatheringState);
+        };
+
+        pc.onsignalingstatechange = () => {
+            console.log('[WebRTC][signaling]', callId, pc.signalingState);
+        };
+
         pc.onconnectionstatechange = () => {
+            console.log('[WebRTC][connection]', callId, pc.connectionState);
             const current = callRef.current;
 
             if (pc.connectionState === 'connected') {
@@ -396,10 +412,12 @@ export default function useWebRTCCall() {
                     targetUserId: current.targetUserId,
                     answer: pc.localDescription
                 });
-                setState('reconnecting');
+                setState('connecting');
             } catch (err) {
+                console.error('[WebRTC] OFFER ERROR:', err);
                 setError(err.message || 'Không thể xử lý offer.');
-                cleanup();
+                // Do not immediately destroy the call UI. The connection state/timeout
+                // will decide whether the call should actually end.
             }
         };
 
@@ -413,8 +431,8 @@ export default function useWebRTCCall() {
                 pendingCandidatesRef.current = [];
                 setState('connecting');
             } catch (err) {
+                console.error('[WebRTC] ANSWER ERROR:', err);
                 setError(err.message || 'Không thể xử lý answer.');
-                cleanup();
             }
         };
 
@@ -423,7 +441,11 @@ export default function useWebRTCCall() {
             const candidate = new RTCIceCandidate(data.candidate);
 
             if (peerRef.current?.remoteDescription) {
-                await peerRef.current.addIceCandidate(candidate);
+                try {
+                    await peerRef.current.addIceCandidate(candidate);
+                } catch (err) {
+                    console.warn('[WebRTC] ICE candidate error:', err);
+                }
             } else {
                 pendingCandidatesRef.current.push(candidate);
             }
