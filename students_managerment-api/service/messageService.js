@@ -113,6 +113,23 @@ const getMessagesByConversation = async (
  * - Message đã delete for everyone không được sửa.
  * - Content mới không được rỗng.
  */
+const searchMessages = async (conversationId, userId, query, limit = 30) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const normalized = typeof query === 'string' ? query.trim() : '';
+    if (!normalized) {
+        const error = new Error('Từ khóa tìm kiếm không được để trống');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return messageRepository.searchMessages(conversationId, userId, normalized.slice(0, 100), limit);
+};
+
 const updateMessage = async (
     messageId,
     userId,
@@ -428,6 +445,7 @@ const removeReaction = async (messageId, userId, emoji) => {
 module.exports = {
     createMessage,
     getMessagesByConversation,
+    searchMessages,
     updateMessage,
     recallMessage,
     deleteMessageForMe,
