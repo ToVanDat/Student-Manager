@@ -35,7 +35,8 @@ const createDirectConversation = async (req, res) => {
     } catch (error) {
         const map = {
             'Không thể tạo conversation với chính mình': 400,
-            'Người dùng không tồn tại hoặc đã bị khóa': 404
+            'Người dùng không tồn tại hoặc đã bị khóa': 404,
+            'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn': 403
         };
         return res.status(map[error.message] || 500).json({ message: error.message || 'Không thể tạo conversation' });
     }
