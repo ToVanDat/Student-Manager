@@ -71,9 +71,14 @@ export default function MessageBubble({
         return () => {
             document.removeEventListener('mousedown', close);
             if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
-            if (audioUrl) URL.revokeObjectURL(audioUrl);
         };
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
+        };
+    }, [audioUrl]);
 
     const submitEdit = () => {
         const next = editContent.trim();
