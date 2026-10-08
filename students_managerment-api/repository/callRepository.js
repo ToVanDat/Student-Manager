@@ -128,7 +128,7 @@ const getActiveCallsForParticipant = async (userId) => {
         SELECT *
         FROM call_history
         WHERE (caller_id = $1 OR receiver_id = $1)
-          AND status IN ('ringing', 'connecting')
+          AND status IN ('ringing', 'connecting', 'connected')
           AND ended_at IS NULL
         ORDER BY started_at DESC;
         `,
