@@ -5,7 +5,13 @@ const getCallHistory = async (req, res) => {
         const userId = Number(req.user.id);
         const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 50, 1), 100);
         const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0);
-        const data = await callRepository.getCallHistory(userId, limit, offset);
+        const conversationId = req.query.conversationId
+            ? Number.parseInt(req.query.conversationId, 10)
+            : null;
+        if (conversationId !== null && (!Number.isInteger(conversationId) || conversationId <= 0)) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+        const data = await callRepository.getCallHistory(userId, limit, offset, conversationId);
         return res.json({ data });
     } catch (error) {
         console.error('GET CALL HISTORY ERROR:', error);
