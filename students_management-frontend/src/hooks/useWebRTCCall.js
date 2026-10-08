@@ -228,7 +228,29 @@ export default function useWebRTCCall() {
 
         try {
             setError('');
+
+            console.log('[CALL][accept clicked]', {
+                callId: current.callId,
+                targetUserId: current.targetUserId,
+                callType: current.callType,
+                socketConnected: socket.connected
+            });
+
+            console.log('[CALL][media] requesting devices...', {
+                callId: current.callId,
+                audio: true,
+                video: current.callType === 'video'
+            });
+
             await startMedia(current.callType);
+
+            console.log('[CALL][media] devices acquired', {
+                callId: current.callId,
+                stream: !!localStreamRef.current,
+                audioTracks: localStreamRef.current?.getAudioTracks().length || 0,
+                videoTracks: localStreamRef.current?.getVideoTracks().length || 0
+            });
+
             setState('connecting');
 
             if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
@@ -245,6 +267,13 @@ export default function useWebRTCCall() {
                 callType: current.callType
             });
         } catch (err) {
+            console.error('[CALL][accept/media error]', {
+                callId: current.callId,
+                name: err?.name,
+                message: err?.message,
+                socketConnected: socket.connected
+            });
+
             socket.emit('call:reject', {
                 callId: current.callId,
                 targetUserId: current.targetUserId,
