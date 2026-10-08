@@ -541,14 +541,25 @@ const initSocket = (server) => {
             }
         });
 
+        const canCallUser = async (targetId) => {
+            if (!Number.isInteger(targetId) || targetId <= 0 || targetId === userId) return false;
+            try {
+                const contactIds = await conversationRepository.getConversationContactIds(userId);
+                return contactIds.map(Number).includes(targetId);
+            } catch (error) {
+                console.error('CALL PERMISSION ERROR:', error);
+                return false;
+            }
+        };
+
         // =====================================================
         // WEBRTC 1-1 CALL SIGNALING
         // Socket.IO transports signaling only; WebRTC transports media.
         // =====================================================
         socket.on('call:start', ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
-                return socket.emit('call:error', { message: 'Thông tin cuộc gọi không hợp lệ' });
+            if (!callId || !(await canCallUser(targetId))) {
+                return socket.emit('call:error', { message: 'Bạn không được phép gọi người dùng này' });
             }
             if (!onlineUsers.has(targetId)) {
                 return socket.emit('call:error', { callId, code: 'USER_OFFLINE', message: 'Người dùng hiện không online' });
@@ -560,7 +571,7 @@ const initSocket = (server) => {
 
         socket.on('call:accept', ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || targetId <= 0) return;
+            if (!callId || !(await canCallUser(targetId))) return;
             io.to('user:' + targetId).emit('call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType
             });
@@ -568,7 +579,7 @@ const initSocket = (server) => {
 
         socket.on('call:reject', ({ callId, targetUserId, reason = 'rejected' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || targetId <= 0) return;
+            if (!callId || !(await canCallUser(targetId))) return;
             io.to('user:' + targetId).emit('call:rejected', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
@@ -600,7 +611,7 @@ const initSocket = (server) => {
 
         socket.on('call:end', ({ callId, targetUserId, reason = 'ended' }) => {
             const targetId = Number(targetUserId);
-            if (!callId || !Number.isInteger(targetId) || targetId <= 0) return;
+            if (!callId || !(await canCallUser(targetId))) return;
             io.to('user:' + targetId).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
