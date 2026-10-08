@@ -7,6 +7,7 @@ import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import StudentHeader from '@/components/layout/StudentHeader.jsx';
 import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
 import CallPanel from '@/components/call/CallPanel.jsx';
+import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -17,6 +18,7 @@ export default function ChatPage() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [darkMode, setDarkMode] = useState(false);
     const [headerSearch, setHeaderSearch] = useState('');
+    const webRTCCall = useWebRTCCall();
 
     const {
         conversations,
@@ -103,9 +105,8 @@ export default function ChatPage() {
                     />
 
                     <CallPanel
-                        targetUserId={activeConversation?.userId}
+                        {...webRTCCall}
                         targetUsername={activeConversation?.name || activeConversation?.username || 'User'}
-                        showLauncher={Boolean(activeConversation?.userId)}
                     />
 
                     <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
@@ -148,6 +149,9 @@ export default function ChatPage() {
                 onlineUserIds={onlineUserIds}
                                         onLeaveGroup={leaveGroup}
                                         hasMoreMessages={hasMoreMessages}
+                                        callState={webRTCCall.state}
+                                        call={webRTCCall.call}
+                                        onStartCall={webRTCCall.startCall}
                                         loadingOlder={loadingOlder}
                                         onLoadOlder={loadOlderMessages}
                                     />
