@@ -193,6 +193,18 @@ const updateConversationSettings = async (
     return rows[0];
 };
 
+const unhideConversationForMembers = async (conversationId, senderId) => {
+    await pool.query(
+        `
+            UPDATE conversation_user_settings
+            SET hidden_at = NULL, updated_at = NOW()
+            WHERE conversation_id = $1
+              AND user_id <> $2
+        `,
+        [conversationId, senderId]
+    );
+};
+
 const clearMarkedUnread = async (conversationId, userId) => {
     await pool.query(
         `
@@ -552,6 +564,7 @@ module.exports = {
     getConversationSettings,
     updateConversationSettings,
     clearMarkedUnread,
+    unhideConversationForMembers,
     isUserBlocked,
     setUserBlocked,
     removeUserBlocked,
