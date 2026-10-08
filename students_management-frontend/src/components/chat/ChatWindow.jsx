@@ -256,8 +256,12 @@ export default function ChatWindow({
                             {activeConversation.type === 'group'
                                 ? activeConversation.memberCount + ' thành viên'
                                 : presenceLabel}
-                        }}
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full"
+                        </p>
+                    </div>
+
+                </div>
+
+                <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
                         title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
                     >
                         <MoreVertical size={18} />
