@@ -711,18 +711,53 @@ const initSocket = (server) => {
         socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][accept]', { callId, userId, targetId, callType });
-            const currentCall = await getAuthorizedCall(callId, targetId);
-            if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') {
-                console.warn('[CALL][accept rejected]', {
+
+            // The call was already authorized and created by call:start.
+            // For accept, authorize by the call record itself instead of
+            // re-running the current relationship/block check. Otherwise a
+            // valid ringing call can become CALL_NOT_AVAILABLE because the
+            // contact/block state changed between start and accept.
+            const currentCall = await callRepository.getCallByIdForParticipant(
+                callId,
+                userId,
+                targetId
+            );
+
+            if (!currentCall) {
+                console.warn('[CALL][accept rejected] call not found/participant mismatch', {
+                    callId,
+                    userId,
+                    targetId
+                });
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_AVAILABLE',
+                    message: 'Cuộc gọi không còn khả dụng.'
+                });
+            }
+
+            if (
+                Number(currentCall.receiver_id) !== userId ||
+                Number(currentCall.caller_id) !== targetId ||
+                currentCall.status !== 'ringing' ||
+                currentCall.ended_at
+            ) {
+                console.warn('[CALL][accept rejected] invalid state', {
                     callId,
                     userId,
                     targetId,
-                    dbStatus: currentCall?.status,
-                    callerId: currentCall?.caller_id,
-                    receiverId: currentCall?.receiver_id
+                    dbStatus: currentCall.status,
+                    callerId: currentCall.caller_id,
+                    receiverId: currentCall.receiver_id,
+                    endedAt: currentCall.ended_at
                 });
-                return socket.emit('call:error', { callId, code: 'CALL_NOT_AVAILABLE', message: 'Cuộc gọi không còn khả dụng.' });
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_AVAILABLE',
+                    message: 'Cuộc gọi không còn khả dụng.'
+                });
             }
+
             clearCallTimer(callId);
             const updated = await callRepository.updateCallStatusIfCurrent(
                 callId,
