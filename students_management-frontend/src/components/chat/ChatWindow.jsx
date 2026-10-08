@@ -81,6 +81,8 @@ export default function ChatWindow({
     const [isUploading, setIsUploading] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [showReportDialog, setShowReportDialog] = useState(false);
+    const [showContactInfo, setShowContactInfo] = useState(false);
+    const [showMediaPanel, setShowMediaPanel] = useState(false);
     const [reportReason, setReportReason] = useState('spam');
     const [showSearchPanel, setShowSearchPanel] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -475,10 +477,10 @@ export default function ChatWindow({
 
                         {showMoreMenu && activeConversation.type !== 'group' && (
                             <div className="absolute right-0 top-11 z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                                <button type="button" onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                <button type="button" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <UserRound size={16} /> Xem thông tin
                                 </button>
-                                <button type="button" onClick={() => setShowMoreMenu(false)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                <button type="button" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <FolderOpen size={16} /> File & Media
                                 </button>
                                 <button type="button" onClick={async () => { await onUpdateConversationSettings?.('pin', !activeConversation.isPinned); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
@@ -539,6 +541,47 @@ export default function ChatWindow({
                                 <p className="mt-1 text-[10px] text-slate-400">{new Date(result.created_at).toLocaleString('vi-VN')}</p>
                             </button>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {showContactInfo && (
+                <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
+                    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Thông tin cuộc trò chuyện</h4>
+                            <button type="button" onClick={() => setShowContactInfo(false)}><X size={18}/></button>
+                        </div>
+                        <div className="mt-5 flex flex-col items-center text-center">
+                            <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="lg" />
+                            <h3 className="mt-3 text-lg font-bold">{activeConversation.name}</h3>
+                            <p className="mt-1 text-sm text-slate-500">{presenceLabel}</p>
+                            <p className="mt-3 text-xs text-slate-400">Conversation #{activeConversation.id}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showMediaPanel && (
+                <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <div className="flex items-center justify-between">
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">File & Media</h4>
+                            <button type="button" onClick={() => setShowMediaPanel(false)}><X size={18}/></button>
+                        </div>
+                        <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
+                            {messages.flatMap(message => (message.files || []).map(file => ({ file, message }))).length === 0 ? (
+                                <p className="py-10 text-center text-sm text-slate-400">Chưa có file hoặc media nào.</p>
+                            ) : (
+                                messages.flatMap(message => (message.files || []).map(file => ({ file, message }))).map(({ file }) => (
+                                    <button type="button" key={file.id} onClick={() => onDownloadFile?.(file)} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 px-3 py-2 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
+                                        <FolderOpen size={18} className="text-blue-500"/>
+                                        <span className="min-w-0 flex-1 truncate text-sm">{file.file_name}</span>
+                                        <span className="text-xs text-slate-400">Tải</span>
+                                    </button>
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
