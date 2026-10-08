@@ -110,6 +110,7 @@ export default function MessageBubble({
 
     return (
         <div
+            data-message-id={message.id}
             className={`relative flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
         >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
