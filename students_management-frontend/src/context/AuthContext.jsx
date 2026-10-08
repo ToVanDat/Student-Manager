@@ -10,6 +10,8 @@ import {
     setAccessToken as setApiAccessToken
 } from '@/api/client.js';
 import socket from '@/socket/socket.js';
+import useWebRTCCall from '@/hooks/useWebRTCCall.js';
+import CallPanel from '@/components/call/CallPanel.jsx';
 
 const AuthContext = createContext(null);
 
@@ -24,6 +26,10 @@ const getStoredUser = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+
+    // Call state must live above route pages so an incoming call is received
+    // even when the user is on Dashboard/Home instead of ChatPage.
+    const webRTCCall = useWebRTCCall();
 
     const [accessToken, setAccessToken] = useState(
         localStorage.getItem('accessToken')
@@ -323,10 +329,18 @@ export const AuthProvider = ({ children }) => {
                 user,
                 loginUser,
                 logoutUser,
-                isAuthenticated: !!accessToken
+                isAuthenticated: !!accessToken,
+                webRTCCall
             }}
         >
             {children}
+
+            {accessToken && (
+                <CallPanel
+                    {...webRTCCall}
+                    targetUsername={webRTCCall.call?.remoteUsername || 'User'}
+                />
+            )}
         </AuthContext.Provider>
     );
 };
