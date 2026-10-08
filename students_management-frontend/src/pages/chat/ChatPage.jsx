@@ -23,6 +23,8 @@ export default function ChatPage() {
         activeId,
         setActiveId,
         messages,
+        conversationMembers,
+        onlineUserIds,
         sendMessage,
         sendAttachment,
         downloadFile,
@@ -31,6 +33,12 @@ export default function ChatPage() {
         searchResults,
         searchUsers,
         startConversation,
+        startGroupConversation,
+        addGroupMember,
+        removeGroupMember,
+        leaveGroup,
+        updateGroupMemberRole,
+        updateGroupConversation,
         setTyping,
         editMessage,
         recallMessage,
@@ -104,35 +112,46 @@ export default function ChatPage() {
                                     searchUsers={searchUsers}
                                     searchResults={searchResults}
                                     onStartConversation={startConversation}
+                                    onStartGroupConversation={startGroupConversation}
                                 />
 
                                 {activeId && activeConversation ? (
                                     <>
-                                        <ChatWindow
-                                            activeConversation={activeConversation}
-                                            messages={messages}
-                                            currentUserId={Number(user?.id)}
-                                            onSendMessage={sendMessage}
-                                            onSendAttachment={sendAttachment}
-                                            onDownloadFile={downloadFile}
-                                            isTyping={isTyping}
-                                            onTyping={setTyping}
-                                            onEdit={editMessage}
-                                            onRecall={recallMessage}
-                                            onDeleteForMe={deleteMessageForMe}
-                                            onDeleteForEveryone={deleteMessageForEveryone}
-                                            onReply={() => {}}
-                                            onToggleReaction={toggleReaction}
-                                            hasMoreMessages={hasMoreMessages}
-                                            loadingOlder={loadingOlder}
-                                            onLoadOlder={loadOlderMessages}
-                                        />
+                                    <ChatWindow
+                                        activeConversation={activeConversation}
+                                        messages={messages}
+                                        currentUserId={Number(user?.id)}
+                                        onSendMessage={sendMessage}
+                                        onSendAttachment={sendAttachment}
+                                        onDownloadFile={downloadFile}
+                                        isTyping={isTyping}
+                                        onTyping={setTyping}
+                                        onEdit={editMessage}
+                                        onRecall={recallMessage}
+                                        onDeleteForMe={deleteMessageForMe}
+                                        onDeleteForEveryone={deleteMessageForEveryone}
+                                        onToggleReaction={toggleReaction}
+                                        conversationMembers={conversationMembers}
+                                        searchUsers={searchUsers}
+                                        searchResults={searchResults}
+                                        onAddGroupMember={addGroupMember}
+                                        onRemoveGroupMember={removeGroupMember}
+                                        onUpdateGroupMemberRole={updateGroupMemberRole}
+                onUpdateGroupConversation={updateGroupConversation}
+                onlineUserIds={onlineUserIds}
+                                        onLeaveGroup={leaveGroup}
+                                        hasMoreMessages={hasMoreMessages}
+                                        loadingOlder={loadingOlder}
+                                        onLoadOlder={loadOlderMessages}
+                                    />
+                                    {activeConversation.userId ? (
                                         <aside className="w-[320px] shrink-0 border-l border-slate-200 p-4 dark:border-slate-800">
                                             <CallPanel
                                                 targetUserId={Number(activeConversation.userId)}
-                                                targetUsername={activeConversation.name}
+                                                targetUsername={activeConversation.name || activeConversation.username || 'User'}
                                             />
                                         </aside>
+                                    ) : null}
                                     </>
                                 ) : (
                                     <EmptyChat />
