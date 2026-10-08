@@ -25,8 +25,8 @@ const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
     if (existingConversation) return existingConversation;
 
     const conversation = await conversationRepository.createConversation('direct');
-    await conversationRepository.addMember(conversation.id, currentUserId, null);
-    await conversationRepository.addMember(conversation.id, targetUserId, null);
+    await conversationRepository.addMember(conversation.id, currentUserId, 'member');
+    await conversationRepository.addMember(conversation.id, targetUserId, 'member');
 
     return conversation;
 };
