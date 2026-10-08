@@ -20,6 +20,12 @@ router.get(
     messageController.getMessagesByConversation
 );
 
+router.get(
+    '/conversation/:conversationId/search',
+    authMiddleware,
+    messageController.searchMessages
+);
+
 // Chỉnh sửa message
 router.patch(
     '/:messageId',
