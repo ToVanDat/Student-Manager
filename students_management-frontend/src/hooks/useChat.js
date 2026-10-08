@@ -66,10 +66,13 @@ export const useChat = () => {
                 setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
                 setMessagePage(1);
                 await chatApi.markAsRead(activeId);
+                await chatApi.updateConversationSettings(activeId, 'unread', false);
                 if (socket.connected) socket.emit('message:read', { conversationId: activeId });
 
                 setConversations(prev => prev.map(c =>
-                    c.id === activeId ? { ...c, unreadCount: 0 } : c
+                    Number(c.id) === Number(activeId)
+                        ? { ...c, unreadCount: 0, markedUnread: false }
+                        : c
                 ));
 
                 if (socket.connected) {
