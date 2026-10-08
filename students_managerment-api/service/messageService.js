@@ -22,6 +22,21 @@ const createMessage = async (
         );
     }
 
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (conversation?.type === 'direct') {
+        const contactIds = await conversationRepository.getConversationContactIds(senderId);
+        const blocked = contactIds.some(id => Number(id) !== Number(senderId));
+        if (blocked) {
+            const members = await conversationRepository.getConversationMembers(conversationId);
+            const target = members.find(member => Number(member.user_id) !== Number(senderId));
+            if (target && await conversationRepository.isUserBlocked(senderId, target.user_id)) {
+                const error = new Error('Bạn đã chặn người dùng này hoặc người dùng này đã bị chặn');
+                error.statusCode = 403;
+                throw error;
+            }
+        }
+    }
+
     if (!content || !content.trim()) {
         throw new Error(
             'Nội dung message không được để trống'
