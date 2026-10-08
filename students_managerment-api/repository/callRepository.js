@@ -1,0 +1,118 @@
+const pool = require('../src/config/database');
+
+const createCall = async ({
+    callId,
+    callerId,
+    receiverId,
+    conversationId = null,
+    callType
+}) => {
+    const { rows } = await pool.query(
+        `
+        INSERT INTO call_history
+            (call_id, caller_id, receiver_id, conversation_id, call_type, status)
+        VALUES ($1, $2, $3, $4, $5, 'ringing')
+        ON CONFLICT (call_id) DO NOTHING
+        RETURNING *;
+        `,
+        [callId, callerId, receiverId, conversationId, callType]
+    );
+    return rows[0] || null;
+};
+
+const updateCallStatus = async (callId, status, reason = null, answered = false) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = $2,
+            end_reason = COALESCE($3, end_reason),
+            answered_at = CASE
+                WHEN $4 = TRUE AND answered_at IS NULL THEN NOW()
+                ELSE answered_at
+            END,
+            ended_at = CASE
+                WHEN $2 IN ('completed','rejected','missed','cancelled','failed','timeout')
+                    THEN COALESCE(ended_at, NOW())
+                ELSE ended_at
+            END,
+            duration_seconds = CASE
+                WHEN $2 = 'completed' AND answered_at IS NOT NULL
+                    THEN GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (COALESCE(ended_at, NOW()) - answered_at)))::INT)
+                ELSE duration_seconds
+            END,
+            updated_at = NOW()
+        WHERE call_id = $1
+        RETURNING *;
+        `,
+        [callId, status, reason, Boolean(answered)]
+    );
+    return rows[0] || null;
+};
+
+const getCallHistory = async (userId, limit = 50, offset = 0) => {
+    const { rows } = await pool.query(
+        `
+        SELECT
+            ch.*,
+            caller.username AS caller_username,
+            receiver.username AS receiver_username
+        FROM call_history ch
+        JOIN users caller ON caller.id = ch.caller_id
+        JOIN users receiver ON receiver.id = ch.receiver_id
+        WHERE ch.caller_id = $1 OR ch.receiver_id = $1
+        ORDER BY ch.started_at DESC
+        LIMIT $2 OFFSET $3;
+        `,
+        [userId, limit, offset]
+    );
+    return rows;
+};
+
+const createCallNotification = async (userId, callHistoryId, type, title, body = null) => {
+    const { rows } = await pool.query(
+        `
+        INSERT INTO call_notifications
+            (user_id, call_history_id, type, title, body)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+        `,
+        [userId, callHistoryId, type, title, body]
+    );
+    return rows[0];
+};
+
+const getUnreadCallNotifications = async (userId, limit = 50) => {
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM call_notifications
+        WHERE user_id = $1 AND is_read = FALSE
+        ORDER BY created_at DESC
+        LIMIT $2;
+        `,
+        [userId, limit]
+    );
+    return rows;
+};
+
+const markCallNotificationRead = async (notificationId, userId) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_notifications
+        SET is_read = TRUE
+        WHERE id = $1 AND user_id = $2
+        RETURNING *;
+        `,
+        [notificationId, userId]
+    );
+    return rows[0] || null;
+};
+
+module.exports = {
+    createCall,
+    updateCallStatus,
+    getCallHistory,
+    createCallNotification,
+    getUnreadCallNotifications,
+    markCallNotificationRead
+};
