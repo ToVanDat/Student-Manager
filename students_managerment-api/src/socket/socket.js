@@ -212,6 +212,7 @@ const initSocket = (server) => {
                         callId: pending.call_id,
                         fromUserId: Number(pending.caller_id),
                         fromUsername: pending.caller_username,
+                        fromAvatar: pending.caller_avatar || null,
                         toUserId: Number(pending.receiver_id),
                         callType: pending.call_type,
                         expiresAt: pending.expires_at,
@@ -780,10 +781,12 @@ const initSocket = (server) => {
             // Offline users cannot receive the incoming-call event, but the call is
             // still recorded as ringing until the shared timeout marks it missed.
             if (onlineUsers.has(targetId)) {
+                const callerProfile = await userRepository.findActiveUserById(userId);
                 io.to(`user:${targetId}`).emit('call:incoming', {
                     callId,
                     fromUserId: userId,
                     fromUsername: socket.user.username,
+                    fromAvatar: callerProfile?.avatar || null,
                     toUserId: targetId,
                     callType,
                     expiresAt: call.expires_at,
