@@ -170,9 +170,10 @@ const searchMessages = async (conversationId, userId, query, limit = 30) => {
             FROM messages m
             JOIN users sender ON sender.id = m.sender_id
             WHERE m.conversation_id = $1
-              AND m.message_type = 'user'
               AND m.deleted_at IS NULL
-              AND NOT m.is_recalled
+              AND COALESCE(m.is_recalled, FALSE) = FALSE
+              AND m.content IS NOT NULL
+              AND BTRIM(m.content) <> ''
               AND m.content ILIKE '%' || $2 || '%'
               AND NOT EXISTS (
                   SELECT 1
