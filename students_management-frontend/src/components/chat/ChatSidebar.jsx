@@ -123,7 +123,7 @@ export default function ChatSidebar({
                         <Phone size={18} />
                         {callNotificationCount > 0 && (
                             <span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900">
-                                {callNotificationCount > 9 ? '9+' : callNotificationCount}
+                                {callNotificationCount}
                             </span>
                         )}
                     </button>
