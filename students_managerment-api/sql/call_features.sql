@@ -42,6 +42,15 @@ CREATE INDEX IF NOT EXISTS idx_call_history_conversation_started
 CREATE INDEX IF NOT EXISTS idx_call_history_status
     ON call_history (status);
 
+-- Keep the existing database constraint aligned with call lifecycle states.
+ALTER TABLE call_history DROP CONSTRAINT IF EXISTS call_history_status_check;
+ALTER TABLE call_history ADD CONSTRAINT call_history_status_check CHECK (
+    status IN (
+        'ringing', 'connecting', 'connected', 'completed',
+        'rejected', 'missed', 'cancelled', 'failed', 'timeout'
+    )
+);
+
 -- Persisted deadline used for reconnect recovery and race-safe acceptance.
 ALTER TABLE call_history ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
 UPDATE call_history
