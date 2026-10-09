@@ -1083,11 +1083,24 @@ export const useChat = () => {
         return window.URL.createObjectURL(response.data);
     }, []);
 
+    const userSearchRequestRef = useRef(0);
+
     const searchUsers = useCallback(async (search) => {
+        const requestId = ++userSearchRequestRef.current;
+        const normalizedSearch = String(search || '').trim();
+
+        if (!normalizedSearch) {
+            setSearchResults([]);
+            return;
+        }
+
         try {
-            const res = await userApi.searchForChat(search);
+            const res = await userApi.searchForChat(normalizedSearch);
+            // A slow response for an older query must not overwrite newer results.
+            if (requestId !== userSearchRequestRef.current) return;
             setSearchResults(res.data?.data || []);
         } catch (error) {
+            if (requestId !== userSearchRequestRef.current) return;
             console.error('Lỗi tìm user:', error);
             setSearchResults([]);
         }
