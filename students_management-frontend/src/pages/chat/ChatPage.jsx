@@ -22,10 +22,12 @@ export default function ChatPage() {
     const [headerSearch, setHeaderSearch] = useState('');
     const [callCenterOpen, setCallCenterOpen] = useState(false);
     const [callNotifications, setCallNotifications] = useState([]);
+    const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
 
     useEffect(() => {
         if (!user?.id) {
             setCallNotifications([]);
+            setUnreadCallNotificationCount(0);
             return undefined;
         }
 
@@ -34,6 +36,11 @@ export default function ChatPage() {
             .then(response => {
                 if (cancelled) return;
                 const loaded = response.data?.data || [];
+                if (Number.isFinite(Number(response.data?.unreadCount))) {
+                    setUnreadCallNotificationCount(Number(response.data.unreadCount));
+                } else {
+                    setUnreadCallNotificationCount(loaded.filter(item => !item.is_read).length);
+                }
                 setCallNotifications(previous => {
                     const loadedIds = new Set(loaded.map(item => String(item.id)));
                     const receivedWhileLoading = previous.filter(item => !loadedIds.has(String(item.id)));
@@ -44,10 +51,18 @@ export default function ChatPage() {
 
         const handleCallNotification = notification => {
             if (!notification?.id) return;
-            setCallNotifications(previous => [
-                notification,
-                ...previous.filter(item => String(item.id) !== String(notification.id))
-            ]);
+            setCallNotifications(previous => {
+                const existing = previous.find(item => String(item.id) === String(notification.id));
+                if (!existing && !notification.is_read) {
+                    setUnreadCallNotificationCount(count => count + 1);
+                } else if (existing && existing.is_read && !notification.is_read) {
+                    setUnreadCallNotificationCount(count => count + 1);
+                }
+                return [
+                    notification,
+                    ...previous.filter(item => String(item.id) !== String(notification.id))
+                ];
+            });
         };
         socket.on('call:notification', handleCallNotification);
 
@@ -62,6 +77,12 @@ export default function ChatPage() {
         setCallNotifications(previous => previous.map(item =>
             String(item.id) === String(notificationId) ? { ...item, is_read: true } : item
         ));
+        setUnreadCallNotificationCount(count => {
+            const wasUnread = callNotifications.some(item =>
+                String(item.id) === String(notificationId) && !item.is_read
+            );
+            return wasUnread ? Math.max(0, count - 1) : count;
+        });
     };
 
     const {
@@ -256,7 +277,7 @@ export default function ChatPage() {
                                     conversations={conversations}
                                     onlineUserIds={onlineUserIds}
                                     onOpenCallCenter={() => setCallCenterOpen(true)}
-                                    callNotificationCount={callNotifications.filter(item => !item.is_read).length}
+                                    callNotificationCount={unreadCallNotificationCount}
                                     activeId={activeId}
                                     onSelectConversation={setActiveId}
                                     searchUsers={searchUsers}
