@@ -179,6 +179,55 @@ const initSocket = (server) => {
             console.error('PRESENCE SNAPSHOT ERROR:', error);
         }
 
+        const syncPendingCalls = async () => {
+            try {
+                const expiredCalls = await callRepository.expireDueRingingCalls();
+                for (const expired of expiredCalls) {
+                    clearCallTimer(expired.call_id);
+                    io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                        callId: expired.call_id,
+                        fromUserId: Number(expired.caller_id),
+                        toUserId: Number(expired.receiver_id),
+                        reason: 'ring-timeout',
+                        status: 'missed'
+                    });
+                    io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                        callId: expired.call_id,
+                        status: 'missed',
+                        reason: 'ring-timeout'
+                    });
+                    await emitCallNotification(
+                        Number(expired.receiver_id),
+                        expired,
+                        'missed-call',
+                        'Cuộc gọi nhỡ',
+                        `Bạn có cuộc gọi ${expired.call_type === 'video' ? 'video' : 'thoại'} nhỡ.`
+                    );
+                }
+
+                const pendingCalls = await callRepository.getPendingIncomingCalls(userId);
+                const serverNow = new Date().toISOString();
+                for (const pending of pendingCalls) {
+                    socket.emit('call:incoming', {
+                        callId: pending.call_id,
+                        fromUserId: Number(pending.caller_id),
+                        fromUsername: pending.caller_username,
+                        toUserId: Number(pending.receiver_id),
+                        callType: pending.call_type,
+                        expiresAt: pending.expires_at,
+                        serverNow,
+                        replayed: true
+                    });
+                }
+            } catch (error) {
+                console.error('[CALL][sync pending failed]', error);
+            }
+        };
+
+        socket.on('call:sync-pending', syncPendingCalls);
+        // Replay pending invitations after every authenticated reconnect.
+        await syncPendingCalls();
+
         socket.on('presence:sync', async () => {
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
@@ -736,7 +785,10 @@ const initSocket = (server) => {
                     fromUserId: userId,
                     fromUsername: socket.user.username,
                     toUserId: targetId,
-                    callType
+                    callType,
+                    expiresAt: call.expires_at,
+                    serverNow: new Date().toISOString(),
+                    replayed: false
                 });
             } else {
                 console.log('[CALL][receiver offline; keep ringing until timeout]', {
@@ -749,25 +801,25 @@ const initSocket = (server) => {
 
             callTimers.set(callId, setTimeout(async () => {
                 try {
-                    const updated = await callRepository.updateCallStatusIfCurrent(
-                        callId,
-                        'missed',
-                        'ringing',
-                        'ring-timeout'
-                    );
-                    if (updated) {
-                        io.to(`user:${targetId}`).emit('call:ended', {
-                            callId, fromUserId: userId, toUserId: targetId, reason: 'ring-timeout'
+                    const expiredCalls = await callRepository.expireDueRingingCalls();
+                    for (const expired of expiredCalls) {
+                        clearCallTimer(expired.call_id);
+                        io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                            callId: expired.call_id,
+                            fromUserId: Number(expired.caller_id),
+                            toUserId: Number(expired.receiver_id),
+                            reason: 'ring-timeout',
+                            status: 'missed'
                         });
-                        io.to(`user:${userId}`).emit('call:timeout', {
-                            callId, status: 'missed', reason: 'ring-timeout'
+                        io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                            callId: expired.call_id, status: 'missed', reason: 'ring-timeout'
                         });
                         await emitCallNotification(
-                            targetId,
-                            updated,
+                            Number(expired.receiver_id),
+                            expired,
                             'missed-call',
                             'Cuộc gọi nhỡ',
-                            `Bạn có cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} nhỡ.`
+                            `Bạn có cuộc gọi ${expired.call_type === 'video' ? 'video' : 'thoại'} nhỡ.`
                         );
                     }
                 } catch (error) {
@@ -828,21 +880,36 @@ const initSocket = (server) => {
                 });
             }
 
-            clearCallTimer(callId);
-            const updated = await callRepository.updateCallStatusIfCurrent(
-                callId,
-                'connecting',
-                'ringing',
-                null,
-                true
-            );
+            const updated = await callRepository.acceptRingingCallBeforeDeadline(callId);
             if (!updated) {
+                // The DB deadline/status is authoritative. If it has elapsed,
+                // finalize it as missed instead of trusting a client countdown.
+                const expiredCalls = await callRepository.expireDueRingingCalls();
+                for (const expired of expiredCalls) {
+                    clearCallTimer(expired.call_id);
+                    io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                        callId: expired.call_id,
+                        fromUserId: Number(expired.caller_id),
+                        toUserId: Number(expired.receiver_id),
+                        reason: 'ring-timeout',
+                        status: 'missed'
+                    });
+                    io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                        callId: expired.call_id, status: 'missed', reason: 'ring-timeout'
+                    });
+                    await emitCallNotification(
+                        Number(expired.receiver_id), expired, 'missed-call',
+                        'Cuộc gọi nhỡ',
+                        `Bạn có cuộc gọi ${expired.call_type === 'video' ? 'video' : 'thoại'} nhỡ.`
+                    );
+                }
                 return socket.emit('call:error', {
                     callId,
-                    code: 'CALL_NOT_AVAILABLE',
-                    message: 'Cuộc gọi không còn khả dụng.'
+                    code: 'CALL_EXPIRED',
+                    message: 'Lời mời gọi đã hết hạn.'
                 });
             }
+            clearCallTimer(callId);
             io.to(`user:${targetId}`).emit('call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType
             });
