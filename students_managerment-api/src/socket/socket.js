@@ -1019,6 +1019,32 @@ const initSocket = (server) => {
             });
         });
 
+        socket.on('call:connection-failed', async ({ callId, targetUserId, reason = 'connection-timeout' }) => {
+            const targetId = Number(targetUserId);
+            const currentCall = await getAuthorizedCall(callId, targetId);
+            if (!currentCall || currentCall.status !== 'connecting' || currentCall.ended_at) return;
+
+            clearCallTimer(callId);
+            const failed = await callRepository.updateCallStatusIfCurrent(
+                callId,
+                'failed',
+                'connecting',
+                reason
+            );
+            if (!failed) return;
+
+            const payload = {
+                callId,
+                fromUserId: userId,
+                toUserId: targetId,
+                reason: 'connection-timeout',
+                status: 'failed'
+            };
+            io.to(`user:${userId}`).emit('call:ended', payload);
+            io.to(`user:${targetId}`).emit('call:ended', payload);
+            console.warn('[CALL][connection failed]', { callId, userId, targetId, reason });
+        });
+
         socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][ice]', { callId, userId, targetId, hasCandidate: !!candidate });
