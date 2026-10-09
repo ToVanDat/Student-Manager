@@ -131,6 +131,19 @@ export const useChat = () => {
         }
     }, [activeId]);
 
+    const hideCallHistory = useCallback(async (callId) => {
+        try {
+            await callApi.hideHistory(callId);
+            setCallHistory(previous => previous.filter(call => String(call.call_id) !== String(callId)));
+            toast.success('Đã xóa cuộc gọi khỏi lịch sử của bạn');
+            return true;
+        } catch (error) {
+            console.error('Lỗi ẩn cuộc gọi khỏi lịch sử:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xóa cuộc gọi khỏi lịch sử');
+            return false;
+        }
+    }, []);
+
     const refreshCallHistory = useCallback(async (conversationId = activeId) => {
         if (!conversationId) return;
         try {
@@ -1098,6 +1111,7 @@ export const useChat = () => {
         updateGroupConversation,
         messages,
         callHistory,
+        hideCallHistory,
         onlineUserIds,
         loading,
         isTyping,
