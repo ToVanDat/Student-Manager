@@ -667,9 +667,14 @@ export const useChat = () => {
     }, [activeId, fetchConversations, currentUserId, refreshConversationMembers, refreshCallHistory]);
 
     const searchMessages = useCallback(async (query) => {
-        if (!activeId || !query?.trim()) return [];
+        if (!activeId) throw new Error('Chọn một cuộc trò chuyện trước khi tìm kiếm.');
+        if (!query?.trim()) return [];
         const res = await chatApi.searchMessages(activeId, query.trim());
-        return res.data?.data || [];
+        const results = res.data?.data;
+        if (!Array.isArray(results)) {
+            throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
+        }
+        return results;
     }, [activeId]);
 
     const openSearchResult = useCallback((result) => {
@@ -735,7 +740,7 @@ export const useChat = () => {
     }, [activeId]);
 
     const blockUser = useCallback(async (targetUserId) => {
-        if (!activeId || !targetUserId) return;
+        if (!activeId || !targetUserId) throw new Error('Chưa chọn cuộc trò chuyện hoặc người dùng không hợp lệ.');
         await chatApi.blockUser(activeId, targetUserId);
         setConversations(prev => prev.filter(item => Number(item.id) !== Number(activeId)));
         setActiveId(null);
@@ -749,7 +754,7 @@ export const useChat = () => {
     }, [activeId]);
 
     const reportConversation = useCallback(async (targetUserId, reason, details = null) => {
-        if (!activeId || !targetUserId) return;
+        if (!activeId || !targetUserId) throw new Error('Chưa chọn cuộc trò chuyện hoặc người dùng không hợp lệ.');
         return chatApi.reportConversation(activeId, targetUserId, reason, details);
     }, [activeId]);
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
     MoreVertical,
     Search,
@@ -97,8 +98,12 @@ export default function ChatWindow({
     const searchRequestIdRef = useRef(0);
     const searchPanelRef = useRef(null);
     const searchTriggerRef = useRef(null);
+    const [searchPanelPosition, setSearchPanelPosition] = useState({ top: 0, left: 0, width: 360 });
+    const [moreMenuPosition, setMoreMenuPosition] = useState({ top: 0, left: 0 });
     const emojiPickerRef = useRef(null);
     const moreMenuRef = useRef(null);
+    const moreMenuPanelRef = useRef(null);
+    const moreTriggerRef = useRef(null);
     const mediaRecorderRef = useRef(null);
     const recordedChunksRef = useRef([]);
     const [recordingVoice, setRecordingVoice] = useState(false);
@@ -248,7 +253,10 @@ export default function ChatWindow({
 
     useEffect(() => {
         const handleClickOutsideMore = (event) => {
-            if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+            if (
+                moreMenuRef.current && !moreMenuRef.current.contains(event.target)
+                && !moreMenuPanelRef.current?.contains(event.target)
+            ) {
                 setShowMoreMenu(false);
             }
         };
@@ -264,6 +272,46 @@ export default function ChatWindow({
             document.removeEventListener('keydown', handleMoreKeyDown);
         };
     }, [showMoreMenu]);
+
+    const positionSearchPanel = useCallback(() => {
+        const rect = searchTriggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const width = Math.min(360, Math.max(window.innerWidth - 24, 0));
+        const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+        const panelHeight = 390;
+        const below = rect.bottom + 8;
+        const top = below + panelHeight <= window.innerHeight - 12
+            ? below
+            : Math.max(12, rect.top - panelHeight - 8);
+        setSearchPanelPosition({ top, left, width });
+    }, []);
+
+    const positionMoreMenu = useCallback(() => {
+        const rect = moreTriggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const width = 256;
+        const menuHeight = 390;
+        const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12));
+        const below = rect.bottom + 8;
+        const top = below + menuHeight <= window.innerHeight - 12
+            ? below
+            : Math.max(12, rect.top - menuHeight - 8);
+        setMoreMenuPosition({ top, left });
+    }, []);
+
+    useEffect(() => {
+        if (!showSearchPanel && !showMoreMenu) return undefined;
+        const updatePositions = () => {
+            if (showSearchPanel) positionSearchPanel();
+            if (showMoreMenu) positionMoreMenu();
+        };
+        window.addEventListener('resize', updatePositions);
+        window.addEventListener('scroll', updatePositions, true);
+        return () => {
+            window.removeEventListener('resize', updatePositions);
+            window.removeEventListener('scroll', updatePositions, true);
+        };
+    }, [showSearchPanel, showMoreMenu, positionSearchPanel, positionMoreMenu]);
 
     useEffect(() => {
         if (!showSearchPanel) return undefined;
@@ -342,6 +390,21 @@ export default function ChatWindow({
             throw new Error('Chức năng chặn người dùng chưa được kết nối.');
         }
         return onBlockUser(activeConversation.userId);
+    };
+
+    const submitConversationReport = async () => {
+        if (typeof onReportConversation !== 'function') {
+            toast.error('Chức năng báo cáo chưa được kết nối.');
+            return;
+        }
+        try {
+            await onReportConversation(activeConversation.userId, reportReason);
+            setShowReportDialog(false);
+            toast.success('Đã gửi báo cáo.');
+        } catch (error) {
+            console.error('Không thể gửi báo cáo:', error);
+            toast.error(error?.response?.data?.message || error?.message || 'Không thể gửi báo cáo. Vui lòng thử lại.');
+        }
     };
 
     const handleSend = (e) => {
@@ -527,7 +590,10 @@ export default function ChatWindow({
                         type="button"
                         ref={searchTriggerRef}
                         className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
-                        onClick={() => setShowSearchPanel(prev => !prev)}
+                        onClick={() => {
+                            if (!showSearchPanel) positionSearchPanel();
+                            setShowSearchPanel(prev => !prev);
+                        }}
                         aria-label="Tìm kiếm tin nhắn"
                         aria-expanded={showSearchPanel}
                         aria-controls="chat-message-search"
@@ -569,11 +635,13 @@ export default function ChatWindow({
                     <div className="relative" ref={moreMenuRef}>
                         <button
                             type="button"
+                            ref={moreTriggerRef}
                             onClick={() => {
                                 if (activeConversation.type === 'group') {
                                     setShowGroupInfo(true);
                                     return;
                                 }
+                                if (!showMoreMenu) positionMoreMenu();
                                 setShowMoreMenu(prev => !prev);
                             }}
                             aria-label={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Thêm tùy chọn cuộc trò chuyện'}
@@ -585,8 +653,13 @@ export default function ChatWindow({
                             <MoreVertical size={18} />
                         </button>
 
-                        {showMoreMenu && activeConversation.type !== 'group' && (
-                            <div role="menu" className="absolute right-0 top-11 z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        {showMoreMenu && activeConversation.type !== 'group' && createPortal(
+                            <div
+                                ref={moreMenuPanelRef}
+                                role="menu"
+                                style={{ position: 'fixed', top: moreMenuPosition.top, left: moreMenuPosition.left, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto' }}
+                                className="z-[1000] w-64 overflow-x-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                            >
                                 <button type="button" role="menuitem" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <UserRound size={16} /> Xem thông tin
                                 </button>
@@ -613,19 +686,21 @@ export default function ChatWindow({
                                 <button type="button" role="menuitem" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                                     <Flag size={16} /> Báo cáo
                                 </button>
-                            </div>
+                            </div>,
+                            document.body
                         )}
                     </div>
                 </div>
 
             </header>
 
-            {showSearchPanel && (
+            {showSearchPanel && createPortal(
                 <div
                     ref={searchPanelRef}
                     id="chat-message-search"
                     role="search"
-                    className="absolute right-5 top-[74px] z-50 w-[min(360px,calc(100%_-_2.5rem))] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    style={{ position: 'fixed', top: searchPanelPosition.top, left: searchPanelPosition.left, width: searchPanelPosition.width }}
+                    className="z-[1000] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
                 >
                     <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 dark:bg-slate-800">
                         <Search size={16} className="text-slate-400" />
@@ -679,7 +754,8 @@ export default function ChatWindow({
                             </button>
                         ))}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {showContactInfo && (
@@ -747,7 +823,7 @@ export default function ChatWindow({
                         </select>
                         <div className="mt-4 flex justify-end gap-2">
                             <button type="button" onClick={() => setShowReportDialog(false)} className="rounded-xl px-4 py-2 text-sm text-slate-500 hover:bg-slate-100">Hủy</button>
-                            <button type="button" onClick={async () => { await onReportConversation?.(activeConversation.userId, reportReason); setShowReportDialog(false); }} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Gửi báo cáo</button>
+                            <button type="button" onClick={submitConversationReport} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Gửi báo cáo</button>
                         </div>
                     </div>
                 </div>
