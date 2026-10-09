@@ -180,7 +180,7 @@ const expireDueRingingCalls = async () => {
 const getPendingIncomingCalls = async (receiverId) => {
     const { rows } = await pool.query(
         `
-        SELECT ch.*, caller.username AS caller_username
+        SELECT ch.*, caller.username AS caller_username, caller.avatar_url AS caller_avatar
         FROM call_history ch
         JOIN users caller ON caller.id = ch.caller_id
         WHERE ch.receiver_id = $1
