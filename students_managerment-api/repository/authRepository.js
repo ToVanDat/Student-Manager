@@ -621,6 +621,22 @@ const rotateRefreshToken = async (
             [userId, sessionId, newTokenHash, expiresAt]
         );
 
+        const updatedSession = await client.query(
+            `
+            UPDATE sessions
+            SET last_used_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [sessionId, userId]
+        );
+
+        if (updatedSession.rowCount !== 1) {
+            throw new Error('Session đã bị thu hồi trong lúc refresh token');
+        }
+
         await client.query('COMMIT');
         return inserted.rows[0];
     } catch (error) {
