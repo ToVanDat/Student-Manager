@@ -565,6 +565,7 @@ export default function useWebRTCCall() {
 
     useEffect(() => {
         const onIncoming = data => {
+            if (callRef.current?.callId === data.callId) return;
             console.log('[CALL][incoming]', data);
             const serverNowMs = Date.parse(data.serverNow || new Date().toISOString());
             const expiresAtMs = Date.parse(data.expiresAt || '');
