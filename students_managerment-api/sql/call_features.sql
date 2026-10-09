@@ -53,3 +53,14 @@ CREATE TABLE IF NOT EXISTS call_notifications (
 
 CREATE INDEX IF NOT EXISTS idx_call_notifications_user_created
     ON call_notifications (user_id, created_at DESC);
+
+-- Per-user call history hiding. A user can hide a call only from their own history.
+CREATE TABLE IF NOT EXISTS call_history_hidden (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    call_history_id BIGINT NOT NULL REFERENCES call_history(id) ON DELETE CASCADE,
+    hidden_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (user_id, call_history_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_call_history_hidden_call
+    ON call_history_hidden (call_history_id);
