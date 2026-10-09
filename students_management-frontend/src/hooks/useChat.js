@@ -215,18 +215,40 @@ export const useChat = () => {
                 chatApi.markAsRead(conversationId).catch(() => {});
             }
 
-            setConversations(prev => prev.map(c => {
-                if (Number(c.id) !== conversationId) return c;
+            setConversations(prev => {
+                const next = prev.map(c => {
+                    if (Number(c.id) !== conversationId) return c;
 
-                return {
-                    ...c,
-                    lastMessage: message.content,
-                    lastMessageAt: message.created_at,
-                    unreadCount: Number(c.id) === Number(activeId) || Number(message.sender_id ?? message.senderId) === currentUserId
-                        ? 0
-                        : (c.unreadCount || 0) + 1
-                };
-            }));
+                    const incomingAt = Date.parse(message.created_at ?? message.createdAt ?? '');
+                    const currentAt = Date.parse(c.lastMessageAt ?? '');
+                    const incomingIsOlder =
+                        Number.isFinite(incomingAt) &&
+                        Number.isFinite(currentAt) &&
+                        incomingAt < currentAt;
+
+                    return {
+                        ...c,
+                        // An out-of-order message event must not overwrite a newer call preview.
+                        ...(incomingIsOlder ? {} : {
+                            lastMessage: message.content || 'Tin nhắn',
+                            lastMessageAt: Number.isFinite(incomingAt)
+                                ? new Date(incomingAt).toISOString()
+                                : c.lastMessageAt
+                        }),
+                        unreadCount: Number(c.id) === Number(activeId) || Number(message.sender_id ?? message.senderId) === currentUserId
+                            ? 0
+                            : (c.unreadCount || 0) + 1
+                    };
+                });
+
+                return next.sort((a, b) => {
+                    const pinnedDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+                    if (pinnedDiff) return pinnedDiff;
+                    const aTime = Date.parse(a.lastMessageAt ?? '') || 0;
+                    const bTime = Date.parse(b.lastMessageAt ?? '') || 0;
+                    return bTime - aTime;
+                });
+            });
         };
 
         const handleConversationUpdated = async ({ conversationId, lastMessage, senderId, updatedAt, action, member, conversation }) => {
