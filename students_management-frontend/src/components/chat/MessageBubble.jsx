@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff } from 'lucide-react';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
 
@@ -22,7 +22,9 @@ const formatCallDuration = seconds => {
     const total = Math.max(Number(seconds) || 0, 0);
     const minutes = Math.floor(total / 60);
     const secs = total % 60;
-    return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    if (total < 60) return `${total} giây`;
+    if (secs === 0) return `${minutes} phút`;
+    return `${minutes} phút ${secs.toString().padStart(2, '0')} giây`;
 };
 
 const formatCallDate = value => {
@@ -76,7 +78,7 @@ const CallTimelineItem = ({
             : isCancelled
                 ? (outgoing ? 'Bạn đã hủy cuộc gọi' : 'Người gọi đã hủy cuộc gọi')
                 : isCompleted
-                    ? `Cuộc gọi ${isVideo ? 'video' : 'thoại'} · ${formatCallDuration(call.duration_seconds)}`
+                    ? `Cuộc gọi ${isVideo ? 'video' : 'thoại'}`
                     : outgoing
                         ? `Cuộc gọi đi · ${callTypeLabel}`
                         : `Cuộc gọi đến · ${callTypeLabel}`;
@@ -129,6 +131,11 @@ const CallTimelineItem = ({
                         <span>{formatCallDate(startedAt)}</span>
                         <span>·</span>
                         <span>{formatCallTime(startedAt)}</span>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-0.5">
+                            {outgoing ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
+                            {outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'}
+                        </span>
                         {isCompleted && call.duration_seconds != null && (
                             <>
                                 <span>·</span>
