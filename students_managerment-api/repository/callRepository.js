@@ -278,6 +278,19 @@ const getCallNotifications = async (userId, limit = 50) => {
     return rows;
 };
 
+const getUnreadCallNotificationCount = async (userId) => {
+    const { rows } = await pool.query(
+        `
+        SELECT COUNT(*)::INT AS count
+        FROM call_notifications
+        WHERE user_id = $1
+          AND is_read = FALSE;
+        `,
+        [userId]
+    );
+    return rows[0]?.count ?? 0;
+};
+
 const markCallNotificationRead = async (notificationId, userId) => {
     const { rows } = await pool.query(
         `
@@ -297,6 +310,7 @@ module.exports = {
     getCallHistory,
     createCallNotification,
     getCallNotifications,
+    getUnreadCallNotificationCount,
     markCallNotificationRead,
     getCallByIdForParticipant,
     updateCallStatusIfCurrent,
