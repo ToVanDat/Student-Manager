@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS call_history (
         status IN (
             'ringing',
             'connecting',
+            'connected',
             'completed',
             'rejected',
             'missed',
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS call_history (
     ),
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     answered_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
     ended_at TIMESTAMPTZ,
     duration_seconds INTEGER,
     end_reason VARCHAR(64),
@@ -39,6 +41,11 @@ CREATE INDEX IF NOT EXISTS idx_call_history_conversation_started
 
 CREATE INDEX IF NOT EXISTS idx_call_history_status
     ON call_history (status);
+
+-- Persisted deadline used for reconnect recovery and race-safe acceptance.
+ALTER TABLE call_history ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_call_history_ringing_expiry
+    ON call_history (status, expires_at) WHERE status = 'ringing';
 
 CREATE TABLE IF NOT EXISTS call_notifications (
     id BIGSERIAL PRIMARY KEY,
