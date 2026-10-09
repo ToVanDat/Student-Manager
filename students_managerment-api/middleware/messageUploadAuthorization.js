@@ -25,6 +25,13 @@ const authorizeMessageUpload = async (req, res, next) => {
             });
         }
 
+        // Reject before Multer writes potentially large files to disk.
+        if (String(message.sender_id) !== String(req.user.id)) {
+            return res.status(403).json({
+                message: 'Bạn chỉ có thể upload file vào message do chính mình gửi'
+            });
+        }
+
         next();
     } catch (error) {
         console.error('MESSAGE UPLOAD AUTHORIZATION ERROR:', error);
