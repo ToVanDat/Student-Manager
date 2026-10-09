@@ -106,6 +106,9 @@ export const chatApi = {
     updateConversationSettings: (conversationId, action, value) =>
         client.patch(`/api/conversations/${conversationId}/settings`, { action, value }),
 
+    clearConversationMessages: (conversationId) =>
+        client.delete(`/api/conversations/${conversationId}/messages`),
+
     blockUser: (conversationId, targetUserId) =>
         client.post(`/api/conversations/${conversationId}/block`, { targetUserId }),
 
