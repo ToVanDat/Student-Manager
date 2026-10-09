@@ -160,23 +160,10 @@ const emitSessionRevoked = (
 
     try {
 
-        const { getIO } =
+        const { emitSessionRevoked: revokeSocketSession } =
             require('../socket/socket');
 
-        const io = getIO();
-
-        if (!io) {
-            return;
-        }
-
-        io.to(`session:${sessionId}`)
-            .emit(
-                'session:revoked',
-                {
-                    sessionId,
-                    reason
-                }
-            );
+        revokeSocketSession(sessionId, reason);
 
     } catch (error) {
 
