@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming } from 'lucide-react';
+import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
 
 
 function AvatarCountdown({ name, avatar, progress, size = 80 }) {
@@ -77,6 +78,7 @@ export default function CallPanel({
 
     const [ringRemainingMs, setRingRemainingMs] = useState(30_000);
     const [showNotice, setShowNotice] = useState(false);
+    const [incomingActionBusy, setIncomingActionBusy] = useState(false);
 
     useEffect(() => {
         if (state !== 'calling' || !call?.ringStartedAt) {
@@ -107,6 +109,7 @@ export default function CallPanel({
         ? Math.max(0, Math.min(100, (ringRemainingMs / call.ringTimeoutMs) * 100))
         : 100;
     const ringSecondsLeft = Math.ceil(ringRemainingMs / 1000);
+    const hasRemoteVideo = Boolean(remoteStream?.getVideoTracks?.().some(track => track.readyState === 'live' && track.enabled));
 
     useEffect(() => {
         if (remoteAudioRef.current) {
@@ -155,58 +158,65 @@ export default function CallPanel({
             )}
 
             {state === 'incoming' && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
-                    <section className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                        <div className="text-center">
-                            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl dark:bg-blue-950/50">
-                                {call?.callType === 'video' ? '📹' : '📞'}
+                <div className="call-overlay fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-md sm:p-6">
+                    <section
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="incoming-call-title"
+                        aria-describedby="incoming-call-description"
+                        className="call-dialog my-auto w-full max-w-[390px] rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(2,6,23,.3)] dark:border-slate-700 dark:bg-slate-900 sm:p-8"
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="mb-5 rounded-full bg-blue-50 p-1.5 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:ring-blue-900">
+                                <AvatarFallback name={displayName} src={call?.remoteAvatar} size="xl" className="[&>img]:h-24 [&>img]:w-24 [&>div]:h-24 [&>div]:w-24" />
                             </div>
-
-                            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500 motion-reduce:animate-none" />
                                 Cuộc gọi đến
-                            </p>
-
-                            <h2 className="mt-1 text-xl font-semibold text-slate-900 dark:text-white">
+                            </span>
+                            <h2 id="incoming-call-title" className="mt-4 max-w-full break-words text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                                 {displayName}
                             </h2>
-
-                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                                {call?.callType === 'video'
-                                    ? 'Đang gọi video cho bạn'
-                                    : 'Đang gọi thoại cho bạn'}
+                            <p id="incoming-call-description" className="mt-2 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                                {call?.callType === 'video' ? <Video size={17} aria-hidden="true" /> : <Phone size={17} aria-hidden="true" />}
+                                {call?.callType === 'video' ? 'Đang gọi video cho bạn' : 'Đang gọi thoại cho bạn'}
                             </p>
                         </div>
 
                         {error && (
-                            <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+                            <p role="alert" className="mt-5 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300">
                                 {error}
                             </p>
                         )}
 
-                        <div className="mt-5 grid grid-cols-2 gap-3">
+                        <div className="mt-8 grid grid-cols-2 gap-3">
                             <button
                                 type="button"
-                                onClick={rejectCall}
-                                className="rounded-xl bg-red-600 px-4 py-3 font-medium text-white transition hover:bg-red-700"
+                                onClick={async () => { if (incomingActionBusy) return; setIncomingActionBusy(true); try { await rejectCall(); } finally { setIncomingActionBusy(false); } }}
+                                disabled={incomingActionBusy}
+                                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-white px-4 py-3 text-sm font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-900 dark:bg-slate-800 dark:text-red-300 dark:hover:bg-red-950/40"
                             >
+                                <PhoneOff size={18} aria-hidden="true" />
                                 Từ chối
                             </button>
-
                             <button
                                 type="button"
-                                onClick={acceptCall}
-                                className="rounded-xl bg-green-600 px-4 py-3 font-medium text-white transition hover:bg-green-700"
+                                onClick={async () => { if (incomingActionBusy) return; setIncomingActionBusy(true); try { await acceptCall(); } finally { setIncomingActionBusy(false); } }}
+                                disabled={incomingActionBusy}
+                                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
                             >
+                                <PhoneIncoming size={18} aria-hidden="true" />
                                 Chấp nhận
                             </button>
                         </div>
+                        <p className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">Bạn có thể chấp nhận hoặc từ chối cuộc gọi này.</p>
                     </section>
                 </div>
             )}
 
             {isActiveCall && (
-                <div className="fixed inset-0 z-[190] flex items-center justify-center bg-slate-950/70 p-4">
-                    <section className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl">
+                <div className="call-overlay fixed inset-0 z-[190] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-2 backdrop-blur-sm sm:p-4">
+                    <section className="my-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl sm:max-h-[calc(100dvh-2rem)]">
                         <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3 text-white">
                             <div>
                                 <h2 className="font-semibold">
@@ -247,7 +257,7 @@ export default function CallPanel({
                         )}
 
                         {call?.callType === 'video' ? (
-                            <div className="relative aspect-video bg-black">
+                            <div className="relative aspect-video min-h-0 bg-black">
                                 <video
                                     ref={remoteVideoRef}
                                     autoPlay
@@ -265,22 +275,21 @@ export default function CallPanel({
                                     />
                                 </div>
 
-                                {state !== 'connected' && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/35 text-sm text-slate-200">
-                                        {state === 'calling' && (
-                                            <AvatarCountdown
-                                                name={displayName}
-                                                avatar={call?.remoteAvatar}
-                                                progress={ringProgress}
-                                                size={96}
-                                            />
+                                {(!hasRemoteVideo || state !== 'connected') && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/55 px-4 text-sm text-slate-200">
+                                        {(!hasRemoteVideo || state === 'calling') && (
+                                            state === 'calling'
+                                                ? <AvatarCountdown name={displayName} avatar={call?.remoteAvatar} progress={ringProgress} size={96} />
+                                                : <AvatarFallback name={displayName} src={call?.remoteAvatar} size="xl" className="[&>img]:h-24 [&>img]:w-24 [&>div]:h-24 [&>div]:w-24" />
                                         )}
                                         <span>
                                             {state === 'calling'
                                                 ? `Đang chờ người nhận · ${ringSecondsLeft}s`
                                                 : state === 'reconnecting'
                                                     ? 'Đang khôi phục kết nối...'
-                                                    : 'Đang thiết lập kết nối...'}
+                                                    : !hasRemoteVideo
+                                                        ? 'Đang chờ video hoặc camera đang tắt'
+                                                        : 'Đang thiết lập kết nối...'}
                                         </span>
                                     </div>
                                 )}
@@ -295,9 +304,7 @@ export default function CallPanel({
                                         size={96}
                                     />
                                 ) : (
-                                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-3xl">
-                                        📞
-                                    </div>
+                                    <AvatarFallback name={displayName} src={call?.remoteAvatar} size="xl" className="mb-4 [&>img]:h-24 [&>img]:w-24 [&>div]:h-24 [&>div]:w-24" />
                                 )}
                                 <p className="font-medium">{displayName}</p>
                                 <p className="mt-1 text-sm text-slate-400">
@@ -313,7 +320,7 @@ export default function CallPanel({
                             </div>
                         )}
 
-                        <div className="flex items-center justify-center gap-3 border-t border-slate-800 bg-slate-950 px-4 py-4">
+                        <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 border-t border-slate-800 bg-slate-950 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
                             <button
                                 type="button"
                                 onClick={toggleMute}
