@@ -10,6 +10,7 @@ router.post('/direct', conversationController.createDirectConversation);
 router.post('/group', conversationController.createGroup);
 router.patch('/:conversationId', conversationController.updateGroup);
 router.patch('/:conversationId/settings', conversationController.updateConversationSettings);
+router.delete('/:conversationId/messages', conversationController.clearConversationMessagesForUser);
 router.post('/:conversationId/block', conversationController.blockUser);
 router.post('/:conversationId/unblock', conversationController.unblockUser);
 router.post('/:conversationId/report', conversationController.reportConversation);
