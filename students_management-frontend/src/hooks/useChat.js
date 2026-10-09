@@ -711,6 +711,20 @@ export const useChat = () => {
         return () => window.clearTimeout(timer);
     }, [messages, searchJumpVersion]);
 
+    const clearConversationMessages = useCallback(async () => {
+        if (!activeId) throw new Error('Chưa chọn cuộc trò chuyện.');
+        const conversationId = Number(activeId);
+        const res = await chatApi.clearConversationMessages(conversationId);
+        setMessages([]);
+        setCallHistory([]);
+        setConversations(prev => prev.map(item =>
+            Number(item.id) === conversationId
+                ? { ...item, lastMessage: '', lastMessageAt: null, unreadCount: 0, markedUnread: false }
+                : item
+        ));
+        return res.data?.data;
+    }, [activeId]);
+
     const updateConversationSettings = useCallback(async (action, value) => {
         if (!activeId) return null;
         const res = await chatApi.updateConversationSettings(activeId, action, value);
@@ -1176,6 +1190,7 @@ export const useChat = () => {
         startGroupConversation,
         setTyping,
         updateConversationSettings,
+        clearConversationMessages,
         blockUser,
         unblockUser,
         reportConversation,
