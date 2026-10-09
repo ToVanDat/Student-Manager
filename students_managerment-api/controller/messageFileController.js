@@ -100,12 +100,24 @@ const downloadFile = async (req, res) => {
         res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Cache-Control', 'private, no-store');
 
-        const safeFallbackName = String(file.file_name || 'download')
-            .replace(/[\\r\\n"\\\\]/g, '_')
-            .replace(/[^\\x20-\\x7E]/g, '_')
-            .slice(0, 150) || 'download';
+        const rawFileName = String(file.file_name || 'download');
+        const safeFallbackName = [...rawFileName].map((character) => {
+            const code = character.charCodeAt(0);
+            return (
+                code < 0x20 ||
+                code > 0x7e ||
+                character === String.fromCharCode(34) ||
+                character === String.fromCharCode(92)
+            ) ? '_' : character;
+        }).join('').slice(0, 150) || 'download';
+
         const encodedFileName = encodeURIComponent(
-            String(file.file_name || 'download').replace(/[\\r\\n]/g, '')
+            [...rawFileName]
+                .filter((character) => {
+                    const code = character.charCodeAt(0);
+                    return code !== 10 && code !== 13;
+                })
+                .join('')
         );
 
         res.setHeader(
