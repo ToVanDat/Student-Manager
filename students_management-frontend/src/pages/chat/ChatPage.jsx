@@ -62,8 +62,33 @@ export default function ChatPage() {
     } = useChat();
 
     const timelineMessages = (() => {
-        const sorted = [...messages, ...callHistory].sort((a, b) =>
-            new Date(a.created_at || a.started_at || 0) - new Date(b.created_at || b.started_at || 0)
+        // Merge the REST message page and call history without duplicating a call
+        // if a future API/socket path also exposes it as a timeline event.
+        const seenCallIds = new Set();
+        const combined = [...messages, ...callHistory].filter(item => {
+            const callId = item.call_id ?? (
+                item._timelineType === 'call' && String(item.id).startsWith('call:')
+                    ? String(item.id).slice(5)
+                    : null
+            );
+            if (callId == null) return true;
+            const key = String(callId);
+            if (seenCallIds.has(key)) return false;
+            seenCallIds.add(key);
+            return true;
+        });
+
+        const getTimelineTimestamp = item => {
+            const value = item._timelineType === 'call'
+                ? (item.ended_at ?? item.updated_at ?? item.started_at)
+                : (item.created_at ?? item.createdAt);
+            if (value == null || value === '') return 0;
+            const timestamp = Date.parse(value);
+            return Number.isFinite(timestamp) ? timestamp : 0;
+        };
+
+        const sorted = combined.sort((a, b) =>
+            getTimelineTimestamp(a) - getTimelineTimestamp(b)
         );
 
         const getDateKey = value => {
@@ -99,7 +124,9 @@ export default function ChatPage() {
         let previousDateKey = null;
 
         sorted.forEach(item => {
-            const value = item.created_at || item.started_at;
+            const value = item._timelineType === 'call'
+                ? (item.ended_at ?? item.updated_at ?? item.started_at)
+                : (item.created_at ?? item.createdAt);
             const dateKey = getDateKey(value);
 
             if (dateKey && dateKey !== previousDateKey) {
