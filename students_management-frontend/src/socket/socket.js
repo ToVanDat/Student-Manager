@@ -4,7 +4,9 @@ import { API_BASE_URL } from '@/utils/constants.js';
 const socket = io(API_BASE_URL, {
     autoConnect: false,     // 1. Không tự động kết nối khi vừa mở trang web
     withCredentials: true,  // 2. BẮT BUỘC: Cho phép trình duyệt gửi HttpOnly Cookie lên Server
-    transports: ['websocket', 'polling'] // Tùy chọn: Đảm bảo khả năng tương thích kết nối
+    // Start with HTTP long-polling, then upgrade to WebSocket when available.
+    // This avoids failing the entire connection when direct WebSocket upgrade is blocked.
+    transports: ['polling', 'websocket']
 });
 
 // =====================================================
@@ -21,9 +23,14 @@ socket.on('disconnect', (reason) => {
     console.warn(' Socket bị ngắt kết nối. Lý do:', reason);
 });
 
-// Khi Backend từ chối kết nối (Ví dụ: HttpOnly Cookie hết hạn hoặc thiếu Session)
+// connect_error can be a transport/network failure or a server-side auth rejection.
+// Do not label every connection error as an authentication failure.
 socket.on('connect_error', (error) => {
-    console.error(' Lỗi kết nối Socket (Xác thực thất bại):', error.message);
+    console.error('[SOCKET][connect_error]', {
+        message: error.message,
+        description: error.description,
+        context: error.context
+    });
 });
 
 export default socket;
