@@ -196,6 +196,28 @@ const getUserConversations = async (userId) => {
     }));
 };
 
+const clearConversationMessagesForUser = async (conversationId, userId) => {
+    const { rows } = await pool.query(
+        `
+            INSERT INTO message_deletions (message_id, user_id, deleted_at)
+            SELECT m.id, $2, NOW()
+            FROM messages m
+            WHERE m.conversation_id = $1
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM message_deletions md
+                  WHERE md.message_id = m.id
+                    AND md.user_id = $2
+              )
+            ON CONFLICT DO NOTHING
+            RETURNING message_id;
+        `,
+        [conversationId, userId]
+    );
+
+    return { conversation_id: Number(conversationId), deleted_count: rows.length };
+};
+
 const getConversationSettings = async (conversationId, userId) => {
     const { rows } = await pool.query(
         `
@@ -623,6 +645,7 @@ module.exports = {
     createGroupConversation,
     getConversationSettings,
     updateConversationSettings,
+    clearConversationMessagesForUser,
     clearMarkedUnread,
     unhideConversationForMembers,
     unhideConversationForUser,
