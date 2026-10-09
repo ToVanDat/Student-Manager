@@ -26,6 +26,7 @@ export default function ChatPage() {
         setActiveId,
         messages,
         callHistory,
+        hideCallHistory,
         conversationMembers,
         onlineUserIds,
         sendMessage,
@@ -221,6 +222,7 @@ export default function ChatPage() {
                                         call={webRTCCall.call}
                                         onStartCall={webRTCCall.startCall}
                                         onRedial={webRTCCall.startCall}
+                                        onHideCall={hideCallHistory}
                                         onUpdateConversationSettings={updateConversationSettings}
                                         onBlockUser={blockUser}
                                         onUnblockUser={unblockUser}
