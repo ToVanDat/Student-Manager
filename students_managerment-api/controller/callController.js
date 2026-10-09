@@ -19,6 +19,26 @@ const getCallHistory = async (req, res) => {
     }
 };
 
+const hideCallHistory = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const callId = String(req.params.callId || '').trim();
+        if (!callId || callId.length > 128) {
+            return res.status(400).json({ message: 'callId không hợp lệ' });
+        }
+
+        const hidden = await callRepository.hideCallHistoryForUser(userId, callId);
+        if (!hidden) {
+            return res.status(404).json({ message: 'Cuộc gọi không tồn tại hoặc bạn không có quyền ẩn' });
+        }
+
+        return res.json({ message: 'Đã xóa cuộc gọi khỏi lịch sử của bạn' });
+    } catch (error) {
+        console.error('HIDE CALL HISTORY ERROR:', error);
+        return res.status(500).json({ message: 'Không thể xóa cuộc gọi khỏi lịch sử' });
+    }
+};
+
 const getUnreadCallNotifications = async (req, res) => {
     try {
         const userId = Number(req.user.id);
@@ -48,6 +68,7 @@ const markCallNotificationRead = async (req, res) => {
 
 module.exports = {
     getCallHistory,
+    hideCallHistory,
     getUnreadCallNotifications,
     markCallNotificationRead
 };
