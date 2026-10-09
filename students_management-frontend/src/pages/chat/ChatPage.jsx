@@ -54,6 +54,7 @@ export default function ChatPage() {
         loadingOlder,
         toggleReaction,
         updateConversationSettings,
+        clearConversationMessages,
         blockUser,
         unblockUser,
         reportConversation,
@@ -252,6 +253,7 @@ export default function ChatPage() {
                                         onRedial={webRTCCall.startCall}
                                         onHideCall={hideCallHistory}
                                         onUpdateConversationSettings={updateConversationSettings}
+                                        onClearConversationMessages={clearConversationMessages}
                                         onBlockUser={blockUser}
                                         onUnblockUser={unblockUser}
                                         onReportConversation={reportConversation}
