@@ -61,8 +61,8 @@ const getUserConversations = async (userId) => {
             CASE WHEN c.type = 'direct' THEN other_user.avatar_url END AS "avatar",
             CASE WHEN c.type = 'direct' THEN other_user.last_seen_at END AS "lastSeenAt",
             COUNT(DISTINCT cm_all.user_id)::int AS "memberCount",
-            COALESCE(latest_message.content, '') AS "lastMessage",
-            latest_message.created_at AS "lastMessageAt",
+            COALESCE(latest_activity.preview, '') AS "lastMessage",
+            latest_activity.activity_at AS "lastMessageAt",
             COALESCE(cus.pinned, FALSE) AS "isPinned",
             cus.muted_until AS "mutedUntil",
             COALESCE(cus.marked_unread, FALSE) AS "markedUnread",
@@ -101,30 +101,76 @@ const getUserConversations = async (userId) => {
             ON cus.conversation_id = c.id
            AND cus.user_id = $1
         LEFT JOIN LATERAL (
-            SELECT
-                CASE
-                    WHEN m.is_recalled THEN 'Tin nhắn đã được thu hồi'
-                    WHEN m.deleted_at IS NOT NULL THEN 'Tin nhắn đã bị xoá'
-                    ELSE m.content
-                END AS content,
-                m.created_at
-            FROM messages m
-            WHERE m.conversation_id = c.id
-              AND NOT EXISTS (
-                  SELECT 1 FROM message_deletions md
-                  WHERE md.message_id = m.id AND md.user_id = $1
-              )
-            ORDER BY m.created_at DESC
+            SELECT activity.preview, activity.activity_at
+            FROM (
+                SELECT
+                    CASE
+                        WHEN m.is_recalled THEN 'Tin nhắn đã được thu hồi'
+                        WHEN m.deleted_at IS NOT NULL THEN 'Tin nhắn đã bị xoá'
+                        ELSE COALESCE(m.content, 'Tin nhắn')
+                    END AS preview,
+                    m.created_at AS activity_at,
+                    1 AS activity_priority
+                FROM messages m
+                WHERE m.conversation_id = c.id
+                  AND NOT EXISTS (
+                      SELECT 1 FROM message_deletions md
+                      WHERE md.message_id = m.id AND md.user_id = $1
+                  )
+
+                UNION ALL
+
+                SELECT
+                    CASE
+                        WHEN ch.status = 'completed' THEN
+                            CASE
+                                WHEN ch.call_type = 'video' THEN 'Cuộc gọi video'
+                                ELSE 'Cuộc gọi thoại'
+                            END
+                            || ' · ' ||
+                            CASE
+                                WHEN COALESCE(ch.duration_seconds, 0) < 60
+                                    THEN COALESCE(ch.duration_seconds, 0)::text || ' giây'
+                                ELSE FLOOR(COALESCE(ch.duration_seconds, 0) / 60.0)::int::text || ' phút'
+                            END
+                        WHEN ch.status IN ('missed', 'timeout')
+                            THEN 'Cuộc gọi nhỡ'
+                        WHEN ch.status = 'rejected' AND ch.receiver_id = $1
+                            THEN 'Bạn đã từ chối cuộc gọi'
+                        WHEN ch.status = 'rejected'
+                            THEN 'Cuộc gọi bị từ chối'
+                        WHEN ch.status = 'cancelled' AND ch.caller_id = $1
+                            THEN 'Bạn đã hủy cuộc gọi'
+                        WHEN ch.status = 'cancelled'
+                            THEN 'Cuộc gọi đã bị hủy'
+                        WHEN ch.status = 'failed'
+                            THEN 'Cuộc gọi thất bại'
+                    END AS preview,
+                    COALESCE(ch.ended_at, ch.updated_at, ch.started_at) AS activity_at,
+                    2 AS activity_priority
+                FROM call_history ch
+                WHERE ch.conversation_id = c.id
+                  AND (ch.caller_id = $1 OR ch.receiver_id = $1)
+                  AND ch.status IN ('completed', 'missed', 'timeout', 'rejected', 'cancelled', 'failed')
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM call_history_hidden hidden
+                      WHERE hidden.call_history_id = ch.id
+                        AND hidden.user_id = $1
+                  )
+            ) activity
+            WHERE activity.preview IS NOT NULL
+            ORDER BY activity.activity_at DESC NULLS LAST, activity.activity_priority DESC
             LIMIT 1
-        ) latest_message ON TRUE
+        ) latest_activity ON TRUE
         WHERE cus.hidden_at IS NULL
         GROUP BY
             c.id, c.type, c.name, c.avatar_url,
             other_user.id, other_user.username, other_user.email, other_user.avatar_url, other_user.last_seen_at,
-            latest_message.content, latest_message.created_at,
+            latest_activity.preview, latest_activity.activity_at,
             cus.pinned, cus.muted_until, cus.marked_unread
         ORDER BY COALESCE(cus.pinned, FALSE) DESC,
-                 COALESCE(latest_message.created_at, c.updated_at) DESC;
+                 COALESCE(latest_activity.activity_at, c.updated_at, c.created_at) DESC NULLS LAST;
     `;
 
     const { rows } = await pool.query(query, [userId]);
