@@ -727,37 +727,25 @@ const initSocket = (server) => {
                 });
             }
 
-            // Offline users cannot receive a realtime call. Persist the call
-            // first and mark it missed so the receiver gets a notification later.
-            if (!onlineUsers.has(targetId)) {
-                const missed = await callRepository.updateCallStatusIfCurrent(
+            // Keep the caller's ringing window even when the receiver is offline.
+            // Offline users cannot receive the incoming-call event, but the call is
+            // still recorded as ringing until the shared timeout marks it missed.
+            if (onlineUsers.has(targetId)) {
+                io.to(`user:${targetId}`).emit('call:incoming', {
                     callId,
-                    'missed',
-                    'ringing',
-                    'user-offline'
-                );
-
-                if (missed) {
-                    await emitCallNotification(
-                        targetId,
-                        missed,
-                        'missed-call',
-                        'Cuộc gọi nhỡ',
-                        `Bạn có cuộc gọi ${callType === 'video' ? 'video' : 'thoại'} nhỡ từ ${socket.user.username || 'một người dùng'}.`
-                    );
-                }
-
-                socket.emit('call:timeout', {
-                    callId,
-                    status: 'missed',
-                    reason: 'user-offline'
+                    fromUserId: userId,
+                    fromUsername: socket.user.username,
+                    toUserId: targetId,
+                    callType
                 });
-                return;
+            } else {
+                console.log('[CALL][receiver offline; keep ringing until timeout]', {
+                    callId,
+                    callerId: userId,
+                    receiverId: targetId,
+                    timeoutMs: CALL_RING_TIMEOUT_MS
+                });
             }
-
-            io.to(`user:${targetId}`).emit('call:incoming', {
-                callId, fromUserId: userId, fromUsername: socket.user.username, toUserId: targetId, callType
-            });
 
             callTimers.set(callId, setTimeout(async () => {
                 try {
