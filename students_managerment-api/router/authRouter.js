@@ -11,6 +11,8 @@ const authMiddleware =
 const authRateLimiter =
     require('../middleware/authRateLimiter.js');
 
+const requireRole = require('../middleware/roleMiddleware.js');
+
 
 // =====================================================
 // REGISTER
@@ -91,10 +93,14 @@ router.post(
 );
 router.post(
     '/test-email',
+    authMiddleware,
+    requireRole('admin'),
+    authRateLimiter,
     authController.testEmail
 );
 router.post(
     '/forgot-password',
+    authRateLimiter,
     authController.forgotPassword
 );
 
