@@ -174,8 +174,15 @@ export const useChat = () => {
             joinActiveConversation();
         };
 
-        const refreshCallsFromSocket = () => {
-            refreshCallHistory();
+        const refreshCallsFromSocket = (activity = null) => {
+            // Call state changes affect both the active timeline and the sidebar preview.
+            void fetchConversations();
+            if (
+                !activity?.conversationId ||
+                Number(activity.conversationId) === Number(activeId)
+            ) {
+                void refreshCallHistory();
+            }
         };
 
         const handleNewMessage = (message) => {
@@ -586,6 +593,7 @@ export const useChat = () => {
         socket.on('call:timeout', refreshCallsFromSocket);
         socket.on('call:ended', refreshCallsFromSocket);
         socket.on('call:rejected', refreshCallsFromSocket);
+        socket.on('call:activity:updated', refreshCallsFromSocket);
         socket.on('conversation:updated', handleConversationUpdated);
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
@@ -617,6 +625,7 @@ export const useChat = () => {
             socket.off('call:timeout', refreshCallsFromSocket);
             socket.off('call:ended', refreshCallsFromSocket);
             socket.off('call:rejected', refreshCallsFromSocket);
+            socket.off('call:activity:updated', refreshCallsFromSocket);
             socket.off('conversation:updated', handleConversationUpdated);
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
