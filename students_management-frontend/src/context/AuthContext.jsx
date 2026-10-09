@@ -64,8 +64,6 @@ export const AuthProvider = ({ children }) => {
 //login
     const loginUser = (data) => {
 
-        console.log('LOGIN DATA:', data);
-
         setApiAccessToken(data.accessToken);
 
         localStorage.setItem(
