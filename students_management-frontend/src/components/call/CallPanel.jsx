@@ -220,7 +220,7 @@ export default function CallPanel({
                         <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3 text-white">
                             <div>
                                 <h2 className="font-semibold">
-                                    {call?.callType === 'video' ? 'Video Call' : 'Voice Call'}
+                                    {call?.callType === 'video' ? 'Cuộc gọi video' : 'Cuộc gọi thoại'}
                                 </h2>
                                 <p className="text-xs text-slate-400">
                                     {displayName} · {
