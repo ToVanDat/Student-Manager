@@ -149,12 +149,34 @@ const getCallHistory = async (userId, limit = 50, offset = 0, conversationId = n
         JOIN users receiver ON receiver.id = ch.receiver_id
         WHERE (ch.caller_id = $1 OR ch.receiver_id = $1)
           AND ($4::BIGINT IS NULL OR ch.conversation_id = $4)
+          AND NOT EXISTS (
+              SELECT 1
+              FROM call_history_hidden hidden
+              WHERE hidden.call_history_id = ch.id
+                AND hidden.user_id = $1
+          )
         ORDER BY ch.started_at DESC
         LIMIT $2 OFFSET $3;
         `,
         [userId, limit, offset, conversationId]
     );
     return rows;
+};
+
+const hideCallHistoryForUser = async (userId, callId) => {
+    const { rows } = await pool.query(
+        `
+        INSERT INTO call_history_hidden (user_id, call_history_id)
+        SELECT $1, ch.id
+        FROM call_history ch
+        WHERE ch.call_id = $2
+          AND (ch.caller_id = $1 OR ch.receiver_id = $1)
+        ON CONFLICT (user_id, call_history_id) DO NOTHING
+        RETURNING user_id;
+        `,
+        [userId, callId]
+    );
+    return rows.length > 0;
 };
 
 const createCallNotification = async (userId, callHistoryId, type, title, body = null) => {
@@ -206,5 +228,6 @@ module.exports = {
     markCallNotificationRead,
     getCallByIdForParticipant,
     updateCallStatusIfCurrent,
-    getActiveCallsForParticipant
+    getActiveCallsForParticipant,
+    hideCallHistoryForUser
 };
