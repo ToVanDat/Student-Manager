@@ -1210,14 +1210,21 @@ const refresh = async (
     // Only one concurrent request can consume this token.
     // =================================================
 
-    const rotatedToken =
-        await authRepository.rotateRefreshToken(
+    let rotatedToken;
+
+    try {
+        rotatedToken = await authRepository.rotateRefreshToken(
             tokenRecord.id,
             user.id,
             session.id,
             newRefreshTokenHash,
             newRefreshTokenExpiresAt
         );
+    } catch (error) {
+        // The Redis access-token entry is not useful if DB rotation failed.
+        await removeAccessTokenFromRedis(newAccessToken).catch(() => {});
+        throw error;
+    }
 
     if (!rotatedToken) {
         // Do not return an access token if rotation lost a race.
