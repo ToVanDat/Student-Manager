@@ -721,7 +721,11 @@ export const useChat = () => {
             Number(item.id) === conversationId
                 ? { ...item, lastMessage: '', lastMessageAt: null, unreadCount: 0, markedUnread: false }
                 : item
-        ));
+        ).sort((a, b) => {
+            const pinDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+            if (pinDiff) return pinDiff;
+            return (Date.parse(b.lastMessageAt ?? '') || 0) - (Date.parse(a.lastMessageAt ?? '') || 0);
+        }));
         return res.data?.data;
     }, [activeId]);
 
@@ -736,18 +740,35 @@ export const useChat = () => {
             setMessages([]);
             setConversationMembers([]);
         } else {
-            setConversations(prev => prev.map(item =>
-                Number(item.id) === Number(activeId)
-                    ? {
-                        ...item,
-                        ...(settings ? {
-                            isPinned: Boolean(settings.pinned),
-                            mutedUntil: settings.muted_until || null,
-                            markedUnread: Boolean(settings.marked_unread)
-                        } : {})
-                    }
-                    : item
-            ));
+            setConversations(prev => {
+                const next = prev.map(item =>
+                    Number(item.id) === Number(activeId)
+                        ? {
+                            ...item,
+                            ...(settings ? {
+                                isPinned: Boolean(settings.pinned),
+                                mutedUntil: settings.muted_until || null,
+                                markedUnread: Boolean(settings.marked_unread)
+                            } : {})
+                        }
+                        : item
+                );
+                // Apply pin/unpin ordering immediately without waiting for a refetch.
+                return next.sort((a, b) => {
+                    const pinDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+                    if (pinDiff) return pinDiff;
+                    const aTime = Date.parse(a.lastMessageAt ?? '') || 0;
+                    const bTime = Date.parse(b.lastMessageAt ?? '') || 0;
+                    return bTime - aTime;
+                });
+            });
+            if (action === 'unread' && value) {
+                setConversations(prev => prev.map(item =>
+                    Number(item.id) === Number(activeId)
+                        ? { ...item, unreadCount: Math.max(1, Number(item.unreadCount) || 0), markedUnread: true }
+                        : item
+                ));
+            }
         }
 
         return settings;
