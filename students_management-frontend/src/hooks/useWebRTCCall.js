@@ -343,7 +343,7 @@ export default function useWebRTCCall() {
         }
     }, [releaseLocalMedia]);
 
-    const startCall = useCallback(async (targetUserId, callType = 'voice') => {
+    const startCall = useCallback(async (targetUserId, callType = 'voice', targetProfile = {}) => {
         if (!socket.connected) {
             setError('Socket chưa kết nối.');
             return;
@@ -359,7 +359,9 @@ export default function useWebRTCCall() {
             callRef.current = {
                 callId,
                 targetUserId: Number(targetUserId),
-                callType
+                callType,
+                remoteUsername: targetProfile?.name || targetProfile?.username || 'User',
+                remoteAvatar: targetProfile?.avatar || null
             };
             setCall(callRef.current);
 
