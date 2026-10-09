@@ -576,6 +576,13 @@ export default function useWebRTCCall() {
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
 
+            // The receiver accepted the call, so stop the caller's ring timeout.
+            // Otherwise it can clean up an already-connected call after 31 seconds.
+            if (ringTimeoutRef.current) {
+                clearTimeout(ringTimeoutRef.current);
+                ringTimeoutRef.current = null;
+            }
+
             try {
                 const pc = createPeer(current.targetUserId, current.callId);
                 addLocalTracksToPeer(pc);
