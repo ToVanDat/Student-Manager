@@ -95,14 +95,22 @@ const downloadFile = async (req, res) => {
                 req.user.id
             );
 
-        res.setHeader(
-            'Content-Type',
-            file.mime_type
+        // Keep uploaded content as a download and prevent MIME sniffing.
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'private, no-store');
+
+        const safeFallbackName = String(file.file_name || 'download')
+            .replace(/[\\r\\n"\\\\]/g, '_')
+            .replace(/[^\\x20-\\x7E]/g, '_')
+            .slice(0, 150) || 'download';
+        const encodedFileName = encodeURIComponent(
+            String(file.file_name || 'download').replace(/[\\r\\n]/g, '')
         );
 
         res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${encodeURIComponent(file.file_name)}"`
+            `attachment; filename="${safeFallbackName}"; filename*=UTF-8''${encodedFileName}`
         );
 
         res.sendFile(file.filePath);
