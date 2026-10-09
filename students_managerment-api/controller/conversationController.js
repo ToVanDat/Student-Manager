@@ -93,6 +93,29 @@ const markAsRead = async (req, res, next) => {
     }
 };
 
+const clearConversationMessagesForUser = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        const userId = Number(req.user.id);
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+
+        const data = await conversationService.clearConversationMessagesForUser(conversationId, userId);
+        getIO().to(`user:${userId}`).emit('conversation:history-cleared', {
+            conversationId,
+            deletedCount: data.deleted_count
+        });
+        return res.status(200).json({
+            message: 'Đã xóa nội dung cuộc trò chuyện ở phía bạn',
+            data
+        });
+    } catch (error) {
+        if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+        next(error);
+    }
+};
+
 const updateConversationSettings = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
@@ -422,6 +445,7 @@ module.exports = {
     leaveGroup,
     updateGroupMemberRole,
     updateConversationSettings,
+    clearConversationMessagesForUser,
     blockUser,
     unblockUser,
     reportConversation
