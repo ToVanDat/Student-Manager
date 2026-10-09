@@ -14,6 +14,7 @@ const searchUsersForChat = async (currentUserId, search = '') => {
           AND (
               $2 = ''
               OR username ILIKE '%' || $2 || '%'
+              OR email ILIKE '%' || $2 || '%'
           )
         ORDER BY username ASC
         LIMIT 20;
