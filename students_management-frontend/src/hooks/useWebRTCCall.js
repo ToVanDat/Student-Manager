@@ -213,7 +213,15 @@ export default function useWebRTCCall() {
         pc.oniceconnectionstatechange = () => {
             console.log('[WebRTC][ICE]', callId, pc.iceConnectionState);
             if (pc.iceConnectionState === 'failed') {
-                setError('ICE không thể tìm được đường kết nối. Kiểm tra STUN/TURN hoặc mạng.');
+                const current = callRef.current;
+                if (current && callConnectedAtRef.current === null) {
+                    failConnection(
+                        'ICE không thể thiết lập kết nối. Hãy kiểm tra STUN/TURN hoặc mạng rồi thử lại.',
+                        true
+                    );
+                } else {
+                    setError('ICE không thể tìm được đường kết nối. Kiểm tra STUN/TURN hoặc mạng.');
+                }
             }
         };
 
@@ -255,6 +263,14 @@ export default function useWebRTCCall() {
                     });
                 }
                 setState('connected');
+                return;
+            }
+
+            if (pc.connectionState === 'failed' && current && callConnectedAtRef.current === null) {
+                failConnection(
+                    'WebRTC không thể thiết lập kết nối. Hãy thử gọi lại.',
+                    true
+                );
                 return;
             }
 
@@ -313,7 +329,7 @@ export default function useWebRTCCall() {
 
         peerRef.current = pc;
         return pc;
-    }, [cleanup]);
+    }, [cleanup, failConnection]);
 
     const startMedia = useCallback(async (callType) => {
         // A previous call can leave a live MediaStreamTrack behind if the
@@ -630,7 +646,7 @@ export default function useWebRTCCall() {
             if (!activeCall || activeCall.callId !== callId) return;
             if (peerRef.current?.connectionState === 'connected') return;
             failConnection('Không thể kết nối cuộc gọi. Hãy thử lại hoặc kết thúc cuộc gọi.', true);
-        }, 18_000);
+        }, 12_000);
         connectTimeoutRef.current = timer;
         return () => {
             clearTimeout(timer);
