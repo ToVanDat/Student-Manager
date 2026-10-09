@@ -110,9 +110,19 @@ const blockUser = async (conversationId, userId, targetUserId) => {
         error.statusCode = 403;
         throw error;
     }
+    if (!Number.isInteger(Number(targetUserId)) || Number(targetUserId) <= 0) {
+        const error = new Error('targetUserId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
     if (Number(userId) === Number(targetUserId)) {
         const error = new Error('Không thể chặn chính mình');
         error.statusCode = 400;
+        throw error;
+    }
+    if (await conversationRepository.getMemberRole(conversationId, targetUserId) === null) {
+        const error = new Error('Người dùng được chọn không thuộc conversation này');
+        error.statusCode = 404;
         throw error;
     }
     return conversationRepository.setUserBlocked(userId, targetUserId);
@@ -124,6 +134,16 @@ const unblockUser = async (conversationId, userId, targetUserId) => {
         error.statusCode = 403;
         throw error;
     }
+    if (!Number.isInteger(Number(targetUserId)) || Number(targetUserId) <= 0) {
+        const error = new Error('targetUserId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (await conversationRepository.getMemberRole(conversationId, targetUserId) === null) {
+        const error = new Error('Người dùng được chọn không thuộc conversation này');
+        error.statusCode = 404;
+        throw error;
+    }
     return conversationRepository.removeUserBlocked(userId, targetUserId);
 };
 
@@ -131,6 +151,22 @@ const reportConversation = async (conversationId, userId, targetUserId, reason, 
     if (!await conversationRepository.isConversationMember(conversationId, userId)) {
         const error = new Error('Bạn không thuộc conversation này');
         error.statusCode = 403;
+        throw error;
+    }
+
+    if (!Number.isInteger(Number(targetUserId)) || Number(targetUserId) <= 0) {
+        const error = new Error('targetUserId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (Number(userId) === Number(targetUserId)) {
+        const error = new Error('Không thể tự báo cáo chính mình');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (await conversationRepository.getMemberRole(conversationId, targetUserId) === null) {
+        const error = new Error('Người dùng được báo cáo không thuộc conversation này');
+        error.statusCode = 404;
         throw error;
     }
 
