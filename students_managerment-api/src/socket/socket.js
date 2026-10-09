@@ -699,7 +699,7 @@ const initSocket = (server) => {
         });
 
         const CALL_RING_TIMEOUT_MS = 30_000;
-        const CALL_CONNECT_TIMEOUT_MS = 15_000;
+        const CALL_CONNECT_TIMEOUT_MS = 12_000;
         const canCallUser = async (targetId) => {
             if (!Number.isInteger(targetId) || targetId <= 0 || targetId === userId) return false;
             try {
