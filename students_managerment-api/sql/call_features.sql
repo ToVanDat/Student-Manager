@@ -44,6 +44,9 @@ CREATE INDEX IF NOT EXISTS idx_call_history_status
 
 -- Persisted deadline used for reconnect recovery and race-safe acceptance.
 ALTER TABLE call_history ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+UPDATE call_history
+SET expires_at = started_at + INTERVAL '30 seconds'
+WHERE status = 'ringing' AND expires_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_call_history_ringing_expiry
     ON call_history (status, expires_at) WHERE status = 'ringing';
 
