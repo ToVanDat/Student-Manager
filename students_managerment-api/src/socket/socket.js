@@ -946,6 +946,7 @@ const initSocket = (server) => {
                         'connection-timeout'
                     );
                     if (failed) {
+                        emitCallActivityUpdated(failed);
                         io.to(`user:${targetId}`).emit('call:ended', {
                             callId, fromUserId: userId, toUserId: targetId, reason: 'connection-timeout'
                         });
@@ -976,6 +977,7 @@ const initSocket = (server) => {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
             if (updated) {
+                emitCallActivityUpdated(updated);
                 await emitCallNotification(
                     targetId,
                     updated,
@@ -1052,6 +1054,7 @@ const initSocket = (server) => {
                 reason
             );
             if (!failed) return;
+            emitCallActivityUpdated(failed);
 
             const payload = {
                 callId,
@@ -1118,6 +1121,7 @@ const initSocket = (server) => {
                 return;
             }
 
+            emitCallActivityUpdated(updated);
             console.log('[CALL][end]', {
                 callId,
                 userId,
@@ -1205,6 +1209,7 @@ const initSocket = (server) => {
                                 );
 
                                 if (ended) {
+                                    emitCallActivityUpdated(ended);
                                     clearCallTimer(activeCall.call_id);
                                     io.to(`user:${targetId}`).emit('call:ended', {
                                         callId: activeCall.call_id,
