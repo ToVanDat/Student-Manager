@@ -445,7 +445,10 @@ export default function ChatWindow({
                         <>
                             <button
                                 type="button"
-                                onClick={() => onStartCall?.(activeConversation.userId, 'voice')}
+                                onClick={() => onStartCall?.(activeConversation.userId, 'voice', {
+                                    name: activeConversation.name,
+                                    avatar: activeConversation.avatar
+                                })}
                                 disabled={callState !== 'idle'}
                                 className="h-9 w-9 rounded-xl hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 title="Gọi thoại"
@@ -455,7 +458,10 @@ export default function ChatWindow({
 
                             <button
                                 type="button"
-                                onClick={() => onStartCall?.(activeConversation.userId, 'video')}
+                                onClick={() => onStartCall?.(activeConversation.userId, 'video', {
+                                    name: activeConversation.name,
+                                    avatar: activeConversation.avatar
+                                })}
                                 disabled={callState !== 'idle'}
                                 className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-slate-800"
                                 title="Gọi video"
