@@ -220,6 +220,21 @@ const getCallHistory = async (userId, limit = 50, offset = 0, conversationId = n
     return rows;
 };
 
+const hideConversationCallHistoryForUser = async (userId, conversationId) => {
+    const { rowCount } = await pool.query(
+        `
+            INSERT INTO call_history_hidden (user_id, call_history_id)
+            SELECT $1, ch.id
+            FROM call_history ch
+            WHERE ch.conversation_id = $2
+              AND (ch.caller_id = $1 OR ch.receiver_id = $1)
+            ON CONFLICT (user_id, call_history_id) DO NOTHING;
+        `,
+        [userId, conversationId]
+    );
+    return rowCount || 0;
+};
+
 const hideCallHistoryForUser = async (userId, callId) => {
     const { rows } = await pool.query(
         `
@@ -289,5 +304,6 @@ module.exports = {
     acceptRingingCallBeforeDeadline,
     expireDueRingingCalls,
     getPendingIncomingCalls,
-    hideCallHistoryForUser
+    hideCallHistoryForUser,
+    hideConversationCallHistoryForUser
 };
