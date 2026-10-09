@@ -843,6 +843,8 @@ const markPasswordResetUsed = async (
         SET used_at = CURRENT_TIMESTAMP
         WHERE id = $1
           AND used_at IS NULL
+          AND verified_at IS NOT NULL
+          AND expires_at > CURRENT_TIMESTAMP
         RETURNING id, used_at
         `,
         [id]
