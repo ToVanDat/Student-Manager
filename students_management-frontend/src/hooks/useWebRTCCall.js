@@ -862,7 +862,8 @@ export default function useWebRTCCall() {
             });
 
             if (data.reason === 'connection-timeout' || data.status === 'failed') {
-                failConnection(message);
+                setError(message);
+                cleanup();
                 return;
             }
             setError(message);
@@ -873,7 +874,8 @@ export default function useWebRTCCall() {
             console.warn('[CALL][ended]', data);
             if (callRef.current?.callId !== data.callId) return;
             if (data.reason === 'connection-timeout') {
-                failConnection('Không thể kết nối cuộc gọi. Hãy thử lại hoặc kết thúc cuộc gọi.');
+                setError('Không thể kết nối cuộc gọi sau 12 giây. Cuộc gọi đã kết thúc.');
+                cleanup();
                 return;
             }
             cleanup();
