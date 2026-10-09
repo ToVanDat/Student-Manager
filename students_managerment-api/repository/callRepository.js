@@ -8,18 +8,60 @@ const createCall = async ({
     callType,
     ringTimeoutMs = 30_000
 }) => {
-    const { rows } = await pool.query(
-        `
-        INSERT INTO call_history
-            (call_id, caller_id, receiver_id, conversation_id, call_type, status, expires_at)
-        VALUES ($1, $2, $3, $4, $5, 'ringing',
-                NOW() + ($6::BIGINT * INTERVAL '1 millisecond'))
-        ON CONFLICT (call_id) DO NOTHING
-        RETURNING *;
-        `,
-        [callId, callerId, receiverId, conversationId, callType, ringTimeoutMs]
-    );
-    return rows[0] || null;
+    const client = await pool.connect();
+    const participantIds = [Number(callerId), Number(receiverId)].sort((a, b) => a - b);
+
+    try {
+        await client.query('BEGIN');
+
+        // Serialize call creation for both participants in a stable lock order.
+        // This prevents two simultaneous requests from putting the same user
+        // into multiple active calls.
+        for (const participantId of participantIds) {
+            await client.query(
+                'SELECT pg_advisory_xact_lock($1, $2)',
+                [78231, participantId]
+            );
+        }
+
+        const { rows: activeCalls } = await client.query(
+            `
+            SELECT call_id
+            FROM call_history
+            WHERE (caller_id = ANY($1::BIGINT[]) OR receiver_id = ANY($1::BIGINT[]))
+              AND status IN ('ringing', 'connecting', 'connected')
+              AND ended_at IS NULL
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [participantIds]
+        );
+
+        if (activeCalls.length > 0) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const { rows } = await client.query(
+            `
+            INSERT INTO call_history
+                (call_id, caller_id, receiver_id, conversation_id, call_type, status, expires_at)
+            VALUES ($1, $2, $3, $4, $5, 'ringing',
+                    NOW() + ($6::BIGINT * INTERVAL '1 millisecond'))
+            ON CONFLICT (call_id) DO NOTHING
+            RETURNING *;
+            `,
+            [callId, callerId, receiverId, conversationId, callType, ringTimeoutMs]
+        );
+
+        await client.query('COMMIT');
+        return rows[0] || null;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 const getCallByIdForParticipant = async (callId, userId, targetUserId = null) => {
