@@ -43,6 +43,14 @@ const uploadFile = async (messageId, userId, file) => {
 
     const message = await canAccessMessage(messageId, userId);
 
+    // Attachments are part of the message authored by this user. Membership
+    // alone must not let another group member attach files to someone else's message.
+    if (String(message.sender_id) !== String(userId)) {
+        const error = new Error('Bạn chỉ có thể đính kèm file vào message do chính mình gửi');
+        error.statusCode = 403;
+        throw error;
+    }
+
     const storageKey = `chat/${file.filename}`;
 
     try {
