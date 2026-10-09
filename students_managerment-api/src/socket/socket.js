@@ -1031,10 +1031,23 @@ const initSocket = (server) => {
                 });
             }
 
-            clearCallTimer(callId);
-            if (!call.ended_at && !['completed', 'rejected', 'missed', 'cancelled', 'failed', 'timeout'].includes(call.status)) {
-                await callRepository.updateCallStatus(callId, 'connected', null, true);
+            // Persist the transition atomically. A stale client event must
+            // never move a terminal call back to "connected".
+            const connectedCall =
+                await callRepository.markCallConnectedIfConnecting(callId);
+
+            if (!connectedCall) {
+                console.warn('[CALL][connected ignored] call is no longer connecting', {
+                    callId,
+                    userId,
+                    status: call.status,
+                    endedAt: call.ended_at
+                });
+                return;
             }
+
+            clearCallTimer(callId);
+            emitCallActivityUpdated(connectedCall);
 
             io.to(`user:${targetId}`).emit('call:connected', {
                 callId, fromUserId: userId, toUserId: targetId
