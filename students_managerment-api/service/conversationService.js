@@ -22,7 +22,15 @@ const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
         targetUserId
     );
 
-    if (existingConversation) return existingConversation;
+    if (existingConversation) {
+        // Opening a hidden direct conversation from user search restores it
+        // only for the current user; the other participant's setting is untouched.
+        await conversationRepository.unhideConversationForUser(
+            existingConversation.id,
+            currentUserId
+        );
+        return existingConversation;
+    }
 
     const conversation = await conversationRepository.createConversation('direct');
     await conversationRepository.addMember(conversation.id, currentUserId, 'member');
