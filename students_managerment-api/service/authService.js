@@ -179,6 +179,16 @@ const emitSessionRevoked = (
 // GET CURRENT USER
 // =====================================================
 
+// Revoke all sessions after a credential change and disconnect their sockets.
+const revokeUserSessions = async (userId, reason = 'CREDENTIALS_CHANGED') => {
+    const sessions = await authRepository.revokeAllSessions(userId);
+
+    for (const session of sessions || []) {
+        await authRepository.revokeRefreshTokensBySessionId(session.id);
+        emitSessionRevoked(session.id, reason);
+    }
+};
+
 const getMe = async (userId) => {
 
     if (!userId) {
@@ -450,6 +460,8 @@ const changePassword = async (
         );
     }
 
+    // A password change invalidates every existing login, including this one.
+    await revokeUserSessions(userId, 'PASSWORD_CHANGED');
 
     return true;
 };
@@ -1194,33 +1206,26 @@ const refresh = async (
 
 
     // =================================================
-    // REVOKE OLD REFRESH TOKEN
+    // ATOMIC ROTATION
+    // Only one concurrent request can consume this token.
     // =================================================
 
-    await authRepository
-        .revokeRefreshToken(
-            tokenRecord.id
-        );
-
-
-    // =================================================
-    // SAVE NEW REFRESH TOKEN
-    //
-    // IMPORTANT:
-    //
-    // userId
-    // sessionId
-    // tokenHash
-    // expiresAt
-    // =================================================
-
-    await authRepository
-        .saveRefreshToken(
+    const rotatedToken =
+        await authRepository.rotateRefreshToken(
+            tokenRecord.id,
             user.id,
             session.id,
             newRefreshTokenHash,
             newRefreshTokenExpiresAt
         );
+
+    if (!rotatedToken) {
+        // Do not return an access token if rotation lost a race.
+        await removeAccessTokenFromRedis(newAccessToken);
+        throw new Error(
+            'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
+        );
+    }
 
 
     // =================================================
@@ -1529,11 +1534,12 @@ const resetPassword = async (
 
 
     // =============================================
-    // REVOKE ALL SESSIONS
+    // REVOKE ALL SESSIONS AND REFRESH TOKENS
     // =============================================
 
-    await authRepository.revokeAllSessions(
-        resetRequest.user_id
+    await revokeUserSessions(
+        resetRequest.user_id,
+        'PASSWORD_RESET'
     );
 
 
