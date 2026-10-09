@@ -22,6 +22,7 @@ export const useChat = () => {
     const [conversationMembers, setConversationMembers] = useState([]);
     const [callHistory, setCallHistory] = useState([]);
     const searchJumpIdRef = useRef(null);
+    const messageSearchRequestRef = useRef(0);
     const seenMessageEventIdsRef = useRef(new Set());
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
@@ -696,10 +697,21 @@ export const useChat = () => {
         };
     }, [activeId, fetchConversations, currentUserId, refreshConversationMembers, refreshCallHistory]);
 
+    useEffect(() => {
+        // Ignore results that were requested for a conversation the user has left.
+        messageSearchRequestRef.current += 1;
+    }, [activeId]);
+
     const searchMessages = useCallback(async (query) => {
         if (!activeId) throw new Error('Chọn một cuộc trò chuyện trước khi tìm kiếm.');
-        if (!query?.trim()) return [];
-        const res = await chatApi.searchMessages(activeId, query.trim());
+        const normalizedQuery = String(query || '').trim();
+        if (!normalizedQuery) return [];
+
+        const requestId = ++messageSearchRequestRef.current;
+        const conversationId = Number(activeId);
+        const res = await chatApi.searchMessages(conversationId, normalizedQuery);
+        if (requestId !== messageSearchRequestRef.current) return [];
+
         const results = res.data?.data;
         if (!Array.isArray(results)) {
             throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
