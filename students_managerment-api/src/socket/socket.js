@@ -183,6 +183,7 @@ const initSocket = (server) => {
             try {
                 const expiredCalls = await callRepository.expireDueRingingCalls();
                 for (const expired of expiredCalls) {
+                    emitCallActivityUpdated(expired);
                     clearCallTimer(expired.call_id);
                     io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
                         callId: expired.call_id,
