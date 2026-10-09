@@ -973,19 +973,22 @@ const initSocket = (server) => {
                 'ringing',
                 reason
             );
+
+            // Only notify rejection if this socket actually won the DB state
+            // transition. Otherwise accept/end may have won the race.
+            if (!updated) return;
+
+            emitCallActivityUpdated(updated);
             io.to(`user:${targetId}`).emit('call:rejected', {
                 callId, fromUserId: userId, toUserId: targetId, reason
             });
-            if (updated) {
-                emitCallActivityUpdated(updated);
-                await emitCallNotification(
-                    targetId,
-                    updated,
-                    'call-rejected',
-                    'Cuộc gọi bị từ chối',
-                    'Cuộc gọi của bạn đã bị từ chối.'
-                );
-            }
+            await emitCallNotification(
+                targetId,
+                updated,
+                'call-rejected',
+                'Cuộc gọi bị từ chối',
+                'Cuộc gọi của bạn đã bị từ chối.'
+            );
         });
 
         socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
