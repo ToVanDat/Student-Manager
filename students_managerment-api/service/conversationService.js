@@ -34,6 +34,15 @@ const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
 const getUserConversations = async (userId) =>
     conversationRepository.getUserConversations(userId);
 
+const clearConversationMessagesForUser = async (conversationId, userId) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    return conversationRepository.clearConversationMessagesForUser(conversationId, userId);
+};
+
 const updateConversationSettings = async (conversationId, userId, action, value) => {
     if (!await conversationRepository.isConversationMember(conversationId, userId)) {
         const error = new Error('Bạn không thuộc conversation này');
@@ -289,6 +298,7 @@ module.exports = {
     leaveGroup,
     updateGroupMemberRole,
     updateConversationSettings,
+    clearConversationMessagesForUser,
     blockUser,
     unblockUser,
     reportConversation
