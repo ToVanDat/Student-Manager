@@ -65,7 +65,8 @@ export default function ChatPage() {
         // Merge the REST message page and call history without duplicating a call
         // if a future API/socket path also exposes it as a timeline event.
         const seenCallIds = new Set();
-        const combined = [...messages, ...callHistory].filter(item => {
+        // Put call-history records first so a duplicate call-shaped message cannot replace the call card.
+        const combined = [...callHistory, ...messages].filter(item => {
             const callId = item.call_id ?? (
                 item._timelineType === 'call' && String(item.id).startsWith('call:')
                     ? String(item.id).slice(5)
