@@ -65,23 +65,74 @@ const initSocket = (server) => {
         // Socket authentication is checked only when the connection is
         // established. Schedule a hard disconnect at JWT expiry so an
         // expired access token can never keep using realtime events.
-        const tokenExpiresAt = Number(socket.handshake.auth?.accessToken
-            ? jwt.decode(socket.handshake.auth.accessToken)?.exp
-            : 0);
+        let tokenExpiryTimer = null;
 
-        const tokenLifetimeMs = tokenExpiresAt > 0
-            ? Math.max(tokenExpiresAt * 1000 - Date.now(), 0)
-            : 0;
+        const scheduleTokenExpiry = (accessToken) => {
+            if (tokenExpiryTimer) clearTimeout(tokenExpiryTimer);
 
-        const tokenExpiryTimer = tokenLifetimeMs > 0
-            ? setTimeout(() => {
-                socket.disconnect(true);
-            }, tokenLifetimeMs)
-            : null;
+            const tokenExpiresAt = Number(jwt.decode(accessToken)?.exp || 0);
+            const tokenLifetimeMs = tokenExpiresAt > 0
+                ? Math.max(tokenExpiresAt * 1000 - Date.now(), 0)
+                : 0;
+
+            tokenExpiryTimer = tokenLifetimeMs > 0
+                ? setTimeout(() => {
+                    socket.disconnect(true);
+                }, tokenLifetimeMs)
+                : null;
+        };
+
+        scheduleTokenExpiry(socket.handshake.auth?.accessToken);
 
         socket.once('disconnect', () => {
             if (tokenExpiryTimer) {
                 clearTimeout(tokenExpiryTimer);
+                tokenExpiryTimer = null;
+            }
+        });
+
+        // Refresh the authenticated token in-place so an access-token expiry
+        // does not forcibly drop signaling in the middle of an active call.
+        socket.on('auth:token-refresh', async ({ accessToken } = {}, acknowledge) => {
+            const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
+
+            try {
+                if (typeof accessToken !== 'string' || !accessToken) {
+                    return ack({ ok: false, message: 'Thiếu Access Token mới' });
+                }
+
+                const decoded = jwt.verify(accessToken, process.env.JWT_SECRET, {
+                    issuer: 'student-management-api',
+                    audience: 'student-management-client'
+                });
+
+                if (
+                    Number(decoded.sub) !== userId ||
+                    String(decoded.sessionId) !== String(sessionId)
+                ) {
+                    return ack({ ok: false, message: 'Token mới không thuộc phiên Socket hiện tại' });
+                }
+
+                const session = await authRepository.findSessionByIdAndUserId(
+                    decoded.sessionId,
+                    decoded.sub
+                );
+
+                if (!session || session.revoked_at !== null) {
+                    return ack({ ok: false, message: 'Session không tồn tại hoặc đã bị thu hồi' });
+                }
+
+                await authRepository.updateSessionLastUsed(decoded.sessionId);
+                socket.handshake.auth = {
+                    ...socket.handshake.auth,
+                    accessToken
+                };
+                scheduleTokenExpiry(accessToken);
+
+                ack({ ok: true });
+            } catch (error) {
+                console.warn('[SOCKET][token refresh rejected]', error.message);
+                ack({ ok: false, message: 'Access Token mới không hợp lệ' });
             }
         });
 
