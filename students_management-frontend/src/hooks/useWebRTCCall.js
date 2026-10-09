@@ -587,6 +587,7 @@ export default function useWebRTCCall() {
                 targetUserId: Number(data.fromUserId),
                 callType: data.callType || 'voice',
                 remoteUsername: data.fromUsername,
+                remoteAvatar: data.fromAvatar || null,
                 expiresAt: data.expiresAt || null,
                 ringTimeoutMs,
                 ringStartedAt: Date.now() - Math.max(0, ringTimeoutMs - remainingMs)
