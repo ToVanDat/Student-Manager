@@ -3,8 +3,9 @@ import AvatarFallback from './AvatarFallback';
 
 export default function ConversationItem({ conversation, isSelected, onClick }) {
     const { name, avatar, lastMessage, lastMessageAt, unreadCount, isOnline } = conversation;
-    const time = lastMessageAt
-        ? new Date(lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    const parsedLastActivityAt = lastMessageAt ? new Date(lastMessageAt) : null;
+    const time = parsedLastActivityAt && Number.isFinite(parsedLastActivityAt.getTime())
+        ? parsedLastActivityAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : '';
 
     return (
