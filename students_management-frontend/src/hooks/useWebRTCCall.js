@@ -127,6 +127,55 @@ export default function useWebRTCCall() {
         setState('idle');
     }, [releaseLocalMedia]);
 
+    // Preserve the failed call context for Retry/End, but release media now.
+    const failConnection = useCallback((message, notifyServer = false) => {
+        const current = callRef.current;
+        if (!current) return;
+
+        [connectTimeoutRef, ringTimeoutRef, recoveryTimerRef, recoveryDeadlineRef].forEach(timerRef => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = null;
+        });
+        recoveryAttemptsRef.current = 0;
+
+        const pc = peerRef.current;
+        peerRef.current = null;
+        if (pc) {
+            pc.onicecandidate = null;
+            pc.ontrack = null;
+            pc.onconnectionstatechange = null;
+            try { pc.close(); } catch (err) {
+                console.warn('[CALL][failure] failed to close peer connection', err);
+            }
+        }
+
+        if (callDurationTimerRef.current) clearInterval(callDurationTimerRef.current);
+        callDurationTimerRef.current = null;
+        callConnectedAtRef.current = null;
+        setCallDurationSeconds(0);
+        releaseLocalMedia();
+        remoteStreamRef.current.getTracks().forEach(track => {
+            try { track.stop(); } catch (err) {
+                console.warn('[CALL][failure] failed to stop remote track', err);
+            }
+        });
+        remoteStreamRef.current = new MediaStream();
+        pendingCandidatesRef.current = [];
+        setRemoteStream(null);
+        setSharingScreen(false);
+        setError(message || 'Không thể kết nối cuộc gọi.');
+        setCall(current);
+        setState('failed');
+
+        if (notifyServer && socket.connected) {
+            socket.emit('call:connection-failed', {
+                callId: current.callId,
+                targetUserId: current.targetUserId,
+                reason: 'connection-timeout'
+            });
+        }
+    }, [releaseLocalMedia]);
+
     const addLocalTracksToPeer = useCallback((pc) => {
         const stream = localStreamRef.current;
         if (!stream) return;
@@ -257,7 +306,7 @@ export default function useWebRTCCall() {
                 }
             }
 
-            if (pc.connectionState === 'closed') {
+            if (pc.connectionState === 'closed' && peerRef.current === pc) {
                 cleanup();
             }
         };
@@ -474,6 +523,17 @@ export default function useWebRTCCall() {
         cleanup();
     }, [cleanup]);
 
+    const retryCall = useCallback(() => {
+        const current = callRef.current;
+        if (!current) return;
+        const targetUserId = current.targetUserId;
+        const callType = current.callType || 'voice';
+        const targetProfile = { name: current.remoteUsername, avatar: current.remoteAvatar };
+        cleanup();
+        setError('');
+        void startCall(targetUserId, callType, targetProfile);
+    }, [cleanup, startCall]);
+
     const toggleMute = useCallback(() => {
         const track = localStreamRef.current?.getAudioTracks()[0];
         if (!track) return;
@@ -555,6 +615,24 @@ export default function useWebRTCCall() {
         };
     }, [state]);
 
+    // Bound connecting for both participants. Key by callId to prevent a stale
+    // timer from ever changing the state of a newer call.
+    useEffect(() => {
+        if (state !== 'connecting' || !call?.callId) return undefined;
+        const callId = call.callId;
+        const timer = setTimeout(() => {
+            const activeCall = callRef.current;
+            if (!activeCall || activeCall.callId !== callId) return;
+            if (peerRef.current?.connectionState === 'connected') return;
+            failConnection('Không thể kết nối cuộc gọi. Hãy thử lại hoặc kết thúc cuộc gọi.', true);
+        }, 18_000);
+        connectTimeoutRef.current = timer;
+        return () => {
+            clearTimeout(timer);
+            if (connectTimeoutRef.current === timer) connectTimeoutRef.current = null;
+        };
+    }, [state, call?.callId, failConnection]);
+
     useEffect(() => {
         return () => {
             // Socket listener cleanup is not enough: MediaStreams and
@@ -621,17 +699,7 @@ export default function useWebRTCCall() {
                     offer: pc.localDescription
                 });
                 setState('connecting');
-                connectTimeoutRef.current = setTimeout(() => {
-                    connectTimeoutRef.current = null;
-                    if (callRef.current?.callId !== current.callId) return;
 
-                    // A delayed timer callback must not tear down a call that
-                    // has already connected successfully.
-                    if (peerRef.current?.connectionState === 'connected') return;
-
-                    setError('Không thể thiết lập kết nối cuộc gọi.');
-                    cleanup();
-                }, 16_000);
             } catch (err) {
                 setError(err.message || 'Không thể tạo offer.');
                 cleanup();
@@ -760,6 +828,10 @@ export default function useWebRTCCall() {
                 message
             });
 
+            if (data.reason === 'connection-timeout' || data.status === 'failed') {
+                failConnection(message);
+                return;
+            }
             setError(message);
             cleanup();
         };
@@ -767,6 +839,10 @@ export default function useWebRTCCall() {
         const onEnded = data => {
             console.warn('[CALL][ended]', data);
             if (callRef.current?.callId !== data.callId) return;
+            if (data.reason === 'connection-timeout') {
+                failConnection('Không thể kết nối cuộc gọi. Hãy thử lại hoặc kết thúc cuộc gọi.');
+                return;
+            }
             cleanup();
         };
 
@@ -812,7 +888,7 @@ export default function useWebRTCCall() {
             socket.off('call:ended', onEnded);
             socket.off('call:error', onError);
         };
-    }, [cleanup, createPeer, addLocalTracksToPeer]);
+    }, [cleanup, createPeer, addLocalTracksToPeer, failConnection]);
 
     return {
         state,
@@ -826,6 +902,8 @@ export default function useWebRTCCall() {
         acceptCall,
         rejectCall,
         endCall,
+        retryCall,
+        dismissCall: cleanup,
         toggleMute,
         toggleCamera,
         toggleScreenShare,
