@@ -1,5 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { redisClient } = require('../config/redis.js');
 const conversationRepository = require('../../repository/conversationRepository.js');
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
@@ -10,6 +12,13 @@ let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
 const callTimers = new Map(); // callId -> timeout
 const disconnectGraceTimers = new Map(); // userId -> timeout
+
+const isAccessTokenActive = async (accessToken, userId) => {
+    if (!redisClient.isReady) return false;
+    const tokenHash = crypto.createHash('sha256').update(accessToken).digest('hex');
+    const storedUserId = await redisClient.get(`access_token:${tokenHash}`);
+    return storedUserId !== null && String(storedUserId) === String(userId);
+};
 
 const initSocket = (server) => {
     io = new Server(server, {
@@ -33,6 +42,10 @@ const initSocket = (server) => {
                 return next(new Error('Access Token thiếu Session ID'));
             }
 
+            if (!await isAccessTokenActive(accessToken, decoded.sub)) {
+                return next(new Error('Access Token đã bị thu hồi hoặc không còn hợp lệ'));
+            }
+
             const session = await authRepository.findSessionByIdAndUserId(
                 decoded.sessionId,
                 decoded.sub
@@ -42,12 +55,17 @@ const initSocket = (server) => {
                 return next(new Error('Session không tồn tại hoặc đã bị thu hồi'));
             }
 
+            const currentUser = await authRepository.findUserById(decoded.sub);
+            if (!currentUser || !currentUser.is_active) {
+                return next(new Error('Tài khoản không tồn tại hoặc đã bị khóa'));
+            }
+
             await authRepository.updateSessionLastUsed(decoded.sessionId);
 
             socket.user = {
-                id: Number(decoded.sub),
-                username: decoded.username,
-                role: decoded.role,
+                id: Number(currentUser.id),
+                username: currentUser.username,
+                role: currentUser.role,
                 sessionId: decoded.sessionId
             };
 
@@ -113,6 +131,10 @@ const initSocket = (server) => {
                     return ack({ ok: false, message: 'Token mới không thuộc phiên Socket hiện tại' });
                 }
 
+                if (!await isAccessTokenActive(accessToken, decoded.sub)) {
+                    return ack({ ok: false, message: 'Access Token đã bị thu hồi hoặc không còn hợp lệ' });
+                }
+
                 const session = await authRepository.findSessionByIdAndUserId(
                     decoded.sessionId,
                     decoded.sub
@@ -121,6 +143,17 @@ const initSocket = (server) => {
                 if (!session || session.revoked_at !== null) {
                     return ack({ ok: false, message: 'Session không tồn tại hoặc đã bị thu hồi' });
                 }
+
+                const currentUser = await authRepository.findUserById(decoded.sub);
+                if (!currentUser || !currentUser.is_active) {
+                    return ack({ ok: false, message: 'Tài khoản không tồn tại hoặc đã bị khóa' });
+                }
+
+                socket.user = {
+                    ...socket.user,
+                    username: currentUser.username,
+                    role: currentUser.role
+                };
 
                 await authRepository.updateSessionLastUsed(decoded.sessionId);
                 socket.handshake.auth = {
