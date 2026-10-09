@@ -1,5 +1,55 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp } from 'lucide-react';
+
+
+function AvatarCountdown({ name, avatar, progress, size = 80 }) {
+    const radius = 45;
+    const circumference = 2 * Math.PI * radius;
+    const initials = String(name || 'User')
+        .trim()
+        .split(/\\s+/)
+        .slice(0, 2)
+        .map(part => part[0] || '')
+        .join('')
+        .toUpperCase();
+
+    return (
+        <div className="relative shrink-0" style={{ width: size, height: size }}>
+            <svg
+                className="absolute inset-0 h-full w-full -rotate-90"
+                viewBox="0 0 100 100"
+                aria-label={`Thời gian chờ cuộc gọi còn ${Math.max(0, Math.ceil(progress / 100 * 30))} giây`}
+                role="img"
+            >
+                <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeOpacity="0.18" strokeWidth="5" />
+                <circle
+                    cx="50"
+                    cy="50"
+                    r={radius}
+                    fill="none"
+                    stroke="#22c55e"
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={circumference * (1 - Math.max(0, Math.min(100, progress)) / 100)}
+                    className="transition-[stroke-dashoffset] duration-100"
+                />
+            </svg>
+            <div
+                className="absolute overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
+                style={{ inset: size * 0.12 }}
+            >
+                {avatar ? (
+                    <img src={avatar} alt={name || 'Avatar'} className="h-full w-full object-cover" />
+                ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-slate-600 dark:text-slate-200">
+                        {initials || 'U'}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 
 export default function CallPanel({
@@ -24,6 +74,39 @@ export default function CallPanel({
     const remoteAudioRef = useRef(null);
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
+
+    const [ringRemainingMs, setRingRemainingMs] = useState(30_000);
+    const [showNotice, setShowNotice] = useState(false);
+
+    useEffect(() => {
+        if (state !== 'calling' || !call?.ringStartedAt) {
+            setRingRemainingMs(30_000);
+            return undefined;
+        }
+
+        const timeoutMs = Number(call.ringTimeoutMs) || 30_000;
+        const updateCountdown = () => {
+            setRingRemainingMs(Math.max(0, call.ringStartedAt + timeoutMs - Date.now()));
+        };
+        updateCountdown();
+        const timer = setInterval(updateCountdown, 100);
+        return () => clearInterval(timer);
+    }, [state, call?.callId, call?.ringStartedAt, call?.ringTimeoutMs]);
+
+    useEffect(() => {
+        if (!error) {
+            setShowNotice(false);
+            return undefined;
+        }
+        setShowNotice(true);
+        const timer = setTimeout(() => setShowNotice(false), 6500);
+        return () => clearTimeout(timer);
+    }, [error]);
+
+    const ringProgress = call?.ringTimeoutMs
+        ? Math.max(0, Math.min(100, (ringRemainingMs / call.ringTimeoutMs) * 100))
+        : 100;
+    const ringSecondsLeft = Math.ceil(ringRemainingMs / 1000);
 
     useEffect(() => {
         if (remoteAudioRef.current) {
@@ -62,6 +145,15 @@ export default function CallPanel({
 
     return (
         <>
+            {state === 'idle' && error && showNotice && (
+                <div
+                    role="status"
+                    className="fixed left-1/2 top-5 z-[250] w-[min(92vw,420px)] -translate-x-1/2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                >
+                    {error}
+                </div>
+            )}
+
             {state === 'incoming' && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
                     <section className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
@@ -174,24 +266,43 @@ export default function CallPanel({
                                 </div>
 
                                 {state !== 'connected' && (
-                                    <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-300">
-                                        {state === 'calling'
-                                            ? 'Đang chờ người nhận...'
-                                            : state === 'reconnecting'
-                                                ? 'Đang khôi phục kết nối...'
-                                                : 'Đang thiết lập kết nối...'}
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/35 text-sm text-slate-200">
+                                        {state === 'calling' && (
+                                            <AvatarCountdown
+                                                name={displayName}
+                                                avatar={call?.remoteAvatar}
+                                                progress={ringProgress}
+                                                size={96}
+                                            />
+                                        )}
+                                        <span>
+                                            {state === 'calling'
+                                                ? `Đang chờ người nhận · ${ringSecondsLeft}s`
+                                                : state === 'reconnecting'
+                                                    ? 'Đang khôi phục kết nối...'
+                                                    : 'Đang thiết lập kết nối...'}
+                                        </span>
                                     </div>
                                 )}
                             </div>
                         ) : (
                             <div className="flex min-h-64 flex-col items-center justify-center bg-slate-950 text-white">
-                                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-3xl">
-                                    📞
-                                </div>
+                                {state === 'calling' ? (
+                                    <AvatarCountdown
+                                        name={displayName}
+                                        avatar={call?.remoteAvatar}
+                                        progress={ringProgress}
+                                        size={96}
+                                    />
+                                ) : (
+                                    <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-slate-800 text-3xl">
+                                        📞
+                                    </div>
+                                )}
                                 <p className="font-medium">{displayName}</p>
                                 <p className="mt-1 text-sm text-slate-400">
                                     {state === 'calling'
-                                        ? 'Đang gọi...'
+                                        ? `Đang đổ chuông · ${ringSecondsLeft}s`
                                         : state === 'connecting'
                                             ? 'Đang kết nối...'
                                             : state === 'reconnecting'
