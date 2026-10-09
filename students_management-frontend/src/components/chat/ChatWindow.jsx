@@ -47,6 +47,7 @@ export default function ChatWindow({
     loadingOlder,
     onLoadOlder,
     onRedial,
+    onHideCall,
     conversationMembers = [],
     searchUsers,
     searchResults = [],
@@ -69,6 +70,7 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const [replyTo, setReplyTo] = useState(null);
     const messagesEndRef = useRef(null);
+    const composerInputRef = useRef(null);
     const messagesContainerRef = useRef(null);
     const previousMessageCountRef = useRef(0);
     const previousScrollHeightRef = useRef(0);
@@ -762,6 +764,9 @@ export default function ChatWindow({
                         senderAvatar={activeConversation.avatar}
                         onRedial={onRedial}
                         senderName={activeConversation.name}
+                         onHideCall={onHideCall}
+                         onViewProfile={() => setShowContactInfo(true)}
+                         onFocusComposer={() => composerInputRef.current?.focus()}
                         onEdit={onEdit}
                         onRecall={onRecall}
                         onDeleteForMe={onDeleteForMe}
@@ -896,6 +901,7 @@ export default function ChatWindow({
                 {/* ================= TEXT INPUT ================= */}
 
                 <input
+                    ref={composerInputRef}
                     type="text"
                     placeholder="Nhập tin nhắn..."
                     value={input}
