@@ -383,13 +383,8 @@ export default function useWebRTCCall() {
                 callType
             });
 
-            // Backend owns the authoritative missed-call status; this is a
-            // slightly later UI fallback in case the timeout event is lost.
-            ringTimeoutRef.current = setTimeout(() => {
-                if (callRef.current?.callId !== callId) return;
-                setError('Không có người trả lời. Cuộc gọi đã được ghi nhận là cuộc gọi nhỡ.');
-                cleanup();
-            }, 32_000);
+            // The countdown is display-only. The server/database owns expiry
+            // and will emit call:timeout when the persisted deadline is reached.
         } catch (err) {
             setError(err.message || 'Không thể truy cập microphone/camera.');
             cleanup();
@@ -571,14 +566,29 @@ export default function useWebRTCCall() {
     useEffect(() => {
         const onIncoming = data => {
             console.log('[CALL][incoming]', data);
-            // A previous call may have left an error message in state.
-            // Never carry that stale error into a new incoming-call dialog.
+            const serverNowMs = Date.parse(data.serverNow || new Date().toISOString());
+            const expiresAtMs = Date.parse(data.expiresAt || '');
+            const remainingMs = Number.isFinite(expiresAtMs)
+                ? expiresAtMs - serverNowMs
+                : 30_000;
+
+            // A delayed/replayed stale invitation must never reopen the dialog.
+            // Ask the server to reconcile instead of deciding call status here.
+            if (remainingMs <= 0) {
+                socket.emit('call:sync-pending');
+                return;
+            }
+
             setError('');
+            const ringTimeoutMs = 30_000;
             callRef.current = {
                 callId: data.callId,
                 targetUserId: Number(data.fromUserId),
                 callType: data.callType || 'voice',
-                remoteUsername: data.fromUsername
+                remoteUsername: data.fromUsername,
+                expiresAt: data.expiresAt || null,
+                ringTimeoutMs,
+                ringStartedAt: Date.now() - Math.max(0, ringTimeoutMs - remainingMs)
             };
             setCall(callRef.current);
             setState('incoming');
@@ -770,6 +780,9 @@ export default function useWebRTCCall() {
             }
         };
 
+        const onSocketConnect = () => socket.emit('call:sync-pending');
+
+        socket.on('connect', onSocketConnect);
         socket.on('call:incoming', onIncoming);
         socket.on('call:reconnect-request', onReconnectRequest);
         socket.on('call:accepted', onAccepted);
@@ -781,7 +794,11 @@ export default function useWebRTCCall() {
         socket.on('call:ended', onEnded);
         socket.on('call:error', onError);
 
+        // Handle hooks mounted after Socket.IO has already connected.
+        if (socket.connected) socket.emit('call:sync-pending');
+
         return () => {
+            socket.off('connect', onSocketConnect);
             socket.off('call:incoming', onIncoming);
             socket.off('call:reconnect-request', onReconnectRequest);
             socket.off('call:accepted', onAccepted);
