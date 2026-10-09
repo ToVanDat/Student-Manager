@@ -1243,10 +1243,22 @@ const getIO = () => {
 const isUserOnline = (userId) => onlineUsers.has(Number(userId));
 
 const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
-    getIO().to(`session:${sessionId}`).emit('session:revoked', {
-        sessionId,
-        reason
-    });
+    const socketServer = getIO();
+    const roomName = `session:${sessionId}`;
+
+    // Notify and forcibly disconnect every tab/socket belonging to this
+    // revoked session. Emitting an event alone would leave old sockets able
+    // to continue sending realtime events after their session was revoked.
+    const roomSocketIds = socketServer.sockets.adapter.rooms.get(roomName);
+    if (!roomSocketIds) return;
+
+    for (const socketId of [...roomSocketIds]) {
+        const clientSocket = socketServer.sockets.sockets.get(socketId);
+        if (!clientSocket) continue;
+
+        clientSocket.emit('session:revoked', { sessionId, reason });
+        clientSocket.disconnect(true);
+    }
 };
 
 module.exports = {
