@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
@@ -23,11 +23,13 @@ export default function ChatPage() {
     const [callCenterOpen, setCallCenterOpen] = useState(false);
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
+    const callNotificationIdsRef = useRef(new Set());
 
     useEffect(() => {
         if (!user?.id) {
             setCallNotifications([]);
             setUnreadCallNotificationCount(0);
+            callNotificationIdsRef.current.clear();
             return undefined;
         }
 
@@ -36,6 +38,7 @@ export default function ChatPage() {
             .then(response => {
                 if (cancelled) return;
                 const loaded = response.data?.data || [];
+                loaded.forEach(item => callNotificationIdsRef.current.add(String(item.id)));
                 if (Number.isFinite(Number(response.data?.unreadCount))) {
                     setUnreadCallNotificationCount(Number(response.data.unreadCount));
                 } else {
@@ -51,18 +54,16 @@ export default function ChatPage() {
 
         const handleCallNotification = notification => {
             if (!notification?.id) return;
-            setCallNotifications(previous => {
-                const existing = previous.find(item => String(item.id) === String(notification.id));
-                if (!existing && !notification.is_read) {
-                    setUnreadCallNotificationCount(count => count + 1);
-                } else if (existing && existing.is_read && !notification.is_read) {
-                    setUnreadCallNotificationCount(count => count + 1);
-                }
-                return [
-                    notification,
-                    ...previous.filter(item => String(item.id) !== String(notification.id))
-                ];
-            });
+            const notificationId = String(notification.id);
+            const isNewNotification = !callNotificationIdsRef.current.has(notificationId);
+            callNotificationIdsRef.current.add(notificationId);
+            if (isNewNotification && !notification.is_read) {
+                setUnreadCallNotificationCount(count => count + 1);
+            }
+            setCallNotifications(previous => [
+                notification,
+                ...previous.filter(item => String(item.id) !== notificationId)
+            ]);
         };
         socket.on('call:notification', handleCallNotification);
 
