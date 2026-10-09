@@ -123,6 +123,7 @@ const updateCallStatusIfCurrent = async (
             updated_at = NOW()
         WHERE call_id = $1
           AND status = $3::text
+          AND ended_at IS NULL
         RETURNING *;
         `,
         [callId, status, expectedStatus, reason, Boolean(answered)]
