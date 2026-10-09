@@ -565,7 +565,7 @@ const login = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
@@ -692,7 +692,7 @@ const refresh = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
@@ -808,7 +808,7 @@ const logout = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
@@ -848,7 +848,7 @@ const logout = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
