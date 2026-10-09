@@ -11,6 +11,7 @@ export default function CallPanel({
     muted,
     cameraOn,
     sharingScreen,
+    callDurationSeconds = 0,
     error,
     acceptCall,
     rejectCall,
@@ -42,6 +43,16 @@ export default function CallPanel({
         call?.remoteUsername ||
         targetUsername ||
         'User';
+
+    const formattedCallDuration = (() => {
+        const total = Math.max(Number(callDurationSeconds) || 0, 0);
+        const hours = Math.floor(total / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        const seconds = total % 60;
+        return hours > 0
+            ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+            : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    })();
 
     const isActiveCall =
         state === 'calling' ||
@@ -122,9 +133,19 @@ export default function CallPanel({
                                 </p>
                             </div>
 
-                            <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
-                                {state === 'calling' ? 'Đang gọi' : state === 'connecting' ? 'Đang kết nối' : state === 'reconnecting' ? 'Đang khôi phục' : 'Đã kết nối'}
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
+                                    {state === 'calling' ? 'Đang gọi' : state === 'connecting' ? 'Đang kết nối' : state === 'reconnecting' ? 'Đang khôi phục' : 'Đã kết nối'}
+                                </span>
+                                {['connected', 'reconnecting'].includes(state) && (
+                                    <span
+                                        className="font-mono text-sm font-semibold tabular-nums text-emerald-400"
+                                        aria-label="Thời lượng cuộc gọi"
+                                    >
+                                        {formattedCallDuration}
+                                    </span>
+                                )}
+                            </div>
                         </div>
 
                         {error && (
