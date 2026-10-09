@@ -42,7 +42,7 @@ const hideCallHistory = async (req, res) => {
 const getUnreadCallNotifications = async (req, res) => {
     try {
         const userId = Number(req.user.id);
-        const data = await callRepository.getUnreadCallNotifications(userId);
+        const data = await callRepository.getCallNotifications(userId);
         return res.json({ data });
     } catch (error) {
         console.error('GET CALL NOTIFICATIONS ERROR:', error);
