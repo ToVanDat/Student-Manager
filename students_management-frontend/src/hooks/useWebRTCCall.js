@@ -262,23 +262,51 @@ export default function useWebRTCCall() {
         };
 
         try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            let stream;
+
+            try {
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (mediaError) {
+                const canFallbackToAudioOnly =
+                    callType === 'video' &&
+                    ['NotReadableError', 'NotFoundError', 'OverconstrainedError', 'AbortError']
+                        .includes(mediaError?.name);
+
+                if (!canFallbackToAudioOnly) throw mediaError;
+
+                console.warn('[CALL][media] camera unavailable; retrying audio-only', {
+                    name: mediaError?.name,
+                    message: mediaError?.message
+                });
+
+                // A busy/unavailable camera should not prevent the user from
+                // completing a call when the microphone is still available.
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: false
+                });
+
+                setError(
+                    'Không thể sử dụng camera (có thể đang được ứng dụng hoặc trình duyệt khác sử dụng). Cuộc gọi sẽ tiếp tục bằng âm thanh.'
+                );
+            }
 
             // Guard against a race where another cleanup happened while
             // getUserMedia() was resolving.
-            if (!callRef.current && callType === 'video') {
+            if (!callRef.current) {
                 stream.getTracks().forEach(track => track.stop());
-                throw new Error('Cuộc gọi đã kết thúc trước khi camera sẵn sàng.');
+                throw new Error('Cuộc gọi đã kết thúc trước khi thiết bị sẵn sàng.');
             }
 
             localStreamRef.current = stream;
             setLocalStream(stream);
-            setCameraOn(callType === 'video');
+            setCameraOn(callType === 'video' && stream.getVideoTracks().length > 0);
 
             console.log('[CALL][media] acquired', {
                 callType,
                 audioTracks: stream.getAudioTracks().length,
-                videoTracks: stream.getVideoTracks().length
+                videoTracks: stream.getVideoTracks().length,
+                audioOnlyFallback: callType === 'video' && stream.getVideoTracks().length === 0
             });
 
             return stream;
