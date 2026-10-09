@@ -1,5 +1,6 @@
 const conversationService = require('../service/conversationService');
 const messageRepository = require('../repository/messageRepository');
+const callRepository = require('../repository/callRepository');
 const userRepository = require('../repository/userRepository');
 const { getIO } = require('../src/socket/socket');
 
@@ -102,6 +103,7 @@ const clearConversationMessagesForUser = async (req, res, next) => {
         }
 
         const data = await conversationService.clearConversationMessagesForUser(conversationId, userId);
+        await callRepository.hideConversationCallHistoryForUser(userId, conversationId);
         getIO().to(`user:${userId}`).emit('conversation:history-cleared', {
             conversationId,
             deletedCount: data.deleted_count
