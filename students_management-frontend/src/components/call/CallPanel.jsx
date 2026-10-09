@@ -8,7 +8,7 @@ function AvatarCountdown({ name, avatar, progress, size = 80 }) {
     const circumference = 2 * Math.PI * radius;
     const initials = String(name || 'User')
         .trim()
-        .split(/\\s+/)
+        .split(/\s+/)
         .slice(0, 2)
         .map(part => part[0] || '')
         .join('')
