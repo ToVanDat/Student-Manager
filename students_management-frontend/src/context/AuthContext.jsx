@@ -177,8 +177,21 @@ export const AuthProvider = ({ children }) => {
         // Updating the JWT must not force a disconnect during an active call.
         socket.auth = { accessToken };
 
+        const syncSocketToken = () => {
+            if (!socket.connected || !accessToken) return;
+
+            socket.emit('auth:token-refresh', { accessToken }, (result) => {
+                if (!result?.ok) {
+                    console.warn('[SOCKET][token refresh rejected]', result?.message || 'Unknown error');
+                } else {
+                    console.log('[SOCKET][token refreshed]', socket.id);
+                }
+            });
+        };
+
         const handleConnect = () => {
             console.log('[SOCKET][connect]', socket.id);
+            syncSocketToken();
         };
 
         const handleSessionRevoked = (data) => {
@@ -238,7 +251,9 @@ export const AuthProvider = ({ children }) => {
         socket.on('connect_error', handleConnectError);
         socket.on('disconnect', handleSocketDisconnect);
 
-        if (!socket.connected) {
+        if (socket.connected) {
+            syncSocketToken();
+        } else {
             socket.connect();
         }
 
