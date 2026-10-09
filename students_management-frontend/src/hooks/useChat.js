@@ -597,9 +597,18 @@ export const useChat = () => {
             fetchConversations();
         };
 
+        const handleConversationHistoryCleared = ({ conversationId }) => {
+            if (Number(conversationId) === Number(activeId)) {
+                setMessages([]);
+                setCallHistory([]);
+            }
+            fetchConversations();
+        };
+
         socket.on('connect', handleSocketConnect);
         socket.on('presence:snapshot', handlePresenceSnapshot);
         socket.on('conversation:created', handleConversationCreated);
+        socket.on('conversation:history-cleared', handleConversationHistoryCleared);
         socket.on('member:added', handleMemberAdded);
         socket.on('member:removed', handleMemberRemoved);
         socket.on('member:left', handleMemberLeft);
@@ -636,6 +645,7 @@ export const useChat = () => {
             socket.off('connect', handleSocketConnect);
             socket.off('presence:snapshot', handlePresenceSnapshot);
             socket.off('conversation:created', handleConversationCreated);
+            socket.off('conversation:history-cleared', handleConversationHistoryCleared);
             socket.off('member:added', handleMemberAdded);
             socket.off('member:removed', handleMemberRemoved);
             socket.off('member:left', handleMemberLeft);
