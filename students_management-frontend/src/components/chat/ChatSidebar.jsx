@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, SquarePen, X, Users, Check, Phone } from 'lucide-react';
+import { Search, X, Users, Check, Phone } from 'lucide-react';
 import ConversationItem from './ConversationItem';
 import AvatarFallback from './AvatarFallback';
 
@@ -12,6 +12,7 @@ export default function ChatSidebar({
     onStartConversation,
     onStartGroupConversation,
     onOpenCallCenter,
+    callNotificationCount = 0,
     onlineUserIds = new Set()
 }) {
     const [filter, setFilter] = useState('all');
@@ -89,11 +90,13 @@ export default function ChatSidebar({
         if (!groupName.trim() || selectedIds.length < 1 || !onStartGroupConversation) return;
 
         try {
+            setNewChatError('');
             setCreatingGroup(true);
             await onStartGroupConversation(groupName.trim(), selectedIds);
             closeNewChat();
         } catch (error) {
             console.error('Không thể tạo group:', error);
+            setNewChatError(error?.response?.data?.message || error?.message || 'Không thể tạo nhóm. Vui lòng thử lại.');
         } finally {
             setCreatingGroup(false);
         }
@@ -113,18 +116,25 @@ export default function ChatSidebar({
                     </button>
                     <button
                         onClick={onOpenCallCenter}
-                        className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl"
+                        className="relative w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl"
                         title="Cuộc gọi"
+                        aria-label={callNotificationCount > 0 ? `Cuộc gọi, ${callNotificationCount} thông báo chưa đọc` : 'Cuộc gọi'}
                     >
                         <Phone size={18} />
+                        {callNotificationCount > 0 && (
+                            <span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900">
+                                {callNotificationCount > 9 ? '9+' : callNotificationCount}
+                            </span>
+                        )}
                     </button>
                     <button
                         data-new-chat
                         onClick={() => { setShowNewChat(true); setMode('direct'); }}
                         className="w-10 h-10 flex items-center justify-center text-white bg-[#4b63f5] hover:bg-[#3f56e8] rounded-xl shadow-sm"
-                        title="Tin nhắn mới"
+                        title="Tìm kiếm người dùng"
+                        aria-label="Tìm kiếm người dùng"
                     >
-                        <SquarePen size={18} />
+                        <Search size={18} />
                     </button>
                 </div>
             </div>
@@ -132,21 +142,10 @@ export default function ChatSidebar({
             {showNewChat && (
                 <div className="absolute z-30 left-5 right-5 top-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() => setMode('direct')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${mode === 'direct' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}
-                            >
-                                Tin nhắn mới
-                            </button>
-                            <button
-                                onClick={() => setMode('group')}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${mode === 'group' ? 'bg-blue-50 text-blue-600' : 'text-slate-500'}`}
-                            >
-                                Tạo nhóm
-                            </button>
-                        </div>
-                        <button onClick={closeNewChat}><X size={16} /></button>
+                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                            {mode === 'group' ? 'Tạo nhóm' : 'Tìm kiếm người dùng'}
+                        </h3>
+                        <button type="button" aria-label="Đóng" onClick={closeNewChat}><X size={16} /></button>
                     </div>
 
                     {mode === 'group' && (

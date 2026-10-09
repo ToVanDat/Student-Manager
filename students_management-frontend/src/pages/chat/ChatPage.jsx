@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
@@ -8,6 +8,8 @@ import StudentHeader from '@/components/layout/StudentHeader.jsx';
 import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
+import { callApi } from '@/api/callApi.js';
+import socket from '@/socket/socket.js';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -19,6 +21,48 @@ export default function ChatPage() {
     const [darkMode, setDarkMode] = useState(false);
     const [headerSearch, setHeaderSearch] = useState('');
     const [callCenterOpen, setCallCenterOpen] = useState(false);
+    const [callNotifications, setCallNotifications] = useState([]);
+
+    useEffect(() => {
+        if (!user?.id) {
+            setCallNotifications([]);
+            return undefined;
+        }
+
+        let cancelled = false;
+        callApi.getNotifications()
+            .then(response => {
+                if (cancelled) return;
+                const loaded = response.data?.data || [];
+                setCallNotifications(previous => {
+                    const loadedIds = new Set(loaded.map(item => String(item.id)));
+                    const receivedWhileLoading = previous.filter(item => !loadedIds.has(String(item.id)));
+                    return [...receivedWhileLoading, ...loaded];
+                });
+            })
+            .catch(error => console.error('Không thể tải thông báo cuộc gọi:', error));
+
+        const handleCallNotification = notification => {
+            if (!notification?.id) return;
+            setCallNotifications(previous => [
+                notification,
+                ...previous.filter(item => String(item.id) !== String(notification.id))
+            ]);
+        };
+        socket.on('call:notification', handleCallNotification);
+
+        return () => {
+            cancelled = true;
+            socket.off('call:notification', handleCallNotification);
+        };
+    }, [user?.id]);
+
+    const markCallNotificationRead = async notificationId => {
+        await callApi.markNotificationRead(notificationId);
+        setCallNotifications(previous => previous.map(item =>
+            String(item.id) === String(notificationId) ? { ...item, is_read: true } : item
+        ));
+    };
 
     const {
         conversations,
@@ -54,7 +98,6 @@ export default function ChatPage() {
         loadingOlder,
         toggleReaction,
         updateConversationSettings,
-        clearConversationMessages,
         blockUser,
         unblockUser,
         reportConversation,
@@ -202,6 +245,8 @@ export default function ChatPage() {
                         open={callCenterOpen}
                         onClose={() => setCallCenterOpen(false)}
                         currentUserId={Number(user?.id)}
+                        notifications={callNotifications}
+                        onMarkNotificationRead={markCallNotificationRead}
                     />
 
                     <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
@@ -211,6 +256,7 @@ export default function ChatPage() {
                                     conversations={conversations}
                                     onlineUserIds={onlineUserIds}
                                     onOpenCallCenter={() => setCallCenterOpen(true)}
+                                    callNotificationCount={callNotifications.filter(item => !item.is_read).length}
                                     activeId={activeId}
                                     onSelectConversation={setActiveId}
                                     searchUsers={searchUsers}
@@ -253,7 +299,6 @@ export default function ChatPage() {
                                         onRedial={webRTCCall.startCall}
                                         onHideCall={hideCallHistory}
                                         onUpdateConversationSettings={updateConversationSettings}
-                                        onClearConversationMessages={clearConversationMessages}
                                         onBlockUser={blockUser}
                                         onUnblockUser={unblockUser}
                                         onReportConversation={reportConversation}

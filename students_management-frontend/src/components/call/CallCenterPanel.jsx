@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Phone, Video, PhoneMissed, Bell, X, CheckCheck } from 'lucide-react';
 import { callApi } from '@/api/callApi.js';
-import socket from '@/socket/socket.js';
 
 const formatDuration = seconds => {
     const total = Math.max(Number(seconds) || 0, 0);
@@ -18,21 +17,22 @@ const formatTime = value =>
         minute: '2-digit'
     }) : '';
 
-export default function CallCenterPanel({ open, onClose, currentUserId }) {
+export default function CallCenterPanel({
+    open,
+    onClose,
+    currentUserId,
+    notifications = [],
+    onMarkNotificationRead
+}) {
     const [tab, setTab] = useState('history');
     const [history, setHistory] = useState([]);
-    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const load = async () => {
         setLoading(true);
         try {
-            const [historyResponse, notificationResponse] = await Promise.all([
-                callApi.getHistory(),
-                callApi.getNotifications()
-            ]);
+            const historyResponse = await callApi.getHistory();
             setHistory(historyResponse.data?.data || []);
-            setNotifications(notificationResponse.data?.data || []);
         } finally {
             setLoading(false);
         }
@@ -43,27 +43,11 @@ export default function CallCenterPanel({ open, onClose, currentUserId }) {
         load().catch(error => console.error('CALL CENTER LOAD ERROR:', error));
     }, [open]);
 
-    useEffect(() => {
-        const onNotification = notification => {
-            setNotifications(prev => [notification, ...prev.filter(item => item.id !== notification.id)]);
-            if (open) load().catch(() => {});
-        };
-
-        socket.on('call:notification', onNotification);
-        return () => socket.off('call:notification', onNotification);
-    }, [open]);
-
-    const unreadCount = useMemo(
-        () => notifications.filter(item => !item.is_read).length,
-        [notifications]
-    );
+    const unreadCount = notifications.filter(item => !item.is_read).length;
 
     const markRead = async notificationId => {
         try {
-            await callApi.markNotificationRead(notificationId);
-            setNotifications(prev => prev.map(item =>
-                item.id === notificationId ? { ...item, is_read: true } : item
-            ));
+            await onMarkNotificationRead?.(notificationId);
         } catch (error) {
             console.error('MARK CALL NOTIFICATION READ ERROR:', error);
         }
