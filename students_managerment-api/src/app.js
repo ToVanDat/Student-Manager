@@ -16,13 +16,14 @@ const messageFileRouter = require('../router/messageFileRouter');
 const callRouter = require('../router/callRouter');
 
 const app = express();
+app.disable('x-powered-by');
 const allowedOrigins = new Set([
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     process.env.FRONTEND_URL,
 ].filter(Boolean));
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(cors({
     origin(origin, callback) {
         if (!origin || allowedOrigins.has(origin)) return callback(null, true);
