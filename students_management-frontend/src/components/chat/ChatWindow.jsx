@@ -22,6 +22,7 @@ import {
     Square
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
+import { toast } from 'sonner';
 
 import MessageBubble from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
@@ -92,6 +93,10 @@ export default function ChatWindow({
     const [searchQuery, setSearchQuery] = useState('');
     const [messageSearchResults, setMessageSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
+    const [searchError, setSearchError] = useState('');
+    const searchRequestIdRef = useRef(0);
+    const searchPanelRef = useRef(null);
+    const searchTriggerRef = useRef(null);
     const emojiPickerRef = useRef(null);
     const moreMenuRef = useRef(null);
     const mediaRecorderRef = useRef(null);
@@ -191,25 +196,55 @@ export default function ChatWindow({
     }, []);
 
     useEffect(() => {
-        if (!showSearchPanel) return;
-        if (!searchQuery.trim()) {
-            setMessageSearchResults([]);
-            return;
+        const query = searchQuery.trim();
+        if (!showSearchPanel || !query) {
+            searchRequestIdRef.current += 1;
+            setSearching(false);
+            setSearchError('');
+            if (!query) setMessageSearchResults([]);
+            return undefined;
         }
+
+        const requestId = ++searchRequestIdRef.current;
+        setSearching(true);
+        setMessageSearchResults([]);
+        setSearchError('');
         const timer = setTimeout(async () => {
             try {
-                setSearching(true);
-                const results = await onSearchMessages?.(searchQuery);
-                setMessageSearchResults(results || []);
+                if (typeof onSearchMessages !== 'function') {
+                    throw new Error('Chưa kết nối chức năng tìm kiếm tin nhắn.');
+                }
+                const results = await onSearchMessages(query);
+                if (requestId !== searchRequestIdRef.current) return;
+                setMessageSearchResults(Array.isArray(results) ? results : []);
             } catch (error) {
+                if (requestId !== searchRequestIdRef.current) return;
                 console.error('Không thể tìm kiếm message:', error);
                 setMessageSearchResults([]);
+                setSearchError(error?.response?.data?.message || 'Không thể tìm kiếm tin nhắn. Vui lòng thử lại.');
             } finally {
-                setSearching(false);
+                if (requestId === searchRequestIdRef.current) setSearching(false);
             }
         }, 300);
-        return () => clearTimeout(timer);
-    }, [showSearchPanel, searchQuery, onSearchMessages]);
+
+        return () => {
+            clearTimeout(timer);
+            if (requestId === searchRequestIdRef.current) searchRequestIdRef.current += 1;
+        };
+    }, [showSearchPanel, searchQuery, activeConversation?.id, onSearchMessages]);
+
+    useEffect(() => {
+        setShowMoreMenu(false);
+        setShowSearchPanel(false);
+        setSearchQuery('');
+        setMessageSearchResults([]);
+        setSearchError('');
+        setSearching(false);
+        setShowGroupInfo(false);
+        setShowContactInfo(false);
+        setShowMediaPanel(false);
+        setShowReportDialog(false);
+    }, [activeConversation?.id]);
 
     useEffect(() => {
         const handleClickOutsideMore = (event) => {
@@ -217,9 +252,36 @@ export default function ChatWindow({
                 setShowMoreMenu(false);
             }
         };
-        if (showMoreMenu) document.addEventListener('mousedown', handleClickOutsideMore);
-        return () => document.removeEventListener('mousedown', handleClickOutsideMore);
+        const handleMoreKeyDown = event => {
+            if (event.key === 'Escape') setShowMoreMenu(false);
+        };
+        if (showMoreMenu) {
+            document.addEventListener('mousedown', handleClickOutsideMore);
+            document.addEventListener('keydown', handleMoreKeyDown);
+        }
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutsideMore);
+            document.removeEventListener('keydown', handleMoreKeyDown);
+        };
     }, [showMoreMenu]);
+
+    useEffect(() => {
+        if (!showSearchPanel) return undefined;
+        const handleSearchOutside = event => {
+            if (searchPanelRef.current?.contains(event.target)) return;
+            if (searchTriggerRef.current?.contains(event.target)) return;
+            setShowSearchPanel(false);
+        };
+        const handleSearchKeyDown = event => {
+            if (event.key === 'Escape') setShowSearchPanel(false);
+        };
+        document.addEventListener('mousedown', handleSearchOutside);
+        document.addEventListener('keydown', handleSearchKeyDown);
+        return () => {
+            document.removeEventListener('mousedown', handleSearchOutside);
+            document.removeEventListener('keydown', handleSearchKeyDown);
+        };
+    }, [showSearchPanel]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -253,6 +315,33 @@ export default function ChatWindow({
                 onTyping?.(false);
             }, 800);
         }
+    };
+
+    const runMoreAction = async action => {
+        setShowMoreMenu(false);
+        try {
+            await action();
+            toast.success('Đã cập nhật cuộc trò chuyện.');
+        } catch (error) {
+            console.error('Không thể thực hiện thao tác cuộc trò chuyện:', error);
+            toast.error(error?.response?.data?.message || error?.message || 'Thao tác thất bại. Vui lòng thử lại.');
+        }
+    };
+
+    const updateConversationSetting = async (action, value) => {
+        if (typeof onUpdateConversationSettings !== 'function') {
+            throw new Error('Chức năng cài đặt cuộc trò chuyện chưa được kết nối.');
+        }
+        const result = await onUpdateConversationSettings(action, value);
+        if (result == null) throw new Error('Không tìm thấy cuộc trò chuyện đang mở.');
+        return result;
+    };
+
+    const blockConversationUser = async () => {
+        if (typeof onBlockUser !== 'function') {
+            throw new Error('Chức năng chặn người dùng chưa được kết nối.');
+        }
+        return onBlockUser(activeConversation.userId);
     };
 
     const handleSend = (e) => {
@@ -436,8 +525,12 @@ export default function ChatWindow({
                 <div className="flex items-center gap-1 text-slate-500 dark:text-slate-300">
                     <button
                         type="button"
+                        ref={searchTriggerRef}
                         className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                         onClick={() => setShowSearchPanel(prev => !prev)}
+                        aria-label="Tìm kiếm tin nhắn"
+                        aria-expanded={showSearchPanel}
+                        aria-controls="chat-message-search"
                         title="Tìm kiếm tin nhắn"
                     >
                         <Search size={18} />
@@ -483,6 +576,9 @@ export default function ChatWindow({
                                 }
                                 setShowMoreMenu(prev => !prev);
                             }}
+                            aria-label={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Thêm tùy chọn cuộc trò chuyện'}
+                            aria-haspopup={activeConversation.type === 'group' ? 'dialog' : 'menu'}
+                            aria-expanded={activeConversation.type === 'group' ? showGroupInfo : showMoreMenu}
                             className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
                             title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
                         >
@@ -490,31 +586,31 @@ export default function ChatWindow({
                         </button>
 
                         {showMoreMenu && activeConversation.type !== 'group' && (
-                            <div className="absolute right-0 top-11 z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                                <button type="button" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                            <div role="menu" className="absolute right-0 top-11 z-50 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                                <button type="button" role="menuitem" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <UserRound size={16} /> Xem thông tin
                                 </button>
-                                <button type="button" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                <button type="button" role="menuitem" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <FolderOpen size={16} /> File & Media
                                 </button>
-                                <button type="button" onClick={async () => { await onUpdateConversationSettings?.('pin', !activeConversation.isPinned); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('pin', !activeConversation.isPinned))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <Pin size={16} /> {activeConversation.isPinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
                                 </button>
-                                <button type="button" onClick={async () => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); await onUpdateConversationSettings?.('mute', until); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                <button type="button" role="menuitem" onClick={() => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); void runMoreAction(() => updateConversationSetting('mute', until)); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? <Bell size={16} /> : <BellOff size={16} />}
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? 'Bật lại thông báo' : 'Tắt thông báo 8 giờ'}
                                 </button>
-                                <button type="button" onClick={async () => { await onUpdateConversationSettings?.('unread', true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
+                                <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('unread', true))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800">
                                     <MailOpen size={16} /> Đánh dấu chưa đọc
                                 </button>
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                <button type="button" onClick={async () => { if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách?')) { await onUpdateConversationSettings?.('hide', true); } setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                <button type="button" role="menuitem" onClick={() => { if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách?')) void runMoreAction(() => updateConversationSetting('hide', true)); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                                     <Trash2 size={16} /> Xóa cuộc trò chuyện
                                 </button>
-                                <button type="button" onClick={async () => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) { await onBlockUser?.(activeConversation.userId); } setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                <button type="button" role="menuitem" onClick={() => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) void runMoreAction(blockConversationUser); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                                     <Ban size={16} /> Chặn người dùng
                                 </button>
-                                <button type="button" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                <button type="button" role="menuitem" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                                     <Flag size={16} /> Báo cáo
                                 </button>
                             </div>
@@ -525,21 +621,35 @@ export default function ChatWindow({
             </header>
 
             {showSearchPanel && (
-                <div className="absolute right-5 top-[74px] z-50 w-[360px] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div
+                    ref={searchPanelRef}
+                    id="chat-message-search"
+                    role="search"
+                    className="absolute right-5 top-[74px] z-50 w-[min(360px,calc(100%_-_2.5rem))] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                >
                     <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 dark:bg-slate-800">
                         <Search size={16} className="text-slate-400" />
                         <input
                             autoFocus
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
+                            aria-label="Tìm trong tin nhắn của cuộc trò chuyện"
                             placeholder="Tìm tin nhắn trong cuộc trò chuyện..."
                             className="h-10 flex-1 bg-transparent text-sm outline-none dark:text-slate-100"
                         />
-                        <button type="button" onClick={() => { setSearchQuery(''); setMessageSearchResults([]); }}><X size={15} className="text-slate-400" /></button>
+                        <button
+                            type="button"
+                            aria-label="Xóa từ khóa tìm kiếm"
+                            onClick={() => { setSearchQuery(''); setMessageSearchResults([]); setSearchError(''); }}
+                            className="rounded-md p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
+                        >
+                            <X size={15} className="text-slate-400" />
+                        </button>
                     </div>
                     <div className="mt-2 max-h-72 overflow-y-auto">
                         {searching && <p className="px-2 py-4 text-center text-xs text-slate-400">Đang tìm...</p>}
-                        {!searching && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">Không tìm thấy tin nhắn</p>}
+                        {!searching && searchError && <p role="alert" className="px-2 py-4 text-center text-xs text-red-500">{searchError}</p>}
+                        {!searching && !searchError && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">Không tìm thấy tin nhắn</p>}
                         {!searching && messageSearchResults.map(result => (
                             <button
                                 type="button"

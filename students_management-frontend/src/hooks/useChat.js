@@ -22,6 +22,7 @@ export const useChat = () => {
     const [conversationMembers, setConversationMembers] = useState([]);
     const [callHistory, setCallHistory] = useState([]);
     const searchJumpIdRef = useRef(null);
+    const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
     const fetchConversations = useCallback(async () => {
         try {
@@ -674,11 +675,12 @@ export const useChat = () => {
     const openSearchResult = useCallback((result) => {
         if (!result?.id) return;
 
-        const targetId = Number(result.id);
+        const targetId = String(result.id);
         searchJumpIdRef.current = targetId;
+        setSearchJumpVersion(version => version + 1);
 
         setMessages(prev => {
-            if (prev.some(item => Number(item.id) === targetId)) return prev;
+            if (prev.some(item => String(item.id) === targetId)) return prev;
             return [...prev, result].sort(
                 (a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0)
             );
@@ -689,7 +691,8 @@ export const useChat = () => {
         const targetId = searchJumpIdRef.current;
         if (!targetId) return;
 
-        const node = document.querySelector(`[data-message-id="${targetId}"]`);
+        const node = Array.from(document.querySelectorAll('[data-message-id]'))
+            .find(element => element.dataset.messageId === targetId);
         if (!node) return;
 
         searchJumpIdRef.current = null;
@@ -701,30 +704,31 @@ export const useChat = () => {
         }, 1800);
 
         return () => window.clearTimeout(timer);
-    }, [messages]);
+    }, [messages, searchJumpVersion]);
 
     const updateConversationSettings = useCallback(async (action, value) => {
         if (!activeId) return null;
         const res = await chatApi.updateConversationSettings(activeId, action, value);
         const settings = res.data?.data;
 
-        setConversations(prev => prev.map(item =>
-            Number(item.id) === Number(activeId)
-                ? {
-                    ...item,
-                    ...(settings ? {
-                        isPinned: Boolean(settings.pinned),
-                        mutedUntil: settings.muted_until || null,
-                        markedUnread: Boolean(settings.marked_unread)
-                    } : {})
-                }
-                : item
-        ));
-
         if (action === 'hide' && value) {
+            setConversations(prev => prev.filter(item => Number(item.id) !== Number(activeId)));
             setActiveId(null);
             setMessages([]);
             setConversationMembers([]);
+        } else {
+            setConversations(prev => prev.map(item =>
+                Number(item.id) === Number(activeId)
+                    ? {
+                        ...item,
+                        ...(settings ? {
+                            isPinned: Boolean(settings.pinned),
+                            mutedUntil: settings.muted_until || null,
+                            markedUnread: Boolean(settings.marked_unread)
+                        } : {})
+                    }
+                    : item
+            ));
         }
 
         return settings;
