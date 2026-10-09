@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming, RefreshCw } from 'lucide-react';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
 
 
@@ -69,7 +69,9 @@ export default function CallPanel({
     endCall,
     toggleMute,
     toggleCamera,
-    toggleScreenShare
+    toggleScreenShare,
+    retryCall,
+    dismissCall
 }) {
 
     const remoteAudioRef = useRef(null);
@@ -144,7 +146,8 @@ export default function CallPanel({
         state === 'calling' ||
         state === 'connecting' ||
         state === 'reconnecting' ||
-        state === 'connected';
+        state === 'connected' ||
+        state === 'failed';
 
     return (
         <>
@@ -237,7 +240,7 @@ export default function CallPanel({
 
                             <div className="flex flex-col items-end gap-1">
                                 <span className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
-                                    {state === 'calling' ? 'Đang gọi' : state === 'connecting' ? 'Đang kết nối' : state === 'reconnecting' ? 'Đang khôi phục' : 'Đã kết nối'}
+                                    {state === 'calling' ? 'Đang gọi' : state === 'connecting' ? 'Đang kết nối' : state === 'reconnecting' ? 'Đang khôi phục' : state === 'failed' ? 'Thất bại' : 'Đã kết nối'}
                                 </span>
                                 {['connected', 'reconnecting'].includes(state) && (
                                     <span
@@ -256,7 +259,14 @@ export default function CallPanel({
                             </div>
                         )}
 
-                        {call?.callType === 'video' ? (
+                        {state === 'failed' ? (
+                            <div className="flex min-h-64 flex-col items-center justify-center gap-3 bg-slate-950 px-6 py-8 text-center text-white">
+                                <AvatarFallback name={displayName} src={call?.remoteAvatar} size="xl" className="[&>img]:h-24 [&>img]:w-24 [&>div]:h-24 [&>div]:w-24" />
+                                <h3 className="mt-2 text-lg font-semibold">Không thể kết nối cuộc gọi</h3>
+                                <p role="alert" className="max-w-md text-sm text-slate-300">{error || 'Kết nối chưa được thiết lập. Bạn có thể thử gọi lại.'}</p>
+                                <p className="text-xs text-slate-500">Kiểm tra kết nối mạng và quyền microphone/camera rồi thử lại.</p>
+                            </div>
+                        ) : call?.callType === 'video' ? (
                             <div className="relative aspect-video min-h-0 bg-black">
                                 <video
                                     ref={remoteVideoRef}
@@ -321,6 +331,17 @@ export default function CallPanel({
                         )}
 
                         <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 border-t border-slate-800 bg-slate-950 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+                            {state === 'failed' ? (
+                                <>
+                                    <button type="button" onClick={retryCall} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
+                                        <RefreshCw size={17} aria-hidden="true" /> Thử lại
+                                    </button>
+                                    <button type="button" onClick={dismissCall} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400">
+                                        <PhoneOff size={17} aria-hidden="true" /> Kết thúc
+                                    </button>
+                                </>
+                            ) : (
+                                <>
                             <button
                                 type="button"
                                 onClick={toggleMute}
@@ -364,6 +385,8 @@ export default function CallPanel({
                             >
                                 <PhoneOff size={18} />
                             </button>
+                                </>
+                            )}
                         </div>
                     </section>
                 </div>
