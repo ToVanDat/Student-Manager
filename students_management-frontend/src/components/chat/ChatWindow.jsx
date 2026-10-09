@@ -63,6 +63,7 @@ export default function ChatWindow({
     call = null,
     onStartCall,
     onUpdateConversationSettings,
+    onClearConversationMessages,
     onBlockUser,
     onUnblockUser,
     onReportConversation,
@@ -677,8 +678,24 @@ export default function ChatWindow({
                                     <MailOpen size={16} /> Đánh dấu chưa đọc
                                 </button>
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                <button type="button" role="menuitem" onClick={() => { if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách?')) void runMoreAction(() => updateConversationSetting('hide', true)); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
-                                    <Trash2 size={16} /> Xóa cuộc trò chuyện
+                                <button type="button" role="menuitem" onClick={() => {
+                                    if (window.confirm('Xóa toàn bộ tin nhắn và lịch sử cuộc gọi chỉ ở phía bạn? Người còn lại vẫn giữ lịch sử.')) {
+                                        void runMoreAction(async () => {
+                                            if (typeof onClearConversationMessages !== 'function') {
+                                                throw new Error('Chức năng xóa nội dung cuộc trò chuyện chưa được kết nối.');
+                                            }
+                                            await onClearConversationMessages();
+                                        });
+                                    } else setShowMoreMenu(false);
+                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                                    <Trash2 size={16} /> Xóa nội dung cuộc trò chuyện
+                                </button>
+                                <button type="button" role="menuitem" onClick={() => {
+                                    if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách của bạn? Tin nhắn sẽ không bị xóa.')) {
+                                        void runMoreAction(() => updateConversationSetting('hide', true));
+                                    } else setShowMoreMenu(false);
+                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                                    <FolderOpen size={16} /> Ẩn cuộc trò chuyện
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) void runMoreAction(blockConversationUser); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                                     <Ban size={16} /> Chặn người dùng
