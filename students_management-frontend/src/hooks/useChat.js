@@ -135,6 +135,8 @@ export const useChat = () => {
         try {
             await callApi.hideHistory(callId);
             setCallHistory(previous => previous.filter(call => String(call.call_id) !== String(callId)));
+            // Hiding a call is per-user, so recalculate this user's sidebar preview.
+            await fetchConversations();
             toast.success('Đã xóa cuộc gọi khỏi lịch sử của bạn');
             return true;
         } catch (error) {
