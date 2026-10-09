@@ -750,6 +750,23 @@ const initSocket = (server) => {
             }
         };
 
+        // Notify both participants when a call becomes a final timeline activity.
+        // The conversation API derives the preview from persisted messages and call history.
+        const emitCallActivityUpdated = (call) => {
+            if (!call?.conversation_id || !call?.call_id) return;
+            const payload = {
+                callId: call.call_id,
+                conversationId: Number(call.conversation_id),
+                callerId: Number(call.caller_id),
+                receiverId: Number(call.receiver_id),
+                status: call.status,
+                activityAt: call.ended_at || call.updated_at || call.started_at || null
+            };
+            io.to(`user:${payload.callerId}`).emit('call:activity:updated', payload);
+            io.to(`user:${payload.receiverId}`).emit('call:activity:updated', payload);
+            io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
+        };
+
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][start]', { callId, userId, targetId, callType });
