@@ -124,6 +124,24 @@ const updateCallStatus = async (callId, status, reason = null, answered = false)
     return rows[0] || null;
 };
 
+// Move a call to connected only from the connecting state. This prevents
+// a late WebRTC event from resurrecting a call that has already ended.
+const markCallConnectedIfConnecting = async (callId) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = 'connected',
+            updated_at = NOW()
+        WHERE call_id = $1
+          AND status = 'connecting'
+          AND ended_at IS NULL
+        RETURNING *;
+        `,
+        [callId]
+    );
+    return rows[0] || null;
+};
+
 const getActiveCallsForParticipant = async (userId) => {
     const { rows } = await pool.query(
         `
@@ -314,6 +332,7 @@ module.exports = {
     markCallNotificationRead,
     getCallByIdForParticipant,
     updateCallStatusIfCurrent,
+    markCallConnectedIfConnecting,
     getActiveCallsForParticipant,
     acceptRingingCallBeforeDeadline,
     expireDueRingingCalls,
