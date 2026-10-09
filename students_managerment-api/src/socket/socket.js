@@ -992,7 +992,7 @@ const initSocket = (server) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][offer]', { callId, userId, targetId, hasOffer: !!offer });
             const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !offer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
+            if (!call || !offer || !['connecting', 'connected'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:offer', {
                 callId, fromUserId: userId, toUserId: targetId, offer
             });
@@ -1002,7 +1002,7 @@ const initSocket = (server) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][answer]', { callId, userId, targetId, hasAnswer: !!answer });
             const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !answer || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
+            if (!call || !answer || !['connecting', 'connected'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
             });
@@ -1085,7 +1085,7 @@ const initSocket = (server) => {
             const targetId = Number(targetUserId);
             console.log('[CALL][ice]', { callId, userId, targetId, hasCandidate: !!candidate });
             const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !candidate || ['rejected', 'missed', 'cancelled', 'failed', 'timeout', 'completed'].includes(call.status)) return;
+            if (!call || !candidate || !['connecting', 'connected'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:ice-candidate', {
                 callId, fromUserId: userId, toUserId: targetId, candidate
             });
