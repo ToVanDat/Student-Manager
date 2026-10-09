@@ -673,6 +673,20 @@ export default function useWebRTCCall() {
     }, [cleanup]);
 
     useEffect(() => {
+        const updateNegotiationState = pc => {
+            if (pc?.connectionState === 'connected') {
+                setState('connected');
+                return;
+            }
+
+            // Keep the recovery label while an ICE restart is negotiating.
+            // Async SDP handlers may finish after a connection-state event,
+            // so they must not overwrite a successful connection with stale UI state.
+            setState(currentState => currentState === 'reconnecting'
+                ? currentState
+                : 'connecting');
+        };
+
         const onIncoming = data => {
             if (callRef.current?.callId === data.callId) return;
             console.log('[CALL][incoming]', data);
@@ -731,7 +745,7 @@ export default function useWebRTCCall() {
                     targetUserId: current.targetUserId,
                     offer: pc.localDescription
                 });
-                setState('connecting');
+                updateNegotiationState(pc);
 
             } catch (err) {
                 setError(err.message || 'Không thể tạo offer.');
@@ -785,7 +799,7 @@ export default function useWebRTCCall() {
                     targetUserId: current.targetUserId,
                     answer: pc.localDescription
                 });
-                setState('connecting');
+                updateNegotiationState(pc);
             } catch (err) {
                 console.error('[WebRTC] OFFER ERROR:', err);
                 setError(err.message || 'Không thể xử lý offer.');
@@ -796,14 +810,16 @@ export default function useWebRTCCall() {
 
         const onAnswer = async data => {
             console.log('[CALL][answer received]', { callId: data?.callId, fromUserId: data?.fromUserId });
-            if (!peerRef.current || callRef.current?.callId !== data.callId) return;
+            const pc = peerRef.current;
+            if (!pc || callRef.current?.callId !== data.callId) return;
             try {
-                await peerRef.current.setRemoteDescription(data.answer);
+                await pc.setRemoteDescription(data.answer);
                 for (const candidate of pendingCandidatesRef.current) {
-                    await peerRef.current.addIceCandidate(candidate);
+                    await pc.addIceCandidate(candidate);
                 }
                 pendingCandidatesRef.current = [];
-                setState('connecting');
+                if (callRef.current?.callId !== data.callId || peerRef.current !== pc) return;
+                updateNegotiationState(pc);
             } catch (err) {
                 console.error('[WebRTC] ANSWER ERROR:', err);
                 setError(err.message || 'Không thể xử lý answer.');
