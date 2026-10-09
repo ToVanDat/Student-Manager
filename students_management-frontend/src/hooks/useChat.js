@@ -66,7 +66,10 @@ export const useChat = () => {
                 if (cancelled) return;
 
                 const loadedMessages = res.data?.data || [];
+                if (cancelled) return;
+
                 const callsResponse = await callApi.getHistory(100, 0, activeId);
+                if (cancelled) return;
                 const loadedCalls = (callsResponse.data?.data || []).map(call => ({
                     ...call,
                     id: `call:${call.call_id}`,
@@ -74,13 +77,17 @@ export const useChat = () => {
                 }));
                 setCallHistory(loadedCalls);
                 setMessages(loadedMessages);
+
                 const membersResponse = await chatApi.getConversationMembers(activeId);
                 if (cancelled) return;
                 setConversationMembers(membersResponse.data?.data || []);
                 setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
                 setMessagePage(1);
+
                 await chatApi.markAsRead(activeId);
+                if (cancelled) return;
                 await chatApi.updateConversationSettings(activeId, 'unread', false);
+                if (cancelled) return;
                 if (socket.connected) socket.emit('message:read', { conversationId: activeId });
 
                 setConversations(prev => prev.map(c =>
