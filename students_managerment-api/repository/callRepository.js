@@ -5,17 +5,19 @@ const createCall = async ({
     callerId,
     receiverId,
     conversationId = null,
-    callType
+    callType,
+    ringTimeoutMs = 30_000
 }) => {
     const { rows } = await pool.query(
         `
         INSERT INTO call_history
-            (call_id, caller_id, receiver_id, conversation_id, call_type, status)
-        VALUES ($1, $2, $3, $4, $5, 'ringing')
+            (call_id, caller_id, receiver_id, conversation_id, call_type, status, expires_at)
+        VALUES ($1, $2, $3, $4, $5, 'ringing',
+                NOW() + ($6::BIGINT * INTERVAL '1 millisecond'))
         ON CONFLICT (call_id) DO NOTHING
         RETURNING *;
         `,
-        [callId, callerId, receiverId, conversationId, callType]
+        [callId, callerId, receiverId, conversationId, callType, ringTimeoutMs]
     );
     return rows[0] || null;
 };
@@ -133,6 +135,61 @@ const getActiveCallsForParticipant = async (userId) => {
         ORDER BY started_at DESC;
         `,
         [userId]
+    );
+    return rows;
+};
+
+// Atomic accept: PostgreSQL, not the browser timer, decides whether the
+// invitation was accepted before its persisted deadline.
+const acceptRingingCallBeforeDeadline = async (callId) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = 'connecting',
+            answered_at = COALESCE(answered_at, NOW()),
+            updated_at = NOW()
+        WHERE call_id = $1
+          AND status = 'ringing'
+          AND ended_at IS NULL
+          AND expires_at > NOW()
+        RETURNING *;
+        `,
+        [callId]
+    );
+    return rows[0] || null;
+};
+
+const expireDueRingingCalls = async () => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = 'missed',
+            end_reason = 'ring-timeout',
+            ended_at = COALESCE(ended_at, NOW()),
+            updated_at = NOW()
+        WHERE status = 'ringing'
+          AND ended_at IS NULL
+          AND expires_at IS NOT NULL
+          AND expires_at <= NOW()
+        RETURNING *;
+        `
+    );
+    return rows;
+};
+
+const getPendingIncomingCalls = async (receiverId) => {
+    const { rows } = await pool.query(
+        `
+        SELECT ch.*, caller.username AS caller_username
+        FROM call_history ch
+        JOIN users caller ON caller.id = ch.caller_id
+        WHERE ch.receiver_id = $1
+          AND ch.status = 'ringing'
+          AND ch.ended_at IS NULL
+          AND ch.expires_at > NOW()
+        ORDER BY ch.started_at ASC;
+        `,
+        [receiverId]
     );
     return rows;
 };
