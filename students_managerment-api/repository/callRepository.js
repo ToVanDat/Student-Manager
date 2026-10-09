@@ -286,5 +286,8 @@ module.exports = {
     getCallByIdForParticipant,
     updateCallStatusIfCurrent,
     getActiveCallsForParticipant,
+    acceptRingingCallBeforeDeadline,
+    expireDueRingingCalls,
+    getPendingIncomingCalls,
     hideCallHistoryForUser
 };
