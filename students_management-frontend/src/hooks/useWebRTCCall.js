@@ -174,6 +174,11 @@ export default function useWebRTCCall() {
             const current = callRef.current;
 
             if (pc.connectionState === 'connected') {
+                // The connection-establishment timeout must never end a call
+                // after WebRTC has successfully connected.
+                if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+                connectTimeoutRef.current = null;
+
                 recoveryAttemptsRef.current = 0;
                 if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
                 if (recoveryDeadlineRef.current) clearTimeout(recoveryDeadlineRef.current);
@@ -546,7 +551,13 @@ export default function useWebRTCCall() {
                 });
                 setState('connecting');
                 connectTimeoutRef.current = setTimeout(() => {
+                    connectTimeoutRef.current = null;
                     if (callRef.current?.callId !== current.callId) return;
+
+                    // A delayed timer callback must not tear down a call that
+                    // has already connected successfully.
+                    if (peerRef.current?.connectionState === 'connected') return;
+
                     setError('Không thể thiết lập kết nối cuộc gọi.');
                     cleanup();
                 }, 16_000);
