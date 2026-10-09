@@ -566,6 +566,72 @@ const findRefreshToken = async (
 };
 
 
+
+// Atomically consume one refresh token and issue its replacement.
+// A concurrent refresh using the same token can win only once.
+const rotateRefreshToken = async (
+    oldTokenId,
+    userId,
+    sessionId,
+    newTokenHash,
+    expiresAt
+) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const consumed = await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND session_id = $3
+              AND revoked_at IS NULL
+              AND expires_at > CURRENT_TIMESTAMP
+              AND EXISTS (
+                  SELECT 1
+                  FROM sessions
+                  WHERE id = $3
+                    AND user_id = $2
+                    AND revoked_at IS NULL
+              )
+            RETURNING id
+            `,
+            [oldTokenId, userId, sessionId]
+        );
+
+        if (consumed.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const inserted = await client.query(
+            `
+            INSERT INTO refresh_tokens (
+                user_id,
+                session_id,
+                token_hash,
+                expires_at
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, session_id, expires_at
+            `,
+            [userId, sessionId, newTokenHash, expiresAt]
+        );
+
+        await client.query('COMMIT');
+        return inserted.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+
 // ======================================================
 // REVOKE REFRESH TOKEN BY ID
 // ======================================================
@@ -859,6 +925,8 @@ module.exports = {
     // ==================================================
 
     saveRefreshToken,
+
+    rotateRefreshToken,
 
     findRefreshToken,
 
