@@ -33,7 +33,7 @@ function AvatarCountdown({ name, avatar, progress, size = 80 }) {
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     strokeDashoffset={circumference * (1 - Math.max(0, Math.min(100, progress)) / 100)}
-                    className="transition-[stroke-dashoffset] duration-100"
+                    className="transition-[stroke-dashoffset] duration-100 motion-reduce:transition-none"
                 />
             </svg>
             <div
