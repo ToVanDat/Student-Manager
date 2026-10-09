@@ -264,12 +264,12 @@ const createCallNotification = async (userId, callHistoryId, type, title, body =
     return rows[0];
 };
 
-const getUnreadCallNotifications = async (userId, limit = 50) => {
+const getCallNotifications = async (userId, limit = 50) => {
     const { rows } = await pool.query(
         `
         SELECT *
         FROM call_notifications
-        WHERE user_id = $1 AND is_read = FALSE
+        WHERE user_id = $1
         ORDER BY created_at DESC
         LIMIT $2;
         `,
@@ -296,7 +296,7 @@ module.exports = {
     updateCallStatus,
     getCallHistory,
     createCallNotification,
-    getUnreadCallNotifications,
+    getCallNotifications,
     markCallNotificationRead,
     getCallByIdForParticipant,
     updateCallStatusIfCurrent,
