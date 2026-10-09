@@ -42,8 +42,11 @@ const hideCallHistory = async (req, res) => {
 const getUnreadCallNotifications = async (req, res) => {
     try {
         const userId = Number(req.user.id);
-        const data = await callRepository.getCallNotifications(userId);
-        return res.json({ data });
+        const [data, unreadCount] = await Promise.all([
+            callRepository.getCallNotifications(userId),
+            callRepository.getUnreadCallNotificationCount(userId)
+        ]);
+        return res.json({ data, unreadCount });
     } catch (error) {
         console.error('GET CALL NOTIFICATIONS ERROR:', error);
         return res.status(500).json({ message: 'Không thể lấy thông báo cuộc gọi' });
