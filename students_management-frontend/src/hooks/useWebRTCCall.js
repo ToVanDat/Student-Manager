@@ -364,6 +364,15 @@ export default function useWebRTCCall() {
             setCall(callRef.current);
 
             await startMedia(callType);
+
+            // Start the visual countdown only once the call invitation is sent.
+            const ringingCall = {
+                ...callRef.current,
+                ringStartedAt: Date.now(),
+                ringTimeoutMs: 30_000
+            };
+            callRef.current = ringingCall;
+            setCall(ringingCall);
             setState('calling');
 
             socket.emit('call:start', {
@@ -372,11 +381,13 @@ export default function useWebRTCCall() {
                 callType
             });
 
+            // Backend owns the authoritative missed-call status; this is a
+            // slightly later UI fallback in case the timeout event is lost.
             ringTimeoutRef.current = setTimeout(() => {
                 if (callRef.current?.callId !== callId) return;
-                setError('Không có người trả lời cuộc gọi.');
+                setError('Không có người trả lời. Cuộc gọi đã được ghi nhận là cuộc gọi nhỡ.');
                 cleanup();
-            }, 31_000);
+            }, 32_000);
         } catch (err) {
             setError(err.message || 'Không thể truy cập microphone/camera.');
             cleanup();
