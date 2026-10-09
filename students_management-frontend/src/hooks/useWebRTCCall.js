@@ -176,6 +176,33 @@ export default function useWebRTCCall() {
         }
     }, [releaseLocalMedia]);
 
+    // Start one hard deadline for the call setup. It must not be cancelled
+    // just because React changes state from connecting to reconnecting.
+    const startConnectionTimeout = useCallback((callId) => {
+        if (connectTimeoutRef.current) return;
+
+        connectTimeoutRef.current = setTimeout(() => {
+            connectTimeoutRef.current = null;
+            const current = callRef.current;
+            if (!current || current.callId !== callId) return;
+            if (peerRef.current?.connectionState === 'connected' || callConnectedAtRef.current !== null) return;
+
+            const message = 'Không thể kết nối cuộc gọi sau 12 giây. Cuộc gọi đã kết thúc.';
+            setError(message);
+
+            if (socket.connected) {
+                socket.emit('call:connection-failed', {
+                    callId: current.callId,
+                    targetUserId: current.targetUserId,
+                    reason: 'connection-timeout'
+                });
+            }
+
+            // Timeout means leave the call UI, not stay in the failed-call panel.
+            cleanup();
+        }, 12_000);
+    }, [cleanup]);
+
     const addLocalTracksToPeer = useCallback((pc) => {
         const stream = localStreamRef.current;
         if (!stream) return;
@@ -486,6 +513,7 @@ export default function useWebRTCCall() {
             });
 
             setState('connecting');
+            startConnectionTimeout(current.callId);
 
             if (ringTimeoutRef.current) clearTimeout(ringTimeoutRef.current);
             ringTimeoutRef.current = null;
@@ -516,7 +544,7 @@ export default function useWebRTCCall() {
             setError(err.message || 'Không thể truy cập thiết bị.');
             cleanup();
         }
-    }, [cleanup, startMedia]);
+    }, [cleanup, startMedia, startConnectionTimeout]);
 
     const rejectCall = useCallback(() => {
         const current = callRef.current;
@@ -636,24 +664,6 @@ export default function useWebRTCCall() {
         };
     }, [state]);
 
-    // Bound connecting for both participants. Key by callId to prevent a stale
-    // timer from ever changing the state of a newer call.
-    useEffect(() => {
-        if (state !== 'connecting' || !call?.callId) return undefined;
-        const callId = call.callId;
-        const timer = setTimeout(() => {
-            const activeCall = callRef.current;
-            if (!activeCall || activeCall.callId !== callId) return;
-            if (peerRef.current?.connectionState === 'connected') return;
-            failConnection('Không thể kết nối cuộc gọi. Hãy thử lại hoặc kết thúc cuộc gọi.', true);
-        }, 12_000);
-        connectTimeoutRef.current = timer;
-        return () => {
-            clearTimeout(timer);
-            if (connectTimeoutRef.current === timer) connectTimeoutRef.current = null;
-        };
-    }, [state, call?.callId, failConnection]);
-
     useEffect(() => {
         return () => {
             // Socket listener cleanup is not enough: MediaStreams and
@@ -699,6 +709,8 @@ export default function useWebRTCCall() {
             console.log('[CALL][accepted]', data);
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
+
+            startConnectionTimeout(current.callId);
 
             // The receiver accepted the call, so stop the caller's ring timeout.
             // Otherwise it can clean up an already-connected call after 31 seconds.
@@ -909,7 +921,7 @@ export default function useWebRTCCall() {
             socket.off('call:ended', onEnded);
             socket.off('call:error', onError);
         };
-    }, [cleanup, createPeer, addLocalTracksToPeer, failConnection]);
+    }, [cleanup, createPeer, addLocalTracksToPeer, failConnection, startConnectionTimeout]);
 
     return {
         state,
