@@ -22,6 +22,7 @@ export const useChat = () => {
     const [conversationMembers, setConversationMembers] = useState([]);
     const [callHistory, setCallHistory] = useState([]);
     const searchJumpIdRef = useRef(null);
+    const seenMessageEventIdsRef = useRef(new Set());
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
     const fetchConversations = useCallback(async () => {
@@ -190,6 +191,18 @@ export const useChat = () => {
 
         const handleNewMessage = (message) => {
             const conversationId = Number(message.conversation_id ?? message.conversationId);
+            const messageId = message?.id == null ? null : String(message.id);
+            const seenIds = seenMessageEventIdsRef.current;
+            const isFirstDelivery = !messageId || !seenIds.has(messageId);
+
+            if (messageId && isFirstDelivery) {
+                seenIds.add(messageId);
+                // Bound memory for long-lived tabs; IDs only deduplicate realtime deliveries.
+                if (seenIds.size > 5000) {
+                    const oldestId = seenIds.values().next().value;
+                    seenIds.delete(oldestId);
+                }
+            }
 
             if (conversationId === Number(activeId)) {
                 setMessages(prev => {
@@ -240,7 +253,7 @@ export const useChat = () => {
                         }),
                         unreadCount: Number(c.id) === Number(activeId) || Number(message.sender_id ?? message.senderId) === currentUserId
                             ? 0
-                            : (c.unreadCount || 0) + 1
+                            : (c.unreadCount || 0) + (isFirstDelivery ? 1 : 0)
                     };
                 });
 
