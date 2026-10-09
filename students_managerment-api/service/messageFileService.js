@@ -41,30 +41,27 @@ const uploadFile = async (messageId, userId, file) => {
         throw error;
     }
 
-    const message = await canAccessMessage(messageId, userId);
-
-    // Attachments are part of the message authored by this user. Membership
-    // alone must not let another group member attach files to someone else's message.
-    if (String(message.sender_id) !== String(userId)) {
-        const error = new Error('Bạn chỉ có thể đính kèm file vào message do chính mình gửi');
-        error.statusCode = 403;
-        throw error;
-    }
-
-    const storageKey = `chat/${file.filename}`;
-
     try {
-        const savedFile =
-            await messageFileRepository.createMessageFile({
-                messageId: message.id,
-                fileName: String(file.originalname || 'file').replace(/[\\/\0]/g, '_').slice(0, 255),
-                storageKey,
-                mimeType: file.mimetype,
-                fileSize: file.size
-            });
+        const message = await canAccessMessage(messageId, userId);
 
-        return savedFile;
+        // Attachments are part of the message authored by this user. Membership
+        // alone must not let another group member attach files to someone else's message.
+        if (String(message.sender_id) !== String(userId)) {
+            const error = new Error('Bạn chỉ có thể đính kèm file vào message do chính mình gửi');
+            error.statusCode = 403;
+            throw error;
+        }
+
+        const storageKey = `chat/${file.filename}`;
+        return await messageFileRepository.createMessageFile({
+            messageId: message.id,
+            fileName: String(file.originalname || 'file').replace(/[\\/\0]/g, '_').slice(0, 255),
+            storageKey,
+            mimeType: file.mimetype,
+            fileSize: file.size
+        });
     } catch (error) {
+        // Multer writes the file before authorization; remove it for every failure.
         await fs.unlink(file.path).catch(() => {});
         throw error;
     }
