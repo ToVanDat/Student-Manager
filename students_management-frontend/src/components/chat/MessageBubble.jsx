@@ -47,119 +47,151 @@ const formatCallDate = value => {
     });
 };
 
-const CallTimelineItem = ({ call, isOwn, currentUserId, onRedial }) => {
+const CallTimelineItem = ({
+    call,
+    isOwn,
+    currentUserId,
+    onRedial,
+    senderAvatar,
+    senderName,
+    onHideCall,
+    onViewProfile,
+    onFocusComposer
+}) => {
     const [redialed, setRedialed] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
 
     const isVideo = call.call_type === 'video';
-    const isMissed = call.status === 'missed';
+    const isMissed = call.status === 'missed' || call.status === 'timeout';
     const isRejected = call.status === 'rejected';
     const isCancelled = call.status === 'cancelled';
     const isCompleted = call.status === 'completed';
-    const outgoing = isOwn;
-
-    const icon = isMissed
-        ? <PhoneMissed size={17} strokeWidth={2.2} />
-        : isRejected || isCancelled
-            ? <PhoneOff size={17} strokeWidth={2.2} />
-            : isVideo
-                ? <Video size={17} strokeWidth={2.2} />
-                : <Phone size={17} strokeWidth={2.2} />;
+    const outgoing = Number(call.caller_id) === Number(currentUserId);
+    const callTypeLabel = isVideo ? 'Video' : 'Thoại';
 
     const title = isMissed
         ? 'Cuộc gọi nhỡ'
         : isRejected
-            ? 'Cuộc gọi bị từ chối'
+            ? (outgoing ? 'Cuộc gọi đi bị từ chối' : 'Cuộc gọi đến bị từ chối')
             : isCancelled
-                ? 'Đã huỷ cuộc gọi'
-                : `${outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'} ${isVideo ? 'video' : 'thoại'}`;
+                ? (outgoing ? 'Bạn đã hủy cuộc gọi' : 'Người gọi đã hủy cuộc gọi')
+                : isCompleted
+                    ? `Cuộc gọi ${isVideo ? 'video' : 'thoại'} · ${formatCallDuration(call.duration_seconds)}`
+                    : outgoing
+                        ? `Cuộc gọi đi · ${callTypeLabel}`
+                        : `Cuộc gọi đến · ${callTypeLabel}`;
 
+    const Icon = isMissed ? PhoneMissed
+        : isRejected || isCancelled ? PhoneOff
+            : isVideo ? Video : Phone;
     const statusClass = isMissed
         ? 'text-red-600 dark:text-red-400'
         : isRejected || isCancelled
-            ? 'text-amber-600 dark:text-amber-400'
-            : isVideo
-                ? 'text-violet-600 dark:text-violet-400'
-                : 'text-slate-700 dark:text-slate-100';
-
+            ? 'text-slate-600 dark:text-slate-300'
+            : 'text-slate-800 dark:text-slate-100';
     const iconClass = isMissed
-        ? 'bg-red-50 text-red-500 dark:bg-red-950/40 dark:text-red-400'
-        : isRejected || isCancelled
-            ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400'
-            : isVideo
-                ? 'bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400'
-                : 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400';
+        ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
+        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
 
     const startedAt = call.started_at || call.created_at;
-    const duration = isCompleted ? formatCallDuration(call.duration_seconds) : null;
-    const otherUserId = Number(call.caller_id) === Number(currentUserId)
-        ? call.receiver_id
-        : call.caller_id;
+    const otherUserId = outgoing ? call.receiver_id : call.caller_id;
     const canRedial = Boolean(otherUserId);
-
     const handleRedial = event => {
         event?.preventDefault();
         event?.stopPropagation();
         if (!canRedial || redialed) return;
-        onRedial?.(otherUserId, isVideo ? 'video' : 'voice');
+        onRedial?.(otherUserId, isVideo ? 'video' : 'voice', {
+            name: senderName,
+            avatar: senderAvatar
+        });
         setRedialed(true);
     };
 
-    const card = (
-        <button
-            type="button"
-            onClick={handleRedial}
-            disabled={!canRedial}
-            className={[
-                'group flex w-full max-w-[350px] items-center gap-3 rounded-2xl border px-3.5 py-2.5 text-left shadow-sm transition-all active:scale-[0.99]',
-                'hover:-translate-y-px hover:shadow-md',
-                outgoing
-                    ? 'border-blue-100 bg-blue-50/70 hover:border-blue-200 dark:border-blue-900/50 dark:bg-blue-950/20 dark:hover:border-blue-800'
-                    : 'border-slate-200/80 bg-white hover:border-slate-300 dark:border-slate-700/80 dark:bg-slate-900/80 dark:hover:border-slate-600'
-            ].join(' ')}
-            title={redialed ? 'Đã gọi lại' : canRedial ? `Gọi lại ${isVideo ? 'video' : 'thoại'}` : 'Không thể gọi lại'}
-        >
-            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
-                {icon}
-            </span>
-
-            <span className="min-w-0 flex-1">
-                <span className={`block truncate text-[13px] font-semibold ${statusClass}`}>
-                    {title}
-                </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                    <span>{formatCallDate(startedAt)}</span>
-                    <span>•</span>
-                    <span>{formatCallTime(startedAt)}</span>
-                    {duration && (
-                        <>
-                            <span>•</span>
-                            <span>{duration}</span>
-                        </>
-                    )}
-                </span>
-            </span>
-
-            {canRedial && (
-                <span className={[
-                    'flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-semibold transition',
-                    redialed
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400'
-                        : 'text-slate-400 group-hover:bg-white group-hover:text-blue-600 dark:group-hover:bg-slate-800 dark:group-hover:text-blue-400'
-                ].join(' ')}>
-                    {redialed
-                        ? <><Check size={13} /> Đã gọi lại</>
-                        : isVideo
-                            ? <><Video size={13} /> Gọi lại</>
-                            : <><Phone size={13} /> Gọi lại</>}
-                </span>
-            )}
-        </button>
-    );
+    const handleHide = async () => {
+        setMenuOpen(false);
+        if (!window.confirm('Xóa cuộc gọi này khỏi lịch sử của bạn? Người kia vẫn giữ lịch sử cuộc gọi của họ.')) return;
+        await onHideCall?.(call.call_id);
+    };
 
     return (
         <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
-            <div className={`flex w-full max-w-[350px] ${outgoing ? 'ml-auto justify-end' : 'mr-auto justify-start'}`}>
-                {card}
+            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="relative shrink-0">
+                    <AvatarFallback name={senderName || 'Người dùng'} src={senderAvatar} size="md" />
+                    <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-900 ${iconClass}`}>
+                        <Icon size={11} strokeWidth={2.5} />
+                    </span>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                    <div className={`truncate text-[13px] font-semibold ${statusClass}`}>{title}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>{formatCallDate(startedAt)}</span>
+                        <span>·</span>
+                        <span>{formatCallTime(startedAt)}</span>
+                        {isCompleted && call.duration_seconds != null && (
+                            <>
+                                <span>·</span>
+                                <span>{formatCallDuration(call.duration_seconds)}</span>
+                            </>
+                        )}
+                        {!isCompleted && !isMissed && !isRejected && !isCancelled && (
+                            <>
+                                <span>·</span>
+                                <span>{outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'}</span>
+                            </>
+                        )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleRedial}
+                            disabled={!canRedial || redialed}
+                            className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            title={`Gọi lại ${isVideo ? 'video' : 'thoại'}`}
+                        >
+                            {isVideo ? <Video size={14} /> : <Phone size={14} />}
+                            {redialed ? 'Đã gọi' : 'Gọi lại'}
+                        </button>
+
+                        <div className="relative">
+                            <button
+                                type="button"
+                                aria-label="Tùy chọn cuộc gọi"
+                                aria-expanded={menuOpen}
+                                onClick={() => setMenuOpen(value => !value)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                            >
+                                <MoreHorizontal size={17} />
+                            </button>
+                            {menuOpen && (
+                                <div className="absolute bottom-9 left-0 z-40 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setMenuOpen(false); onFocusComposer?.(); }}
+                                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    >
+                                        Nhắn tin
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setMenuOpen(false); onViewProfile?.(); }}
+                                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    >
+                                        Xem hồ sơ
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleHide}
+                                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                    >
+                                        Xóa khỏi lịch sử của tôi
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
@@ -177,6 +209,9 @@ export default function MessageBubble({
     onDownloadFile,
     onPreviewFile,
     onDeleteFile,
+    onHideCall,
+    onViewProfile,
+    onFocusComposer,
     onReply,
     onToggleReaction,
     currentUserId,
@@ -189,6 +224,11 @@ export default function MessageBubble({
                 isOwn={isOwn}
                 currentUserId={currentUserId}
                 onRedial={onRedial}
+                senderAvatar={senderAvatar}
+                senderName={senderName}
+                onHideCall={onHideCall}
+                onViewProfile={onViewProfile}
+                onFocusComposer={onFocusComposer}
             />
         );
     }
