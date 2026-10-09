@@ -315,11 +315,11 @@ export const useChat = () => {
                     .map(c => Number(c.id) === Number(conversationId)
                         ? {
                             ...c,
-                            lastMessage: lastMessage?.content || '',
-                            lastMessageAt: updatedAt,
-                            unreadCount: Number(c.id) === Number(activeId) || Number(senderId) === currentUserId
-                                ? 0
-                                : (c.unreadCount || 0) + 1
+                            lastMessage: lastMessage?.content || c.lastMessage || '',
+                            lastMessageAt: updatedAt || c.lastMessageAt,
+                            // message:new is the sole event that increments unreadCount.
+                            // conversation:updated only refreshes preview metadata.
+                            unreadCount: c.unreadCount
                         }
                         : c)
                     .sort((a, b) =>
