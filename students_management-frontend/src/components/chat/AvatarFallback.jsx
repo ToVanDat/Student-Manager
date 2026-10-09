@@ -20,7 +20,7 @@ function colorIndex(value = '') {
 export default function AvatarFallback({ name, src, size = 'md', showStatus = false, isOnline = false, className = '' }) {
     const [imageError, setImageError] = React.useState(false);
     const label = (name || 'U').trim() || 'U';
-    const initial = label.split(/\\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase();
+    const initial = label.split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase();
     const [bg, text] = PALETTE[colorIndex(label.toLowerCase())];
 
     const sizes = {
