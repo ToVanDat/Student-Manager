@@ -34,6 +34,9 @@ export default function useWebRTCCall() {
     const [cameraOn, setCameraOn] = useState(false);
     const [sharingScreen, setSharingScreen] = useState(false);
     const [error, setError] = useState('');
+    const [callDurationSeconds, setCallDurationSeconds] = useState(0);
+    const callConnectedAtRef = useRef(null);
+    const callDurationTimerRef = useRef(null);
     const ringTimeoutRef = useRef(null);
     const connectTimeoutRef = useRef(null);
     const recoveryTimerRef = useRef(null);
@@ -77,6 +80,10 @@ export default function useWebRTCCall() {
         recoveryTimerRef.current = null;
         recoveryDeadlineRef.current = null;
         recoveryAttemptsRef.current = 0;
+        if (callDurationTimerRef.current) clearInterval(callDurationTimerRef.current);
+        callDurationTimerRef.current = null;
+        callConnectedAtRef.current = null;
+        setCallDurationSeconds(0);
 
         const pc = peerRef.current;
         peerRef.current = null;
@@ -174,6 +181,13 @@ export default function useWebRTCCall() {
             const current = callRef.current;
 
             if (pc.connectionState === 'connected') {
+                // Start the duration exactly once, when WebRTC first connects.
+                // Keep the same start time through a temporary reconnection.
+                if (callConnectedAtRef.current === null) {
+                    callConnectedAtRef.current = Date.now();
+                    setCallDurationSeconds(0);
+                }
+
                 // The connection-establishment timeout must never end a call
                 // after WebRTC has successfully connected.
                 if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
@@ -509,6 +523,31 @@ export default function useWebRTCCall() {
     }, []);
 
     useEffect(() => {
+        if (
+            !callConnectedAtRef.current ||
+            !['connected', 'reconnecting'].includes(state)
+        ) {
+            if (callDurationTimerRef.current) clearInterval(callDurationTimerRef.current);
+            callDurationTimerRef.current = null;
+            return;
+        }
+
+        const updateDuration = () => {
+            const elapsed = Math.floor((Date.now() - callConnectedAtRef.current) / 1000);
+            setCallDurationSeconds(Math.max(elapsed, 0));
+        };
+
+        updateDuration();
+        if (callDurationTimerRef.current) clearInterval(callDurationTimerRef.current);
+        callDurationTimerRef.current = setInterval(updateDuration, 1000);
+
+        return () => {
+            if (callDurationTimerRef.current) clearInterval(callDurationTimerRef.current);
+            callDurationTimerRef.current = null;
+        };
+    }, [state]);
+
+    useEffect(() => {
         return () => {
             // Socket listener cleanup is not enough: MediaStreams and
             // RTCPeerConnections survive independently of React listeners.
@@ -752,6 +791,7 @@ export default function useWebRTCCall() {
         toggleCamera,
         toggleScreenShare,
         sharingScreen,
+        callDurationSeconds,
         cleanup
     };
 }
