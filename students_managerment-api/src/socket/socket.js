@@ -226,7 +226,7 @@ const initSocket = (server) => {
 
         socket.on('call:sync-pending', syncPendingCalls);
         // Replay pending invitations after every authenticated reconnect.
-        await syncPendingCalls();
+        void syncPendingCalls();
 
         socket.on('presence:sync', async () => {
             try {
