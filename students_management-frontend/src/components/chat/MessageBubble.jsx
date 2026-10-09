@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
@@ -62,6 +63,9 @@ const CallTimelineItem = ({
 }) => {
     const [redialed, setRedialed] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const menuButtonRef = useRef(null);
+    const menuRef = useRef(null);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
 
     const isVideo = call.call_type === 'video';
     const isMissed = call.status === 'missed' || call.status === 'timeout';
@@ -108,6 +112,47 @@ const CallTimelineItem = ({
         });
         setRedialed(true);
     };
+
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const updatePosition = () => {
+            const rect = menuButtonRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const menuWidth = 208;
+            const menuHeight = 150;
+            const gap = 8;
+            const left = Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12));
+            const below = rect.bottom + gap;
+            const top = below + menuHeight <= window.innerHeight - 12
+                ? below
+                : Math.max(12, rect.top - menuHeight - gap);
+            setMenuPosition({ top, left });
+        };
+
+        const onPointerDown = event => {
+            if (menuRef.current?.contains(event.target) || menuButtonRef.current?.contains(event.target)) return;
+            setMenuOpen(false);
+        };
+        const onKeyDown = event => {
+            if (event.key === 'Escape') {
+                setMenuOpen(false);
+                menuButtonRef.current?.focus();
+            }
+        };
+
+        updatePosition();
+        document.addEventListener('pointerdown', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [menuOpen]);
 
     const handleHide = async () => {
         setMenuOpen(false);
@@ -163,38 +208,50 @@ const CallTimelineItem = ({
 
                         <div className="relative">
                             <button
+                                ref={menuButtonRef}
                                 type="button"
                                 aria-label="Tùy chọn cuộc gọi"
+                                aria-haspopup="menu"
                                 aria-expanded={menuOpen}
                                 onClick={() => setMenuOpen(value => !value)}
                                 className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                             >
                                 <MoreHorizontal size={17} />
                             </button>
-                            {menuOpen && (
-                                <div className="absolute bottom-9 left-0 z-40 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            {menuOpen && createPortal(
+                                <div
+                                    ref={menuRef}
+                                    role="menu"
+                                    aria-label="Tùy chọn cuộc gọi"
+                                    style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, width: 208, zIndex: 9999 }}
+                                    className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                                >
                                     <button
                                         type="button"
+                                        role="menuitem"
                                         onClick={() => { setMenuOpen(false); onFocusComposer?.(); }}
-                                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-200 dark:hover:bg-slate-800"
                                     >
                                         Nhắn tin
                                     </button>
                                     <button
                                         type="button"
+                                        role="menuitem"
                                         onClick={() => { setMenuOpen(false); onViewProfile?.(); }}
-                                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-200 dark:hover:bg-slate-800"
                                     >
                                         Xem hồ sơ
                                     </button>
                                     <button
                                         type="button"
+                                        role="menuitem"
                                         onClick={handleHide}
-                                        className="w-full rounded-lg px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500 dark:hover:bg-red-950/30"
                                     >
                                         Xóa khỏi lịch sử của tôi
                                     </button>
-                                </div>
+                                </div>,
+                                document.body
                             )}
                         </div>
                     </div>
