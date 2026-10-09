@@ -34,6 +34,65 @@ const canAccessMessage = async (messageId, userId) => {
     return message;
 };
 
+const hasSignature = (mimeType, bytes) => {
+    const startsWith = (...values) =>
+        values.every((value, index) => bytes[index] === value);
+    const containsAscii = (value, offset = 0) =>
+        Buffer.from(value, 'ascii').every((byte, index) => bytes[offset + index] === byte);
+
+    switch (mimeType) {
+        case 'image/jpeg':
+            return startsWith(0xff, 0xd8, 0xff);
+        case 'image/png':
+            return startsWith(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a);
+        case 'image/gif':
+            return containsAscii('GIF87a') || containsAscii('GIF89a');
+        case 'image/webp':
+            return containsAscii('RIFF') && containsAscii('WEBP', 8);
+        case 'application/pdf':
+            return containsAscii('%PDF-');
+        case 'video/mp4':
+            return containsAscii('ftyp', 4);
+        case 'video/webm':
+        case 'audio/webm':
+            return startsWith(0x1a, 0x45, 0xdf, 0xa3);
+        case 'audio/ogg':
+            return containsAscii('OggS');
+        case 'audio/wav':
+            return containsAscii('RIFF') && containsAscii('WAVE', 8);
+        case 'audio/mpeg':
+            return containsAscii('ID3') || (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0);
+        case 'application/msword':
+        case 'application/vnd.ms-excel':
+        case 'application/vnd.ms-powerpoint':
+            return startsWith(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1);
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+            return startsWith(0x50, 0x4b, 0x03, 0x04);
+        case 'text/plain':
+            return !bytes.includes(0x00);
+        default:
+            return false;
+    }
+};
+
+const validateFileContent = async (file) => {
+    const handle = await fs.open(file.path, 'r');
+    try {
+        const buffer = Buffer.alloc(16);
+        const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+        const header = buffer.subarray(0, bytesRead);
+        if (!hasSignature(file.mimetype, header)) {
+            const error = new Error('Nội dung file không khớp với loại file đã khai báo');
+            error.statusCode = 415;
+            throw error;
+        }
+    } finally {
+        await handle.close();
+    }
+};
+
 const uploadFile = async (messageId, userId, file) => {
     if (!file) {
         const error = new Error('Chưa chọn file');
@@ -51,6 +110,10 @@ const uploadFile = async (messageId, userId, file) => {
             error.statusCode = 403;
             throw error;
         }
+
+        // MIME supplied by the browser is untrusted. Verify the file signature
+        // before storing metadata or allowing other members to download it.
+        await validateFileContent(file);
 
         const storageKey = `chat/${file.filename}`;
         return await messageFileRepository.createMessageFile({
@@ -121,18 +184,51 @@ const deleteFile = async (fileId, userId) => {
         throw error;
     }
 
-    const deleted =
-        await messageFileRepository.deleteMessageFile(fileId);
+    const filePath = getPhysicalPath(file.storage_key);
+    const quarantinePath = `${filePath}.deleting-${require('crypto').randomUUID()}`;
+    let quarantined = false;
 
-    if (!deleted) {
-        const error = new Error('File đã được xoá');
-        error.statusCode = 404;
+    // Move the file out of its live path first. If the filesystem refuses,
+    // keep the DB row so the operation can be retried instead of orphaning it.
+    try {
+        await fs.rename(filePath, quarantinePath);
+        quarantined = true;
+    } catch (error) {
+        if (error.code !== 'ENOENT') {
+            error.statusCode = 500;
+            throw error;
+        }
+        // The file is already missing; remove the stale metadata below.
+    }
+
+    let deleted;
+    try {
+        deleted = await messageFileRepository.deleteMessageFile(fileId);
+        if (!deleted) {
+            const error = new Error('File đã được xoá');
+            error.statusCode = 404;
+            throw error;
+        }
+    } catch (error) {
+        if (quarantined) {
+            await fs.rename(quarantinePath, filePath).catch((restoreError) => {
+                console.error('MESSAGE FILE RESTORE ERROR:', restoreError.message);
+            });
+        }
         throw error;
     }
 
-    const filePath = getPhysicalPath(deleted.storage_key);
-
-    await fs.unlink(filePath).catch(() => {});
+    if (quarantined) {
+        await fs.unlink(quarantinePath).catch((error) => {
+            // Metadata is already deleted; leave an identifiable quarantine
+            // file for a storage cleanup job instead of hiding the failure.
+            console.error('MESSAGE FILE QUARANTINE CLEANUP ERROR:', {
+                fileId,
+                path: quarantinePath,
+                error: error.message
+            });
+        });
+    }
 
     return deleted;
 };
