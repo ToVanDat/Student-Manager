@@ -523,6 +523,11 @@ export default function useWebRTCCall() {
         cleanup();
     }, [cleanup]);
 
+    const dismissCall = useCallback(() => {
+        cleanup();
+        setError('');
+    }, [cleanup]);
+
     const retryCall = useCallback(() => {
         const current = callRef.current;
         if (!current) return;
@@ -903,7 +908,7 @@ export default function useWebRTCCall() {
         rejectCall,
         endCall,
         retryCall,
-        dismissCall: cleanup,
+        dismissCall,
         toggleMute,
         toggleCamera,
         toggleScreenShare,
