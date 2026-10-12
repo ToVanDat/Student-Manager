@@ -5,6 +5,7 @@ const { redisClient } = require('../config/redis.js');
 const conversationRepository = require('../../repository/conversationRepository.js');
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
+const messageService = require('../../service/messageService.js');
 const userRepository = require('../../repository/userRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 
@@ -340,7 +341,7 @@ const initSocket = (server) => {
                     }
                 }
 
-                const savedMessage = await messageRepository.createMessage(id, userId, text, replyTo);
+                const savedMessage = await messageService.createMessage(id, userId, text, replyTo);
                 const memberIds = await conversationRepository.getConversationMemberIds(id);
 
                 // Gửi cho các client khác trong conversation và luôn gửi lại cho sender.
