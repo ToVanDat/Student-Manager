@@ -1147,6 +1147,8 @@ const initSocket = (server) => {
 
         socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {
             const targetId = Number(targetUserId);
+            // Never persist arbitrary client-controlled reason strings.
+            const safeReason = reason === 'cancelled' ? 'cancelled' : 'ended';
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall) {
                 return socket.emit('call:error', {
@@ -1157,7 +1159,7 @@ const initSocket = (server) => {
             }
 
             clearCallTimer(callId);
-            const finalStatus = reason === 'cancelled'
+            const finalStatus = safeReason === 'cancelled'
                 ? 'cancelled'
                 : (currentCall.answered_at ? 'completed' : 'cancelled');
 
@@ -1167,7 +1169,7 @@ const initSocket = (server) => {
                     callId,
                     userId,
                     status: currentCall.status,
-                    reason
+                    reason: safeReason
                 });
                 return;
             }
@@ -1176,7 +1178,7 @@ const initSocket = (server) => {
                 callId,
                 finalStatus,
                 currentCall.status,
-                reason
+                safeReason
             );
 
             if (!updated) {
@@ -1195,11 +1197,11 @@ const initSocket = (server) => {
                 targetId,
                 previousStatus: currentCall.status,
                 status: updated.status,
-                reason
+                reason: safeReason
             });
 
             io.to(`user:${targetId}`).emit('call:ended', {
-                callId, fromUserId: userId, toUserId: targetId, reason
+                callId, fromUserId: userId, toUserId: targetId, reason: safeReason
             });
             if (updated?.status === 'completed') {
                 const duration = updated.duration_seconds || 0;
