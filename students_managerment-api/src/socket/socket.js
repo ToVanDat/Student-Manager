@@ -801,11 +801,22 @@ const initSocket = (server) => {
             io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
         };
 
-        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
+        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][start]', { callId, userId, targetId, callType });
+            const validCallId = typeof callId === 'string'
+                && callId.trim().length > 0
+                && callId.length <= 128;
 
-            if (!callId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
+            console.log('[CALL][start]', {
+                callId: validCallId ? callId : '[invalid]',
+                userId,
+                targetId,
+                callType
+            });
+
+            // Socket payloads are untrusted. Bound the identifier before it
+            // reaches SQL/logging and reject malformed call requests early.
+            if (!validCallId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
                 return socket.emit('call:error', {
                     callId,
                     code: 'CALL_NOT_ALLOWED',
