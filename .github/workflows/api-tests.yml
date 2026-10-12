@@ -1,0 +1,29 @@
+name: API tests
+
+on:
+  push:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+  pull_request:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+
+jobs:
+  test-api:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: students_managerment-api
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run API unit tests
+        run: npm test
