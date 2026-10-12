@@ -8,6 +8,7 @@ const messageRepository = require('../../repository/messageRepository.js');
 const messageService = require('../../service/messageService.js');
 const userRepository = require('../../repository/userRepository.js');
 const callRepository = require('../../repository/callRepository.js');
+const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -803,9 +804,7 @@ const initSocket = (server) => {
 
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
             const targetId = Number(targetUserId);
-            const validCallId = typeof callId === 'string'
-                && callId.trim().length > 0
-                && callId.length <= 128;
+            const validCallId = isValidCallId(callId);
 
             console.log('[CALL][start]', {
                 callId: validCallId ? callId : '[invalid]',
@@ -816,7 +815,7 @@ const initSocket = (server) => {
 
             // Socket payloads are untrusted. Bound the identifier before it
             // reaches SQL/logging and reject malformed call requests early.
-            if (!validCallId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
+            if (!validCallId || !isValidCallType(callType) || !(await canCallUser(targetId))) {
                 return socket.emit('call:error', {
                     callId,
                     code: 'CALL_NOT_ALLOWED',
