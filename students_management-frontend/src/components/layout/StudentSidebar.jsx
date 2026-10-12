@@ -55,31 +55,37 @@ function StudentSidebar({
                         <span>Sinh viên</span>
                         <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">{totalStudents}</span>
                     </button>
-                    <button className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
                         <Layers size={19} />
                         <span>Lớp học</span>
+                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
                     </button>
-                    <button className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
                         <GraduationCap size={19} />
                         <span>Khoa - Ngành</span>
+                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
                     </button>
 
                     <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">QUẢN LÝ ĐÀO TẠO</div>
-                    <button className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
                         <BookOpen size={19} />
                         <span>Môn học</span>
+                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
                     </button>
-                    <button className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
                         <ClipboardList size={19} />
                         <span>Đăng ký học</span>
+                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
                     </button>
-                    <button className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
                         <CalendarDays size={19} />
                         <span>Học kỳ</span>
+                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
                     </button>
-                    <button className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">
+                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
                         <BarChart3 size={19} />
                         <span>Báo cáo</span>
+                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
                     </button>
 
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
