@@ -269,7 +269,6 @@ const addGroupMember = async (req, res) => {
             Number(req.user.id),
             targetUserId
         );
-        const conversationId = Number(req.params.conversationId);
         const actorId = Number(req.user.id);
         const addedName = await getUsername(Number(data.user_id));
         const actorName = await getUsername(actorId);
