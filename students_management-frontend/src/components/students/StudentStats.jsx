@@ -1,4 +1,4 @@
-import { BookOpen, CalendarDays, ChevronRight, Sparkles, User, Users } from 'lucide-react';
+import { BookOpen, CalendarDays, Sparkles, User, Users } from 'lucide-react';
 
 function StudentStats({ user, statistics, filteredCount }) {
     return (
@@ -25,7 +25,7 @@ function StudentStats({ user, statistics, filteredCount }) {
                     <div className="absolute inset-0 bg-linear-to-r from-[#123b66]/60 via-transparent to-[#174068]/10" />
                     <div className="relative z-10 max-w-[300px] p-5 sm:p-6">
                         <span className="block text-sm leading-[1.45] font-bold">“Tri thức là chìa khóa mở ra tương lai.”</span>
-                        <button className="mt-3 inline-flex items-center gap-1 rounded-md border-0 bg-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/25">Xem thêm<ChevronRight size={15} /></button>
+                        <p className="mt-3 mb-0 text-xs text-cyan-50/90">Theo dõi dữ liệu học tập và tiến độ quản lý tại đây.</p>
                     </div>
                 </div>
             </div>
