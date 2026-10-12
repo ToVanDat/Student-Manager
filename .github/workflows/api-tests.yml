@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - feature/chat-1to1-complete
+  workflow_dispatch:
 
 jobs:
   test-api:
