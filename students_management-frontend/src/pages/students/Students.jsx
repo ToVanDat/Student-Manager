@@ -509,7 +509,7 @@ function Students() {
               DASHBOARD
           ================================================= */}
 
-          {activePage === "dashboard" && (
+          {(activePage === "dashboard" || activePage === "students") && (
             <StudentDashboard
               user={user}
               isAdmin={isAdmin}
