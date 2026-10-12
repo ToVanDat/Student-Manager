@@ -552,7 +552,8 @@ function Students() {
               }
 
               error={error}
-
+              loading={loading}
+              onRetry={loadStudents}
               search={search}
 
               onSearchChange={
