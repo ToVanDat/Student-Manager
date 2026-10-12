@@ -5,7 +5,7 @@ function StudentClassStatistics({ classStatistics }) {
         <div className="rounded-xl border border-line bg-white p-4 shadow-panel dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="m-0 font-display text-sm font-bold text-ink dark:text-white">Sinh viên theo lớp</h2>
-            <button className="rounded px-1 py-1 text-[11px] font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:hover:bg-slate-800">Xem chi tiết</button>
+            <span className="text-[10px] text-slate-400">Top 5 lớp theo sĩ số</span>
             </div>
             <div className="grid gap-4">
                 {classStatistics.length === 0 ? (
