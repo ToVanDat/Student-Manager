@@ -61,8 +61,12 @@ async function optimizeImage(file) {
 async function optimizeVideo(file) {
     if (!VIDEO_MIMES.has(file.mimetype)) return { optimized: false, reason: 'unsupported-video' };
     const temp = path.join(path.dirname(file.path), '.' + crypto.randomUUID() + (file.mimetype === 'video/webm' ? '.webm' : '.mp4'));
-    const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', file.path, '-map', '0:v:0?', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart'];
-    if (file.mimetype === 'video/webm') args.push('-f', 'matroska');
+    const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', file.path, '-map', '0:v:0?', '-map', '0:a:0?'];
+    if (file.mimetype === 'video/webm') {
+        args.push('-c:v', 'libvpx-vp9', '-deadline', 'good', '-cpu-used', '4', '-crf', '34', '-b:v', '0', '-c:a', 'libopus', '-b:a', '96k', '-f', 'webm');
+    } else {
+        args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart');
+    }
     args.push(temp);
     try {
         await runFfmpeg(args);
