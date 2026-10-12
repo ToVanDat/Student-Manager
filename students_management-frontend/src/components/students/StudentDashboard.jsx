@@ -22,6 +22,8 @@ function StudentDashboard({
     onPageChange,
     onPageSizeChange,
     error,
+    loading = false,
+    onRetry,
     search,
     onSearchChange,
     onAdd,
@@ -64,7 +66,8 @@ function StudentDashboard({
                     <div className="px-4 sm:px-5">
                         <StudentSearch value={search} onChange={onSearchChange} />
                     </div>
-                    {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</div>}
+                    {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">Thử lại</button></div>}
+                    {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />Đang tải dữ liệu sinh viên…</div>}
                     <div className="w-full min-w-0">
                         <StudentTable
                             students={paginatedStudents}
@@ -72,6 +75,7 @@ function StudentDashboard({
                             onEdit={onEdit}
                             onDelete={onDelete}
                             canManage={isAdmin}
+                            loading={loading}
                         />
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-muted sm:px-5 dark:border-slate-800">
