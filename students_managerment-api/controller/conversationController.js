@@ -325,6 +325,12 @@ const removeGroupMember = async (req, res) => {
             message: 'Bạn đã bị xóa khỏi nhóm'
         });
 
+        // A removed member may have multiple tabs/devices still joined to this
+        // Socket.IO room. Remove every socket for that user immediately so they
+        // cannot keep receiving messages, reactions, typing, or call events from
+        // a group they no longer belong to.
+        io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
+
         for (const memberId of memberIdsBefore) {
             if (Number(memberId) === removedUserId) continue;
             io.to(`user:${memberId}`).emit('conversation:updated', {
@@ -370,6 +376,10 @@ const leaveGroup = async (req, res) => {
             member: data,
             message: 'Bạn đã rời nhóm'
         });
+
+        // Leave all tabs/devices out of the conversation room immediately.
+        io.in(`user:${leavingUserId}`).socketsLeave(`conversation:${conversationId}`);
+
         await createAndEmitSystemMessage(
             conversationId,
             Number(req.user.id),
