@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
@@ -12,6 +13,7 @@ import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
 export default function ChatPage() {
+    const navigate = useNavigate();
     const { user, logoutUser, webRTCCall } = useAuth();
     const [callCenterOpen, setCallCenterOpen] = useState(false);
     const [callNotifications, setCallNotifications] = useState([]);
