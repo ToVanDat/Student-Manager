@@ -101,6 +101,12 @@ const uploadFile = async (messageId, userId, file) => {
     }
 
     try {
+        if (!Number.isSafeInteger(Number(file.size)) || Number(file.size) <= 0) {
+            const error = new Error('File rỗng hoặc kích thước không hợp lệ');
+            error.statusCode = 400;
+            throw error;
+        }
+
         const message = await canAccessMessage(messageId, userId);
 
         // Attachments are part of the message authored by this user. Membership
