@@ -69,7 +69,6 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
                                     </button>
                                     </div>
                                 </td>}
-                                </td>
                             </tr>
                         ))
                     )}
