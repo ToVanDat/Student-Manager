@@ -1,6 +1,5 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
-const os = require('node:os');
 const { spawn } = require('node:child_process');
 const crypto = require('node:crypto');
 
@@ -11,13 +10,31 @@ const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const VIDEO_MIMES = new Set(['video/mp4', 'video/webm']);
 const MAX_IMAGE_PIXELS = 40_000_000;
 const FFMPEG_PATH = process.env.FFMPEG_PATH || 'ffmpeg';
+const FFMPEG_TIMEOUT_MS = Math.max(1_000, Number.parseInt(process.env.FFMPEG_TIMEOUT_MS || '120000', 10) || 120000);
 
 const runFfmpeg = (args) => new Promise((resolve, reject) => {
     const child = spawn(FFMPEG_PATH, args, { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true });
     let stderr = '';
+    let settled = false;
+    const timeout = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill('SIGKILL');
+        reject(new Error('FFmpeg timed out after ' + FFMPEG_TIMEOUT_MS + 'ms'));
+    }, FFMPEG_TIMEOUT_MS);
     child.stderr.on('data', chunk => { if (stderr.length < 8000) stderr += chunk.toString(); });
-    child.once('error', reject);
-    child.once('close', code => code === 0 ? resolve() : reject(new Error('FFmpeg exited with code ' + code + ': ' + stderr)));
+    child.once('error', error => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        reject(error);
+    });
+    child.once('close', code => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        code === 0 ? resolve() : reject(new Error('FFmpeg exited with code ' + code + ': ' + stderr));
+    });
 });
 
 async function replaceIfSmaller(source, candidate) {

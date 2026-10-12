@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Clock3, LogOut, MoreVertical, Settings, UserRound, X } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
@@ -12,8 +14,11 @@ import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
 export default function ChatPage() {
+    const navigate = useNavigate();
     const { user, logoutUser, webRTCCall } = useAuth();
     const [callCenterOpen, setCallCenterOpen] = useState(false);
+    const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const accountMenuRef = useRef(null);
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
     const callNotificationIdsRef = useRef(new Set());
@@ -65,6 +70,24 @@ export default function ChatPage() {
             socket.off('call:notification', handleCallNotification);
         };
     }, [user?.id]);
+
+    useEffect(() => {
+        if (!accountMenuOpen) return undefined;
+        const handleOutsideClick = event => {
+            if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+                setAccountMenuOpen(false);
+            }
+        };
+        const handleEscape = event => {
+            if (event.key === 'Escape') setAccountMenuOpen(false);
+        };
+        document.addEventListener('mousedown', handleOutsideClick);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [accountMenuOpen]);
 
     const markCallNotificationRead = async notificationId => {
         await callApi.markNotificationRead(notificationId);
@@ -233,24 +256,51 @@ export default function ChatPage() {
                     <button
                         type="button"
                         onClick={() => setCallCenterOpen(true)}
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="relative inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        aria-label="Lịch sử cuộc gọi và thông báo"
+                        title="Lịch sử cuộc gọi"
                     >
-                        Lịch sử cuộc gọi
+                        <Clock3 size={18} />
                         {unreadCallNotificationCount > 0 && (
-                            <span className="ml-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{unreadCallNotificationCount}</span>
+                            <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{unreadCallNotificationCount > 99 ? '99+' : unreadCallNotificationCount}</span>
                         )}
                     </button>
-                    <div className="hidden text-right sm:block">
-                        <p className="max-w-36 truncate text-xs font-semibold">{user?.username || 'Người dùng'}</p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Tài khoản'}</p>
+                    <div className="relative" ref={accountMenuRef}>
+                        <button
+                            type="button"
+                            onClick={() => setAccountMenuOpen(open => !open)}
+                            aria-expanded={accountMenuOpen}
+                            aria-haspopup="menu"
+                            aria-label="Mở menu tài khoản"
+                            className="flex max-w-[220px] items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-800 sm:gap-3 sm:px-3"
+                        >
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-100">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                            <span className="hidden min-w-0 text-left sm:block">
+                                <span className="block max-w-28 truncate text-xs font-semibold">{user?.username || 'Người dùng'}</span>
+                                <span className="block text-[10px] text-slate-500 dark:text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
+                            </span>
+                            <MoreVertical size={17} className="shrink-0 text-slate-500" />
+                        </button>
+                        {accountMenuOpen && (
+                            <div role="menu" className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                <div className="flex items-center gap-3 px-3 py-3">
+                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-100">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-sm font-semibold">{user?.username || 'Người dùng'}</span>
+                                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{user?.email || 'Chưa cập nhật email'}</span>
+                                        <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
+                                    </span>
+                                </div>
+                                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><ArrowLeft size={17} /><span>Về trang quản lý</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><UserRound size={17} /><span>Thông tin & tài khoản</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><Settings size={17} /><span>Cài đặt & bảo mật</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setCallCenterOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><Clock3 size={17} /><span>Lịch sử cuộc gọi</span>{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{unreadCallNotificationCount}</span>}</button>
+                                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><LogOut size={17} /><span>Đăng xuất</span></button>
+                            </div>
+                        )}
                     </div>
-                    <button
-                        type="button"
-                        onClick={logoutUser}
-                        className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-950/40"
-                    >
-                        Đăng xuất
-                    </button>
                 </div>
             </header>
 

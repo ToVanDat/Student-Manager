@@ -249,7 +249,7 @@ function Students() {
   // PAGE / SETTINGS STATE
   // =====================================================
 
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState(() => searchParams.get("view") === "settings" ? "settings" : "dashboard");
 
   const {
     settingsTab,
@@ -509,7 +509,7 @@ function Students() {
               DASHBOARD
           ================================================= */}
 
-          {activePage === "dashboard" && (
+          {(activePage === "dashboard" || activePage === "students") && (
             <StudentDashboard
               user={user}
               isAdmin={isAdmin}

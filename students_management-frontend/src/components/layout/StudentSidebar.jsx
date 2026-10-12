@@ -34,7 +34,7 @@ function StudentSidebar({
                     </div>
                     <div className="flex flex-col">
                         <strong className="text-sm font-bold">StudentOS</strong>
-                        <span className="mt-0.5 text-[10px] text-slate-400">Academic Management</span>
+                        <span className="mt-0.5 text-[10px] text-slate-400">{user?.role === 'admin' ? 'Admin Console' : 'Student Portal'}</span>
                     </div>
                 </div>
 
@@ -55,38 +55,45 @@ function StudentSidebar({
                         <span>Sinh viên</span>
                         <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">{totalStudents}</span>
                     </button>
-                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                        <Layers size={19} />
-                        <span>Lớp học</span>
-                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                    </button>
-                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                        <GraduationCap size={19} />
-                        <span>Khoa - Ngành</span>
-                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                    </button>
-
-                    <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">QUẢN LÝ ĐÀO TẠO</div>
-                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                        <BookOpen size={19} />
-                        <span>Môn học</span>
-                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                    </button>
-                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                        <ClipboardList size={19} />
-                        <span>Đăng ký học</span>
-                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                    </button>
-                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                        <CalendarDays size={19} />
-                        <span>Học kỳ</span>
-                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                    </button>
-                    <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                        <BarChart3 size={19} />
-                        <span>Báo cáo</span>
-                    <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                    </button>
+                    {user?.role === 'admin' && (
+                        <>
+                            <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">QUẢN TRỊ HỆ THỐNG</div>
+                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
+                                                    <Layers size={19} />
+                                                    <span>Lớp học</span>
+                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
+                                                </button>
+                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
+                                                    <GraduationCap size={19} />
+                                                    <span>Khoa - Ngành</span>
+                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
+                                                </button>
+                            
+                                                <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">QUẢN LÝ ĐÀO TẠO</div>
+                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
+                                                    <BookOpen size={19} />
+                                                    <span>Môn học</span>
+                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
+                                                </button>
+                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
+                                                    <ClipboardList size={19} />
+                                                    <span>Đăng ký học</span>
+                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
+                                                </button>
+                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
+                                                    <CalendarDays size={19} />
+                                                    <span>Học kỳ</span>
+                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
+                                                </button>
+                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
+                                                    <BarChart3 size={19} />
+                                                    <span>Báo cáo</span>
+                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
+                                                </button>
+                            
+                            
+                        </>
+                    )}
 
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
                     <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">LIÊN LẠC</div>
@@ -131,7 +138,7 @@ function StudentSidebar({
                     <div className="flex min-w-0 flex-col">
                         <strong className="truncate text-xs">{user?.username || 'User'}</strong>
                         <span className="mt-0.5 text-[10px] text-slate-400">
-                            {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'} // role
+                            {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
                         </span>
                     </div>
                 </div>

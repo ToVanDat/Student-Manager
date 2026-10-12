@@ -114,7 +114,14 @@ function StudentHeader({
                                 </div>
                             </div>
                             <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                            <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setMenuOpen(false);
+                                    onOpenSettings();
+                                }}
+                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
                                 <User size={18} />
                                 <span>Thông tin người dùng</span>
                             </button>
