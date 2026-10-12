@@ -1,5 +1,5 @@
 // bang danh sach sinh vien
-function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = false }) {
+function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = false, loading = false }) {
     return (
         <div className="w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
             <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
@@ -17,7 +17,9 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
                 </thead>
 
                 <tbody>
-                    {students.length === 0 ? (
+                    {loading ? (
+                        <tr><td colSpan={canManage ? 8 : 7} className="px-4 py-10 text-center text-slate-400">Đang tải danh sách sinh viên…</td></tr>
+                    ) : students.length === 0 ? (
                         <tr>
                             <td colSpan={canManage ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
                                 Chưa có sinh viên
