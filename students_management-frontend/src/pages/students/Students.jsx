@@ -31,6 +31,7 @@ function Students() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { user, logoutUser } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   // =====================================================
   // READ PAGINATION FROM URL
@@ -296,6 +297,7 @@ function Students() {
   // =====================================================
 
   const handleAdd = () => {
+    if (!isAdmin) return;
     setSelectedStudent(null);
 
     setShowForm(true);
@@ -306,6 +308,7 @@ function Students() {
   // =====================================================
 
   const handleEdit = (student) => {
+    if (!isAdmin) return;
     setSelectedStudent(student);
 
     setShowForm(true);
@@ -316,6 +319,11 @@ function Students() {
   // =====================================================
 
   const handleDelete = async (id) => {
+    if (!isAdmin) {
+      toast.error("Bạn không có quyền quản lý sinh viên");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Bạn có chắc muốn xóa sinh viên này?"
     );
@@ -345,6 +353,11 @@ function Students() {
   // =====================================================
 
   const handleSubmit = async (studentData) => {
+    if (!isAdmin) {
+      toast.error("Bạn không có quyền quản lý sinh viên");
+      return;
+    }
+
     try {
       if (selectedStudent) {
         await updateStudent(
@@ -499,6 +512,7 @@ function Students() {
           {activePage === "dashboard" && (
             <StudentDashboard
               user={user}
+              isAdmin={isAdmin}
               statistics={statistics}
 
               filteredCount={
