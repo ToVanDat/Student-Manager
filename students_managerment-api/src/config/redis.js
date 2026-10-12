@@ -1,4 +1,5 @@
 // Redis connection configuration.
+require('dotenv').config();
 // Supports local development (localhost) and Docker Compose (REDIS_HOST=redis).
 const { createClient } = require('redis');
 
