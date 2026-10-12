@@ -1,5 +1,5 @@
 // bang danh sach sinh vien
-function StudentTable({ students, firstRowNumber, onEdit, onDelete }) {
+function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = false }) {
     return (
         <div className="w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
             <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
@@ -12,14 +12,14 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete }) {
                         <th className="w-32 px-2 py-3">Ngày sinh</th>
                         <th className="w-20 px-2 py-3">Giới tính</th>
                         <th className="w-40 px-2 py-3">Lớp</th>
-                        <th className="w-28 px-2 py-3">Thao tác</th>
+                        {canManage && <th className="w-28 px-2 py-3">Thao tác</th>}
                     </tr>
                 </thead>
 
                 <tbody>
                     {students.length === 0 ? (
                         <tr>
-                            <td colSpan="8" className="px-4 py-10 text-center text-slate-400">
+                            <td colSpan={canManage ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
                                 Chưa có sinh viên
                             </td>
                         </tr>
@@ -52,7 +52,7 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete }) {
                                         : student.class_id}
                                 </td>
 
-                                <td className="px-2 py-3">
+                                {canManage && <td className="px-2 py-3">
                                     <div className="flex items-center gap-1">
                                     <button
                                         className="rounded-md bg-amber-500 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-600"
@@ -68,6 +68,7 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete }) {
                                         Xóa
                                     </button>
                                     </div>
+                                </td>}
                                 </td>
                             </tr>
                         ))
