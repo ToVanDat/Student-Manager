@@ -17,6 +17,17 @@ const callRouter = require('../router/callRouter');
 
 const app = express();
 app.disable('x-powered-by');
+
+// Baseline security headers for API responses. HSTS is intentionally left to
+// the TLS-terminating reverse proxy so local HTTP development keeps working.
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), display-capture=(self)');
+    next();
+});
+
 const allowedOrigins = new Set([
     'http://localhost:5173',
     'http://127.0.0.1:5173',
@@ -50,5 +61,26 @@ app.use('/api/conversations', conversationRouter);
 app.use('/api/messages', messageRouter);
 app.use('/api/calls', callRouter);
 app.use('/api', messageFileRouter);
+
+// Keep API errors JSON-shaped and avoid returning internal stack traces.
+app.use((error, req, res, next) => {
+    if (res.headersSent) return next(error);
+
+    const isBadJson = error instanceof SyntaxError && error.status === 400 && 'body' in error;
+    if (isBadJson) {
+        return res.status(400).json({ message: 'JSON request body không hợp lệ' });
+    }
+
+    if (error.message === 'Origin not allowed by CORS') {
+        return res.status(403).json({ message: 'Origin không được phép truy cập API' });
+    }
+
+    console.error('[API ERROR]', {
+        method: req.method,
+        path: req.path,
+        message: error.message
+    });
+    return res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
+});
 
 module.exports = app;

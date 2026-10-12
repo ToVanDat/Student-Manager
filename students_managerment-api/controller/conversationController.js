@@ -257,12 +257,18 @@ const updateGroup = async (req, res) => {
 
 const addGroupMember = async (req, res) => {
     try {
-        const data = await conversationService.addGroupMember(
-            Number(req.params.conversationId),
-            Number(req.user.id),
-            Number(req.body.userId)
-        );
         const conversationId = Number(req.params.conversationId);
+        const targetUserId = Number(req.body.userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0 ||
+            !Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
+        }
+
+        const data = await conversationService.addGroupMember(
+            conversationId,
+            Number(req.user.id),
+            targetUserId
+        );
         const actorId = Number(req.user.id);
         const addedName = await getUsername(Number(data.user_id));
         const actorName = await getUsername(actorId);
@@ -308,6 +314,10 @@ const removeGroupMember = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0 ||
+            !Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
+        }
         const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
@@ -324,6 +334,12 @@ const removeGroupMember = async (req, res) => {
             member: data,
             message: 'Bạn đã bị xóa khỏi nhóm'
         });
+
+        // A removed member may have multiple tabs/devices still joined to this
+        // Socket.IO room. Remove every socket for that user immediately so they
+        // cannot keep receiving messages, reactions, typing, or call events from
+        // a group they no longer belong to.
+        io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
 
         for (const memberId of memberIdsBefore) {
             if (Number(memberId) === removedUserId) continue;
@@ -348,6 +364,9 @@ const removeGroupMember = async (req, res) => {
 const leaveGroup = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
         const leavingName = await getUsername(Number(req.user.id));
         const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.leaveGroup(
@@ -370,6 +389,10 @@ const leaveGroup = async (req, res) => {
             member: data,
             message: 'Bạn đã rời nhóm'
         });
+
+        // Leave all tabs/devices out of the conversation room immediately.
+        io.in(`user:${leavingUserId}`).socketsLeave(`conversation:${conversationId}`);
+
         await createAndEmitSystemMessage(
             conversationId,
             Number(req.user.id),
@@ -386,6 +409,10 @@ const updateGroupMemberRole = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0 ||
+            !Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
+        }
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
         const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);

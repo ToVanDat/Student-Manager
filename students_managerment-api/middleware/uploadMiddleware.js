@@ -76,9 +76,17 @@ const storage = {
                 ? extension
                 : '';
 
+            const fileLimit = MIME_LIMITS[file.mimetype];
+
+            // Keep the stream storage layer fail-closed even if a future
+            // route or refactor accidentally bypasses fileFilter.
+            if (!Number.isSafeInteger(fileLimit) || fileLimit <= 0) {
+                return cb(new Error('Loại file không được hỗ trợ'));
+            }
+
             const filename = `${crypto.randomUUID()}${safeExtension}`;
             const destination = path.join(UPLOAD_ROOT, filename);
-            const limiter = new LimitTransform(MIME_LIMITS[file.mimetype]);
+            const limiter = new LimitTransform(fileLimit);
             const output = fs.createWriteStream(destination, {
                 flags: 'wx'
             });

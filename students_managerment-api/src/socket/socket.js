@@ -5,8 +5,10 @@ const { redisClient } = require('../config/redis.js');
 const conversationRepository = require('../../repository/conversationRepository.js');
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
+const messageService = require('../../service/messageService.js');
 const userRepository = require('../../repository/userRepository.js');
 const callRepository = require('../../repository/callRepository.js');
+const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -340,7 +342,7 @@ const initSocket = (server) => {
                     }
                 }
 
-                const savedMessage = await messageRepository.createMessage(id, userId, text, replyTo);
+                const savedMessage = await messageService.createMessage(id, userId, text, replyTo);
                 const memberIds = await conversationRepository.getConversationMemberIds(id);
 
                 // Gửi cho các client khác trong conversation và luôn gửi lại cho sender.
@@ -754,7 +756,7 @@ const initSocket = (server) => {
         };
 
         const getAuthorizedCall = async (callId, targetId) => {
-            if (!callId || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
+            if (!isValidCallId(callId) || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
                 return null;
             }
 
@@ -800,11 +802,20 @@ const initSocket = (server) => {
             io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
         };
 
-        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' }) => {
+        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][start]', { callId, userId, targetId, callType });
+            const validCallId = isValidCallId(callId);
 
-            if (!callId || !['voice', 'video'].includes(callType) || !(await canCallUser(targetId))) {
+            console.log('[CALL][start]', {
+                callId: validCallId ? callId : '[invalid]',
+                userId,
+                targetId,
+                callType
+            });
+
+            // Socket payloads are untrusted. Bound the identifier before it
+            // reaches SQL/logging and reject malformed call requests early.
+            if (!validCallId || !isValidCallType(callType) || !(await canCallUser(targetId))) {
                 return socket.emit('call:error', {
                     callId,
                     code: 'CALL_NOT_ALLOWED',
@@ -885,9 +896,16 @@ const initSocket = (server) => {
             }, CALL_RING_TIMEOUT_MS));
         });
 
-        socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
+        socket.on('call:accept', async ({ callId, targetUserId } = {}) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][accept]', { callId, userId, targetId, callType });
+            if (!isValidCallId(callId) || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_AVAILABLE',
+                    message: 'Cuộc gọi không còn khả dụng.'
+                });
+            }
+            console.log('[CALL][accept]', { callId, userId, targetId });
 
             // The call was already authorized and created by call:start.
             // For accept, authorize by the call record itself instead of
@@ -967,7 +985,7 @@ const initSocket = (server) => {
             }
             clearCallTimer(callId);
             io.to(`user:${targetId}`).emit('call:accepted', {
-                callId, fromUserId: userId, toUserId: targetId, callType
+                callId, fromUserId: userId, toUserId: targetId, callType: currentCall.call_type
             });
 
             callTimers.set(callId, setTimeout(async () => {
@@ -995,16 +1013,16 @@ const initSocket = (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' }) => {
+        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
-            if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') return;
+            if (!currentCall || Number(currentCall.receiver_id) !== userId || currentCall.status !== 'ringing') return;
             clearCallTimer(callId);
             const updated = await callRepository.updateCallStatusIfCurrent(
                 callId,
                 'rejected',
                 'ringing',
-                reason
+                'rejected'
             );
 
             // Only notify rejection if this socket actually won the DB state
@@ -1127,8 +1145,10 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' }) => {
+        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {
             const targetId = Number(targetUserId);
+            // Never persist arbitrary client-controlled reason strings.
+            const safeReason = reason === 'cancelled' ? 'cancelled' : 'ended';
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall) {
                 return socket.emit('call:error', {
@@ -1139,7 +1159,7 @@ const initSocket = (server) => {
             }
 
             clearCallTimer(callId);
-            const finalStatus = reason === 'cancelled'
+            const finalStatus = safeReason === 'cancelled'
                 ? 'cancelled'
                 : (currentCall.answered_at ? 'completed' : 'cancelled');
 
@@ -1149,7 +1169,7 @@ const initSocket = (server) => {
                     callId,
                     userId,
                     status: currentCall.status,
-                    reason
+                    reason: safeReason
                 });
                 return;
             }
@@ -1158,7 +1178,7 @@ const initSocket = (server) => {
                 callId,
                 finalStatus,
                 currentCall.status,
-                reason
+                safeReason
             );
 
             if (!updated) {
@@ -1177,11 +1197,11 @@ const initSocket = (server) => {
                 targetId,
                 previousStatus: currentCall.status,
                 status: updated.status,
-                reason
+                reason: safeReason
             });
 
             io.to(`user:${targetId}`).emit('call:ended', {
-                callId, fromUserId: userId, toUserId: targetId, reason
+                callId, fromUserId: userId, toUserId: targetId, reason: safeReason
             });
             if (updated?.status === 'completed') {
                 const duration = updated.duration_seconds || 0;

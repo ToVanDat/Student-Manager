@@ -1,4 +1,5 @@
 const conversationRepository = require('../repository/conversationRepository');
+const { canRemoveMember, canChangeMemberRole } = require('./groupAuthorization');
 const userRepository = require('../repository/userRepository');
 
 const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
@@ -282,10 +283,10 @@ const removeGroupMember = async (conversationId, actorId, targetUserId) => {
     if (targetRole === null) throw new Error('Thành viên không tồn tại');
     if (targetRole === 'owner') throw new Error('Không thể xoá trưởng nhóm');
 
-    if (actorRole === 'admin' && targetRole !== 'member') {
-        throw new Error('Admin chỉ có thể xoá member');
-    }
-    if (!['owner', 'admin'].includes(actorRole)) {
+    if (!canRemoveMember(actorRole, targetRole)) {
+        if (actorRole === 'admin' && targetRole !== 'member') {
+            throw new Error('Admin chỉ có thể xoá member');
+        }
         throw new Error('Bạn không có quyền xoá thành viên');
     }
 
@@ -314,10 +315,13 @@ const updateGroupMemberRole = async (conversationId, actorId, targetUserId, next
     const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
     const targetRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
 
-    if (actorRole !== 'owner') throw new Error('Chỉ trưởng nhóm mới có quyền thay đổi role');
     if (targetRole === null) throw new Error('Thành viên không tồn tại');
-    if (targetUserId === actorId && nextRole !== 'owner') {
-        throw new Error('Không thể tự hạ quyền trưởng nhóm');
+    if (!canChangeMemberRole(actorRole, targetRole, actorId, targetUserId, nextRole)) {
+        if (actorRole !== 'owner') throw new Error('Chỉ trưởng nhóm mới có quyền thay đổi role');
+        if (Number(targetUserId) === Number(actorId) && nextRole !== 'owner') {
+            throw new Error('Không thể tự hạ quyền trưởng nhóm');
+        }
+        throw new Error('Không thể thay đổi role thành viên này');
     }
 
     if (nextRole === 'owner') {
