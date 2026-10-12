@@ -896,9 +896,16 @@ const initSocket = (server) => {
             }, CALL_RING_TIMEOUT_MS));
         });
 
-        socket.on('call:accept', async ({ callId, targetUserId, callType = 'voice' }) => {
+        socket.on('call:accept', async ({ callId, targetUserId } = {}) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][accept]', { callId, userId, targetId, callType });
+            if (!isValidCallId(callId) || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'CALL_NOT_AVAILABLE',
+                    message: 'Cuộc gọi không còn khả dụng.'
+                });
+            }
+            console.log('[CALL][accept]', { callId, userId, targetId });
 
             // The call was already authorized and created by call:start.
             // For accept, authorize by the call record itself instead of
@@ -1006,16 +1013,16 @@ const initSocket = (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' }) => {
+        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
-            if (!currentCall || currentCall.receiver_id !== userId || currentCall.status !== 'ringing') return;
+            if (!currentCall || Number(currentCall.receiver_id) !== userId || currentCall.status !== 'ringing') return;
             clearCallTimer(callId);
             const updated = await callRepository.updateCallStatusIfCurrent(
                 callId,
                 'rejected',
                 'ringing',
-                reason
+                'rejected'
             );
 
             // Only notify rejection if this socket actually won the DB state
@@ -1138,7 +1145,7 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' }) => {
+        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall) {
