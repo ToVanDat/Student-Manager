@@ -756,7 +756,7 @@ const initSocket = (server) => {
         };
 
         const getAuthorizedCall = async (callId, targetId) => {
-            if (!callId || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
+            if (!isValidCallId(callId) || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
                 return null;
             }
 
@@ -978,7 +978,7 @@ const initSocket = (server) => {
             }
             clearCallTimer(callId);
             io.to(`user:${targetId}`).emit('call:accepted', {
-                callId, fromUserId: userId, toUserId: targetId, callType
+                callId, fromUserId: userId, toUserId: targetId, callType: currentCall.call_type
             });
 
             callTimers.set(callId, setTimeout(async () => {
