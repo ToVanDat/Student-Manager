@@ -1,11 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
-import StudentHeader from '@/components/layout/StudentHeader.jsx';
-import StudentSidebar from '@/components/layout/StudentSidebar.jsx';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
 import { callApi } from '@/api/callApi.js';
@@ -15,11 +12,7 @@ import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
 export default function ChatPage() {
-    const navigate = useNavigate();
     const { user, logoutUser, webRTCCall } = useAuth();
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [darkMode, setDarkMode] = useState(false);
-    const [headerSearch, setHeaderSearch] = useState('');
     const [callCenterOpen, setCallCenterOpen] = useState(false);
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
@@ -215,135 +208,128 @@ export default function ChatPage() {
         conversation => Number(conversation.id) === Number(activeId)
     );
 
-    const unreadCount = conversations.reduce(
-        (total, conversation) => total + Number(conversation.unreadCount || 0),
-        0
-    );
-
-    const handleNavigate = (page) => {
-        setSidebarOpen(false);
-
-        if (page === 'chat') return;
-
-        if (page === 'dashboard' || page === 'students') {
-            navigate('/students');
-            return;
-        }
-
-        if (page === 'settings') {
-            navigate('/students');
-        }
-    };
-
     return (
-        <div className={darkMode ? 'dark' : ''}>
-            <div className="flex min-h-screen bg-[#f5f7fb] font-sans text-[#17233c] dark:bg-slate-950 dark:text-slate-100">
-                <StudentSidebar
-                    user={user}
-                    activePage="chat"
-                    totalStudents={11}
-                    isOpen={sidebarOpen}
-                    onClose={() => setSidebarOpen(false)}
-                    onNavigate={handleNavigate}
-                    onOpenSettings={() => navigate('/students')}
-                    unreadCount={unreadCount}
-                />
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:px-6">
+                <button
+                    type="button"
+                    onClick={() => navigate('/students')}
+                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    aria-label="Quay lại Giao diện Quản lý"
+                >
+                    <span aria-hidden="true">←</span>
+                    <span className="hidden sm:inline">Quản lý</span>
+                </button>
+                <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-teal-600 text-white">
+                        <span className="text-lg" aria-hidden="true">✉</span>
+                    </div>
+                    <div className="min-w-0">
+                        <h1 className="truncate text-sm font-bold">Giao diện Chat</h1>
+                        <p className="hidden text-xs text-slate-500 sm:block dark:text-slate-400">Trò chuyện và kết nối realtime</p>
+                    </div>
+                </div>
+                <div className="ml-auto flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setCallCenterOpen(true)}
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                        Lịch sử cuộc gọi
+                        {unreadCallNotificationCount > 0 && (
+                            <span className="ml-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] text-white">{unreadCallNotificationCount}</span>
+                        )}
+                    </button>
+                    <div className="hidden text-right sm:block">
+                        <p className="max-w-36 truncate text-xs font-semibold">{user?.username || 'Người dùng'}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Tài khoản'}</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={logoutUser}
+                        className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-rose-50 hover:text-rose-600 dark:text-slate-300 dark:hover:bg-rose-950/40"
+                    >
+                        Đăng xuất
+                    </button>
+                </div>
+            </header>
 
-                <main className="ml-[250px] min-h-screen min-w-0 flex-1 max-[1100px]:ml-[220px] max-[800px]:ml-0">
-                    <StudentHeader
-                        user={user}
-                        search={headerSearch}
-                        onSearchChange={setHeaderSearch}
-                        darkMode={darkMode}
-                        onToggleDarkMode={() => setDarkMode(current => !current)}
-                        onOpenSettings={() => navigate('/students')}
-                        onLogout={logoutUser}
-                        onToggleSidebar={() => setSidebarOpen(open => !open)}
-                        unreadCount={unreadCount}
-                        onOpenNotifications={() => setSidebarOpen(false)}
-                    />
+            <CallCenterPanel
+                open={callCenterOpen}
+                onClose={() => setCallCenterOpen(false)}
+                currentUserId={Number(user?.id)}
+                notifications={callNotifications}
+                onMarkNotificationRead={markCallNotificationRead}
+            />
 
-                    <CallCenterPanel
-                        open={callCenterOpen}
-                        onClose={() => setCallCenterOpen(false)}
-                        currentUserId={Number(user?.id)}
-                        notifications={callNotifications}
-                        onMarkNotificationRead={markCallNotificationRead}
-                    />
+            <main className="h-[calc(100vh-4rem)] min-h-0 p-2 sm:p-4 lg:p-6">
+                <div className="h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex h-full min-h-0">
+                        <ChatSidebar
+                            conversations={conversations}
+                            onlineUserIds={onlineUserIds}
+                            onOpenCallCenter={() => setCallCenterOpen(true)}
+                            callNotificationCount={unreadCallNotificationCount}
+                            activeId={activeId}
+                            onSelectConversation={setActiveId}
+                            searchUsers={searchUsers}
+                            searchResults={searchResults}
+                            onStartConversation={startConversation}
+                            onStartGroupConversation={startGroupConversation}
+                        />
 
-                    <section className="h-[calc(100vh-76px)] min-h-0 p-5 lg:p-6">
-                        <div className="h-full min-h-0 overflow-hidden rounded-2xl border border-[#e7ebf3] bg-white shadow-[0_8px_30px_rgba(15,23,42,0.05)] dark:border-slate-800 dark:bg-slate-900">
-                            <div className="flex h-full min-h-0">
-                                <ChatSidebar
-                                    conversations={conversations}
-                                    onlineUserIds={onlineUserIds}
-                                    onOpenCallCenter={() => setCallCenterOpen(true)}
-                                    callNotificationCount={unreadCallNotificationCount}
-                                    activeId={activeId}
-                                    onSelectConversation={setActiveId}
-                                    searchUsers={searchUsers}
-                                    searchResults={searchResults}
-                                    onStartConversation={startConversation}
-                                    onStartGroupConversation={startGroupConversation}
-                                />
-
-                                {activeId && activeConversation ? (
-                                    <>
-                                    <ChatWindow
-                                        activeConversation={activeConversation}
-                                        messages={timelineMessages}
-                                        currentUserId={Number(user?.id)}
-                                        onSendMessage={sendMessage}
-                                        onSendAttachment={sendAttachment}
-                                        onDownloadFile={downloadFile}
-                                        onPreviewFile={previewFile}
-                                        onDeleteFile={deleteFile}
-                                        isTyping={isTyping}
-                                        onTyping={setTyping}
-                                        onEdit={editMessage}
-                                        onRecall={recallMessage}
-                                        onDeleteForMe={deleteMessageForMe}
-                                        onDeleteForEveryone={deleteMessageForEveryone}
-                                        onToggleReaction={toggleReaction}
-                                        conversationMembers={conversationMembers}
-                                        searchUsers={searchUsers}
-                                        searchResults={searchResults}
-                                        onAddGroupMember={addGroupMember}
-                                        onRemoveGroupMember={removeGroupMember}
-                                        onUpdateGroupMemberRole={updateGroupMemberRole}
-                onUpdateGroupConversation={updateGroupConversation}
-                onlineUserIds={onlineUserIds}
-                                        onLeaveGroup={leaveGroup}
-                                        hasMoreMessages={hasMoreMessages}
-                                        callState={webRTCCall.state}
-                                        call={webRTCCall.call}
-                                        onStartCall={webRTCCall.startCall}
-                                        onRedial={webRTCCall.startCall}
-                                        onHideCall={hideCallHistory}
-                                        onUpdateConversationSettings={updateConversationSettings}
-                                        onBlockUser={blockUser}
-                                        onUnblockUser={unblockUser}
-                                        onReportConversation={reportConversation}
-                                        onSearchMessages={searchMessages}
-                                        onOpenSearchResult={openSearchResult}
-                                        loadingOlder={loadingOlder}
-                                        onLoadOlder={loadOlderMessages}
-                                    />
-
-                                    </>
-                                ) : (
-                                    <EmptyChat
-                                        onStartConversation={() => {
-                                            const newChatButton = document.querySelector('[data-new-chat]');
-                                            newChatButton?.click();
-                                        }}
-                                    />
-                                )}
-                            </div>
-                        </div>
-                    </section>
-                </main>
-            </div>
+                        {activeId && activeConversation ? (
+                            <ChatWindow
+                                activeConversation={activeConversation}
+                                messages={timelineMessages}
+                                currentUserId={Number(user?.id)}
+                                onSendMessage={sendMessage}
+                                onSendAttachment={sendAttachment}
+                                onDownloadFile={downloadFile}
+                                onPreviewFile={previewFile}
+                                onDeleteFile={deleteFile}
+                                isTyping={isTyping}
+                                onTyping={setTyping}
+                                onEdit={editMessage}
+                                onRecall={recallMessage}
+                                onDeleteForMe={deleteMessageForMe}
+                                onDeleteForEveryone={deleteMessageForEveryone}
+                                onToggleReaction={toggleReaction}
+                                conversationMembers={conversationMembers}
+                                searchUsers={searchUsers}
+                                searchResults={searchResults}
+                                onAddGroupMember={addGroupMember}
+                                onRemoveGroupMember={removeGroupMember}
+                                onUpdateGroupMemberRole={updateGroupMemberRole}
+                                onUpdateGroupConversation={updateGroupConversation}
+                                onlineUserIds={onlineUserIds}
+                                onLeaveGroup={leaveGroup}
+                                hasMoreMessages={hasMoreMessages}
+                                callState={webRTCCall.state}
+                                call={webRTCCall.call}
+                                onStartCall={webRTCCall.startCall}
+                                onRedial={webRTCCall.startCall}
+                                onHideCall={hideCallHistory}
+                                onUpdateConversationSettings={updateConversationSettings}
+                                onBlockUser={blockUser}
+                                onUnblockUser={unblockUser}
+                                onReportConversation={reportConversation}
+                                onSearchMessages={searchMessages}
+                                onOpenSearchResult={openSearchResult}
+                                loadingOlder={loadingOlder}
+                                onLoadOlder={loadOlderMessages}
+                            />
+                        ) : (
+                            <EmptyChat
+                                onStartConversation={() => {
+                                    const newChatButton = document.querySelector('[data-new-chat]');
+                                    newChatButton?.click();
+                                }}
+                            />
+                        )}
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }
