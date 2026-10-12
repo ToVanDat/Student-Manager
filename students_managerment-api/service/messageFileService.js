@@ -4,6 +4,7 @@ const path = require('path');
 const messageFileRepository = require('../repository/messageFileRepository');
 const messageRepository = require('../repository/messageRepository');
 const conversationRepository = require('../repository/conversationRepository');
+const { optimizeUploadedFile } = require('./fileOptimizationService');
 
 const UPLOAD_ROOT = path.resolve(
     __dirname,
@@ -117,8 +118,14 @@ const uploadFile = async (messageId, userId, file) => {
             throw error;
         }
 
-        // MIME supplied by the browser is untrusted. Verify the file signature
-        // before storing metadata or allowing other members to download it.
+        // Verify the original bytes before passing untrusted input to native codecs.
+        await validateFileContent(file);
+
+        // Optimization is best-effort. The optimizer keeps the original whenever
+        // output is not smaller or a codec is unavailable; documents/audio/GIF remain untouched.
+        await optimizeUploadedFile(file);
+
+        // Validate again because the stored bytes may now be optimized output.
         await validateFileContent(file);
 
         const storageKey = `chat/${file.filename}`;
