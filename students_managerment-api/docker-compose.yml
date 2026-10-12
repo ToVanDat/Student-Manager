@@ -23,6 +23,7 @@ services:
       REDIS_PORT: 6379
 
       JWT_SECRET: ${JWT_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
 
       RESEND_API_KEY: ${RESEND_API_KEY}
 
