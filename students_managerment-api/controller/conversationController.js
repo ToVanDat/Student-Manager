@@ -257,10 +257,17 @@ const updateGroup = async (req, res) => {
 
 const addGroupMember = async (req, res) => {
     try {
+        const conversationId = Number(req.params.conversationId);
+        const targetUserId = Number(req.body.userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0 ||
+            !Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
+        }
+
         const data = await conversationService.addGroupMember(
-            Number(req.params.conversationId),
+            conversationId,
             Number(req.user.id),
-            Number(req.body.userId)
+            targetUserId
         );
         const conversationId = Number(req.params.conversationId);
         const actorId = Number(req.user.id);
@@ -308,6 +315,10 @@ const removeGroupMember = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0 ||
+            !Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
+        }
         const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
@@ -354,6 +365,9 @@ const removeGroupMember = async (req, res) => {
 const leaveGroup = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
         const leavingName = await getUsername(Number(req.user.id));
         const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.leaveGroup(
@@ -396,6 +410,10 @@ const updateGroupMemberRole = async (req, res) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
+        if (!Number.isInteger(conversationId) || conversationId <= 0 ||
+            !Number.isInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
+        }
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
         const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
