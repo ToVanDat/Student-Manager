@@ -84,7 +84,7 @@ export default function NotificationSettings() {
                     );
                 })}
             </div>
-            {!loading && preferences.push_enabled && Notification.permission === 'denied' && (
+            {!loading && preferences.push_enabled && typeof Notification !== 'undefined' && Notification.permission === 'denied' && (
                 <p className="mt-3 text-sm text-amber-700">Thông báo trình duyệt đang bị chặn trong cài đặt của trình duyệt.</p>
             )}
         </section>
