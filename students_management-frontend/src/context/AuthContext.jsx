@@ -227,6 +227,25 @@ const updateUser = (partialUser) => {
         };
     }, [accessToken, user?.id]);
 
+    useEffect(() => {
+        if (!accessToken || !user?.id) return undefined;
+        const handleProfileUpdated = profile => {
+            if (Number(profile?.userId) !== Number(user.id)) return;
+            setUser(previous => {
+                if (!previous) return previous;
+                const nextUser = {
+                    ...previous,
+                    username: profile.username || previous.username,
+                    avatar_url: profile.avatarUrl || null
+                };
+                localStorage.setItem('user', JSON.stringify(nextUser));
+                return nextUser;
+            });
+        };
+        socket.on('user:profile-updated', handleProfileUpdated);
+        return () => socket.off('user:profile-updated', handleProfileUpdated);
+    }, [accessToken, user?.id]);
+
     // =========================
     // SOCKET CONNECTION
     // =========================
