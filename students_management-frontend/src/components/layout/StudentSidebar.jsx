@@ -49,7 +49,7 @@ function StudentSidebar({
                     {!collapsed && <div className="px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5]">TỔNG QUAN</div>}
                     <button
                         title={collapsed ? 'Trang chủ' : undefined}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
@@ -57,7 +57,7 @@ function StudentSidebar({
                     </button>
                     <button
                         title={collapsed ? 'Sinh viên' : undefined}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'students' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
@@ -76,7 +76,7 @@ function StudentSidebar({
                                 { key: 'results', label: 'Kết quả học tập', icon: ChartNoAxesColumn },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" onClick={() => onNavigate(key)}
-                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
                             ))}
@@ -88,7 +88,7 @@ function StudentSidebar({
                                 { key: 'calls', label: 'Cuộc gọi', icon: Phone },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" onClick={() => onNavigate(key)}
-                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
                             ))}
@@ -98,8 +98,8 @@ function StudentSidebar({
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
                     {!collapsed && <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5]">LIÊN LẠC</div>}
                     <button
-                        title={collapsed ? 'Trang chủ' : undefined}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'chat' ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
+                        title={collapsed ? 'Tin nhắn' : undefined}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('chat')}
                     >
                         <MessageSquare size={19} />
@@ -112,8 +112,8 @@ function StudentSidebar({
                     </button>
 
                     <button
-                        title={collapsed ? 'Trang chủ' : undefined}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'settings' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
+                        title={collapsed ? 'Cài đặt' : undefined}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'settings' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={onOpenSettings}
                     >
                         <Settings size={19} />
