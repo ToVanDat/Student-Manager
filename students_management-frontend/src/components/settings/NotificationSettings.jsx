@@ -4,14 +4,14 @@ import { toast } from 'sonner';
 import { enableWebPush, disableWebPush, notificationApi } from '@/api/notificationApi';
 
 const OPTIONS = [
-    { key: 'in_app_enabled', title: 'Thông báo trong ứng dụng', description: 'Hiển thị thông báo khi đang sử dụng Student Management', icon: Bell },
+    { key: 'notifications_enabled', title: 'Thông báo trong ứng dụng', description: 'Hiển thị thông báo khi đang sử dụng Student Management', icon: Bell },
     { key: 'push_enabled', title: 'Thông báo đẩy trên trình duyệt', description: 'Nhận thông báo khi tab chat không mở ở phía trước', icon: Smartphone },
     { key: 'sound_enabled', title: 'Âm thanh thông báo', description: 'Phát âm báo khi có thông báo mới', icon: Volume2 }
 ];
 
 export default function NotificationSettings() {
     const [preferences, setPreferences] = useState({
-        in_app_enabled: true,
+        notifications_enabled: true,
         push_enabled: false,
         sound_enabled: true
     });
@@ -23,7 +23,7 @@ export default function NotificationSettings() {
         notificationApi.getPreferences()
             .then(({ data }) => {
                 if (active && data?.data) setPreferences({
-                    in_app_enabled: Boolean(data.data.in_app_enabled),
+                    notifications_enabled: Boolean(data.data.notifications_enabled),
                     push_enabled: Boolean(data.data.push_enabled),
                     sound_enabled: Boolean(data.data.sound_enabled)
                 });
