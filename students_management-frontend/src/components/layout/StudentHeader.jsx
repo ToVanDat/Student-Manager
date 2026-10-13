@@ -4,6 +4,8 @@ import {
     Bell,
     LogOut,
     Menu,
+    PanelLeftClose,
+    PanelLeftOpen,
     MoreVertical,
     Search,
     Settings,
@@ -19,6 +21,8 @@ function StudentHeader({
     onOpenSettings,
     onLogout,
     onToggleSidebar,
+    sidebarCollapsed = false,
+    onToggleDesktopSidebar,
     unreadCount = 0,
     onOpenNotifications,
 }) {
@@ -44,8 +48,17 @@ function StudentHeader({
 
     return (
         <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] bg-white px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px]">
-            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] hover:bg-[#eaf3ff] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu">
+            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu" title="Mở menu">
                 <Menu size={22} />
+            </button>
+            <button
+                type="button"
+                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:inline-flex"
+                onClick={onToggleDesktopSidebar}
+                aria-label={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+                title={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+            >
+                {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
 
             <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white focus-within:shadow-sm">
