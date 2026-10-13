@@ -46,6 +46,7 @@ const findUserById = async (userId) => {
             username,
             email,
             role,
+            avatar_url,
             is_active,
             created_at,
             updated_at
@@ -75,6 +76,7 @@ const findUserByUsername = async (username) => {
             email,
             password_hash,
             role,
+            avatar_url,
             is_active
         FROM users
         WHERE username = $1
@@ -102,6 +104,7 @@ const findUserByEmail = async (email) => {
             email,
             password_hash,
             role,
+            avatar_url,
             is_active
         FROM users
         WHERE email = $1
@@ -241,6 +244,7 @@ const updateUserProfile = async (
             username,
             email,
             role,
+            avatar_url,
             is_active,
             created_at,
             updated_at
