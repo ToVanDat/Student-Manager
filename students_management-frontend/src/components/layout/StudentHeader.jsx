@@ -1,3 +1,4 @@
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { useEffect, useRef, useState } from 'react';
 import {
     Bell,
@@ -86,7 +87,7 @@ function StudentHeader({
                         onClick={() => setMenuOpen((open) => !open)}
                     >
                         {user?.avatar_url || user?.avatar ? (
-                            <img src={user.avatar_url || user.avatar} alt="Avatar tài khoản" className="size-8 shrink-0 rounded-full object-cover" />
+                            <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt="Avatar tài khoản" className="size-8 shrink-0 rounded-full object-cover" />
                         ) : (
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
                                 {user?.username?.charAt(0)?.toUpperCase() || 'U'}
