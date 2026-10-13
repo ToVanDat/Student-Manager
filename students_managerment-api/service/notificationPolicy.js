@@ -20,6 +20,7 @@ const isAllowedPushEndpoint = value => {
     // delivery to known providers to avoid turning this API into an SSRF proxy.
     return host === 'fcm.googleapis.com' ||
         host === 'updates.push.services.mozilla.com' ||
+        host === 'push.services.mozilla.com' ||
         host.endsWith('.push.services.mozilla.com') ||
         host.endsWith('.notify.windows.com') ||
         host === 'web.push.apple.com' ||
