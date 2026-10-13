@@ -94,7 +94,7 @@ const validateFileContent = async (file) => {
     }
 };
 
-const uploadFile = async (messageId, userId, file) => {
+const uploadFile = async (messageId, userId, file, quality = 'standard') => {
     if (!file) {
         const error = new Error('Chưa chọn file');
         error.statusCode = 400;
@@ -123,7 +123,9 @@ const uploadFile = async (messageId, userId, file) => {
 
         // Optimization is best-effort. The optimizer keeps the original whenever
         // output is not smaller or a codec is unavailable; documents/audio/GIF remain untouched.
-        await optimizeUploadedFile(file);
+        const allowedQualities = new Set(['original', 'standard', 'hd', '480p', '720p', '1080p']);
+        const selectedQuality = allowedQualities.has(quality) ? quality : 'standard';
+        await optimizeUploadedFile(file, selectedQuality);
 
         // Validate again because the stored bytes may now be optimized output.
         await validateFileContent(file);
