@@ -1,5 +1,6 @@
 const webpush = require('web-push');
 const pool = require('../src/config/database');
+const { validateAccountPreferencePatch, validatePushSubscription } = require('./notificationPolicy');
 
 const configured = Boolean(
     process.env.VAPID_PUBLIC_KEY &&
@@ -27,15 +28,7 @@ const getAccountPreferences = async (userId) => {
 };
 
 const updateAccountPreferences = async (userId, preferences) => {
-    const allowed = ['in_app_enabled', 'push_enabled', 'sound_enabled'];
-    const entries = Object.entries(preferences || {});
-    if (!entries.length || entries.some(([key, value]) =>
-        !allowed.includes(key) || typeof value !== 'boolean'
-    )) {
-        const error = new Error('Cài đặt thông báo không hợp lệ');
-        error.statusCode = 400;
-        throw error;
-    }
+    const entries = validateAccountPreferencePatch(preferences);
 
     await getAccountPreferences(userId);
     const sets = [];
@@ -105,14 +98,7 @@ const updateConversationPreference = async (conversationId, userId, enabled) => 
 };
 
 const saveSubscription = async (userId, subscription, userAgent) => {
-    if (!subscription || typeof subscription.endpoint !== 'string' ||
-        !subscription.endpoint.startsWith('https://') ||
-        !subscription.keys || typeof subscription.keys.p256dh !== 'string' ||
-        typeof subscription.keys.auth !== 'string') {
-        const error = new Error('Push subscription không hợp lệ');
-        error.statusCode = 400;
-        throw error;
-    }
+    validatePushSubscription(subscription);
 
     const { rows } = await pool.query(
         `INSERT INTO web_push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
