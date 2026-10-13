@@ -1,11 +1,60 @@
-import { CheckCircle2, Mail, Save, User } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { CheckCircle2, ImagePlus, Mail, Save, User } from 'lucide-react';
+import { toast } from 'sonner';
+import { uploadAvatarApi } from '@/api/profileApi.js';
 
-function AccountSettings({ user, form, onChange, onSubmit, saving, message }) {
+function AccountSettings({ user, form, onChange, onSubmit, saving, message, onAvatarUpdated }) {
+    const avatarInputRef = useRef(null);
+    const [avatarSaving, setAvatarSaving] = useState(false);
+    const [avatarMessage, setAvatarMessage] = useState('');
+
+    const handleAvatarChange = async event => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+            toast.error('Avatar chỉ chấp nhận JPEG, PNG hoặc WebP');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Avatar không được vượt quá 5 MB');
+            return;
+        }
+        setAvatarSaving(true);
+        setAvatarMessage('');
+        try {
+            const result = await uploadAvatarApi(file);
+            if (result.user) onAvatarUpdated?.(result.user);
+            setAvatarMessage('Avatar đã được cập nhật và đồng bộ tài khoản.');
+            toast.success('Cập nhật avatar thành công');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Không thể cập nhật avatar');
+        } finally {
+            setAvatarSaving(false);
+        }
+    };
+
     return (
         <div className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-5 dark:border-slate-800">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-blue-950 dark:text-blue-300"><User size={20} /></div>
                 <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white">Thông tin tài khoản</h2><p className="mt-1 mb-0 text-xs text-muted">Cập nhật thông tin cơ bản của tài khoản.</p></div>
+            </div>
+            <div className="mb-5 flex items-center gap-4 rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
+                {user?.avatar_url || user?.avatar ? (
+                    <img src={user.avatar_url || user.avatar} alt="Avatar tài khoản" className="h-16 w-16 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" />
+                ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-200">{(user?.username || 'U').slice(0, 1).toUpperCase()}</div>
+                )}
+                <div className="min-w-0 flex-1">
+                    <p className="m-0 text-sm font-semibold text-slate-900 dark:text-white">Ảnh đại diện</p>
+                    <p className="mt-1 mb-3 text-xs text-slate-500">JPEG, PNG hoặc WebP · tối đa 5 MB</p>
+                    <input ref={avatarInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleAvatarChange} />
+                    <button type="button" disabled={avatarSaving} onClick={() => avatarInputRef.current?.click()} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200">
+                        <ImagePlus size={16} />{avatarSaving ? 'Đang tải lên...' : 'Thay đổi avatar'}
+                    </button>
+                    {avatarMessage && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">{avatarMessage}</p>}
+                </div>
             </div>
             <form className="grid gap-4" onSubmit={onSubmit}>
                 <div className="grid gap-2">
