@@ -58,7 +58,7 @@ const uploadAvatar = async (req, res, next) => {
         // changes appear without requiring a page reload.
         try {
             const { getIO } = require('../src/socket/socket');
-            const userRepository = require('../repository/userRepository');
+            const conversationRepository = require('../repository/conversationRepository');
             const payload = {
                 userId: Number(rows[0].id),
                 username: rows[0].username,
@@ -66,7 +66,7 @@ const uploadAvatar = async (req, res, next) => {
             };
             const io = getIO();
             io.to(`user:${Number(rows[0].id)}`).emit('user:profile-updated', payload);
-            const contactIds = await userRepository.getConversationContactIds(Number(rows[0].id));
+            const contactIds = await conversationRepository.getConversationContactIds(Number(rows[0].id));
             for (const contactId of contactIds) {
                 io.to(`user:${Number(contactId)}`).emit('user:profile-updated', payload);
             }
