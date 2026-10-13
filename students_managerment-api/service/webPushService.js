@@ -63,23 +63,23 @@ const assertConversationMember = async (conversationId, userId) => {
 
 const getConversationPreference = async (conversationId, userId) => {
     await assertConversationMember(conversationId, userId);
-    const { rows } = await pool.query(
+    await pool.query(
         `INSERT INTO conversation_notification_preferences (conversation_id, user_id)
          VALUES ($1, $2)
          ON CONFLICT (conversation_id, user_id) DO NOTHING`,
         [conversationId, userId]
     );
-    const result = await pool.query(
-        `SELECT conversation_id, user_id, enabled, updated_at
+    const { rows } = await pool.query(
+        `SELECT conversation_id, user_id, notifications_enabled, is_muted, updated_at
          FROM conversation_notification_preferences
          WHERE conversation_id = $1 AND user_id = $2`,
         [conversationId, userId]
     );
-    return result.rows[0];
+    return rows[0];
 };
 
-const updateConversationPreference = async (conversationId, userId, enabled) => {
-    if (typeof enabled !== 'boolean') {
+const updateConversationPreference = async (conversationId, userId, notificationsEnabled) => {
+    if (typeof notificationsEnabled !== 'boolean') {
         const error = new Error('Trạng thái thông báo phải là boolean');
         error.statusCode = 400;
         throw error;
@@ -87,12 +87,12 @@ const updateConversationPreference = async (conversationId, userId, enabled) => 
     await assertConversationMember(conversationId, userId);
     const { rows } = await pool.query(
         `INSERT INTO conversation_notification_preferences
-             (conversation_id, user_id, enabled, updated_at)
+             (conversation_id, user_id, notifications_enabled, updated_at)
          VALUES ($1, $2, $3, NOW())
          ON CONFLICT (conversation_id, user_id)
-         DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = NOW()
-         RETURNING conversation_id, user_id, enabled, updated_at`,
-        [conversationId, userId, enabled]
+         DO UPDATE SET notifications_enabled = EXCLUDED.notifications_enabled, updated_at = NOW()
+         RETURNING conversation_id, user_id, notifications_enabled, is_muted, updated_at`,
+        [conversationId, userId, notificationsEnabled]
     );
     return rows[0];
 };
@@ -127,15 +127,23 @@ const sendPushToUser = async (userId, payload, conversationId = null) => {
     if (!configured) return { sent: 0, skipped: 'vapid_not_configured' };
 
     const account = await getAccountPreferences(userId);
+    if (!account.notifications_enabled) return { sent: 0, skipped: 'account_notifications_disabled' };
     if (!account.push_enabled) return { sent: 0, skipped: 'push_disabled' };
 
     if (conversationId !== null) {
         const { rows } = await pool.query(
-            `SELECT enabled FROM conversation_notification_preferences
+            `SELECT notifications_enabled, is_muted
+             FROM conversation_notification_preferences
              WHERE conversation_id = $1 AND user_id = $2`,
             [conversationId, userId]
         );
-        if (rows[0]?.enabled === false) return { sent: 0, skipped: 'conversation_muted' };
+        const preference = rows[0];
+        if (preference?.notifications_enabled === false) {
+            return { sent: 0, skipped: 'conversation_notifications_disabled' };
+        }
+        if (preference?.is_muted === true) {
+            return { sent: 0, skipped: 'conversation_muted' };
+        }
     }
 
     const { rows } = await pool.query(
