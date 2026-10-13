@@ -12,7 +12,7 @@ const OPTIONS = [
 export default function NotificationSettings() {
     const [preferences, setPreferences] = useState({
         in_app_enabled: true,
-        push_enabled: true,
+        push_enabled: false,
         sound_enabled: true
     });
     const [loading, setLoading] = useState(true);
