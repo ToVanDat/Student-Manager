@@ -23,7 +23,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
     };
 
     return (
-        <div className="mx-auto max-w-[1500px] space-y-6">
+        <div className="admin-overview mx-auto max-w-[1500px] space-y-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-[.14em] text-blue-600">Bảng điều khiển quản trị</p>
@@ -36,9 +36,9 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                 </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
-                    <article key={label} className="rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] transition-colors hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900 sm:p-5">
+                    <article key={label} className="admin-kpi-card rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] transition-colors hover:border-blue-200 dark:border-slate-800 dark:bg-slate-900 sm:p-4">
                         <div className="flex items-start justify-between gap-3">
                             <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
                             <span className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-medium text-slate-400 dark:bg-slate-800">Hiện tại</span>
@@ -50,8 +50,8 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                 ))}
             </div>
 
-            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)]">
-                <section className="rounded-2xl border border-slate-200/90 bg-white/95 p-5 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)]">
+                <section className="rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900">
                     <div className="mb-5 flex items-center justify-between gap-3">
                         <div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Phân bố sinh viên theo lớp</h2><p className="mt-1 text-xs text-slate-400">Sĩ số theo dữ liệu hiện có</p></div>
                         <span className="flex size-9 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300"><ChartNoAxesCombined size={18} /></span>
@@ -68,7 +68,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                     ) : <div className="flex min-h-44 flex-col items-center justify-center text-center"><BookOpen className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">Chưa có dữ liệu lớp</p><p className="mt-1 text-xs text-slate-400">Thêm hồ sơ sinh viên có lớp để xem thống kê.</p></div>}
                 </section>
 
-                <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Sinh viên gần đây</h2><p className="mt-1 text-xs text-slate-400">Hồ sơ mới nhất trong danh sách</p></div><button type="button" onClick={onOpenStudents} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">Xem tất cả <ArrowRight size={14} /></button></div>
                     {recentStudents.length ? <div className="divide-y divide-slate-100 dark:divide-slate-800">
                         {recentStudents.map(student => <div key={student.id} className="flex items-center gap-3 py-3 first:pt-1 last:pb-0">
@@ -80,7 +80,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                 </section>
             </div>
 
-            <section className="flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-[#1768e8] via-[#2889f2] to-[#38b4de] p-5 text-white shadow-lg shadow-blue-600/15 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <section className="flex flex-col gap-4 rounded-xl bg-gradient-to-r from-[#1768e8] via-[#2889f2] to-[#38b4de] p-5 text-white shadow-lg shadow-blue-600/15 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-100">Student Manager</p><h2 className="mt-1 text-lg font-bold">Quản lý dữ liệu đào tạo tập trung</h2><p className="mt-1 text-xs text-blue-50/90">Theo dõi danh sách sinh viên và sĩ số lớp từ cùng một trang.</p></div>
                 <button type="button" onClick={onOpenStudents} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-50">Mở danh sách <ArrowRight size={15} /></button>
             </section>
