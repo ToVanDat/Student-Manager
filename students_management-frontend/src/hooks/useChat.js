@@ -909,7 +909,7 @@ export const useChat = () => {
         }
     }, []);
 
-    const sendAttachment = useCallback(async (file) => {
+    const sendAttachment = useCallback(async (file, quality = 'standard', onUploadProgress) => {
         if (!activeId || !file) return;
 
         const tempId = `temp-file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -954,6 +954,9 @@ export const useChat = () => {
                 progressEvent => {
                     const total = progressEvent.total || file.size;
                     const progress = Math.min(100, Math.round((progressEvent.loaded / total) * 100));
+                    if (typeof onUploadProgress === 'function') {
+                        onUploadProgress({ loaded: progressEvent.loaded, total, progress });
+                    }
 
                     setMessages(prev => prev.map(item =>
                         Number(item.id) === Number(message.id)
