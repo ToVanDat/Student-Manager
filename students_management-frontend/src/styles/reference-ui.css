@@ -51,3 +51,72 @@
 @media (max-width: 640px) {
   .chat-media-composer [data-media-grid] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Subtle neutral scrollbars for chat panels, visible on hover/focus. */
+.chat-shell .overflow-y-auto,
+.chat-shell .overflow-x-auto,
+.chat-shell .overflow-auto,
+[data-chat-shell] .overflow-y-auto,
+[data-chat-shell] .overflow-x-auto,
+[data-chat-shell] .overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.chat-shell .overflow-y-auto:hover,
+.chat-shell .overflow-y-auto:focus-within,
+.chat-shell .overflow-x-auto:hover,
+.chat-shell .overflow-auto:hover,
+[data-chat-shell] .overflow-y-auto:hover,
+[data-chat-shell] .overflow-y-auto:focus-within,
+[data-chat-shell] .overflow-x-auto:hover,
+[data-chat-shell] .overflow-auto:hover {
+  scrollbar-color: #cbd5e1 transparent;
+}
+.chat-shell .overflow-y-auto::-webkit-scrollbar,
+.chat-shell .overflow-x-auto::-webkit-scrollbar,
+.chat-shell .overflow-auto::-webkit-scrollbar,
+[data-chat-shell] .overflow-y-auto::-webkit-scrollbar,
+[data-chat-shell] .overflow-x-auto::-webkit-scrollbar,
+[data-chat-shell] .overflow-auto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.chat-shell .overflow-y-auto::-webkit-scrollbar-track,
+.chat-shell .overflow-x-auto::-webkit-scrollbar-track,
+.chat-shell .overflow-auto::-webkit-scrollbar-track,
+[data-chat-shell] .overflow-y-auto::-webkit-scrollbar-track,
+[data-chat-shell] .overflow-x-auto::-webkit-scrollbar-track,
+[data-chat-shell] .overflow-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-shell .overflow-y-auto::-webkit-scrollbar-thumb,
+.chat-shell .overflow-x-auto::-webkit-scrollbar-thumb,
+.chat-shell .overflow-auto::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-y-auto::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-x-auto::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-auto::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.chat-shell .overflow-y-auto:hover::-webkit-scrollbar-thumb,
+.chat-shell .overflow-y-auto:focus-within::-webkit-scrollbar-thumb,
+.chat-shell .overflow-x-auto:hover::-webkit-scrollbar-thumb,
+.chat-shell .overflow-auto:hover::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-y-auto:hover::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-y-auto:focus-within::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-x-auto:hover::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-auto:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+.chat-shell .overflow-y-auto:hover::-webkit-scrollbar-thumb:hover,
+[data-chat-shell] .overflow-y-auto:hover::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+@media (pointer: coarse) {
+  .chat-shell .overflow-y-auto,
+  .chat-shell .overflow-auto,
+  [data-chat-shell] .overflow-y-auto,
+  [data-chat-shell] .overflow-auto {
+    scrollbar-color: #cbd5e1 transparent;
+  }
+}
