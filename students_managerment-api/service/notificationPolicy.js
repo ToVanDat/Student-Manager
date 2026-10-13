@@ -1,5 +1,5 @@
 const ALLOWED_PREFERENCE_KEYS = new Set([
-    'in_app_enabled',
+    'notifications_enabled',
     'push_enabled',
     'sound_enabled'
 ]);
