@@ -8,7 +8,6 @@ import {
     PanelLeftOpen,
     MoreVertical,
     Search,
-    Settings,
     User,
 } from 'lucide-react';
 
@@ -136,16 +135,6 @@ function StudentHeader({
                                 className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-[#64748b] hover:bg-[#f5f8ff]"
                             >
                                 <User size={18} />
-                                <span>Thông tin người dùng</span>
-                            </button>
-                            <button
-                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-[#64748b] hover:bg-[#f5f8ff]"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    onOpenSettings();
-                                }}
-                            >
-                                <Settings size={18} />
                                 <span>Cài đặt tài khoản</span>
                             </button>
                             <div className="my-1 border-t border-[#e8eef7]" />
