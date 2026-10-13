@@ -61,7 +61,15 @@ export const AuthProvider = ({ children }) => {
         };
     }, []);
 
-//login
+const updateUser = (partialUser) => {
+        setUser(previous => {
+            const nextUser = { ...(previous || {}), ...(partialUser || {}) };
+            localStorage.setItem('user', JSON.stringify(nextUser));
+            return nextUser;
+        });
+    };
+
+    //login
     const loginUser = (data) => {
 
         setApiAccessToken(data.accessToken);
@@ -275,6 +283,7 @@ export const AuthProvider = ({ children }) => {
                 user,
                 loginUser,
                 logoutUser,
+                updateUser,
                 isAuthenticated: !!accessToken,
                 webRTCCall
             }}
