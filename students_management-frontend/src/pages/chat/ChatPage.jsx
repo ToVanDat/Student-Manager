@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock3, LogOut, MoreVertical, Settings, UserRound, GraduationCap, Home, MessageSquare, Users, Phone, Search } from 'lucide-react';
+import { ArrowLeft, Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users, Search } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
@@ -308,8 +308,7 @@ export default function ChatPage() {
                                 </div>
                                 <div className="my-1 border-t border-slate-100" />
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><ArrowLeft size={17} /><span>Về trang quản lý</span></button>
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><UserRound size={17} /><span>Thông tin & tài khoản</span></button>
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><Settings size={17} /><span>Cài đặt & bảo mật</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><UserRound size={17} /><span>Cài đặt tài khoản</span></button>
                                 <div className="my-1 border-t border-slate-100" />
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"><LogOut size={17} /><span>Đăng xuất</span></button>
                             </div>
@@ -339,11 +338,9 @@ export default function ChatPage() {
                                 <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8]"><Home size={17} />Tổng quan</button>
                                 <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100"><MessageSquare size={17} />Trò chuyện</button>
                                 <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Users size={17} />Nhóm</button>
-                                <button type="button" onClick={() => setCallCenterOpen(true)} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Phone size={17} />Cuộc gọi{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadCallNotificationCount}</span>}</button>
                                 <button type="button" onClick={() => document.querySelector('[data-new-chat]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Search size={17} />Danh bạ</button>
                             </nav>
                             <div className="mt-auto border-t border-[#e3eaf4] pt-3">
-                                <button type="button" onClick={() => navigate('/students?view=settings')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Settings size={17} />Cài đặt</button>
                                 <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
                             </div>
                         </aside>
