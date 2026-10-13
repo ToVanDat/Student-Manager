@@ -85,9 +85,13 @@ function StudentHeader({
                         className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-[#f5f8ff] sm:gap-3"
                         onClick={() => setMenuOpen((open) => !open)}
                     >
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
-                            {user?.username?.charAt(0)?.toUpperCase() || 'U'}
-                        </div>
+                        {user?.avatar_url || user?.avatar ? (
+                            <img src={user.avatar_url || user.avatar} alt="Avatar tài khoản" className="size-8 shrink-0 rounded-full object-cover" />
+                        ) : (
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
+                                {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>
+                        )}
                         <div className="hidden min-w-0 flex-col sm:flex">
                             <strong className="max-w-28 truncate text-xs text-[#293b55]">{user?.username || 'User'}</strong>
                             <span className="text-[10px] text-[#71829b]">
