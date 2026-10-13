@@ -301,7 +301,6 @@ export default function ChatPage() {
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><ArrowLeft size={17} /><span>Về trang quản lý</span></button>
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><UserRound size={17} /><span>Thông tin & tài khoản</span></button>
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><Settings size={17} /><span>Cài đặt & bảo mật</span></button>
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setCallCenterOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><Clock3 size={17} /><span>Lịch sử cuộc gọi</span>{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{unreadCallNotificationCount}</span>}</button>
                                 <div className="my-1 border-t border-slate-100" />
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"><LogOut size={17} /><span>Đăng xuất</span></button>
                             </div>
@@ -342,8 +341,6 @@ export default function ChatPage() {
                         <ChatSidebar
                             conversations={conversations}
                             onlineUserIds={onlineUserIds}
-                            onOpenCallCenter={() => setCallCenterOpen(true)}
-                            callNotificationCount={unreadCallNotificationCount}
                             activeId={activeId}
                             onSelectConversation={setActiveId}
                             searchUsers={searchUsers}
