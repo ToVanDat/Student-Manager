@@ -103,20 +103,20 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className="chat-conversation-rail flex h-full w-[300px] min-w-[270px] max-w-[34vw] flex-col border-r border-slate-100 bg-white p-4 relative dark:border-slate-800 dark:bg-slate-950">
+        <div className="chat-conversation-rail relative flex h-full w-[320px] min-w-[290px] max-w-[36vw] flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-4 dark:border-slate-800 dark:bg-slate-950">
             <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[22px] font-bold tracking-tight text-slate-950 dark:text-white">Tin nhắn</h2>
+                <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-white">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
-                        className="flex size-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-blue-950"
+                        className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-blue-950"
                         title="Tạo nhóm"
                     >
                         <Users size={18} />
                     </button>
                     <button
                         onClick={onOpenCallCenter}
-                        className="relative w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl"
+                        className="relative flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
                         title="Cuộc gọi"
                         aria-label={callNotificationCount > 0 ? `Cuộc gọi, ${callNotificationCount} thông báo chưa đọc` : 'Cuộc gọi'}
                     >
@@ -130,7 +130,7 @@ export default function ChatSidebar({
                     <button
                         data-new-chat
                         onClick={() => { setShowNewChat(true); setMode('direct'); }}
-                        className="flex size-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
+                        className="flex size-9 items-center justify-center rounded-xl bg-[#2563eb] text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
                         title="Tìm kiếm người dùng"
                         aria-label="Tìm kiếm người dùng"
                     >
@@ -224,7 +224,7 @@ export default function ChatSidebar({
                     placeholder="Tìm kiếm cuộc trò chuyện..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-slate-200/80 bg-slate-50 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-50/80 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:bg-slate-900"
+                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 />
             </div>
 
