@@ -42,7 +42,7 @@ const updateAccountPreferences = async (userId, preferences) => {
         `UPDATE user_notification_preferences
          SET ${sets.join(', ')}, updated_at = NOW()
          WHERE user_id = $1
-         RETURNING user_id, notifications_enabled, push_enabled, sound_enabled, updated_at`,
+         RETURNING user_id, notifications_enabled, push_enabled, sound_enabled, preview_mode, updated_at`,
         values
     );
     return rows[0];
