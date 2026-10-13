@@ -24,11 +24,16 @@ const uploadFile = async (req, res) => {
             });
         }
 
+        const requestedQuality = String(req.body?.quality || 'standard');
+        const allowedQualities = new Set(['original', 'standard', 'hd', '480p', '720p', '1080p']);
+        const quality = allowedQualities.has(requestedQuality) ? requestedQuality : 'standard';
+
         const savedFile =
             await messageFileService.uploadFile(
                 messageId,
                 req.user.id,
-                req.file
+                req.file,
+                quality
             );
 
         const message = await messageRepository.getMessageById(messageId);
