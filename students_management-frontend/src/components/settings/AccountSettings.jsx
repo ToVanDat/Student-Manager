@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { CheckCircle2, ImagePlus, Mail, Save, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadAvatarApi } from '@/api/profileApi.js';
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 
 function AccountSettings({ user, form, onChange, onSubmit, saving, message, onAvatarUpdated }) {
     const avatarInputRef = useRef(null);
@@ -42,7 +43,7 @@ function AccountSettings({ user, form, onChange, onSubmit, saving, message, onAv
             </div>
             <div className="mb-5 flex items-center gap-4 rounded-xl bg-slate-50 p-4 dark:bg-slate-800">
                 {user?.avatar_url || user?.avatar ? (
-                    <img src={user.avatar_url || user.avatar} alt="Avatar tài khoản" className="h-16 w-16 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" />
+                    <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt="Avatar tài khoản" className="h-16 w-16 rounded-full object-cover ring-2 ring-white dark:ring-slate-700" />
                 ) : (
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-200">{(user?.username || 'U').slice(0, 1).toUpperCase()}</div>
                 )}
