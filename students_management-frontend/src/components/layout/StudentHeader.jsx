@@ -3,11 +3,9 @@ import {
     Bell,
     LogOut,
     Menu,
-    Moon,
     MoreVertical,
     Search,
     Settings,
-    Sun,
     User,
 } from 'lucide-react';
 
@@ -81,9 +79,6 @@ function StudentHeader({
                         )}
                     </div>
                 )}
-                <button className="flex size-9 items-center justify-center rounded-lg text-[#71829b] hover:bg-brand-50 hover:text-brand-700" onClick={onToggleDarkMode} aria-label="Đổi giao diện">
-                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
 
                 <div className="relative" ref={menuRef}>
                     <button
