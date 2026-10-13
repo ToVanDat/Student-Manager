@@ -13,10 +13,8 @@ import {
     Sparkles,
     Users,
     ShieldCheck,
-    Bell,
     UserCog,
     ChartNoAxesColumn,
-    Phone,
 } from 'lucide-react';
 
 function StudentSidebar({
@@ -84,8 +82,6 @@ function StudentSidebar({
                             {[
                                 { key: 'users', label: 'Người dùng', icon: UserCog },
                                 { key: 'permissions', label: 'Phân quyền', icon: ShieldCheck },
-                                { key: 'notifications', label: 'Thông báo', icon: Bell },
-                                { key: 'calls', label: 'Cuộc gọi', icon: Phone },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" onClick={() => onNavigate(key)}
                                     className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
