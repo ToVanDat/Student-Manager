@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 const studentRouter = require('../router/studentRouter');
 const classerRouter = require('../router/classerRouter');
 const departmentRouter = require('../router/departmentRouter');
@@ -14,6 +15,8 @@ const messageRouter = require('../router/messageRouter');
 const userRouter = require('../router/userRouter');
 const messageFileRouter = require('../router/messageFileRouter');
 const callRouter = require('../router/callRouter');
+const webPushRouter = require('../router/webPushRouter');
+const avatarRouter = require('../router/avatarRouter');
 
 const app = express();
 app.disable('x-powered-by');
@@ -56,11 +59,20 @@ app.use('/api/semesters', semesterRouter);
 app.use('/api/subjects', subjectRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/auth/sessions', sessionRouter);
+app.use('/api/auth/avatar', avatarRouter);
+app.use('/api/notifications', webPushRouter);
 app.use('/api/users', userRouter);
 app.use('/api/conversations', conversationRouter);
 app.use('/api/messages', messageRouter);
 app.use('/api/calls', callRouter);
 app.use('/api', messageFileRouter);
+
+// Serve only normalized avatar images publicly. Chat attachments stay behind
+// their authenticated download endpoint and are not exposed by static hosting.
+app.use('/media/avatars', express.static(
+    path.resolve(__dirname, '../storage/uploads/avatars'),
+    { fallthrough: false, immutable: true, maxAge: '7d', index: false }
+));
 
 // Keep API errors JSON-shaped and avoid returning internal stack traces.
 app.use((error, req, res, next) => {
@@ -73,6 +85,10 @@ app.use((error, req, res, next) => {
 
     if (error.message === 'Origin not allowed by CORS') {
         return res.status(403).json({ message: 'Origin không được phép truy cập API' });
+    }
+
+    if (error.status === 404 && req.path.startsWith('/media/avatars/')) {
+        return res.status(404).json({ message: 'Không tìm thấy avatar' });
     }
 
     console.error('[API ERROR]', {
