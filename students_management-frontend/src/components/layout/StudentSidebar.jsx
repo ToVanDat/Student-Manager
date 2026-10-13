@@ -11,6 +11,11 @@ import {
     Settings,
     Sparkles,
     Users,
+    ShieldCheck,
+    Bell,
+    UserCog,
+    ChartNoAxesColumn,
+    Phone,
 } from 'lucide-react';
 
 function StudentSidebar({
@@ -57,41 +62,32 @@ function StudentSidebar({
                     </button>
                     {user?.role === 'admin' && (
                         <>
-                            <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">QUẢN TRỊ HỆ THỐNG</div>
-                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                                                    <Layers size={19} />
-                                                    <span>Lớp học</span>
-                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                                                </button>
-                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                                                    <GraduationCap size={19} />
-                                                    <span>Khoa - Ngành</span>
-                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                                                </button>
-                            
-                                                <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">QUẢN LÝ ĐÀO TẠO</div>
-                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                                                    <BookOpen size={19} />
-                                                    <span>Môn học</span>
-                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                                                </button>
-                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                                                    <ClipboardList size={19} />
-                                                    <span>Đăng ký học</span>
-                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                                                </button>
-                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                                                    <CalendarDays size={19} />
-                                                    <span>Học kỳ</span>
-                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                                                </button>
-                                                <button type="button" disabled title="Chức năng đang được phát triển" className="flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium text-slate-500 opacity-60 cursor-not-allowed">
-                                                    <BarChart3 size={19} />
-                                                    <span>Báo cáo</span>
-                                                <span className="ml-auto text-[9px] text-slate-500">Sắp ra mắt</span>
-                                                </button>
-                            
-                            
+                            <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-slate-500">QUẢN LÝ ĐÀO TẠO</div>
+                            {[
+                                { key: 'classes', label: 'Quản lý lớp học', icon: Layers },
+                                { key: 'departments', label: 'Quản lý khoa - ngành', icon: GraduationCap },
+                                { key: 'subjects', label: 'Quản lý môn học', icon: BookOpen },
+                                { key: 'enrollments', label: 'Đăng ký học', icon: ClipboardList },
+                                { key: 'semesters', label: 'Học kỳ', icon: CalendarDays },
+                                { key: 'results', label: 'Kết quả học tập', icon: ChartNoAxesColumn },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button key={key} type="button" onClick={() => onNavigate(key)}
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-white/8 hover:text-white'}`}>
+                                    <Icon size={19} /><span>{label}</span>
+                                </button>
+                            ))}
+                            <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-slate-500">QUẢN TRỊ HỆ THỐNG</div>
+                            {[
+                                { key: 'users', label: 'Người dùng', icon: UserCog },
+                                { key: 'permissions', label: 'Phân quyền', icon: ShieldCheck },
+                                { key: 'notifications', label: 'Thông báo', icon: Bell },
+                                { key: 'calls', label: 'Cuộc gọi', icon: Phone },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button key={key} type="button" onClick={() => onNavigate(key)}
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-white/8 hover:text-white'}`}>
+                                    <Icon size={19} /><span>{label}</span>
+                                </button>
+                            ))}
                         </>
                     )}
 
