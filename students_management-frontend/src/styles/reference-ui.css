@@ -111,3 +111,47 @@ img { max-width: 100%; }
   .chat-workspace { padding: 0 !important; height: calc(100dvh - 4rem) !important; }
   .chat-shell { border-radius: 0; border-left: 0; border-right: 0; }
 }
+
+
+/* Media composer: polished attachment grid, quality selector and upload feedback. */
+.chat-media-composer {
+  background: linear-gradient(145deg, #f8fbff 0%, #eef5ff 100%);
+}
+.chat-media-composer [data-media-tile] {
+  transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+.chat-media-composer [data-media-tile]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(24, 92, 180, .12);
+}
+.chat-media-composer [data-media-tile][aria-pressed="true"] {
+  border-color: var(--sm-blue);
+  box-shadow: 0 0 0 3px rgba(8, 120, 249, .12);
+}
+.chat-media-composer progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #dce8f8;
+  accent-color: var(--sm-blue);
+}
+.chat-media-composer progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: #dce8f8;
+}
+.chat-media-composer progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0878f9, #55a5ff);
+}
+.chat-media-composer progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0878f9, #55a5ff);
+}
+.chat-media-viewer {
+  background: radial-gradient(ellipse at center, #182233, #080c13 78%);
+}
+@media (max-width: 640px) {
+  .chat-media-composer [data-media-grid] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
