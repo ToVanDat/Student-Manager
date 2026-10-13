@@ -176,26 +176,11 @@ const updateUser = (partialUser) => {
         if (!accessToken || !user?.id) return undefined;
 
         let cancelled = false;
-        let preferences = {
-            in_app_enabled: true,
-            sound_enabled: true
-        };
 
-        import('@/api/notificationApi').then(({ notificationApi }) => {
-            notificationApi.getPreferences()
-                .then(({ data }) => {
-                    if (!cancelled && data?.data) {
-                        preferences = {
-                            in_app_enabled: data.data.in_app_enabled !== false,
-                            sound_enabled: data.data.sound_enabled !== false
-                        };
-                    }
-                })
-                .catch(error => console.error('Không tải được cài đặt thông báo:', error));
-        });
-
-        const handleIncomingMessage = async message => {
-            if (!message || Number(message.sender_id) === Number(user.id)) return;
+        const handleIncomingMessage = async update => {
+            const message = update?.lastMessage;
+            const senderId = update?.senderId ?? message?.sender_id ?? message?.senderId;
+            if (!message || Number(senderId) === Number(user.id)) return;
             const isAwayFromChat = document.visibilityState === 'hidden' || window.location.pathname !== '/chat';
             if (!isAwayFromChat) return;
 
@@ -207,7 +192,7 @@ const updateUser = (partialUser) => {
                         ? notificationApi.getConversationPreference(message.conversation_id)
                         : Promise.resolve({ data: { data: { enabled: true } } })
                 ]);
-                const accountPrefs = accountResult.data?.data || preferences;
+                const accountPrefs = accountResult.data?.data || { in_app_enabled: true, sound_enabled: true };
                 if (accountPrefs.in_app_enabled === false || conversationResult.data?.data?.enabled === false) return;
 
                 const senderName = message.sender_username || message.username || 'Tin nhắn mới';
@@ -234,10 +219,10 @@ const updateUser = (partialUser) => {
             }
         };
 
-        socket.on('message:new', handleIncomingMessage);
+        socket.on('conversation:updated', handleIncomingMessage);
         return () => {
             cancelled = true;
-            socket.off('message:new', handleIncomingMessage);
+            socket.off('conversation:updated', handleIncomingMessage);
         };
     }, [accessToken, user?.id]);
 
