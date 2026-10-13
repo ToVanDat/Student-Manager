@@ -13,7 +13,7 @@ self.addEventListener('push', event => {
         badge: '/favicon.ico',
         tag: typeof payload.tag === 'string' ? payload.tag : 'student-management-notification',
         data: {
-            url: typeof payload.url === 'string' && payload.url.startsWith('/') && !payload.url.startsWith('//') && !payload.url.includes('\\\\') ? payload.url : '/chat'
+            url: typeof payload.url === 'string' && payload.url.startsWith('/') && !payload.url.startsWith('//') && !payload.url.includes('\\') ? payload.url : '/chat'
         },
         renotify: false
     };
