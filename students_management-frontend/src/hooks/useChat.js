@@ -275,6 +275,20 @@ export const useChat = () => {
             });
         };
 
+        const handleUserProfileUpdated = ({ userId, username, avatarUrl }) => {
+            if (!userId) return;
+            setConversations(previous => previous.map(item =>
+                item.type === 'direct' && Number(item.userId) === Number(userId)
+                    ? { ...item, name: username || item.name, avatar: avatarUrl || null }
+                    : item
+            ));
+            setConversationMembers(previous => previous.map(member =>
+                Number(member.user_id) === Number(userId)
+                    ? { ...member, username: username || member.username, avatar: avatarUrl || null }
+                    : member
+            ));
+        };
+
         const handleConversationUpdated = async ({ conversationId, lastMessage, senderId, updatedAt, action, member, conversation }) => {
             const sameConversation = Number(conversationId) === Number(activeId);
             const memberId = Number(member?.user_id);
@@ -649,6 +663,7 @@ export const useChat = () => {
         socket.on('call:ended', refreshCallsFromSocket);
         socket.on('call:rejected', refreshCallsFromSocket);
         socket.on('call:activity:updated', refreshCallsFromSocket);
+        socket.on('user:profile-updated', handleUserProfileUpdated);
         socket.on('conversation:updated', handleConversationUpdated);
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
@@ -682,6 +697,7 @@ export const useChat = () => {
             socket.off('call:ended', refreshCallsFromSocket);
             socket.off('call:rejected', refreshCallsFromSocket);
             socket.off('call:activity:updated', refreshCallsFromSocket);
+            socket.off('user:profile-updated', handleUserProfileUpdated);
             socket.off('conversation:updated', handleConversationUpdated);
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
