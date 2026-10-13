@@ -16,6 +16,7 @@ import AccountSettings from "@/components/settings/AccountSettings.jsx";
 import SecuritySettings from "@/components/settings/SecuritySettings.jsx";
 import SessionSettings from "@/components/settings/SessionSettings.jsx";
 import PasswordSettings from "@/components/settings/PasswordSettings.jsx";
+import NotificationSettings from "@/components/settings/NotificationSettings.jsx";
 
 import {
   createStudent,
@@ -32,7 +33,7 @@ function Students() {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { user, logoutUser } = useAuth();
+  const { user, logoutUser, updateUser } = useAuth();
   const isAdmin = user?.role === "admin";
 
   // =====================================================
@@ -653,8 +654,11 @@ function Students() {
                     message={
                       accountMessage
                     }
+                    onAvatarUpdated={updateUser}
                   />
                 )}
+
+                {settingsTab === "notifications" && <NotificationSettings />}
 
                 {/* =========================================
                     SECURITY
