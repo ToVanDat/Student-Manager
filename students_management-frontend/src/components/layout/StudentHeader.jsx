@@ -9,7 +9,10 @@ import {
     MoreVertical,
     Search,
     User,
+    CheckCheck,
 } from 'lucide-react';
+import { notificationApi } from '@/api/notificationApi.js';
+import socket from '@/socket/socket.js';
 
 function StudentHeader({
     user,
@@ -27,6 +30,9 @@ function StudentHeader({
 }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notificationItems, setNotificationItems] = useState([]);
+    const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
     const menuRef = useRef(null);
 
     useEffect(() => {
@@ -39,6 +45,58 @@ function StudentHeader({
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        let active = true;
+        const loadNotifications = async () => {
+            setNotificationsLoading(true);
+            try {
+                const { data } = await notificationApi.getHistory(20, 0);
+                if (!active) return;
+                setNotificationItems(Array.isArray(data?.data) ? data.data : []);
+                setNotificationUnreadCount(Number(data?.unreadCount) || 0);
+            } catch (error) {
+                console.error('Không tải được lịch sử thông báo:', error?.message);
+            } finally {
+                if (active) setNotificationsLoading(false);
+            }
+        };
+        const handleNewNotification = item => {
+            if (!item?.id) return;
+            setNotificationItems(previous => [item, ...previous.filter(existing => existing.id !== item.id)].slice(0, 20));
+            setNotificationUnreadCount(count => count + (item.is_read ? 0 : 1));
+        };
+        loadNotifications();
+        socket.on('notification:new', handleNewNotification);
+        return () => {
+            active = false;
+            socket.off('notification:new', handleNewNotification);
+        };
+    }, []);
+
+    const handleNotificationClick = async item => {
+        try {
+            if (!item.is_read) {
+                await notificationApi.markRead(item.id);
+                setNotificationItems(previous => previous.map(existing => existing.id === item.id ? { ...existing, is_read: true } : existing));
+                setNotificationUnreadCount(count => Math.max(0, count - 1));
+            }
+        } catch (error) {
+            console.error('Không thể đánh dấu thông báo đã đọc:', error?.message);
+        }
+        setNotificationsOpen(false);
+        onOpenNotifications?.(item);
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            await notificationApi.markAllRead();
+            setNotificationItems(previous => previous.map(item => ({ ...item, is_read: true })));
+            setNotificationUnreadCount(0);
+        } catch (error) {
+            console.error('Không thể đánh dấu tất cả thông báo đã đọc:', error?.message);
+        }
+    };
 
     const handleLogout = () => {
         setMenuOpen(false);
@@ -72,26 +130,46 @@ function StudentHeader({
             </div>
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
-                <button onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] hover:bg-brand-50 hover:text-brand-700" aria-label="Thông báo">
-                    <Bell size={20} />
-                    <span className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
-                </button>
-                {notificationsOpen && (
-                    <div className="absolute top-[62px] right-[130px] z-50 w-80 rounded-xl border border-[#e3eaf4] bg-white p-3 shadow-xl">
-                        <div className="flex items-center justify-between px-2 py-1">
-                            <strong className="text-sm text-[#293b55]">Thông báo</strong>
-                            <span className="text-[11px] text-slate-400">{unreadCount} chưa đọc</span>
+                <div className="relative">
+                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] hover:bg-brand-50 hover:text-brand-700" aria-label="Thông báo" aria-expanded={notificationsOpen}>
+                        <Bell size={20} />
+                        {notificationUnreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}</span>}
+                    </button>
+                    {notificationsOpen && (
+                        <div className="absolute right-0 top-[48px] z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#e3eaf4] bg-white shadow-xl">
+                            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                                <div>
+                                    <strong className="text-sm text-[#293b55]">Thông báo</strong>
+                                    <p className="mt-0.5 text-[11px] text-slate-400">{notificationUnreadCount} chưa đọc</p>
+                                </div>
+                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40" title="Đánh dấu tất cả đã đọc">
+                                    <CheckCheck size={14} /> Đọc tất cả
+                                </button>
+                            </div>
+                            <div className="max-h-[min(65vh,26rem)] overflow-y-auto">
+                                {notificationsLoading && notificationItems.length === 0 ? (
+                                    <p className="px-4 py-8 text-center text-xs text-slate-400">Đang tải thông báo...</p>
+                                ) : notificationItems.length ? notificationItems.map(item => (
+                                    <button key={item.id} type="button" onClick={() => handleNotificationClick(item)} className={`block w-full border-b border-slate-50 px-4 py-3 text-left transition hover:bg-blue-50 ${item.is_read ? 'bg-white' : 'bg-blue-50/60'}`}>
+                                        <span className="flex items-start gap-2">
+                                            {!item.is_read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-600" />}
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-xs font-semibold text-[#293b55]">{item.title}</span>
+                                                <span className="mt-1 block break-words text-xs leading-5 text-[#71829b]">{item.body}</span>
+                                                <span className="mt-1 block text-[10px] text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
+                                            </span>
+                                        </span>
+                                    </button>
+                                )) : (
+                                    <p className="px-4 py-8 text-center text-xs text-slate-400">Chưa có thông báo nào.</p>
+                                )}
+                            </div>
+                            <div className="border-t border-slate-100 p-2">
+                                <button type="button" onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="w-full rounded-lg px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50">Mở cuộc trò chuyện</button>
+                            </div>
                         </div>
-                        {unreadCount > 0 ? (
-                            <button onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="mt-2 w-full rounded-lg bg-blue-50 p-3 text-left hover:bg-blue-100">
-                                <p className="text-xs font-semibold text-[#293b55]">Tin nhắn mới</p>
-                                <p className="mt-1 text-[11px] text-[#71829b]">Bạn có {unreadCount} tin nhắn chưa đọc.</p>
-                            </button>
-                        ) : (
-                            <p className="px-2 py-6 text-center text-xs text-slate-400">Không có thông báo mới</p>
-                        )}
-                    </div>
-                )}
+                    )}
+                </div>
 
                 <div className="relative" ref={menuRef}>
                     <button
