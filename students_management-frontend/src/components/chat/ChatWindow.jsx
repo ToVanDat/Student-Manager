@@ -125,6 +125,14 @@ export default function ChatWindow({
     const [attachmentProgress, setAttachmentProgress] = useState(0);
     const [attachmentQuality, setAttachmentQuality] = useState('standard');
     const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState('');
+    const [queuedPreviewUrls, setQueuedPreviewUrls] = useState({});
+
+    useEffect(() => {
+        const files = pendingAttachmentQueue.filter(file => file && (file.type.startsWith('image/') || file.type.startsWith('video/')));
+        const urls = files.map(file => [file, URL.createObjectURL(file)]);
+        setQueuedPreviewUrls(Object.fromEntries(urls.map(([file, url]) => [`${file.name}:${file.lastModified}:${file.size}`, url])));
+        return () => urls.forEach(([, url]) => URL.revokeObjectURL(url));
+    }, [pendingAttachmentQueue]);
     const [showDetailsPanel, setShowDetailsPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280);
 
     useEffect(() => {
@@ -685,8 +693,8 @@ export default function ChatWindow({
                                 </div>
                                 <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4" data-media-grid>
                                     {[pendingAttachment, ...pendingAttachmentQueue].map((file, index) => (
+                                        <div key={`${file.name}-tile-${file.lastModified}-${index}`} className="relative min-w-0">
                                         <button
-                                            key={`${file.name}-${file.lastModified}-${index}`}
                                             type="button"
                                             onClick={() => {
                                                 if (index === 0) return;
@@ -700,11 +708,13 @@ export default function ChatWindow({
                                             className={`group relative aspect-square overflow-hidden rounded-xl border-2 bg-slate-100 text-left dark:bg-slate-800 ${index === 0 ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'border-slate-200 dark:border-slate-700'}`}
                                             aria-label={`Xem trước ${file.name}`} aria-pressed={index === 0} data-media-tile
                                         >
-                                            {file.type.startsWith('image/') ? <img src={index === 0 ? attachmentPreviewUrl : URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" /> : file.type.startsWith('video/') ? <video src={index === 0 ? attachmentPreviewUrl : URL.createObjectURL(file)} muted className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><FileImage size={24} className="text-blue-600" /></div>}
+                                            {file.type.startsWith('image/') ? <img src={index === 0 ? attachmentPreviewUrl : queuedPreviewUrls[`${file.name}:${file.lastModified}:${file.size}`]} alt="" className="h-full w-full object-cover" /> : file.type.startsWith('video/') ? <video src={index === 0 ? attachmentPreviewUrl : URL.createObjectURL(file)} muted className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><FileImage size={24} className="text-blue-600" /></div>}
                                             {file.type.startsWith('video/') && <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">VIDEO</span>}
                                             {index === 0 && <span className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check size={12} /></span>}
                                             <span className="absolute inset-x-0 bottom-0 truncate bg-slate-950/65 px-1.5 py-1 text-[9px] text-white">{file.name}</span>
                                         </button>
+                                        {index > 0 && <button type="button" onClick={(event) => { event.stopPropagation(); setPendingAttachmentQueue(current => current.filter((_, queueIndex) => queueIndex !== index - 1)); }} disabled={isUploading} aria-label={`移除 ${file.name}`} title="移除文件" className="absolute -right-1.5 -top-1.5 z-10 flex size-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800"><X size={13} /></button>}
+                                        </div>
                                     ))}
                                     <button type="button" onClick={() => fileInputRef.current?.click()} className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-700" aria-label="Thêm ảnh hoặc video"><span className="text-2xl">+</span></button>
                                 </div>
