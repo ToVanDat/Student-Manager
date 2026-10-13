@@ -121,6 +121,8 @@ export default function ChatWindow({
     const recordingSecondsRef = useRef(0);
     const recordingTimerRef = useRef(null);
     const [pendingAttachment, setPendingAttachment] = useState(null);
+    const [pendingAttachmentQueue, setPendingAttachmentQueue] = useState([]);
+    const [attachmentProgress, setAttachmentProgress] = useState(0);
     const [attachmentQuality, setAttachmentQuality] = useState('standard');
     const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState('');
     const [showDetailsPanel, setShowDetailsPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280);
@@ -462,7 +464,6 @@ export default function ChatWindow({
 
     const handleFileChange = async (event) => {
         const files = Array.from(event.target.files || []);
-        // Reset để người dùng có thể chọn lại cùng một tệp.
         event.target.value = '';
         if (!files.length || !onSendAttachment) return;
 
@@ -474,23 +475,27 @@ export default function ChatWindow({
         );
 
         if (mediaFiles.length) {
-            // Mở hộp xem trước; nhiều file sẽ được gửi lần lượt sau khi xác nhận.
-            setPendingAttachment(mediaFiles[0]);
-            setAttachmentQuality(mediaFiles[0].type.startsWith('video/') ? '720p' : 'standard');
-            if (mediaFiles.length > 1) {
-                toast.info(`Đã chọn ${mediaFiles.length} ảnh/video. Hiện hộp xem trước đang xử lý từng tệp; các tệp còn lại cần chọn gửi riêng.`);
-            }
+            const [first, ...rest] = mediaFiles;
+            setPendingAttachment(first);
+            setPendingAttachmentQueue(rest);
+            setAttachmentProgress(0);
+            setAttachmentQuality(first.type.startsWith('video/') ? '720p' : 'standard');
         }
 
         if (otherFiles.length) {
             setIsUploading(true);
+            setAttachmentProgress(0);
             try {
-                for (const file of otherFiles) await onSendAttachment(file, 'standard');
+                for (let index = 0; index < otherFiles.length; index += 1) {
+                    await onSendAttachment(otherFiles[index], 'standard');
+                    setAttachmentProgress(Math.round(((index + 1) / otherFiles.length) * 100));
+                }
             } catch (error) {
                 console.error('Lỗi gửi file:', error);
                 toast.error(error?.response?.data?.message || 'Không gửi được tệp. Vui lòng thử lại.');
             } finally {
                 setIsUploading(false);
+                setAttachmentProgress(0);
             }
         }
     };
@@ -500,9 +505,20 @@ export default function ChatWindow({
         const file = pendingAttachment;
         const quality = attachmentQuality;
         setIsUploading(true);
+        setAttachmentProgress(0);
         try {
             await onSendAttachment(file, quality);
-            setPendingAttachment(null);
+            setAttachmentProgress(100);
+            if (pendingAttachmentQueue.length) {
+                const [nextFile, ...rest] = pendingAttachmentQueue;
+                setPendingAttachment(nextFile);
+                setPendingAttachmentQueue(rest);
+                setAttachmentQuality(nextFile.type.startsWith('video/') ? '720p' : 'standard');
+                setAttachmentProgress(0);
+            } else {
+                setPendingAttachment(null);
+                setPendingAttachmentQueue([]);
+            }
         } catch (error) {
             console.error('Lỗi gửi media:', error);
             toast.error(error?.response?.data?.message || 'Không gửi được media. Vui lòng thử lại.');
@@ -630,14 +646,14 @@ export default function ChatWindow({
                                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Xem trước và chọn chất lượng phù hợp trước khi gửi.</p>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => setPendingAttachment(null)} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" aria-label="Đóng xem trước"><X size={20} /></button>
+                            <button type="button" onClick={() => { if (!isUploading) { setPendingAttachment(null); setPendingAttachmentQueue([]); setAttachmentProgress(0); } }} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" aria-label="Đóng xem trước"><X size={20} /></button>
                         </div>
 
                         <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-5 sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
                             <div className="min-w-0">
                                 <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
                                     <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">1</span>
-                                    Xem trước
+                                    Xem trước · {pendingAttachmentQueue.length + 1} tệp trong hàng đợi
                                 </div>
                                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
                                     {attachmentPreviewUrl && (pendingAttachment.type.startsWith('video/') ? (
@@ -699,11 +715,15 @@ export default function ChatWindow({
                             </div>
                         </div>
 
-                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-between sm:px-7">
-                            <button type="button" onClick={() => { setPendingAttachment(null); fileInputRef.current?.click(); }} className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Chọn tệp khác</button>
+                        <div className="border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-7">
+                            {isUploading && <div className="mb-3" role="status" aria-live="polite"><div className="mb-1 flex justify-between text-xs text-slate-500"><span>Đang tải lên…</span><span>{attachmentProgress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${attachmentProgress}%` }} /></div></div>}
+                            {pendingAttachmentQueue.length > 0 && <div className="mb-3 flex gap-2 overflow-x-auto pb-1" aria-label="Các tệp tiếp theo trong hàng đợi">{pendingAttachmentQueue.map((file, index) => <div key={`${file.name}-${file.lastModified}-${index}`} className="flex w-28 shrink-0 items-center gap-2 rounded-xl border border-slate-200 p-2 text-[10px] dark:border-slate-700">{file.type.startsWith('video/') ? <FileVideo2 size={16} className="shrink-0 text-blue-600" /> : <FileImage size={16} className="shrink-0 text-blue-600" />}<span className="truncate">{file.name}</span></div>)}</div>}
+                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                            <button type="button" disabled={isUploading} onClick={() => { setPendingAttachment(null); setPendingAttachmentQueue([]); fileInputRef.current?.click(); }} className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Chọn tệp khác</button>
                             <button type="button" onClick={confirmAttachmentSend} disabled={isUploading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
                                 {isUploading ? 'Đang gửi…' : `Gửi ${pendingAttachment.type.startsWith('video/') ? 'video' : 'ảnh'}`}
                             </button>
+                            </div>
                         </div>
                     </div>
                 </div>
