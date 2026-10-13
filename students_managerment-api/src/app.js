@@ -16,7 +16,6 @@ const userRouter = require('../router/userRouter');
 const messageFileRouter = require('../router/messageFileRouter');
 const callRouter = require('../router/callRouter');
 const webPushRouter = require('../router/webPushRouter');
-const avatarRouter = require('../router/avatarRouter');
 
 const app = express();
 app.disable('x-powered-by');
@@ -59,7 +58,6 @@ app.use('/api/semesters', semesterRouter);
 app.use('/api/subjects', subjectRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/auth/sessions', sessionRouter);
-app.use('/api/auth/avatar', avatarRouter);
 app.use('/api/notifications', webPushRouter);
 app.use('/api/users', userRouter);
 app.use('/api/conversations', conversationRouter);
