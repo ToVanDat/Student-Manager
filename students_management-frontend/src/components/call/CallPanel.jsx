@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming, RefreshCw } from 'lucide-react';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
+import { playSound, stopSound } from '@/services/soundService.js';
 
 
 function AvatarCountdown({ name, avatar, progress, size = 80 }) {
@@ -81,6 +82,33 @@ export default function CallPanel({
     const [ringRemainingMs, setRingRemainingMs] = useState(30_000);
     const [showNotice, setShowNotice] = useState(false);
     const [incomingActionBusy, setIncomingActionBusy] = useState(false);
+
+    const previousCallStateRef = useRef('idle');
+
+    useEffect(() => {
+        if (state === 'incoming') {
+            stopSound('outgoingCall');
+            void playSound('incomingCall', { volume: 0.65, loop: true });
+        } else if (state === 'calling') {
+            stopSound('incomingCall');
+            void playSound('outgoingCall', { volume: 0.5, loop: true });
+        } else {
+            stopSound('incomingCall');
+            stopSound('outgoingCall');
+            if (state === 'failed') {
+                void playSound('callError', { volume: 0.55 });
+            } else if (state === 'idle' && previousCallStateRef.current !== 'idle') {
+                const isBusy = /bận|busy|từ chối|rejected/i.test(error || '');
+                void playSound(isBusy ? 'callBusy' : 'callEnded', { volume: 0.55 });
+            }
+        }
+        previousCallStateRef.current = state;
+    }, [state, call?.callId, error]);
+
+    useEffect(() => () => {
+        stopSound('incomingCall');
+        stopSound('outgoingCall');
+    }, []);
 
     useEffect(() => {
         if (state !== 'calling' || !call?.ringStartedAt) {
