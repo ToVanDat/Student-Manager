@@ -318,17 +318,17 @@ export default function ChatPage() {
                 onMarkNotificationRead={markCallNotificationRead}
             />
 
-            <main className="h-[calc(100vh-4rem)] min-h-0 p-2 sm:p-4 lg:p-6">
-                <div className="h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <main className="chat-workspace h-[calc(100vh-4rem)] min-h-0 p-2 sm:p-3 lg:p-4">
+                <div className="chat-shell h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex h-full min-h-0">
-                        <aside className="hidden w-[176px] shrink-0 flex-col border-r border-slate-200 bg-[#f8fafd] px-3 py-5 dark:border-slate-800 dark:bg-slate-950 lg:flex">
+                        <aside className="hidden w-[200px] shrink-0 flex-col border-r border-slate-200 bg-[#101d35] px-3 py-5 text-white dark:border-slate-800 dark:bg-slate-950 lg:flex">
                             <div className="mb-7 flex items-center gap-2 px-2">
-                                <span className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm"><GraduationCap size={20} /></span>
-                                <span className="min-w-0"><strong className="block truncate text-xs text-slate-900 dark:text-white">Student Manager</strong><small className="text-[9px] text-slate-400">Kết nối học tập</small></span>
+                                <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm"><GraduationCap size={20} /></span>
+                                <span className="min-w-0"><strong className="block truncate text-xs text-white">Student-Manager</strong><small className="text-[9px] text-slate-400">Kết nối học tập</small></span>
                             </div>
-                            <p className="mb-2 px-2 text-[9px] font-bold tracking-[.14em] text-slate-400">MENU</p>
+                            <p className="mb-2 px-2 text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>
                             <nav className="space-y-1">
-                                <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Home size={17} />Tổng quan</button>
+                                <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white dark:text-slate-300 dark:hover:bg-slate-800"><Home size={17} />Tổng quan</button>
                                 <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-blue-600 px-3 text-left text-xs font-semibold text-white shadow-sm shadow-blue-600/20"><MessageSquare size={17} />Trò chuyện</button>
                                 <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Users size={17} />Nhóm</button>
                                 <button type="button" onClick={() => setCallCenterOpen(true)} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Phone size={17} />Cuộc gọi{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadCallNotificationCount}</span>}</button>
