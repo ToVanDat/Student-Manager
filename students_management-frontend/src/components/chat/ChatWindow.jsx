@@ -181,9 +181,8 @@ export default function ChatWindow({
         return true;
     });
 
-    const [isDarkMode, setIsDarkMode] = useState(
-        document.documentElement.classList.contains('dark')
-    );
+    // Chat UI is intentionally light-mode; keep embedded emoji picker in the same palette.
+    const isDarkMode = false;
 
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -227,20 +226,6 @@ export default function ChatWindow({
         return () => clearTimeout(typingTimer.current);
     }, []);
 
-    useEffect(() => {
-        const observer = new MutationObserver(() => {
-            setIsDarkMode(
-                document.documentElement.classList.contains('dark')
-            );
-        });
-
-        observer.observe(document.documentElement, {
-            attributes: true,
-            attributeFilter: ['class']
-        });
-
-        return () => observer.disconnect();
-    }, []);
 
     useEffect(() => {
         const query = searchQuery.trim();
