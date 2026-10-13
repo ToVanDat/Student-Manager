@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, Bell, BookOpen, CalendarDays, FileText, GraduationCap, MessageSquare, Settings2, UserRound, Video } from 'lucide-react';
+import { ArrowRight, Bell, BookOpen, CalendarDays, FileText, GraduationCap, MessageSquare, Settings2, UserRound, Video, Clock3, ClipboardList } from 'lucide-react';
 
 function EmptyRow({ icon: Icon, title, detail }) {
     return <div className="flex min-h-[112px] flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 px-4 py-5 text-center dark:border-slate-700"><Icon size={22} className="mb-2 text-slate-300" /><p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{title}</p><p className="mt-1 max-w-xs text-[10px] leading-4 text-slate-400">{detail}</p></div>;
@@ -17,6 +17,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
             </div>
 
             <section className="student-hero relative isolate overflow-hidden rounded-xl bg-gradient-to-r from-[#0874e8] via-[#168df2] to-[#31b9e8] p-6 text-white shadow-lg shadow-blue-600/15 sm:min-h-[154px] sm:p-8">
+                <div className="absolute inset-y-0 right-0 -z-10 w-[48%] bg-cover bg-center opacity-25" style={{ backgroundImage: "linear-gradient(90deg, #168df2, transparent), url('https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80')" }} />
                 <div className="absolute -right-10 -top-24 -z-10 size-72 rounded-full border-[38px] border-white/10" /><div className="absolute right-28 -bottom-32 -z-10 size-56 rounded-full bg-cyan-200/15 blur-2xl" />
                 <div className="max-w-xl"><span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[10px] font-semibold tracking-wide"><GraduationCap size={14} />KHU VỰC SINH VIÊN</span><h2 className="mt-3 text-xl font-bold sm:text-2xl">Học tập để kiến tạo tương lai</h2><p className="mt-1.5 text-xs leading-5 text-blue-50">Thông tin hồ sơ, lịch học và kết quả sẽ hiển thị tại đây khi được kết nối với dữ liệu đào tạo.</p></div>
             </section>
@@ -31,6 +32,16 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
             </div>
 
             <div className="grid gap-4 xl:grid-cols-2">
+                <section className="rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900">
+                    <div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Lịch học hôm nay</h2><p className="mt-1 text-xs text-slate-400">Lịch cá nhân của bạn</p></div><button type="button" onClick={onOpenSettings} className="text-xs font-semibold text-blue-600">Xem lịch <ArrowRight size={13} className="inline" /></button></div>
+                    <EmptyRow icon={Clock3} title="Chưa có lịch học" detail="Khi dữ liệu thời khóa biểu được kết nối, các tiết học trong ngày sẽ hiển thị tại đây." />
+                </section>
+                <section className="rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900">
+                    <div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Kết quả học tập gần đây</h2><p className="mt-1 text-xs text-slate-400">Điểm số theo học kỳ</p></div><ClipboardList size={18} className="text-blue-600" /></div>
+                    <EmptyRow icon={FileText} title="Chưa có kết quả học tập" detail="Bảng điểm sẽ được hiển thị khi tài khoản có dữ liệu môn học và học kỳ." />
+                </section>
+            </div>
+
                 <section className="rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Lịch học hôm nay</h2><p className="mt-1 text-xs text-slate-400">Lịch cá nhân của bạn</p></div><CalendarDays size={18} className="text-blue-600" /></div><EmptyRow icon={CalendarDays} title="Chưa có lịch học" detail="Dữ liệu thời khóa biểu sẽ xuất hiện khi hệ thống được kết nối với module đào tạo." /></section>
                 <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Kết quả học tập gần đây</h2><p className="mt-1 text-xs text-slate-400">Điểm số theo học kỳ</p></div><BookOpen size={18} className="text-blue-600" /></div><EmptyRow icon={FileText} title="Chưa có kết quả học tập" detail="Bảng điểm sẽ được hiển thị ở đây sau khi có dữ liệu môn học và học kỳ." /></section>
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"><div className="mb-4 flex items-center justify-between"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Thông báo mới nhất</h2><p className="mt-1 text-xs text-slate-400">Cập nhật dành cho bạn</p></div><Bell size={18} className="text-blue-600" /></div><EmptyRow icon={Bell} title="Chưa có thông báo" detail="Thông báo học tập và thông báo hệ thống sẽ được gom tại đây." /></section>
