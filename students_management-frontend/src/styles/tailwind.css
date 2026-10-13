@@ -44,3 +44,72 @@
         @apply bg-brand-100 text-brand-700;
     }
 }
+
+/* Reference-inspired application polish: clean blue surfaces, compact cards, and consistent focus states. */
+@layer base {
+    body {
+        background-image: radial-gradient(ellipse at 8% 0%, rgba(219, 234, 254, .42), transparent 34%),
+                          radial-gradient(ellipse at 100% 100%, rgba(224, 242, 254, .35), transparent 32%);
+        background-attachment: fixed;
+    }
+
+    button, input, select, textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    input::placeholder, textarea::placeholder {
+        color: #94a3b8;
+    }
+
+    button:disabled {
+        cursor: not-allowed;
+    }
+}
+
+@layer components {
+    .dashboard-surface {
+        border: 1px solid #e4ebf5;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, .94);
+        box-shadow: 0 5px 18px rgba(15, 40, 80, .045);
+    }
+
+    .dashboard-surface:hover {
+        border-color: #d4e2f7;
+    }
+
+    .chat-scrollbar {
+        scrollbar-color: #cbd5e1 transparent;
+        scrollbar-width: thin;
+    }
+
+    .chat-scrollbar::-webkit-scrollbar {
+        width: 7px;
+        height: 7px;
+    }
+
+    .chat-scrollbar::-webkit-scrollbar-thumb {
+        border-radius: 999px;
+        background: #cbd5e1;
+    }
+
+    .media-quality-option {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+    }
+
+    .media-quality-option:hover {
+        border-color: #93c5fd;
+        background: #f8fbff;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
