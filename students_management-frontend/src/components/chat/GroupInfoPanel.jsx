@@ -136,10 +136,10 @@ export default function GroupInfoPanel({
 
     return (
         <div className="absolute inset-0 z-[100] flex justify-end bg-slate-950/20 backdrop-blur-[1px]">
-            <div className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                <div className="flex h-[72px] items-center justify-between border-b border-slate-100 bg-white px-5 dark:border-slate-800 dark:bg-slate-950">
+            <div className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white shadow-2xl">
+                <div className="flex h-[72px] items-center justify-between border-b border-slate-100 bg-white px-5">
                     <div>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        <h3 className="text-base font-bold text-slate-900">
                             Thông tin nhóm
                         </h3>
                         <p className="text-xs text-slate-400">
@@ -150,7 +150,7 @@ export default function GroupInfoPanel({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="rounded-full p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
                         aria-label="Đóng"
                     >
                         <X size={19} />
@@ -158,13 +158,13 @@ export default function GroupInfoPanel({
                 </div>
 
                 <div className="h-[calc(100%-4rem)] overflow-y-auto">
-                    <div className="flex flex-col items-center border-b border-slate-100 px-5 py-6 dark:border-slate-800">
+                    <div className="flex flex-col items-center border-b border-slate-100 px-5 py-6">
                         <AvatarFallback
                             name={conversation.name}
                             src={conversation.avatar || conversation.conversationAvatar}
                             size="xl"
                         />
-                        <h4 className="mt-3 text-lg font-bold text-slate-900 dark:text-slate-100">
+                        <h4 className="mt-3 text-lg font-bold text-slate-900">
                             {conversation.name || 'Nhóm chat'}
                         </h4>
                         {editingGroup && currentRole === 'owner' ? (
@@ -173,7 +173,7 @@ export default function GroupInfoPanel({
                                     value={groupName}
                                     onChange={event => setGroupName(event.target.value)}
                                     maxLength={120}
-                                    className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                                    className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400"
                                 />
                                 <button
                                     type="button"
@@ -194,7 +194,7 @@ export default function GroupInfoPanel({
                                             setGroupName(conversation.name || '');
                                             setEditingGroup(true);
                                         }}
-                                        className="mt-3 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                        className="mt-3 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                                     >
                                         Đổi tên nhóm
                                     </button>
@@ -203,10 +203,10 @@ export default function GroupInfoPanel({
                         )}
                     </div>
 
-                    <div className="border-b border-slate-100 p-5 dark:border-slate-800">
+                    <div className="border-b border-slate-100 p-5">
                         <div className="mb-3 flex items-center justify-between">
                             <div>
-                                <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                <p className="text-sm font-semibold text-slate-900">
                                     Thành viên
                                 </p>
                                 <p className="text-xs text-slate-400">
@@ -218,7 +218,7 @@ export default function GroupInfoPanel({
                                 <button
                                     type="button"
                                     onClick={() => setShowAddMember(value => !value)}
-                                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-100 dark:bg-blue-950/40 dark:text-blue-300"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-100"
                                 >
                                     <UserPlus size={15} />
                                     Thêm
@@ -227,13 +227,13 @@ export default function GroupInfoPanel({
                         </div>
 
                         {showAddMember && canAdd && (
-                            <div className="mb-4 rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                            <div className="mb-4 rounded-xl border border-slate-200 p-3">
                                 <input
                                     value={memberSearch}
                                     onChange={event => handleSearch(event.target.value)}
                                     placeholder="Tìm username hoặc email..."
                                     autoFocus
-                                    className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400 dark:bg-slate-800 dark:text-slate-100"
+                                    className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400"
                                 />
 
                                 {memberSearch.trim() && (
@@ -249,7 +249,7 @@ export default function GroupInfoPanel({
                                                     type="button"
                                                     disabled={processingUserId === Number(user.id)}
                                                     onClick={() => handleAdd(user.id)}
-                                                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-slate-50 disabled:opacity-50 dark:hover:bg-slate-800"
+                                                    className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-slate-50 disabled:opacity-50"
                                                 >
                                                     <AvatarFallback
                                                         name={user.username}
@@ -257,7 +257,7 @@ export default function GroupInfoPanel({
                                                         size="sm"
                                                     />
                                                     <span className="min-w-0 flex-1">
-                                                        <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
+                                                        <span className="block truncate text-sm font-medium text-slate-800">
                                                             {user.username}
                                                         </span>
                                                         {user.email && (
@@ -290,7 +290,7 @@ export default function GroupInfoPanel({
                                 return (
                                     <div
                                         key={memberId}
-                                        className="group flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/70"
+                                        className="group flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-slate-50"
                                     >
                                         <div className="relative">
                                             <AvatarFallback
@@ -300,7 +300,7 @@ export default function GroupInfoPanel({
                                             />
                                             {onlineUserIds.has(memberId) && (
                                                 <span
-                                                    className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500 dark:border-slate-900"
+                                                    className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500"
                                                     title="Đang online"
                                                 />
                                             )}
@@ -308,7 +308,7 @@ export default function GroupInfoPanel({
 
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-1.5">
-                                                <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                                <p className="truncate text-sm font-semibold text-slate-800">
                                                     {member.username}
                                                 </p>
                                                 {isMe && (
@@ -335,27 +335,27 @@ export default function GroupInfoPanel({
                                                     onClick={() => setShowRoleMenu(
                                                         showRoleMenu === memberId ? null : memberId
                                                     )}
-                                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
                                                     title="Quản lý thành viên"
                                                 >
                                                     <span>Quản lý</span><ChevronDown size={14} />
                                                 </button>
 
                                                 {showRoleMenu === memberId && (
-                                                    <div className="absolute right-0 top-9 z-20 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                                    <div className="absolute right-0 top-9 z-20 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
                                                         {currentRole === 'owner' && (
                                                             <>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleRole(memberId, member.role === 'admin' ? 'member' : 'admin')}
-                                                                    className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"
+                                                                    className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                                                                 >
                                                                     {member.role === 'admin' ? 'Hạ xuống thành viên' : 'Đặt làm quản trị viên'}
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleRole(memberId, 'owner')}
-                                                                    className="w-full px-3 py-2 text-left text-xs text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                                                                    className="w-full px-3 py-2 text-left text-xs text-amber-600 hover:bg-amber-50"
                                                                 >
                                                                     Chuyển quyền trưởng nhóm
                                                                 </button>
@@ -365,7 +365,7 @@ export default function GroupInfoPanel({
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemove(memberId)}
-                                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                                                            className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
                                                         >
                                                             <UserMinus size={14} />
                                                             Xoá khỏi nhóm
@@ -380,25 +380,25 @@ export default function GroupInfoPanel({
                         </div>
                     </div>
 
-                    <div className="border-b border-slate-100 p-5 dark:border-slate-800">
-                        <p className="mb-3 text-sm font-bold text-slate-900 dark:text-white">Quyền nhóm</p>
+                    <div className="border-b border-slate-100 p-5">
+                        <p className="mb-3 text-sm font-bold text-slate-900">Quyền nhóm</p>
                         <div className="space-y-2">
-                            <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
+                            <div className="rounded-xl bg-slate-50 p-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Vai trò của bạn</span>
-                                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                                    <span className="text-xs font-semibold text-slate-700">Vai trò của bạn</span>
+                                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600">
                                         {ROLE_LABELS[currentRole] || 'Thành viên'}
                                     </span>
                                 </div>
                             </div>
-                            <div className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Thêm thành viên</p>
+                            <div className="rounded-xl border border-slate-100 p-3">
+                                <p className="text-xs font-semibold text-slate-700">Thêm thành viên</p>
                                 <p className="mt-1 text-[11px] text-slate-400">
                                     {canAdd ? 'Bạn có quyền thêm thành viên.' : 'Chỉ trưởng nhóm và quản trị viên.'}
                                 </p>
                             </div>
-                            <div className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-                                <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Quản lý thành viên</p>
+                            <div className="rounded-xl border border-slate-100 p-3">
+                                <p className="text-xs font-semibold text-slate-700">Quản lý thành viên</p>
                                 <p className="mt-1 text-[11px] text-slate-400">
                                     {currentRole === 'owner'
                                         ? 'Đổi quyền, chuyển trưởng nhóm hoặc xóa thành viên.'
@@ -411,12 +411,12 @@ export default function GroupInfoPanel({
                     </div>
 
                     <div className="p-5">
-                        <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Hành động</p>
+                        <p className="mb-3 text-sm font-semibold text-slate-900">Hành động</p>
                         <button
                             type="button"
                             disabled={currentRole === 'owner'}
                             onClick={handleLeave}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-red-900/50 dark:hover:bg-red-950/30"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <LogOut size={16} />
                             {currentRole === 'owner'
