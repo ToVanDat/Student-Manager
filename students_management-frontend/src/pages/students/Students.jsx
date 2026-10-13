@@ -484,6 +484,7 @@ function Students() {
         totalStudents={statistics.totalStudents}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
         onNavigate={(page) => {
           setSidebarOpen(false);
 
@@ -524,6 +525,8 @@ function Students() {
               (open) => !open
             )
           }
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleDesktopSidebar={toggleDesktopSidebar}
         />
 
         {/* =================================================
