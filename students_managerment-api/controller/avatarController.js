@@ -54,6 +54,27 @@ const uploadAvatar = async (req, res, next) => {
             return res.status(404).json({ message: 'Không tìm thấy tài khoản đang hoạt động' });
         }
 
+        // Notify all connected tabs and current conversation contacts so avatar
+        // changes appear without requiring a page reload.
+        try {
+            const { getIO } = require('../src/socket/socket');
+            const userRepository = require('../repository/userRepository');
+            const payload = {
+                userId: Number(rows[0].id),
+                username: rows[0].username,
+                avatarUrl
+            };
+            const io = getIO();
+            io.to(`user:${Number(rows[0].id)}`).emit('user:profile-updated', payload);
+            const contactIds = await userRepository.getConversationContactIds(Number(rows[0].id));
+            for (const contactId of contactIds) {
+                io.to(`user:${Number(contactId)}`).emit('user:profile-updated', payload);
+            }
+        } catch (socketError) {
+            // The profile has already been saved; socket delivery is best-effort.
+            console.error('[AVATAR] realtime sync failed:', socketError.message);
+        }
+
         // Remove only previous files owned by this avatar endpoint.
         const previous = previousAvatarUrl;
         if (typeof previous === 'string' && previous.startsWith(PUBLIC_PREFIX)) {
