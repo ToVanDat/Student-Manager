@@ -25,6 +25,13 @@ test('account notification preferences accept only known boolean flags', () => {
     );
 });
 
+test('notification preview mode accepts only supported privacy values', () => {
+    assert.deepEqual(validateAccountPreferencePatch({ preview_mode: 'content' }), [['preview_mode', 'content']]);
+    assert.deepEqual(validateAccountPreferencePatch({ preview_mode: 'sender' }), [['preview_mode', 'sender']]);
+    assert.deepEqual(validateAccountPreferencePatch({ preview_mode: 'hidden' }), [['preview_mode', 'hidden']]);
+    assert.throws(() => validateAccountPreferencePatch({ preview_mode: 'everything' }), error => error.statusCode === 400);
+});
+
 test('push endpoint validation allows browser push providers only', () => {
     assert.equal(isAllowedPushEndpoint('https://fcm.googleapis.com/fcm/send/example'), true);
     assert.equal(isAllowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/example'), true);
