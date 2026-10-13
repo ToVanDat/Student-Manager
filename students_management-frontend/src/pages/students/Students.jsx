@@ -64,6 +64,26 @@ function Students() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("studentos-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDesktopSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      try {
+        localStorage.setItem("studentos-sidebar-collapsed", String(next));
+      } catch {
+        // Keep the UI functional when storage is unavailable.
+      }
+      return next;
+    });
+  };
+
   const [darkMode] = useState(false);
 
   // =====================================================
@@ -483,7 +503,7 @@ function Students() {
           MAIN
       ================================================= */}
 
-      <main className="ml-[250px] min-h-screen min-w-0 flex-1 max-[1100px]:ml-[220px] max-[800px]:ml-0">
+      <main className={`min-h-screen min-w-0 flex-1 transition-[margin] duration-200 ${sidebarCollapsed ? "ml-[72px] max-[800px]:ml-0" : "ml-[250px] max-[1100px]:ml-[220px] max-[800px]:ml-0"}`}>
         {/* =================================================
             HEADER
         ================================================= */}
