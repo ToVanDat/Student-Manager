@@ -238,12 +238,12 @@ export default function ChatPage() {
     );
 
     return (
-        <div className="min-h-screen bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-            <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 sm:px-6">
+        <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 backdrop-blur sm:px-6">
                 <button
                     type="button"
                     onClick={() => navigate('/students')}
-                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
                     aria-label="Quay lại Giao diện Quản lý"
                 >
                     <span aria-hidden="true">←</span>
@@ -255,14 +255,14 @@ export default function ChatPage() {
                     </div>
                     <div className="min-w-0">
                         <h1 className="truncate text-sm font-bold">Giao diện Chat</h1>
-                        <p className="hidden text-xs text-slate-500 sm:block dark:text-slate-400">Trò chuyện và kết nối realtime</p>
+                        <p className="hidden text-xs text-slate-500 sm:block">Trò chuyện và kết nối realtime</p>
                     </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
                     <button
                         type="button"
                         onClick={() => setCallCenterOpen(true)}
-                        className="relative inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="relative inline-flex size-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
                         aria-label="Lịch sử cuộc gọi và thông báo"
                         title="Lịch sử cuộc gọi"
                     >
@@ -278,32 +278,32 @@ export default function ChatPage() {
                             aria-expanded={accountMenuOpen}
                             aria-haspopup="menu"
                             aria-label="Mở menu tài khoản"
-                            className="flex max-w-[220px] items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:hover:bg-slate-800 sm:gap-3 sm:px-3"
+                            className="flex max-w-[220px] items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-3 sm:px-3"
                         >
-                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-100">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                             <span className="hidden min-w-0 text-left sm:block">
                                 <span className="block max-w-28 truncate text-xs font-semibold">{user?.username || 'Người dùng'}</span>
-                                <span className="block text-[10px] text-slate-500 dark:text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
+                                <span className="block text-[10px] text-slate-500">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
                             </span>
                             <MoreVertical size={17} className="shrink-0 text-slate-500" />
                         </button>
                         {accountMenuOpen && (
-                            <div role="menu" className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            <div role="menu" className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
                                 <div className="flex items-center gap-3 px-3 py-3">
-                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-100">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                                     <span className="min-w-0">
                                         <span className="block truncate text-sm font-semibold">{user?.username || 'Người dùng'}</span>
-                                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{user?.email || 'Chưa cập nhật email'}</span>
-                                        <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
+                                        <span className="block truncate text-xs text-slate-500">{user?.email || 'Chưa cập nhật email'}</span>
+                                        <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
                                     </span>
                                 </div>
-                                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><ArrowLeft size={17} /><span>Về trang quản lý</span></button>
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><UserRound size={17} /><span>Thông tin & tài khoản</span></button>
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><Settings size={17} /><span>Cài đặt & bảo mật</span></button>
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setCallCenterOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"><Clock3 size={17} /><span>Lịch sử cuộc gọi</span>{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{unreadCallNotificationCount}</span>}</button>
-                                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"><LogOut size={17} /><span>Đăng xuất</span></button>
+                                <div className="my-1 border-t border-slate-100" />
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><ArrowLeft size={17} /><span>Về trang quản lý</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><UserRound size={17} /><span>Thông tin & tài khoản</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><Settings size={17} /><span>Cài đặt & bảo mật</span></button>
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); setCallCenterOpen(true); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><Clock3 size={17} /><span>Lịch sử cuộc gọi</span>{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-2 py-0.5 text-[10px] text-white">{unreadCallNotificationCount}</span>}</button>
+                                <div className="my-1 border-t border-slate-100" />
+                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"><LogOut size={17} /><span>Đăng xuất</span></button>
                             </div>
                         )}
                     </div>
@@ -319,24 +319,24 @@ export default function ChatPage() {
             />
 
             <main className="chat-workspace h-[calc(100vh-4rem)] min-h-0 p-2 sm:p-3 lg:p-4">
-                <div className="chat-shell h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel dark:border-slate-800 dark:bg-slate-900">
+                <div className="chat-shell h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
                     <div className="flex h-full min-h-0">
-                        <aside className="hidden w-[200px] shrink-0 flex-col border-r border-slate-200 bg-[#101d35] px-3 py-5 text-white dark:border-slate-800 dark:bg-slate-950 lg:flex">
+                        <aside className="hidden w-[200px] shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] px-3 py-5 text-[#263852] lg:flex">
                             <div className="mb-7 flex items-center gap-2 px-2">
                                 <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm"><GraduationCap size={20} /></span>
                                 <span className="min-w-0"><strong className="block truncate text-xs text-white">Student-Manager</strong><small className="text-[9px] text-slate-400">Kết nối học tập</small></span>
                             </div>
                             <p className="mb-2 px-2 text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>
                             <nav className="space-y-1">
-                                <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white dark:text-slate-300 dark:hover:bg-slate-800"><Home size={17} />Tổng quan</button>
-                                <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-blue-600 px-3 text-left text-xs font-semibold text-white shadow-sm shadow-blue-600/20"><MessageSquare size={17} />Trò chuyện</button>
-                                <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Users size={17} />Nhóm</button>
-                                <button type="button" onClick={() => setCallCenterOpen(true)} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Phone size={17} />Cuộc gọi{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadCallNotificationCount}</span>}</button>
-                                <button type="button" onClick={() => document.querySelector('[data-new-chat]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Search size={17} />Danh bạ</button>
+                                <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-300 transition hover:bg-white/10 hover:text-white"><Home size={17} />Tổng quan</button>
+                                <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100"><MessageSquare size={17} />Trò chuyện</button>
+                                <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Users size={17} />Nhóm</button>
+                                <button type="button" onClick={() => setCallCenterOpen(true)} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Phone size={17} />Cuộc gọi{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadCallNotificationCount}</span>}</button>
+                                <button type="button" onClick={() => document.querySelector('[data-new-chat]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Search size={17} />Danh bạ</button>
                             </nav>
-                            <div className="mt-auto border-t border-slate-200 pt-3 dark:border-slate-800">
-                                <button type="button" onClick={() => navigate('/students?view=settings')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Settings size={17} />Cài đặt</button>
-                                <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-slate-200 px-2 pt-4 dark:border-slate-800"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-100">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800 dark:text-slate-100">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
+                            <div className="mt-auto border-t border-slate-200 pt-3">
+                                <button type="button" onClick={() => navigate('/students?view=settings')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Settings size={17} />Cài đặt</button>
+                                <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-slate-200 px-2 pt-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
                             </div>
                         </aside>
                         <ChatSidebar
