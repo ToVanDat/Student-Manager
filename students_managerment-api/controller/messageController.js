@@ -2,6 +2,8 @@ const messageService = require('../service/messageService');
 const { getIO } = require('../src/socket/socket');
 const messageRepository = require('../repository/messageRepository');
 const conversationRepository = require('../repository/conversationRepository');
+const webPushService = require('../service/webPushService');
+const userRepository = require('../repository/userRepository');
 
 /**
  * Gửi message
@@ -64,6 +66,22 @@ const createMessage = async (req, res) => {
                 updatedAt: message.created_at
             });
         }
+
+        // Push content intentionally avoids message text for lock-screen privacy.
+        // A failed push provider must never turn a successfully stored message into an API failure.
+        const sender = await userRepository.findActiveUserById(senderId);
+        await Promise.allSettled(memberIds
+            .filter(memberId => Number(memberId) !== senderId)
+            .map(memberId => webPushService.sendPushToUser(
+                Number(memberId),
+                {
+                    title: sender?.username ? `Tin nhắn mới từ ${sender.username}` : 'Bạn có tin nhắn mới',
+                    body: 'Mở Student Management để xem tin nhắn mới.',
+                    tag: `conversation-${conversationId}`,
+                    url: `/chat?conversationId=${conversationId}`
+                },
+                conversationId
+            )));
 
         return res.status(201).json({
             message: 'Gửi message thành công',
