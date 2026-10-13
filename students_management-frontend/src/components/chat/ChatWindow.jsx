@@ -461,29 +461,37 @@ export default function ChatWindow({
     };
 
     const handleFileChange = async (event) => {
-        const file = event.target.files?.[0];
-
-        // Cho phép chọn lại đúng file sau khi upload xong.
+        const files = Array.from(event.target.files || []);
+        // Reset để người dùng có thể chọn lại cùng một tệp.
         event.target.value = '';
+        if (!files.length || !onSendAttachment) return;
 
-        if (!file || !onSendAttachment) return;
+        const mediaFiles = files.filter(file =>
+            file.type.startsWith('image/') || file.type.startsWith('video/')
+        );
+        const otherFiles = files.filter(file =>
+            !file.type.startsWith('image/') && !file.type.startsWith('video/')
+        );
 
-        const canChooseImageQuality = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
-        const canChooseVideoQuality = ['video/mp4', 'video/webm'].includes(file.type);
-        if (canChooseImageQuality || canChooseVideoQuality) {
-            setPendingAttachment(file);
-            setAttachmentQuality(canChooseVideoQuality ? '720p' : 'standard');
-            return;
+        if (mediaFiles.length) {
+            // Mở hộp xem trước; nhiều file sẽ được gửi lần lượt sau khi xác nhận.
+            setPendingAttachment(mediaFiles[0]);
+            setAttachmentQuality(mediaFiles[0].type.startsWith('video/') ? '720p' : 'standard');
+            if (mediaFiles.length > 1) {
+                toast.info(`Đã chọn ${mediaFiles.length} ảnh/video. Hiện hộp xem trước đang xử lý từng tệp; các tệp còn lại cần chọn gửi riêng.`);
+            }
         }
 
-        try {
+        if (otherFiles.length) {
             setIsUploading(true);
-            await onSendAttachment(file, 'standard');
-        } catch (error) {
-            console.error('Lỗi gửi file:', error);
-            toast.error(error?.response?.data?.message || 'Không gửi được tệp. Vui lòng thử lại.');
-        } finally {
-            setIsUploading(false);
+            try {
+                for (const file of otherFiles) await onSendAttachment(file, 'standard');
+            } catch (error) {
+                console.error('Lỗi gửi file:', error);
+                toast.error(error?.response?.data?.message || 'Không gửi được tệp. Vui lòng thử lại.');
+            } finally {
+                setIsUploading(false);
+            }
         }
     };
 
@@ -491,10 +499,10 @@ export default function ChatWindow({
         if (!pendingAttachment || isUploading) return;
         const file = pendingAttachment;
         const quality = attachmentQuality;
-        setPendingAttachment(null);
+        setIsUploading(true);
         try {
-            setIsUploading(true);
             await onSendAttachment(file, quality);
+            setPendingAttachment(null);
         } catch (error) {
             console.error('Lỗi gửi media:', error);
             toast.error(error?.response?.data?.message || 'Không gửi được media. Vui lòng thử lại.');
@@ -1206,6 +1214,8 @@ export default function ChatWindow({
                 <input
                     ref={fileInputRef}
                     type="file"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.mp3,.wav,.ogg"
+                    multiple
                     className="hidden"
                     onChange={handleFileChange}
                 />
