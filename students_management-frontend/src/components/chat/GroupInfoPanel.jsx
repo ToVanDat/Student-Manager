@@ -136,8 +136,8 @@ export default function GroupInfoPanel({
 
     return (
         <div className="absolute inset-0 z-[100] flex justify-end bg-slate-950/20 backdrop-blur-[1px]">
-            <div className="h-full w-[390px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
-                <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5 dark:border-slate-800">
+            <div className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex h-[72px] items-center justify-between border-b border-slate-100 bg-white px-5 dark:border-slate-800 dark:bg-slate-950">
                     <div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
                             Thông tin nhóm
@@ -381,7 +381,7 @@ export default function GroupInfoPanel({
                     </div>
 
                     <div className="border-b border-slate-100 p-5 dark:border-slate-800">
-                        <p className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">Quyền nhóm</p>
+                        <p className="mb-3 text-sm font-bold text-slate-900 dark:text-white">Quyền nhóm</p>
                         <div className="space-y-2">
                             <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800/70">
                                 <div className="flex items-center justify-between">
