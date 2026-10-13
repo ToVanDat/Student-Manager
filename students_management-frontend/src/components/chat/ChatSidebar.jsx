@@ -103,9 +103,9 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className="w-[360px] min-w-[360px] bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col h-full p-5 relative">
+        <div className="chat-conversation-rail w-[310px] min-w-[280px] max-w-[32vw] bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col h-full p-4 relative">
             <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[24px] leading-8 font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">Tin nhắn</h2>
+                <h2 className="text-[21px] leading-8 font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
