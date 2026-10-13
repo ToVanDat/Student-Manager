@@ -486,8 +486,8 @@ export default function MessageBubble({
             >
                 <div className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                     isOwn
-                        ? 'bg-blue-600 text-white rounded-br-[5px]'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-[5px]'
+                        ? 'bg-[#d8eaff] text-slate-900 dark:bg-blue-900/70 dark:text-blue-50 rounded-br-[5px]'
+                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-[5px] border border-slate-100 dark:border-slate-700'
                 }`}>
                     {hovered && !isDeleted && !isRecalled && (
                         <button
