@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bell, BellOff, Volume2, VolumeX, Smartphone } from 'lucide-react';
+import { Bell, Volume2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { enableWebPush, disableWebPush, notificationApi } from '@/api/notificationApi';
 
@@ -63,23 +63,37 @@ export default function NotificationSettings() {
                     const checked = Boolean(preferences[option.key]);
                     return (
                         <div key={option.key} className="flex items-center gap-4 py-4">
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                                <Icon size={19} />
+                            <span className="group/icon relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                                <Icon size={19} aria-hidden="true" />
+                                <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-52 -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100 group-focus-within/icon:opacity-100">
+                                    {option.title}
+                                </span>
                             </span>
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-medium text-slate-900">{option.title}</p>
                                 <p className="mt-1 text-xs text-slate-500">{option.description}</p>
                             </div>
-                            <button
-                                type="button"
-                                disabled={loading || Boolean(savingKey)}
-                                aria-label={option.title}
-                                aria-pressed={checked}
-                                onClick={() => toggle(option.key)}
-                                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-wait disabled:opacity-50 ${checked ? 'bg-blue-600' : 'bg-slate-300'}`}
-                            >
-                                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                            </button>
+                            <span className="group/switch relative ml-2 inline-flex shrink-0">
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    disabled={loading || Boolean(savingKey)}
+                                    aria-label={option.title}
+                                    aria-checked={checked}
+                                    aria-busy={savingKey === option.key}
+                                    onClick={() => toggle(option.key)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${checked ? 'bg-blue-600' : 'bg-slate-300'}`}
+                                >
+                                    <span className="sr-only">{option.title}</span>
+                                    <span
+                                        aria-hidden="true"
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${checked ? 'translate-x-5' : 'translate-x-0'}`}
+                                    />
+                                </button>
+                                <span role="tooltip" className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-max max-w-52 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover/switch:opacity-100 group-focus-within/switch:opacity-100">
+                                    {option.title}: {checked ? 'Đang bật' : 'Đang tắt'}
+                                </span>
+                            </span>
                         </div>
                     );
                 })}
