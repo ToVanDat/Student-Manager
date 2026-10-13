@@ -36,6 +36,7 @@ import { toast } from 'sonner';
 import MessageBubble, { MessageMediaPreview } from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
+import { notificationApi } from '@/api/notificationApi';
 
 export default function ChatWindow({
     activeConversation,
@@ -79,7 +80,40 @@ export default function ChatWindow({
     onOpenSearchResult
 }) {
     const [input, setInput] = useState('');
+    const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
+    const [savingConversationNotifications, setSavingConversationNotifications] = useState(false);
     const [replyTo, setReplyTo] = useState(null);
+    useEffect(() => {
+        let active = true;
+        if (!activeConversation?.id) {
+            setConversationNotificationsEnabled(true);
+            return () => { active = false; };
+        }
+        notificationApi.getConversationPreference(activeConversation.id)
+            .then(({ data }) => {
+                if (active) setConversationNotificationsEnabled(data?.data?.enabled !== false);
+            })
+            .catch(error => {
+                console.error('Không tải được cài đặt thông báo cuộc trò chuyện:', error);
+            });
+        return () => { active = false; };
+    }, [activeConversation?.id]);
+
+    const toggleConversationNotifications = async () => {
+        if (!activeConversation?.id || savingConversationNotifications) return;
+        const next = !conversationNotificationsEnabled;
+        setSavingConversationNotifications(true);
+        try {
+            await notificationApi.updateConversationPreference(activeConversation.id, next);
+            setConversationNotificationsEnabled(next);
+            toast.success(next ? 'Đã bật thông báo cho cuộc trò chuyện' : 'Đã tắt thông báo cho cuộc trò chuyện');
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Không thể cập nhật thông báo cuộc trò chuyện');
+        } finally {
+            setSavingConversationNotifications(false);
+        }
+    };
+
     const messagesEndRef = useRef(null);
     const composerInputRef = useRef(null);
     const messagesContainerRef = useRef(null);
@@ -931,6 +965,10 @@ export default function ChatWindow({
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('pin', !activeConversation.isPinned))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                                     <Pin size={16} /> {activeConversation.isPinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
+                                </button>
+                                <button type="button" role="menuitem" disabled={savingConversationNotifications} onClick={() => { void toggleConversationNotifications(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                                    {conversationNotificationsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+                                    {conversationNotificationsEnabled ? 'Tắt thông báo trên thiết bị' : 'Bật thông báo trên thiết bị'}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); void runMoreAction(() => updateConversationSetting('mute', until)); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? <Bell size={16} /> : <BellOff size={16} />}
