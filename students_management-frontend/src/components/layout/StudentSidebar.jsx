@@ -46,7 +46,7 @@ function StudentSidebar({
                 </div>
 
                 <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {!collapsed && <div className="px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5]">TỔNG QUAN</div>}
+                    <div className="px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}">TỔNG QUAN</div>
                     <button
                         title={collapsed ? 'Trang chủ' : undefined}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
@@ -62,11 +62,11 @@ function StudentSidebar({
                     >
                         <Users size={19} />
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>Sinh viên</span>
-                        {!collapsed && <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{totalStudents}</span>}
+                        <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
                     </button>
                     {user?.role === 'admin' && (
                         <>
-                            {!collapsed && <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5]">QUẢN LÝ ĐÀO TẠO</div>}
+                            <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}">QUẢN LÝ ĐÀO TẠO</div>
                             {[
                                 { key: 'classes', label: 'Quản lý lớp học', icon: Layers },
                                 { key: 'departments', label: 'Quản lý khoa - ngành', icon: GraduationCap },
@@ -80,7 +80,7 @@ function StudentSidebar({
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
                             ))}
-                            {!collapsed && <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5]">QUẢN TRỊ HỆ THỐNG</div>}
+                            <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}">QUẢN TRỊ HỆ THỐNG</div>
                             {[
                                 { key: 'users', label: 'Người dùng', icon: UserCog },
                                 { key: 'permissions', label: 'Phân quyền', icon: ShieldCheck },
@@ -96,7 +96,7 @@ function StudentSidebar({
                     )}
 
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
-                    {!collapsed && <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5]">LIÊN LẠC</div>}
+                    <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}">LIÊN LẠC</div>
                     <button
                         title={collapsed ? 'Tin nhắn' : undefined}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
@@ -104,7 +104,7 @@ function StudentSidebar({
                     >
                         <MessageSquare size={19} />
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>Tin nhắn</span>
-                        {!collapsed && unreadCount > 0 && (
+                        {unreadCount > 0 && !collapsed && (
                             <span className="ml-auto rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">
                                 {unreadCount}
                             </span>
