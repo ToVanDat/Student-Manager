@@ -170,6 +170,77 @@ const updateUser = (partialUser) => {
         };
     }, [accessToken]);
 
+    // Account-level in-app notifications are global so they continue to work
+    // while the user is on Dashboard or another route, not only inside ChatPage.
+    useEffect(() => {
+        if (!accessToken || !user?.id) return undefined;
+
+        let cancelled = false;
+        let preferences = {
+            in_app_enabled: true,
+            sound_enabled: true
+        };
+
+        import('@/api/notificationApi').then(({ notificationApi }) => {
+            notificationApi.getPreferences()
+                .then(({ data }) => {
+                    if (!cancelled && data?.data) {
+                        preferences = {
+                            in_app_enabled: data.data.in_app_enabled !== false,
+                            sound_enabled: data.data.sound_enabled !== false
+                        };
+                    }
+                })
+                .catch(error => console.error('Không tải được cài đặt thông báo:', error));
+        });
+
+        const handleIncomingMessage = async message => {
+            if (!message || Number(message.sender_id) === Number(user.id)) return;
+            const isAwayFromChat = document.visibilityState === 'hidden' || window.location.pathname !== '/chat';
+            if (!isAwayFromChat) return;
+
+            try {
+                const { notificationApi } = await import('@/api/notificationApi');
+                const [accountResult, conversationResult] = await Promise.all([
+                    notificationApi.getPreferences(),
+                    message.conversation_id
+                        ? notificationApi.getConversationPreference(message.conversation_id)
+                        : Promise.resolve({ data: { data: { enabled: true } } })
+                ]);
+                const accountPrefs = accountResult.data?.data || preferences;
+                if (accountPrefs.in_app_enabled === false || conversationResult.data?.data?.enabled === false) return;
+
+                const senderName = message.sender_username || message.username || 'Tin nhắn mới';
+                const { toast } = await import('sonner');
+                toast(senderName, { description: 'Bạn có tin nhắn mới.', duration: 4500 });
+
+                if (accountPrefs.sound_enabled !== false && typeof window !== 'undefined') {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        const audioContext = new AudioContextClass();
+                        const oscillator = audioContext.createOscillator();
+                        const gain = audioContext.createGain();
+                        oscillator.frequency.value = 660;
+                        gain.gain.value = 0.035;
+                        oscillator.connect(gain);
+                        gain.connect(audioContext.destination);
+                        oscillator.start();
+                        oscillator.stop(audioContext.currentTime + 0.12);
+                        oscillator.onended = () => { void audioContext.close(); };
+                    }
+                }
+            } catch (error) {
+                console.error('Không thể hiển thị thông báo tin nhắn:', error);
+            }
+        };
+
+        socket.on('message:new', handleIncomingMessage);
+        return () => {
+            cancelled = true;
+            socket.off('message:new', handleIncomingMessage);
+        };
+    }, [accessToken, user?.id]);
+
     // =========================
     // SOCKET CONNECTION
     // =========================
