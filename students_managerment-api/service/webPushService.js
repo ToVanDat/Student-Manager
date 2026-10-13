@@ -21,7 +21,7 @@ const getAccountPreferences = async (userId) => {
         `INSERT INTO user_notification_preferences (user_id)
          VALUES ($1)
          ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
-         RETURNING user_id, notifications_enabled, push_enabled, sound_enabled, updated_at`,
+         RETURNING user_id, notifications_enabled, push_enabled, sound_enabled, preview_mode, updated_at`,
         [userId]
     );
     return rows[0];
