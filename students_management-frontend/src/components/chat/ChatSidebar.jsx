@@ -103,26 +103,26 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className="chat-conversation-rail relative flex h-full w-[320px] min-w-[290px] max-w-[36vw] flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-4 dark:border-slate-800 dark:bg-slate-950">
+        <div className="chat-conversation-rail relative flex h-full w-[320px] min-w-[290px] max-w-[36vw] flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-4">
             <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-white">Tin nhắn</h2>
+                <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d]">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
-                        className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-blue-950"
+                        className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600"
                         title="Tạo nhóm"
                     >
                         <Users size={18} />
                     </button>
                     <button
                         onClick={onOpenCallCenter}
-                        className="relative flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700"
+                        className="relative flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600"
                         title="Cuộc gọi"
                         aria-label={callNotificationCount > 0 ? `Cuộc gọi, ${callNotificationCount} thông báo chưa đọc` : 'Cuộc gọi'}
                     >
                         <Phone size={18} />
                         {callNotificationCount > 0 && (
-                            <span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white dark:ring-slate-900">
+                            <span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
                                 {callNotificationCount}
                             </span>
                         )}
@@ -140,9 +140,9 @@ export default function ChatSidebar({
             </div>
 
             {showNewChat && (
-                <div className="absolute z-30 left-5 right-5 top-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4">
+                <div className="absolute z-30 left-5 right-5 top-20 bg-white border border-slate-200 rounded-2xl shadow-2xl p-4">
                     <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                        <h3 className="text-sm font-semibold text-slate-800">
                             {mode === 'group' ? 'Tạo nhóm' : 'Tìm kiếm người dùng'}
                         </h3>
                         <button type="button" aria-label="Đóng" onClick={closeNewChat}><X size={16} /></button>
@@ -154,7 +154,7 @@ export default function ChatSidebar({
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder="Tên nhóm..."
-                            className="w-full mb-2 px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg outline-none"
+                            className="w-full mb-2 px-3 py-2 text-sm bg-slate-50 text-slate-800 rounded-lg outline-none"
                         />
                     )}
 
@@ -163,7 +163,7 @@ export default function ChatSidebar({
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder={mode === 'group' ? 'Tìm và chọn thành viên...' : 'Tìm username, email...'}
-                        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg outline-none"
+                        className="w-full px-3 py-2 text-sm bg-slate-50 text-slate-800 rounded-lg outline-none"
                     />
 
                     {mode === 'group' && selectedIds.length > 0 && (
@@ -188,10 +188,10 @@ export default function ChatSidebar({
                                         }
                                         await handleStartDirectConversation(user.id);
                                     }}
-                                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
+                                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 text-left"
                                 >
                                     <AvatarFallback name={user.username} src={user.avatar} size="md" />
-                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100 flex-1">{user.username}</span>
+                                    <span className="text-sm font-medium text-slate-800 flex-1">{user.username}</span>
                                     {mode === 'group' && selected && <Check size={16} className="text-blue-500" />}
                                     {mode === 'direct' && startingDirectId === Number(user.id) && (
                                         <span className="text-xs text-blue-500">Đang mở...</span>
@@ -224,11 +224,11 @@ export default function ChatSidebar({
                     placeholder="Tìm kiếm cuộc trò chuyện..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80"
                 />
             </div>
 
-            <div className="mb-3 mt-1 flex rounded-xl bg-slate-100/90 p-1 dark:bg-slate-800">
+            <div className="mb-3 mt-1 flex rounded-xl bg-slate-100/90 p-1">
                 <button
                     onClick={() => setFilter('all')}
                     className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
