@@ -74,3 +74,40 @@ img { max-width: 100%; }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Chat workspace proportions inspired by the supplied reference. */
+.chat-workspace { background: transparent; }
+.chat-shell {
+  border-radius: 16px;
+  box-shadow: 0 10px 34px rgba(22, 55, 99, .075);
+}
+.chat-conversation-rail { flex: 0 0 310px; }
+.chat-conversation-rail input {
+  border-color: #e5edf7;
+  background-color: #f7faff;
+}
+.chat-conversation-rail [class*="rounded-xl"][class*="border"] {
+  border-color: #e3ebf6;
+}
+.chat-shell > div > aside nav button { letter-spacing: -.01em; }
+.chat-shell header { backdrop-filter: blur(12px); }
+.chat-shell [class*="bg-blue-50"] { border-color: #d8e8ff; }
+
+@media (max-width: 1200px) {
+  .chat-conversation-rail { flex-basis: 285px; min-width: 250px; }
+}
+@media (max-width: 1023px) {
+  .chat-workspace { padding: 10px !important; }
+  .chat-shell { border-radius: 12px; }
+}
+@media (max-width: 767px) {
+  .chat-conversation-rail {
+    flex: 0 0 min(42vw, 290px);
+    min-width: 220px;
+    max-width: 46vw;
+    padding: 12px;
+  }
+  .chat-workspace { padding: 0 !important; height: calc(100dvh - 4rem) !important; }
+  .chat-shell { border-radius: 0; border-left: 0; border-right: 0; }
+}
