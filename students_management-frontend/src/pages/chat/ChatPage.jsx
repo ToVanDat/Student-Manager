@@ -233,6 +233,15 @@ export default function ChatPage() {
         return result;
     })();
 
+    useEffect(() => {
+        const requestedId = new URLSearchParams(window.location.search).get('conversationId');
+        if (!requestedId || !conversations.length) return;
+        const target = conversations.find(conversation => Number(conversation.id) === Number(requestedId));
+        if (!target) return;
+        setActiveId(target.id);
+        navigate('/chat', { replace: true });
+    }, [conversations, setActiveId, navigate]);
+
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
     );
