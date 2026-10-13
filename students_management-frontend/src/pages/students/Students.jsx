@@ -63,7 +63,7 @@ function Students() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode] = useState(false);
 
   // =====================================================
   // STUDENTS HOOK
@@ -451,9 +451,7 @@ function Students() {
 
   return (
     <div
-      className={`${
-        darkMode ? "dark" : ""
-      } flex min-h-screen bg-[#f5f7fb] font-sans text-[#17233c] dark:bg-slate-950 dark:text-slate-100`}
+      className="flex min-h-screen bg-[#f5f8ff] font-sans text-[#203754]"
     >
       {/* =================================================
           SIDEBAR
@@ -494,12 +492,8 @@ function Students() {
           search={search}
           onSearchChange={handleSearchChange}
           showSearch={isAdmin}
-          darkMode={darkMode}
-          onToggleDarkMode={() =>
-            setDarkMode(
-              (current) => !current
-            )
-          }
+          darkMode={false}
+          onToggleDarkMode={() => {}}
           onOpenSettings={() =>
             openSettings("account")
           }
