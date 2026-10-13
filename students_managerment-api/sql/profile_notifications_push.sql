@@ -1,4 +1,4 @@
--- Run once against the Student Management PostgreSQL database.
+-- Run against the Student Management PostgreSQL database.
 -- User-specific settings are separated from conversation membership and never
 -- allow one member to read or change another member's preferences.
 
@@ -16,10 +16,34 @@ CREATE TABLE IF NOT EXISTS user_notification_preferences (
 CREATE TABLE IF NOT EXISTS conversation_notification_preferences (
     conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    is_muted BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     PRIMARY KEY (conversation_id, user_id)
 );
+
+-- Upgrade installations where an earlier version created the legacy "enabled" column.
+ALTER TABLE conversation_notification_preferences
+    ADD COLUMN IF NOT EXISTS notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE conversation_notification_preferences
+    ADD COLUMN IF NOT EXISTS is_muted BOOLEAN NOT NULL DEFAULT FALSE;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = current_schema()
+          AND table_name = 'conversation_notification_preferences'
+          AND column_name = 'enabled'
+    ) THEN
+        EXECUTE
+            'UPDATE conversation_notification_preferences
+             SET notifications_enabled = enabled
+             WHERE notifications_enabled IS DISTINCT FROM enabled';
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS web_push_subscriptions (
     id BIGSERIAL PRIMARY KEY,
@@ -36,7 +60,6 @@ CREATE TABLE IF NOT EXISTS web_push_subscriptions (
 CREATE INDEX IF NOT EXISTS idx_web_push_subscriptions_user_id
     ON web_push_subscriptions(user_id);
 
--- Subscription endpoints are unique globally as a browser push endpoint
--- should be owned by one current account at a time.
+-- A browser push endpoint should be owned by one current account at a time.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_web_push_subscriptions_endpoint
     ON web_push_subscriptions(endpoint);
