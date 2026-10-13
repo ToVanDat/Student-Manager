@@ -688,7 +688,7 @@ export default function ChatWindow({
     }, []);
 
     return (
-    <section className="relative flex flex-1 min-w-0 bg-white dark:bg-slate-900">
+    <section className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950">
         <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900">
 
             {pendingAttachment && (
@@ -1191,7 +1191,7 @@ export default function ChatWindow({
                         onLoadOlder?.();
                     }
                 }}
-                className="h-full overflow-y-auto px-5 py-6 bg-white dark:bg-slate-900">
+                className="h-full overflow-y-auto bg-[#f4f8fd] px-5 py-6 dark:bg-slate-950">
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
@@ -1313,7 +1313,7 @@ export default function ChatWindow({
 
             <form
                 onSubmit={handleSend}
-                className="min-h-[78px] px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2 bg-white dark:bg-slate-900"
+                className="min-h-[78px] border-t border-slate-100 bg-white px-5 py-3 flex items-center gap-2 dark:border-slate-800 dark:bg-slate-950"
             >
 
                 {/* ================= ATTACHMENT ================= */}
@@ -1398,7 +1398,7 @@ export default function ChatWindow({
                     placeholder="Nhập tin nhắn..."
                     value={input}
                     onChange={handleChange}
-                    className="flex-1 h-12 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-full px-5 text-sm focus:outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950"
+                    className="h-12 flex-1 rounded-full border border-slate-200 bg-white px-5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-950"
                 />
 
                 {/* ================= SEND ================= */}
@@ -1417,7 +1417,7 @@ export default function ChatWindow({
 
         {showDetailsPanel && (
             <aside className="absolute inset-y-0 right-0 z-[80] flex w-[min(360px,88vw)] min-w-0 shrink-0 flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 xl:static xl:z-auto xl:w-[280px] xl:shadow-none 2xl:w-[300px]">
-                <div className="flex h-[76px] items-center justify-between border-b border-slate-100 px-5 dark:border-slate-800">
+                <div className="flex h-[76px] items-center justify-between border-b border-slate-100 bg-white px-5 dark:border-slate-800 dark:bg-slate-950">
                     <div><h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Thông tin</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? 'Cuộc trò chuyện nhóm' : 'Hồ sơ liên hệ'}</p></div>
                     <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 xl:hidden" aria-label="Đóng bảng thông tin"><X size={18} /></button>
                 </div>
