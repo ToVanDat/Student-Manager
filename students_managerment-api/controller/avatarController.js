@@ -33,6 +33,15 @@ const uploadAvatar = async (req, res, next) => {
             .toFile(savedPath);
 
         const avatarUrl = `${PUBLIC_PREFIX}${filename}`;
+        const previousResult = await pool.query(
+            'SELECT avatar_url FROM users WHERE id = $1 AND is_active = TRUE',
+            [Number(req.user.id)]
+        );
+        if (!previousResult.rows[0]) {
+            await fs.unlink(savedPath).catch(() => {});
+            return res.status(404).json({ message: 'Không tìm thấy tài khoản đang hoạt động' });
+        }
+        const previousAvatarUrl = previousResult.rows[0].avatar_url;
         const { rows } = await pool.query(
             `UPDATE users SET avatar_url = $1, updated_at = NOW()
              WHERE id = $2 AND is_active = TRUE
@@ -46,7 +55,7 @@ const uploadAvatar = async (req, res, next) => {
         }
 
         // Remove only previous files owned by this avatar endpoint.
-        const previous = req.body?.previousAvatarUrl;
+        const previous = previousAvatarUrl;
         if (typeof previous === 'string' && previous.startsWith(PUBLIC_PREFIX)) {
             const oldName = path.basename(previous);
             if (/^[a-f0-9-]{36}\.webp$/i.test(oldName) && oldName !== filename) {
