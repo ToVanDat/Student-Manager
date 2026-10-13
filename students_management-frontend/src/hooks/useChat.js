@@ -976,6 +976,8 @@ export const useChat = () => {
                             : item
                     ));
                 }
+                },
+                quality
             );
 
             const uploadedFile = uploadResponse.data?.file;
