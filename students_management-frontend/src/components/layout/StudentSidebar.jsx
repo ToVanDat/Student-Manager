@@ -128,9 +128,13 @@ function StudentSidebar({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-3 border-t border-white/10 px-1 pt-4">
-                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-sm font-bold text-blue-100">
-                        {user?.username?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
+                    {user?.avatar_url || user?.avatar ? (
+                        <img src={user.avatar_url || user.avatar} alt="Avatar tài khoản" className="size-9 shrink-0 rounded-full object-cover" />
+                    ) : (
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-sm font-bold text-blue-100">
+                            {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                        </div>
+                    )}
                     <div className="flex min-w-0 flex-col">
                         <strong className="truncate text-xs">{user?.username || 'User'}</strong>
                         <span className="mt-0.5 text-[10px] text-[#8190a7]">
