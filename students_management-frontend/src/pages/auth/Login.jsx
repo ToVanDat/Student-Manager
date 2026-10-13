@@ -217,7 +217,7 @@ function Login() {
             // GO STUDENTS
             // -----------------------------------------
 
-            navigate('/students');
+            navigate(data.user?.role === 'admin' ? '/students?view=dashboard' : '/students?view=dashboard', { replace: true });
 
 
         } catch (error) {
