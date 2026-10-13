@@ -12,103 +12,33 @@ const authRateLimiter =
     require('../middleware/authRateLimiter.js');
 
 const requireRole = require('../middleware/roleMiddleware.js');
+const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
+const avatarController = require('../controller/avatarController');
 
-
-// =====================================================
 // REGISTER
-// =====================================================
+router.post('/register', authRateLimiter, authController.register);
 
-router.post(
-    '/register',
-    authRateLimiter,
-    authController.register
-);
-
-
-// =====================================================
 // LOGIN
-// =====================================================
+router.post('/login', authRateLimiter, authController.login);
 
-router.post(
-    '/login',
-    authRateLimiter,
-    authController.login
-);
-
-
-// =====================================================
 // REFRESH
-// =====================================================
+router.post('/refresh', authRateLimiter, authController.refresh);
 
-router.post(
-    '/refresh',
-    authRateLimiter,
-    authController.refresh
-);
-
-
-// =====================================================
 // GET CURRENT USER
-// =====================================================
+router.get('/me', authMiddleware, authController.getMe);
 
-router.get(
-    '/me',
-    authMiddleware,
-    authController.getMe
-);
-
-
-// =====================================================
 // UPDATE PROFILE
-// PATCH /api/auth/me
-// =====================================================
+router.patch('/me', authMiddleware, authController.updateProfile);
 
-router.patch(
-    '/me',
-    authMiddleware,
-    authController.updateProfile
-);
+// Avatar bytes are decoded and re-encoded as WebP before being made public.
+router.post('/avatar', authMiddleware, uploadAvatarFile, avatarController.uploadAvatar);
 
-
-// =====================================================
 // CHANGE PASSWORD
-// POST /api/auth/change-password
-// =====================================================
-
-router.post(
-    '/change-password',
-    authMiddleware,
-    authController.changePassword
-);
-// verify reset otp
+router.post('/change-password', authMiddleware, authController.changePassword);
 router.post('/verify-reset-otp', authRateLimiter, authController.verifyResetOtp);
-
-// =====================================================
-// LOGOUT
-// =====================================================
-
-router.post(
-    '/logout',
-    authController.logout
-);
-router.post(
-    '/test-email',
-    authMiddleware,
-    requireRole('admin'),
-    authRateLimiter,
-    authController.testEmail
-);
-router.post(
-    '/forgot-password',
-    authRateLimiter,
-    authController.forgotPassword
-);
-
-router.post(
-    '/reset-password',
-    authRateLimiter,
-    authController.resetPassword
-);
-
+router.post('/logout', authController.logout);
+router.post('/test-email', authMiddleware, requireRole('admin'), authRateLimiter, authController.testEmail);
+router.post('/forgot-password', authRateLimiter, authController.forgotPassword);
+router.post('/reset-password', authRateLimiter, authController.resetPassword);
 
 module.exports = router;
