@@ -863,7 +863,8 @@ const login = async (
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role
+            role: user.role,
+            avatar_url: user.avatar_url || null
         },
 
         sessionId: session.id,
