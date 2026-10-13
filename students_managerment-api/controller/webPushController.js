@@ -55,7 +55,7 @@ const updateConversationPreference = async (req, res, next) => {
         const data = await webPushService.updateConversationPreference(
             conversationId,
             Number(req.user.id),
-            req.body?.enabled
+            req.body?.notifications_enabled
         );
         return res.status(200).json({ message: 'Đã cập nhật thông báo cuộc trò chuyện', data });
     } catch (error) {
