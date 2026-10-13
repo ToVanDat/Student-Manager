@@ -681,7 +681,32 @@ export default function ChatWindow({
                             <div className="min-w-0">
                                 <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
                                     <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">1</span>
-                                    Xem trước · {pendingAttachmentQueue.length + 1} tệp trong hàng đợi
+                                    Xem trước · {pendingAttachmentQueue.length + 1} tệp đã chọn
+                                </div>
+                                <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                    {[pendingAttachment, ...pendingAttachmentQueue].map((file, index) => (
+                                        <button
+                                            key={`${file.name}-${file.lastModified}-${index}`}
+                                            type="button"
+                                            onClick={() => {
+                                                if (index === 0) return;
+                                                const queue = [...pendingAttachmentQueue];
+                                                const selected = queue[index - 1];
+                                                queue[index - 1] = pendingAttachment;
+                                                setPendingAttachment(selected);
+                                                setPendingAttachmentQueue(queue);
+                                                setAttachmentQuality(selected.type.startsWith('video/') ? '720p' : 'standard');
+                                            }}
+                                            className={`group relative aspect-square overflow-hidden rounded-xl border-2 bg-slate-100 text-left dark:bg-slate-800 ${index === 0 ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'border-slate-200 dark:border-slate-700'}`}
+                                            aria-label={`Xem trước ${file.name}`}
+                                        >
+                                            {file.type.startsWith('image/') ? <img src={URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" /> : file.type.startsWith('video/') ? <video src={URL.createObjectURL(file)} muted className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><FileImage size={24} className="text-blue-600" /></div>}
+                                            {file.type.startsWith('video/') && <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">VIDEO</span>}
+                                            {index === 0 && <span className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check size={12} /></span>}
+                                            <span className="absolute inset-x-0 bottom-0 truncate bg-slate-950/65 px-1.5 py-1 text-[9px] text-white">{file.name}</span>
+                                        </button>
+                                    ))}
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-blue-400 hover:text-blue-600 dark:border-slate-700" aria-label="Thêm ảnh hoặc video"><span className="text-2xl">+</span></button>
                                 </div>
                                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
                                     {attachmentPreviewUrl && (pendingAttachment.type.startsWith('video/') ? (
