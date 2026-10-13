@@ -495,7 +495,18 @@ export default function ChatWindow({
             setAttachmentProgress(0);
             try {
                 for (let index = 0; index < otherFiles.length; index += 1) {
-                    await onSendAttachment(otherFiles[index], 'standard');
+                    await onSendAttachment(otherFiles[index], 'standard', (eventOrPercent) => {
+                        const raw = typeof eventOrPercent === 'number'
+                            ? eventOrPercent
+                            : eventOrPercent?.total
+                                ? (eventOrPercent.loaded / eventOrPercent.total) * 100
+                                : null;
+                        if (raw != null && Number.isFinite(raw)) {
+                            const base = (index / otherFiles.length) * 100;
+                            const current = (Math.max(0, Math.min(100, raw)) / otherFiles.length);
+                            setAttachmentProgress(Math.min(99, Math.round(base + current)));
+                        }
+                    });
                     setAttachmentProgress(Math.round(((index + 1) / otherFiles.length) * 100));
                 }
             } catch (error) {
@@ -543,7 +554,20 @@ export default function ChatWindow({
         setAttachmentProgress(0);
         try {
             const uploadFile = await prepareImageForUpload(file, quality);
-            await onSendAttachment(uploadFile, quality);
+            // The parent upload handler may report real byte progress as its third argument.
+            // Keep a fallback completion state for existing handlers that return no progress.
+            let receivedProgress = false;
+            const reportProgress = (eventOrPercent) => {
+                const raw = typeof eventOrPercent === 'number'
+                    ? eventOrPercent
+                    : eventOrPercent?.total
+                        ? (eventOrPercent.loaded / eventOrPercent.total) * 100
+                        : null;
+                if (raw == null || !Number.isFinite(raw)) return;
+                receivedProgress = true;
+                setAttachmentProgress(Math.max(0, Math.min(99, Math.round(raw))));
+            };
+            await onSendAttachment(uploadFile, quality, reportProgress);
             setAttachmentProgress(100);
             if (pendingAttachmentQueue.length) {
                 const [nextFile, ...rest] = pendingAttachmentQueue;
