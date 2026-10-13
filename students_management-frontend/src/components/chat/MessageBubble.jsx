@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
-
+2
 const formatFileSize = (size) => {
     const bytes = Number(size);
     if (!Number.isFinite(bytes) || bytes <= 0) return '';
