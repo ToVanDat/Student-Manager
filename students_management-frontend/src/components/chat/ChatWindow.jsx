@@ -79,6 +79,7 @@ export default function ChatWindow({
     onSearchMessages,
     onOpenSearchResult
 }) {
+    const activeConversationAvatar = activeConversation?.avatar || activeConversation?.avatar_url || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
     const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
     const [savingConversationNotifications, setSavingConversationNotifications] = useState(false);
@@ -843,7 +844,7 @@ export default function ChatWindow({
 
                     <AvatarFallback
                         name={activeConversation.name}
-                        src={activeConversation.avatar}
+                        src={activeConversationAvatar}
                         size="lg"
                         showStatus
                         isOnline={isDirectOnline}
@@ -894,7 +895,7 @@ export default function ChatWindow({
                                 type="button"
                                 onClick={() => onStartCall?.(activeConversation.userId, 'voice', {
                                     name: activeConversation.name,
-                                    avatar: activeConversation.avatar
+                                    avatar: activeConversationAvatar
                                 })}
                                 disabled={callState !== 'idle'}
                                 className="h-9 w-9 rounded-xl hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
@@ -907,7 +908,7 @@ export default function ChatWindow({
                                 type="button"
                                 onClick={() => onStartCall?.(activeConversation.userId, 'video', {
                                     name: activeConversation.name,
-                                    avatar: activeConversation.avatar
+                                    avatar: activeConversationAvatar
                                 })}
                                 disabled={callState !== 'idle'}
                                 className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
@@ -1055,7 +1056,7 @@ export default function ChatWindow({
                                 <div className="flex items-center gap-2">
                                     <AvatarFallback
                                         name={result.sender_username || activeConversation.name}
-                                        src={result.sender_avatar || activeConversation.avatar}
+                                        src={result.sender_avatar || activeConversationAvatar}
                                         size="xs"
                                     />
                                     <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600">
@@ -1083,7 +1084,7 @@ export default function ChatWindow({
                             <button type="button" onClick={() => setShowContactInfo(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-5 flex flex-col items-center text-center">
-                            <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="lg" />
+                            <AvatarFallback name={activeConversation.name} src={activeConversationAvatar} size="lg" />
                             <h3 className="mt-3 text-lg font-bold">{activeConversation.name}</h3>
                             <p className="mt-1 text-sm text-slate-500">{presenceLabel}</p>
                             {activeConversation.type === 'direct' && activeConversation.email && (
@@ -1274,7 +1275,7 @@ export default function ChatWindow({
                                     msg.senderId
                                 ) === Number(currentUserId)
                         }
-                        senderAvatar={activeConversation.avatar}
+                        senderAvatar={activeConversationAvatar}
                         onRedial={onRedial}
                         senderName={activeConversation.name}
                          onHideCall={onHideCall}
@@ -1446,13 +1447,13 @@ export default function ChatWindow({
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                     <div className="flex flex-col items-center border-b border-slate-100 px-5 py-6 text-center">
-                        <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="xl" showStatus={activeConversation.type !== 'group'} isOnline={isDirectOnline} />
+                        <AvatarFallback name={activeConversation.name} src={activeConversationAvatar} size="xl" showStatus={activeConversation.type !== 'group'} isOnline={isDirectOnline} />
                         <h4 className="mt-3 max-w-full truncate text-base font-bold text-slate-900">{activeConversation.name}</h4>
                         <p className={`mt-1 text-xs ${isDirectOnline ? 'text-emerald-600' : 'text-slate-500'}`}>{activeConversation.type === 'group' ? `${activeConversation.memberCount || conversationMembers.length} thành viên` : presenceLabel}</p>
                         <div className="mt-4 flex items-center gap-2">
                             {activeConversation.type !== 'group' && <>
-                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversation.avatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50" title="Gọi thoại"><Phone size={17} /></button>
-                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversation.avatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50" title="Gọi video"><Video size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50" title="Gọi thoại"><Phone size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50" title="Gọi video"><Video size={17} /></button>
                             </>}
                             <button type="button" onClick={() => { positionSearchPanel(); setShowSearchPanel(true); }} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100" title="Tìm tin nhắn"><Search size={17} /></button>
                             {activeConversation.type === 'group' && <button type="button" onClick={() => setShowGroupInfo(true)} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100" title="Quản lý nhóm"><MoreVertical size={17} /></button>}
