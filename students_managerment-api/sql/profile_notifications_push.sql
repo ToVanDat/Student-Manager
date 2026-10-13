@@ -7,7 +7,7 @@ ALTER TABLE users
 
 CREATE TABLE IF NOT EXISTS user_notification_preferences (
     user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    in_app_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     push_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     sound_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
