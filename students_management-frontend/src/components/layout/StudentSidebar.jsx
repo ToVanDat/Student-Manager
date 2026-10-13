@@ -27,7 +27,7 @@ function StudentSidebar({
         <>
             {isOpen && <div className="fixed inset-0 z-40 bg-slate-950/50 min-[801px]:hidden" onClick={onClose} />}
 
-            <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-linear-to-b from-[#101c35] via-[#111d34] to-[#0d172c] px-[15px] py-[22px] text-white transition-transform duration-200 min-[801px]:translate-x-0 max-[1100px]:w-[220px] ${isOpen ? 'translate-x-0' : ''}`}>
+            <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-linear-to-b from-[#101c35] via-[#111d34] to-[#0d172c] px-[15px] py-[22px] text-white shadow-[12px_0_36px_rgba(10,25,50,0.12)] transition-transform duration-200 min-[801px]:translate-x-0 max-[1100px]:w-[220px] ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className="mb-[30px] flex items-center gap-3 px-2">
                     <div className="flex size-[43px] items-center justify-center rounded-[13px] bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
                         <GraduationCap size={27} />
@@ -41,14 +41,14 @@ function StudentSidebar({
                 <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div className="px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-slate-500">TỔNG QUAN</div>
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium transition ${activePage === 'dashboard' ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'dashboard' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-white/8 hover:text-white'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
                         <span>Trang chủ</span>
                     </button>
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium transition ${activePage === 'students' ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'students' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-white/8 hover:text-white'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
@@ -98,7 +98,7 @@ function StudentSidebar({
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
                     <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-slate-500">LIÊN LẠC</div>
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium transition ${activePage === 'chat' ? 'bg-blue-600/80 text-white font-semibold' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'chat' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-white/8 hover:text-white'}`}
                         onClick={() => onNavigate('chat')}
                     >
                         <MessageSquare size={19} />
@@ -111,7 +111,7 @@ function StudentSidebar({
                     </button>
 
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-md px-3 text-left text-xs font-medium transition ${activePage === 'settings' ? 'bg-white/10 text-white before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-brand-400' : 'text-slate-300 hover:bg-white/5 hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'settings' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-white/8 hover:text-white'}`}
                         onClick={onOpenSettings}
                     >
                         <Settings size={19} />
