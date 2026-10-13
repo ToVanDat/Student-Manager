@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, X, Users, Check, Phone } from 'lucide-react';
+import { Search, X, Users, Check } from 'lucide-react';
 import ConversationItem from './ConversationItem';
 import AvatarFallback from './AvatarFallback';
 
@@ -11,8 +11,6 @@ export default function ChatSidebar({
     searchResults,
     onStartConversation,
     onStartGroupConversation,
-    onOpenCallCenter,
-    callNotificationCount = 0,
     onlineUserIds = new Set()
 }) {
     const [filter, setFilter] = useState('all');
@@ -113,19 +111,6 @@ export default function ChatSidebar({
                         title="Tạo nhóm"
                     >
                         <Users size={18} />
-                    </button>
-                    <button
-                        onClick={onOpenCallCenter}
-                        className="relative flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600"
-                        title="Cuộc gọi"
-                        aria-label={callNotificationCount > 0 ? `Cuộc gọi, ${callNotificationCount} thông báo chưa đọc` : 'Cuộc gọi'}
-                    >
-                        <Phone size={18} />
-                        {callNotificationCount > 0 && (
-                            <span className="absolute -right-1 -top-1 flex min-w-4 h-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white">
-                                {callNotificationCount}
-                            </span>
-                        )}
                     </button>
                     <button
                         data-new-chat
