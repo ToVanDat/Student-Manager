@@ -1,7 +1,8 @@
 const ALLOWED_PREFERENCE_KEYS = new Set([
     'notifications_enabled',
     'push_enabled',
-    'sound_enabled'
+    'sound_enabled',
+    'preview_mode'
 ]);
 
 const isAllowedPushEndpoint = value => {
@@ -35,7 +36,7 @@ const validateAccountPreferencePatch = preferences => {
     }
     const entries = Object.entries(preferences);
     if (!entries.length || entries.some(([key, value]) =>
-        !ALLOWED_PREFERENCE_KEYS.has(key) || typeof value !== 'boolean'
+        !ALLOWED_PREFERENCE_KEYS.has(key) || (key === 'preview_mode' ? !['content', 'sender', 'hidden'].includes(value) : typeof value !== 'boolean')
     )) {
         const error = new Error('Cài đặt thông báo không hợp lệ');
         error.statusCode = 400;
