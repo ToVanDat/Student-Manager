@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, BookOpen, CalendarDays, GraduationCap, Users, UserRound, ChartNoAxesCombined, CirclePlus } from 'lucide-react';
+import { ArrowRight, BookOpen, CalendarDays, GraduationCap, Users, UserRound, ChartNoAxesCombined, CirclePlus, Activity, ShieldCheck } from 'lucide-react';
 
 const number = value => new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
 
@@ -77,6 +77,17 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                         </div>)}
                     </div> : <div className="flex min-h-44 flex-col items-center justify-center text-center"><Users className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">Chưa có hồ sơ sinh viên</p><p className="mt-1 text-xs text-slate-400">Tạo hồ sơ đầu tiên để bắt đầu quản lý.</p></div>}
                     <button type="button" onClick={onOpenStudents} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-semibold text-white transition hover:bg-blue-700"><CirclePlus size={16} />Quản lý sinh viên</button>
+                </section>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
+                <section className="rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900">
+                    <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Cơ cấu sinh viên theo lớp</h2><p className="mt-1 text-xs text-slate-400">Tỷ lệ dựa trên dữ liệu lớp hiện có</p></div><Activity size={18} className="text-blue-600" /></div>
+                    {classStatistics.length ? <div className="space-y-3">{classStatistics.slice(0, 6).map((item, index) => <div key={item.code}><div className="mb-1.5 flex justify-between gap-3 text-xs"><span className="truncate text-slate-600 dark:text-slate-300">{item.name || item.code}</span><span className="shrink-0 font-semibold text-slate-700 dark:text-slate-200">{number(item.count)}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${['bg-blue-500','bg-emerald-500','bg-violet-500','bg-amber-500','bg-cyan-500','bg-rose-500'][index]}`} style={{ width: `${Math.max(2, (Number(item.count || 0) / maxClassSize) * 100)}%` }} /></div></div>)}</div> : <p className="py-8 text-center text-xs text-slate-400">Chưa có dữ liệu để tổng hợp.</p>}
+                </section>
+                <section className="rounded-xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] dark:border-slate-800 dark:bg-slate-900">
+                    <div className="mb-4 flex items-center gap-2"><ShieldCheck size={18} className="text-blue-600" /><div><h2 className="text-sm font-bold text-slate-900 dark:text-white">Tình trạng dữ liệu</h2><p className="mt-1 text-xs text-slate-400">Tổng hợp từ dữ liệu đang tải</p></div></div>
+                    <div className="space-y-3"><div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3 dark:bg-slate-800/70"><span className="text-xs text-slate-600 dark:text-slate-300">Hồ sơ sinh viên</span><strong className="text-sm text-slate-900 dark:text-white">{number(statistics.totalStudents)}</strong></div><div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-3 dark:bg-slate-800/70"><span className="text-xs text-slate-600 dark:text-slate-300">Lớp trong hệ thống</span><strong className="text-sm text-slate-900 dark:text-white">{number(statistics.totalClasses)}</strong></div><p className="text-[11px] leading-5 text-slate-400">Biểu đồ theo học kỳ và nhật ký hoạt động cần nguồn dữ liệu lịch sử riêng; dashboard không tự tạo số liệu minh họa.</p></div>
                 </section>
             </div>
 
