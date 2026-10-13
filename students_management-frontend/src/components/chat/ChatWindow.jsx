@@ -500,6 +500,33 @@ export default function ChatWindow({
         }
     };
 
+    const prepareImageForUpload = async (file, quality) => {
+        if (!file.type.startsWith('image/') || quality === 'original' || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return file;
+        if (typeof createImageBitmap !== 'function') return file;
+
+        let bitmap;
+        try {
+            bitmap = await createImageBitmap(file);
+            const maxEdge = quality === 'hd' ? 2560 : 1920;
+            const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+            canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+            const context = canvas.getContext('2d');
+            if (!context) return file;
+            context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/webp', quality === 'hd' ? 0.88 : 0.76));
+            if (!blob || blob.size >= file.size) return file;
+            const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
+            return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() });
+        } catch (error) {
+            console.warn('Không thể tối ưu ảnh trên trình duyệt, sẽ gửi file gốc:', error);
+            return file;
+        } finally {
+            bitmap?.close?.();
+        }
+    };
+
     const confirmAttachmentSend = async () => {
         if (!pendingAttachment || isUploading) return;
         const file = pendingAttachment;
@@ -507,7 +534,8 @@ export default function ChatWindow({
         setIsUploading(true);
         setAttachmentProgress(0);
         try {
-            await onSendAttachment(file, quality);
+            const uploadFile = await prepareImageForUpload(file, quality);
+            await onSendAttachment(uploadFile, quality);
             setAttachmentProgress(100);
             if (pendingAttachmentQueue.length) {
                 const [nextFile, ...rest] = pendingAttachmentQueue;
