@@ -1,3 +1,4 @@
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import {
     BarChart3,
     BookOpen,
@@ -129,7 +130,7 @@ function StudentSidebar({
 
                 <div className="flex shrink-0 items-center gap-3 border-t border-white/10 px-1 pt-4">
                     {user?.avatar_url || user?.avatar ? (
-                        <img src={user.avatar_url || user.avatar} alt="Avatar tài khoản" className="size-9 shrink-0 rounded-full object-cover" />
+                        <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt="Avatar tài khoản" className="size-9 shrink-0 rounded-full object-cover" />
                     ) : (
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-sm font-bold text-blue-100">
                             {user?.username?.charAt(0)?.toUpperCase() || 'U'}
