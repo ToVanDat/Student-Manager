@@ -192,6 +192,7 @@ const updateUser = (partialUser) => {
                         ? notificationApi.getConversationPreference(message.conversation_id)
                         : Promise.resolve({ data: { data: { enabled: true } } })
                 ]);
+                if (cancelled) return;
                 const accountPrefs = accountResult.data?.data || { in_app_enabled: true, sound_enabled: true };
                 if (accountPrefs.in_app_enabled === false || conversationResult.data?.data?.enabled === false) return;
 
