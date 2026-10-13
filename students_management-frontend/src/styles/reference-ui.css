@@ -1,0 +1,76 @@
+/* Reference-inspired polish for Student-Manager.
+   Keep component behavior and existing API wiring unchanged. */
+:root {
+  --sm-blue: #0878f9;
+  --sm-blue-dark: #0758c9;
+  --sm-navy: #101d35;
+  --sm-page: #f2f7fd;
+  --sm-border: #e2ebf6;
+  --sm-muted: #6f829f;
+}
+
+html { background: var(--sm-page); }
+body {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(48, 139, 255, .055), transparent 34rem),
+    var(--sm-page);
+  color: #142847;
+}
+
+button, input, textarea, select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+::selection { background: #d7eaff; color: #084a9b; }
+
+/* Shared panels and dashboard cards */
+.shadow-panel { box-shadow: 0 5px 18px rgba(31, 74, 130, .055); }
+[class*="rounded-xl"][class*="border"][class*="bg-white"],
+[class*="rounded-2xl"][class*="border"][class*="bg-white"] {
+  border-color: var(--sm-border);
+}
+[class*="bg-canvas"] { background-color: var(--sm-page); }
+
+/* Crisp controls, restrained blue focus and hover */
+input:focus, textarea:focus, select:focus {
+  outline-color: var(--sm-blue);
+}
+button:disabled { cursor: not-allowed; opacity: .58; }
+
+/* Dashboard shell: preserve the dark navigation rail shown in the reference. */
+aside[class*="from-[#101c35]"] {
+  box-shadow: 7px 0 28px rgba(16, 29, 53, .08);
+}
+aside[class*="from-[#101c35]"] nav button {
+  min-height: 40px;
+  border-radius: 9px;
+}
+aside[class*="from-[#101c35]"] nav button:hover {
+  background-color: rgba(255,255,255,.075);
+}
+
+/* Header and main content surfaces */
+header.sticky {
+  border-bottom-color: #e5edf7;
+  box-shadow: 0 2px 10px rgba(23, 55, 98, .025);
+}
+main { min-width: 0; }
+
+/* Chat layout refinements */
+.chat-shell, [data-chat-shell] { min-width: 0; }
+.chat-shell button, [data-chat-shell] button { -webkit-tap-highlight-color: transparent; }
+.chat-shell input, [data-chat-shell] input { min-width: 0; }
+img { max-width: 100%; }
+
+/* Responsive safeguards for laptop, tablet and phone widths */
+@media (max-width: 800px) {
+  body { background: #f5f8fd; }
+  main { padding-left: 14px !important; padding-right: 14px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
