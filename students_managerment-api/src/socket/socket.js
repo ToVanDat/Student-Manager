@@ -6,6 +6,7 @@ const conversationRepository = require('../../repository/conversationRepository.
 const authRepository = require('../../repository/authRepository.js');
 const messageRepository = require('../../repository/messageRepository.js');
 const messageService = require('../../service/messageService.js');
+const notificationDeliveryService = require('../../service/notificationDeliveryService.js');
 const userRepository = require('../../repository/userRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
@@ -357,6 +358,17 @@ const initSocket = (server) => {
                         senderId: userId,
                         updatedAt: savedMessage.created_at
                     });
+                }
+
+                // Persist a separate notification for each recipient. Delivery failures
+                // must not roll back or fail the successfully-saved chat message.
+                try {
+                    await notificationDeliveryService.notifyMessageRecipients({
+                        io, conversationId: id, senderId: userId,
+                        senderName: socket.user.username, message: savedMessage
+                    });
+                } catch (notificationError) {
+                    console.error('[NOTIFICATION] realtime delivery failed:', notificationError.message);
                 }
 
                 socket.emit('message:sent', { message: savedMessage });
