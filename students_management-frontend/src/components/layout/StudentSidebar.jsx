@@ -36,7 +36,7 @@ function StudentSidebar({
             <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-[#f8faff] px-[15px] py-[22px] text-[#263852] shadow-[8px_0_28px_rgba(38,56,82,0.06)] transition-transform duration-200 min-[801px]:translate-x-0 max-[1100px]:w-[220px] ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className="mb-[30px] flex items-center gap-3 px-2">
                     <div className="flex size-[43px] items-center justify-center rounded-[13px] bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
-                        <GraduationCap size={27} />
+                        <GraduationCap size={27} className="text-white" />
                     </div>
                     <div className="flex flex-col">
                         <strong className="text-sm font-bold">StudentOS</strong>
@@ -47,19 +47,19 @@ function StudentSidebar({
                 <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div className="px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5]">TỔNG QUAN</div>
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#64748b] hover:bg-[#eaf3ff] hover:text-[#1d4ed8]'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
                         <span>Trang chủ</span>
                     </button>
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'students' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-[#eaf3ff] hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'students' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
                         <span>Sinh viên</span>
-                        <span className="ml-auto rounded-full bg-white/10 px-2 py-0.5 text-[10px] text-slate-300">{totalStudents}</span>
+                        <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">{totalStudents}</span>
                     </button>
                     {user?.role === 'admin' && (
                         <>
@@ -73,7 +73,7 @@ function StudentSidebar({
                                 { key: 'results', label: 'Kết quả học tập', icon: ChartNoAxesColumn },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" onClick={() => onNavigate(key)}
-                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-[#eaf3ff] hover:text-white'}`}>
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
                                     <Icon size={19} /><span>{label}</span>
                                 </button>
                             ))}
@@ -85,7 +85,7 @@ function StudentSidebar({
                                 { key: 'calls', label: 'Cuộc gọi', icon: Phone },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" onClick={() => onNavigate(key)}
-                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-[#eaf3ff] hover:text-white'}`}>
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
                                     <Icon size={19} /><span>{label}</span>
                                 </button>
                             ))}
@@ -95,7 +95,7 @@ function StudentSidebar({
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
                     <div className="mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5]">LIÊN LẠC</div>
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'chat' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white font-semibold shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-[#eaf3ff] hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'chat' ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('chat')}
                     >
                         <MessageSquare size={19} />
@@ -108,7 +108,7 @@ function StudentSidebar({
                     </button>
 
                     <button
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'settings' ? 'bg-linear-to-r from-blue-600 to-blue-500 text-white shadow-md shadow-blue-950/25' : 'text-slate-300 hover:bg-[#eaf3ff] hover:text-white'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${activePage === 'settings' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={onOpenSettings}
                     >
                         <Settings size={19} />
@@ -116,11 +116,11 @@ function StudentSidebar({
                     </button>
                 </nav>
 
-                <div className="relative mt-auto mb-4 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-linear-to-br from-white/[.08] to-white/[.02] p-4 shadow-lg shadow-black/10">
+                <div className="relative mt-auto mb-4 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-linear-to-br from-white to-slate-50 p-4 shadow-md shadow-slate-900/5">
                     <div className="relative z-10">
                         <span className="text-[9px] font-bold tracking-widest text-cyan-300">HỌC TẬP</span>
                         <h3 className="my-2 text-xs leading-relaxed font-semibold">Học tập là hành trình không có điểm dừng</h3>
-                        <button className="flex items-center gap-1 border-0 bg-transparent p-0 text-[10px] font-semibold text-blue-200 hover:text-white">
+                        <button className="flex items-center gap-1 border-0 bg-transparent p-0 text-[10px] font-semibold text-blue-700 transition-colors hover:text-blue-900">
                             Khám phá
                             <ChevronRight size={15} />
                         </button>
@@ -128,11 +128,11 @@ function StudentSidebar({
                     <Sparkles className="absolute -right-3 -bottom-3 text-white/10" size={64} />
                 </div>
 
-                <div className="flex shrink-0 items-center gap-3 border-t border-white/10 px-1 pt-4">
+                <div className="flex shrink-0 items-center gap-3 border-t border-slate-200 px-1 pt-4">
                     {user?.avatar_url || user?.avatar ? (
                         <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt="Avatar tài khoản" className="size-9 shrink-0 rounded-full object-cover" />
                     ) : (
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-sm font-bold text-blue-100">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
                             {user?.username?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
                     )}
