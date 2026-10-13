@@ -3,6 +3,7 @@ const { getIO } = require('../src/socket/socket');
 const messageRepository = require('../repository/messageRepository');
 const conversationRepository = require('../repository/conversationRepository');
 const webPushService = require('../service/webPushService');
+const notificationDeliveryService = require('../service/notificationDeliveryService');
 const userRepository = require('../repository/userRepository');
 
 /**
@@ -67,21 +68,16 @@ const createMessage = async (req, res) => {
             });
         }
 
-        // Push content intentionally avoids message text for lock-screen privacy.
-        // A failed push provider must never turn a successfully stored message into an API failure.
+        // Notification delivery is best-effort: message persistence succeeds even if a push provider fails.
         const sender = await userRepository.findActiveUserById(senderId);
-        await Promise.allSettled(memberIds
-            .filter(memberId => Number(memberId) !== senderId)
-            .map(memberId => webPushService.sendPushToUser(
-                Number(memberId),
-                {
-                    title: sender?.username ? `Tin nhắn mới từ ${sender.username}` : 'Bạn có tin nhắn mới',
-                    body: 'Mở Student Management để xem tin nhắn mới.',
-                    tag: `conversation-${conversationId}`,
-                    url: `/chat?conversationId=${conversationId}`
-                },
-                conversationId
-            )));
+        try {
+            await notificationDeliveryService.notifyMessageRecipients({
+                io: getIO(), conversationId, senderId,
+                senderName: sender?.username || 'Tin nhắn mới', message
+            });
+        } catch (notificationError) {
+            console.error('[NOTIFICATION] REST delivery failed:', notificationError.message);
+        }
 
         return res.status(201).json({
             message: 'Gửi message thành công',
