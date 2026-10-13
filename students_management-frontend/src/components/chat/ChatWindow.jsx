@@ -661,7 +661,7 @@ export default function ChatWindow({
 
             {pendingAttachment && (
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
-                    <div className="flex max-h-[94vh] w-full max-w-[900px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <div className="chat-media-composer flex max-h-[94vh] w-full max-w-[1000px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-7">
                             <div className="flex items-center gap-3">
                                 <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
@@ -683,7 +683,7 @@ export default function ChatWindow({
                                     <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">1</span>
                                     Xem trước · {pendingAttachmentQueue.length + 1} tệp đã chọn
                                 </div>
-                                <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                <div className="mb-3 grid grid-cols-3 gap-2 sm:grid-cols-4" data-media-grid>
                                     {[pendingAttachment, ...pendingAttachmentQueue].map((file, index) => (
                                         <button
                                             key={`${file.name}-${file.lastModified}-${index}`}
@@ -698,7 +698,7 @@ export default function ChatWindow({
                                                 setAttachmentQuality(selected.type.startsWith('video/') ? '720p' : 'standard');
                                             }}
                                             className={`group relative aspect-square overflow-hidden rounded-xl border-2 bg-slate-100 text-left dark:bg-slate-800 ${index === 0 ? 'border-blue-500 ring-2 ring-blue-100 dark:ring-blue-900/40' : 'border-slate-200 dark:border-slate-700'}`}
-                                            aria-label={`Xem trước ${file.name}`}
+                                            aria-label={`Xem trước ${file.name}`} aria-pressed={index === 0} data-media-tile
                                         >
                                             {file.type.startsWith('image/') ? <img src={index === 0 ? attachmentPreviewUrl : URL.createObjectURL(file)} alt="" className="h-full w-full object-cover" /> : file.type.startsWith('video/') ? <video src={index === 0 ? attachmentPreviewUrl : URL.createObjectURL(file)} muted className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><FileImage size={24} className="text-blue-600" /></div>}
                                             {file.type.startsWith('video/') && <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">VIDEO</span>}
