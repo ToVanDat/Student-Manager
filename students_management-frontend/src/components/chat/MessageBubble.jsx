@@ -111,9 +111,9 @@ export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
 
     return (
         <>
-            <div ref={containerRef} className={`${compact ? 'size-12 shrink-0' : 'mt-2 w-[min(280px,70vw)]'} overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800`}>
+            <div ref={containerRef} className={`${compact ? 'size-12 shrink-0' : 'mt-2 w-[min(280px,70vw)]'} overflow-hidden rounded-xl bg-slate-100`}>
                 {compact ? (
-                    <button type="button" onClick={() => setExpanded(Boolean(previewUrl))} aria-label={`Xem ${isVideo ? 'video' : 'ảnh'} ${file.file_name}`} className="flex size-full items-center justify-center overflow-hidden text-blue-600 dark:text-blue-300">
+                    <button type="button" onClick={() => setExpanded(Boolean(previewUrl))} aria-label={`Xem ${isVideo ? 'video' : 'ảnh'} ${file.file_name}`} className="flex size-full items-center justify-center overflow-hidden text-blue-600">
                         {previewUrl && !isVideo ? <img src={previewUrl} alt="" loading="lazy" className="size-full object-cover" /> : isVideo ? <Video size={18} /> : loading ? <span className="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" /> : <FileText size={18} />}
                     </button>
                 ) : previewUrl ? (isVideo ? (
@@ -179,13 +179,13 @@ const CallTimelineItem = ({
         : isRejected || isCancelled ? PhoneOff
             : isVideo ? Video : Phone;
     const statusClass = isMissed
-        ? 'text-red-600 dark:text-red-400'
+        ? 'text-red-600'
         : isRejected || isCancelled
-            ? 'text-slate-600 dark:text-slate-300'
-            : 'text-slate-800 dark:text-slate-100';
+            ? 'text-slate-600'
+            : 'text-slate-800';
     const iconClass = isMissed
-        ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
-        : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300';
+        ? 'bg-red-50 text-red-600'
+        : 'bg-slate-100 text-slate-600';
 
     const startedAt = call.started_at || call.created_at;
     const otherUserId = outgoing ? call.receiver_id : call.caller_id;
@@ -250,17 +250,17 @@ const CallTimelineItem = ({
 
     return (
         <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
-            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
                 <div className="relative shrink-0">
                     <AvatarFallback name={senderName || 'Người dùng'} src={senderAvatar} size="md" />
-                    <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white dark:ring-slate-900 ${iconClass}`}>
+                    <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${iconClass}`}>
                         <Icon size={11} strokeWidth={2.5} />
                     </span>
                 </div>
 
                 <div className="min-w-0 flex-1">
                     <div className={`truncate text-[13px] font-semibold ${statusClass}`}>{title}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500">
                         <span>{formatCallDate(startedAt)}</span>
                         <span>·</span>
                         <span>{formatCallTime(startedAt)}</span>
@@ -302,7 +302,7 @@ const CallTimelineItem = ({
                                 aria-haspopup="menu"
                                 aria-expanded={menuOpen}
                                 onClick={() => setMenuOpen(value => !value)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800"
                             >
                                 <MoreHorizontal size={17} />
                             </button>
@@ -312,13 +312,13 @@ const CallTimelineItem = ({
                                     role="menu"
                                     aria-label="Tùy chọn cuộc gọi"
                                     style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, width: 208, zIndex: 9999 }}
-                                    className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                                    className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl"
                                 >
                                     <button
                                         type="button"
                                         role="menuitem"
                                         onClick={() => { setMenuOpen(false); onFocusComposer?.(); }}
-                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
                                     >
                                         Nhắn tin
                                     </button>
@@ -326,7 +326,7 @@ const CallTimelineItem = ({
                                         type="button"
                                         role="menuitem"
                                         onClick={() => { setMenuOpen(false); onViewProfile?.(); }}
-                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 dark:text-slate-200 dark:hover:bg-slate-800"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
                                     >
                                         Xem hồ sơ
                                     </button>
@@ -334,7 +334,7 @@ const CallTimelineItem = ({
                                         type="button"
                                         role="menuitem"
                                         onClick={handleHide}
-                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500 dark:hover:bg-red-950/30"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500"
                                     >
                                         Xóa khỏi lịch sử của tôi
                                     </button>
@@ -462,7 +462,7 @@ export default function MessageBubble({
     if (message.message_type === 'system' || message.messageType === 'system') {
         return (
             <div className="flex justify-center px-4 py-1.5" role="status">
-                <div className="max-w-[85%] rounded-full bg-slate-100 px-3.5 py-1.5 text-center text-[11px] font-medium text-slate-500 shadow-sm dark:bg-slate-800 dark:text-slate-400">
+                <div className="max-w-[85%] rounded-full bg-slate-100 px-3.5 py-1.5 text-center text-[11px] font-medium text-slate-500 shadow-sm">
                     {message.content}
                     {time && (
                         <span className="ml-2 font-normal opacity-70">{time}</span>
@@ -486,8 +486,8 @@ export default function MessageBubble({
             >
                 <div className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
                     isOwn
-                        ? 'bg-[#d8eaff] text-slate-900 dark:bg-blue-900/70 dark:text-blue-50 rounded-br-[5px]'
-                        : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-[5px] border border-slate-100 dark:border-slate-700'
+                        ? 'bg-[#d8eaff] text-slate-900 rounded-br-[5px]'
+                        : 'bg-white text-slate-800 rounded-bl-[5px] border border-slate-100'
                 }`}>
                     {hovered && !isDeleted && !isRecalled && (
                         <button
@@ -499,7 +499,7 @@ export default function MessageBubble({
                                 setMenuOpen(prev => !prev);
                                 setReactionPickerOpen(false);
                             }}
-                            className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white ${isOwn ? 'text-white/70 hover:text-white' : ''}`}
+                            className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 ${isOwn ? 'text-white/70 hover:text-white' : ''}`}
                             title="Tuỳ chọn"
                             aria-label="Tuỳ chọn tin nhắn"
                         >
@@ -512,14 +512,14 @@ export default function MessageBubble({
                             className={`mb-2 w-full max-w-[280px] overflow-hidden rounded-xl border-l-[3px] px-3 py-2 ${
                                 isOwn
                                     ? 'border-blue-200/90 bg-blue-500/25 text-blue-50'
-                                    : 'border-blue-500 bg-slate-200/80 text-slate-700 dark:bg-slate-700/80 dark:text-slate-200'
+                                    : 'border-blue-500 bg-slate-200/80 text-slate-700'
                             }`}
                             title={message.reply_to.content || 'Tin nhắn có tệp'}
                         >
                             <p className={`mb-0.5 text-[11px] font-semibold leading-4 ${
                                 isOwn
                                     ? 'text-white'
-                                    : 'text-blue-600 dark:text-blue-400'
+                                    : 'text-blue-600'
                             }`}>
                                 Tin nhắn được trả lời
                             </p>
@@ -571,7 +571,7 @@ export default function MessageBubble({
                                         const isVideo = file.mime_type?.startsWith('video/');
 
                                         return (
-                                            <div key={file.id} className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden">
+                                            <div key={file.id} className="rounded-xl border border-white/20 bg-black/5 overflow-hidden">
                                                 {(isImage || isVideo) && <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} />}
 
                                                 {file.mime_type?.startsWith('audio/') ? (
@@ -589,7 +589,7 @@ export default function MessageBubble({
                                                                         console.error('Không thể phát voice message:', error);
                                                                     }
                                                                 }}
-                                                                className="rounded-lg bg-slate-900/10 px-3 py-2 text-xs font-medium hover:bg-slate-900/20 dark:bg-white/10 dark:hover:bg-white/20"
+                                                                className="rounded-lg bg-slate-900/10 px-3 py-2 text-xs font-medium hover:bg-slate-900/20"
                                                             >
                                                                 ▶ Phát voice message
                                                             </button>
@@ -603,11 +603,11 @@ export default function MessageBubble({
                                                         <p className="truncate text-xs font-medium">{file.file_name}</p>
                                                         <p className="text-[10px] opacity-70">{formatFileSize(file.file_size)}</p>
                                                     </div>
-                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10" title="Tải xuống">
+                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title="Tải xuống">
                                                         <Download size={15} />
                                                     </button>
                                                     {isOwn && (
-                                                        <button type="button" onClick={() => onDeleteFile?.(file)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title="Xoá file">
+                                                        <button type="button" onClick={() => onDeleteFile?.(file)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50" title="Xoá file">
                                                             <Trash2 size={15} />
                                                         </button>
                                                     )}
@@ -621,7 +621,7 @@ export default function MessageBubble({
                     )}
 
                     <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                        isOwn ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'
+                        isOwn ? 'text-blue-200' : 'text-slate-400'
                     }`}>
                         <span>{time}</span>
                         {isOwn && (
@@ -643,12 +643,12 @@ export default function MessageBubble({
                         data-message-menu
                         onMouseEnter={keepHovered}
                         onMouseLeave={scheduleHoverClose}
-                        className={`absolute top-full z-[80] mt-1 min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-2xl dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 ${isOwn ? 'right-0' : 'left-0'}`}
+                        className={`absolute top-full z-[80] mt-1 min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-2xl ${isOwn ? 'right-0' : 'left-0'}`}
                     >
                         <button type="button" onClick={() => {
                             setMenuOpen(false);
                             onReply?.(message);
-                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                             <Reply size={15} /> <span>Trả lời</span>
                         </button>
 
@@ -656,7 +656,7 @@ export default function MessageBubble({
                             <button type="button" onClick={() => {
                                 setEditing(true);
                                 setMenuOpen(false);
-                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                                 <Pencil size={15} /> <span>Chỉnh sửa</span>
                             </button>
                         )}
@@ -665,7 +665,7 @@ export default function MessageBubble({
                             <button type="button" onClick={() => {
                                 setMenuOpen(false);
                                 onRecall?.(message.id);
-                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                                 <RotateCcw size={15} /> <span>Thu hồi</span>
                             </button>
                         )}
@@ -673,7 +673,7 @@ export default function MessageBubble({
                         <button type="button" onClick={() => {
                             setMenuOpen(false);
                             onDeleteForMe?.(message.id);
-                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-100 dark:hover:bg-slate-700">
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
                             <Trash2 size={15} /> <span>Xoá ở phía tôi</span>
                         </button>
 
@@ -681,7 +681,7 @@ export default function MessageBubble({
                             <button type="button" onClick={() => {
                                 setMenuOpen(false);
                                 onDeleteForEveryone?.(message.id);
-                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
                                 <Trash2 size={15} /> <span>Xoá ở mọi người</span>
                             </button>
                         )}
@@ -695,7 +695,7 @@ export default function MessageBubble({
                         onMouseLeave={scheduleHoverClose}
                     >
                         <div className="relative">
-                            <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/98 px-1.5 py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800/98">
+                            <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/98 px-1.5 py-1 shadow-lg">
                                 {quickReactions.slice(0, 4).map(emoji => (
                                     <button
                                         key={emoji}
@@ -705,7 +705,7 @@ export default function MessageBubble({
                                             setReactionPickerOpen(false);
                                             setHovered(false);
                                         }}
-                                        className="flex h-7 w-7 items-center justify-center rounded-full text-[17px] leading-none transition-transform hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                        className="flex h-7 w-7 items-center justify-center rounded-full text-[17px] leading-none transition-transform hover:scale-125 hover:bg-slate-100"
                                         title={`Thả ${emoji}`}
                                     >
                                         {emoji}
@@ -720,7 +720,7 @@ export default function MessageBubble({
                                         setMenuOpen(false);
                                         keepHovered();
                                     }}
-                                    className="flex h-7 w-7 items-center justify-center rounded-full text-base font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                                    className="flex h-7 w-7 items-center justify-center rounded-full text-base font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
                                     title="Thêm reaction"
                                     aria-label="Thêm reaction"
                                 >
@@ -735,7 +735,7 @@ export default function MessageBubble({
                                     onMouseLeave={scheduleHoverClose}
                                     onMouseDown={event => event.stopPropagation()}
                                 >
-                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                                         <EmojiPicker
                                             onEmojiClick={(emojiData) => {
                                                 onToggleReaction?.(message.id, emojiData.emoji);
@@ -756,7 +756,7 @@ export default function MessageBubble({
 
                 {groupedReactions.length > 0 && (
                     <div
-                        className={`relative z-30 mt-1 flex items-center rounded-full border border-slate-200 bg-white/98 px-1 py-0.5 shadow-md dark:border-slate-700 dark:bg-slate-800/98 ${isOwn ? 'self-end' : 'self-start'}`}
+                        className={`relative z-30 mt-1 flex items-center rounded-full border border-slate-200 bg-white/98 px-1 py-0.5 shadow-md ${isOwn ? 'self-end' : 'self-start'}`}
                     >
                         {groupedReactions.map(([emoji, reactions]) => {
                             const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
@@ -767,14 +767,14 @@ export default function MessageBubble({
                                     onClick={() => onToggleReaction?.(message.id, emoji)}
                                     className={`relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm transition hover:scale-110 ${
                                         mine
-                                            ? 'bg-blue-50 ring-1 ring-blue-400 dark:bg-blue-950/50'
-                                            : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                                            ? 'bg-blue-50 ring-1 ring-blue-400'
+                                            : 'hover:bg-slate-100'
                                     }`}
                                     title={`${reactions.length} người thả ${emoji}`}
                                 >
                                     <span>{emoji}</span>
                                     {reactions.length > 1 && (
-                                        <span className="ml-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-300">
+                                        <span className="ml-0.5 text-[10px] font-semibold text-slate-500">
                                             {reactions.length}
                                         </span>
                                     )}
