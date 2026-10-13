@@ -5,8 +5,10 @@ export const notificationApi = {
     updatePreferences: preferences => client.patch('/api/notifications/preferences', preferences),
     getConversationPreference: conversationId =>
         client.get(`/api/notifications/conversations/${conversationId}`),
-    updateConversationPreference: (conversationId, enabled) =>
-        client.put(`/api/notifications/conversations/${conversationId}`, { enabled }),
+    updateConversationPreference: (conversationId, notificationsEnabled) =>
+        client.put(`/api/notifications/conversations/${conversationId}`, {
+            notifications_enabled: notificationsEnabled
+        }),
     getVapidPublicKey: () => client.get('/api/notifications/vapid-public-key'),
     subscribe: subscription => client.post('/api/notifications/subscriptions', { subscription }),
     unsubscribe: endpoint => client.delete('/api/notifications/subscriptions', { data: { endpoint } })
