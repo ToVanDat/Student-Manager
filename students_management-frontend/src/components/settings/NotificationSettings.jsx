@@ -13,7 +13,8 @@ export default function NotificationSettings() {
     const [preferences, setPreferences] = useState({
         notifications_enabled: true,
         push_enabled: false,
-        sound_enabled: true
+        sound_enabled: true,
+        preview_mode: 'content'
     });
     const [loading, setLoading] = useState(true);
     const [savingKey, setSavingKey] = useState('');
@@ -25,7 +26,8 @@ export default function NotificationSettings() {
                 if (active && data?.data) setPreferences({
                     notifications_enabled: Boolean(data.data.notifications_enabled),
                     push_enabled: Boolean(data.data.push_enabled),
-                    sound_enabled: Boolean(data.data.sound_enabled)
+                    sound_enabled: Boolean(data.data.sound_enabled),
+                    preview_mode: ['content', 'sender', 'hidden'].includes(data.data.preview_mode) ? data.data.preview_mode : 'content'
                 });
             })
             .catch(error => toast.error(error.response?.data?.message || 'Không tải được cài đặt thông báo'))
@@ -42,7 +44,7 @@ export default function NotificationSettings() {
                 else await disableWebPush();
             }
             const { data } = await notificationApi.updatePreferences({ [key]: next });
-            setPreferences(previous => ({ ...previous, [key]: Boolean(data.data[key]) }));
+            setPreferences(previous => ({ ...previous, [key]: key === 'preview_mode' ? data.data.preview_mode : Boolean(data.data[key]) }));
             toast.success('Đã lưu cài đặt thông báo');
         } catch (error) {
             toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật cài đặt');
@@ -56,6 +58,31 @@ export default function NotificationSettings() {
             <div className="mb-5 min-w-0">
                 <h2 className="text-lg font-semibold text-slate-900">Cài đặt thông báo</h2>
                 <p className="mt-1 break-words text-sm text-slate-500">Áp dụng cho tài khoản này. Bạn có thể tắt riêng thông báo ở từng cuộc trò chuyện.</p>
+            </div>
+            <div className="mb-4 rounded-xl border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-900">Nội dung xem trước</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500">Chọn nội dung xuất hiện trong Toast, trung tâm thông báo và Push Notification.</p>
+                <div className="mt-3 grid gap-2">
+                    {[
+                        { value: 'content', label: 'Hiển thị nội dung tin nhắn' },
+                        { value: 'sender', label: 'Chỉ hiển thị tên người gửi' },
+                        { value: 'hidden', label: 'Ẩn nội dung và tên người gửi' }
+                    ].map(option => (
+                        <label key={option.value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                            <input type="radio" name="notification-preview-mode" value={option.value} checked={preferences.preview_mode === option.value} disabled={loading || Boolean(savingKey)} onChange={async () => {
+                                setSavingKey('preview_mode');
+                                try {
+                                    const { data } = await notificationApi.updatePreferences({ preview_mode: option.value });
+                                    setPreferences(previous => ({ ...previous, preview_mode: data.data.preview_mode }));
+                                    toast.success('Đã lưu chế độ xem trước thông báo');
+                                } catch (error) {
+                                    toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật cài đặt');
+                                } finally { setSavingKey(''); }
+                            }} />
+                            {option.label}
+                        </label>
+                    ))}
+                </div>
             </div>
             <div className="min-w-0 divide-y divide-slate-100">
                 {OPTIONS.map(option => {
