@@ -48,7 +48,8 @@ async function replaceIfSmaller(source, candidate) {
     return true;
 }
 
-async function optimizeImage(file) {
+async function optimizeImage(file, quality = 'standard') {
+    if (quality === 'original') return { optimized: false, reason: 'original-requested' };
     if (!sharp || !IMAGE_MIMES.has(file.mimetype)) return { optimized: false, reason: 'sharp-unavailable-or-unsupported' };
     const temp = path.join(path.dirname(file.path), '.' + crypto.randomUUID() + '.optimized');
     try {
@@ -57,12 +58,14 @@ async function optimizeImage(file) {
             return { optimized: false, reason: 'image-dimensions-out-of-policy' };
         }
         let pipeline = sharp(file.path, { limitInputPixels: MAX_IMAGE_PIXELS });
-        if (metadata.width > 2560 || metadata.height > 2560) {
-            pipeline = pipeline.resize({ width: 2560, height: 2560, fit: 'inside', withoutEnlargement: true });
+        const maxDimension = quality === 'hd' ? 3840 : 2560;
+        if (metadata.width > maxDimension || metadata.height > maxDimension) {
+            pipeline = pipeline.resize({ width: maxDimension, height: maxDimension, fit: 'inside', withoutEnlargement: true });
         }
-        if (file.mimetype === 'image/jpeg') pipeline = pipeline.jpeg({ quality: 82, mozjpeg: true });
+        const compressionQuality = quality === 'hd' ? 92 : 82;
+        if (file.mimetype === 'image/jpeg') pipeline = pipeline.jpeg({ quality: compressionQuality, mozjpeg: true });
         else if (file.mimetype === 'image/png') pipeline = pipeline.png({ compressionLevel: 9, palette: true });
-        else pipeline = pipeline.webp({ quality: 82 });
+        else pipeline = pipeline.webp({ quality: compressionQuality });
         await pipeline.toFile(temp);
         const changed = await replaceIfSmaller(file.path, temp);
         if (changed) file.size = (await fs.stat(file.path)).size;
@@ -75,14 +78,19 @@ async function optimizeImage(file) {
     }
 }
 
-async function optimizeVideo(file) {
+async function optimizeVideo(file, quality = 'standard') {
+    if (quality === 'original') return { optimized: false, reason: 'original-requested' };
     if (!VIDEO_MIMES.has(file.mimetype)) return { optimized: false, reason: 'unsupported-video' };
     const temp = path.join(path.dirname(file.path), '.' + crypto.randomUUID() + (file.mimetype === 'video/webm' ? '.webm' : '.mp4'));
     const args = ['-hide_banner', '-loglevel', 'error', '-nostdin', '-y', '-i', file.path, '-map', '0:v:0?', '-map', '0:a:0?'];
+    const videoHeight = ({ '480p': 480, standard: 720, '720p': 720, '1080p': 1080 })[quality] || 720;
+    const crf = ({ '480p': 30, standard: 27, '720p': 27, '1080p': 23 })[quality] || 27;
+    const maxWidth = Math.round(videoHeight * 16 / 9);
+    args.push('-vf', `scale=w='trunc(min(iw\\,${maxWidth})/2)*2':h='trunc(min(ih\\,${videoHeight})/2)*2':force_original_aspect_ratio=decrease`);
     if (file.mimetype === 'video/webm') {
-        args.push('-c:v', 'libvpx-vp9', '-deadline', 'good', '-cpu-used', '4', '-crf', '34', '-b:v', '0', '-c:a', 'libopus', '-b:a', '96k', '-f', 'webm');
+        args.push('-c:v', 'libvpx-vp9', '-deadline', 'good', '-cpu-used', '4', '-crf', String(crf + 7), '-b:v', '0', '-c:a', 'libopus', '-b:a', '96k', '-f', 'webm');
     } else {
-        args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '28', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart');
+        args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', String(crf), '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart');
     }
     args.push(temp);
     try {
@@ -97,10 +105,10 @@ async function optimizeVideo(file) {
     }
 }
 
-async function optimizeUploadedFile(file) {
+async function optimizeUploadedFile(file, quality = 'standard') {
     if (!file?.path || !file.mimetype) return { optimized: false, reason: 'invalid-input' };
-    if (IMAGE_MIMES.has(file.mimetype)) return optimizeImage(file);
-    if (VIDEO_MIMES.has(file.mimetype)) return optimizeVideo(file);
+    if (IMAGE_MIMES.has(file.mimetype)) return optimizeImage(file, quality);
+    if (VIDEO_MIMES.has(file.mimetype)) return optimizeVideo(file, quality);
     // GIF animation, audio, PDF/Office documents, and text are preserved byte-for-byte.
     return { optimized: false, reason: 'preserved-original' };
 }

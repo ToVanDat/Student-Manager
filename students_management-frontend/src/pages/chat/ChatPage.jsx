@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock3, LogOut, MoreVertical, Settings, UserRound, X } from 'lucide-react';
+import { ArrowLeft, Clock3, LogOut, MoreVertical, Settings, UserRound, GraduationCap, Home, MessageSquare, Users, Phone, Search } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
-import useWebRTCCall from '@/hooks/useWebRTCCall.js';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
 import { callApi } from '@/api/callApi.js';
 import socket from '@/socket/socket.js';
@@ -16,12 +15,19 @@ import { useAuth } from '@/hooks/useAuth.js';
 export default function ChatPage() {
     const navigate = useNavigate();
     const { user, logoutUser, webRTCCall } = useAuth();
-    const [callCenterOpen, setCallCenterOpen] = useState(false);
+    const [callCenterOpen, setCallCenterOpen] = useState(() => new URLSearchParams(window.location.search).get('calls') === '1');
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const accountMenuRef = useRef(null);
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
     const callNotificationIdsRef = useRef(new Set());
+
+    const closeCallCenter = () => {
+        setCallCenterOpen(false);
+        if (new URLSearchParams(window.location.search).has('calls')) {
+            navigate('/chat', { replace: true });
+        }
+    };
 
     useEffect(() => {
         if (!user?.id) {
@@ -244,7 +250,7 @@ export default function ChatPage() {
                     <span className="hidden sm:inline">Quản lý</span>
                 </button>
                 <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 items-center justify-center rounded-xl bg-teal-600 text-white">
+                    <div className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white">
                         <span className="text-lg" aria-hidden="true">✉</span>
                     </div>
                     <div className="min-w-0">
@@ -306,7 +312,7 @@ export default function ChatPage() {
 
             <CallCenterPanel
                 open={callCenterOpen}
-                onClose={() => setCallCenterOpen(false)}
+                onClose={closeCallCenter}
                 currentUserId={Number(user?.id)}
                 notifications={callNotifications}
                 onMarkNotificationRead={markCallNotificationRead}
@@ -315,6 +321,24 @@ export default function ChatPage() {
             <main className="h-[calc(100vh-4rem)] min-h-0 p-2 sm:p-4 lg:p-6">
                 <div className="h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex h-full min-h-0">
+                        <aside className="hidden w-[176px] shrink-0 flex-col border-r border-slate-200 bg-[#f8fafd] px-3 py-5 dark:border-slate-800 dark:bg-slate-950 lg:flex">
+                            <div className="mb-7 flex items-center gap-2 px-2">
+                                <span className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm"><GraduationCap size={20} /></span>
+                                <span className="min-w-0"><strong className="block truncate text-xs text-slate-900 dark:text-white">Student Manager</strong><small className="text-[9px] text-slate-400">Kết nối học tập</small></span>
+                            </div>
+                            <p className="mb-2 px-2 text-[9px] font-bold tracking-[.14em] text-slate-400">MENU</p>
+                            <nav className="space-y-1">
+                                <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Home size={17} />Tổng quan</button>
+                                <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-blue-600 px-3 text-left text-xs font-semibold text-white shadow-sm shadow-blue-600/20"><MessageSquare size={17} />Trò chuyện</button>
+                                <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Users size={17} />Nhóm</button>
+                                <button type="button" onClick={() => setCallCenterOpen(true)} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Phone size={17} />Cuộc gọi{unreadCallNotificationCount > 0 && <span className="ml-auto rounded-full bg-rose-500 px-1.5 text-[9px] font-bold text-white">{unreadCallNotificationCount}</span>}</button>
+                                <button type="button" onClick={() => document.querySelector('[data-new-chat]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Search size={17} />Danh bạ</button>
+                            </nav>
+                            <div className="mt-auto border-t border-slate-200 pt-3 dark:border-slate-800">
+                                <button type="button" onClick={() => navigate('/students?view=settings')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 dark:text-slate-300 dark:hover:bg-slate-800"><Settings size={17} />Cài đặt</button>
+                                <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-slate-200 px-2 pt-4 dark:border-slate-800"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-100">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800 dark:text-slate-100">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
+                            </div>
+                        </aside>
                         <ChatSidebar
                             conversations={conversations}
                             onlineUserIds={onlineUserIds}

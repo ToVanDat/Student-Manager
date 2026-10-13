@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
 
@@ -50,9 +50,97 @@ const formatCallDate = value => {
     });
 };
 
+export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
+    const containerRef = useRef(null);
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [failed, setFailed] = useState(false);
+    const [expanded, setExpanded] = useState(false);
+    const isVideo = String(file.mime_type || '').startsWith('video/');
+    const fileId = file?.id;
+
+    useEffect(() => {
+        if (!fileId || !Number.isInteger(Number(fileId)) || !onPreviewFile) {
+            setLoading(false);
+            return undefined;
+        }
+
+        let active = true;
+        let createdUrl = '';
+        const loadPreview = async () => {
+            try {
+                setLoading(true);
+                setFailed(false);
+                const url = await onPreviewFile({ id: fileId });
+                if (!active) {
+                    if (url) URL.revokeObjectURL(url);
+                    return;
+                }
+                if (!url) throw new Error('Không nhận được URL xem trước');
+                createdUrl = url;
+                setPreviewUrl(url);
+            } catch {
+                if (active) setFailed(true);
+            } finally {
+                if (active) setLoading(false);
+            }
+        };
+
+        const target = containerRef.current;
+        if (target && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(entries => {
+                if (entries.some(entry => entry.isIntersecting)) {
+                    observer.disconnect();
+                    void loadPreview();
+                }
+            }, { rootMargin: '160px' });
+            observer.observe(target);
+            return () => {
+                active = false;
+                observer.disconnect();
+                if (createdUrl) URL.revokeObjectURL(createdUrl);
+            };
+        }
+
+        void loadPreview();
+        return () => {
+            active = false;
+            if (createdUrl) URL.revokeObjectURL(createdUrl);
+        };
+    }, [fileId, onPreviewFile]);
+
+    return (
+        <>
+            <div ref={containerRef} className={`${compact ? 'size-12 shrink-0' : 'mt-2 w-[min(280px,70vw)]'} overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800`}>
+                {compact ? (
+                    <button type="button" onClick={() => setExpanded(Boolean(previewUrl))} aria-label={`Xem ${isVideo ? 'video' : 'ảnh'} ${file.file_name}`} className="flex size-full items-center justify-center overflow-hidden text-blue-600 dark:text-blue-300">
+                        {previewUrl && !isVideo ? <img src={previewUrl} alt="" loading="lazy" className="size-full object-cover" /> : isVideo ? <Video size={18} /> : loading ? <span className="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" /> : <FileText size={18} />}
+                    </button>
+                ) : previewUrl ? (isVideo ? (
+                    <video src={previewUrl} controls playsInline preload="metadata" className="max-h-[260px] w-full bg-black object-contain" />
+                ) : (
+                    <button type="button" onClick={() => setExpanded(true)} className="block max-h-[280px] w-full cursor-zoom-in" aria-label={`Xem ảnh ${file.file_name}`}>
+                        <img src={previewUrl} alt={file.file_name || 'Ảnh trong tin nhắn'} loading="lazy" className="max-h-[280px] max-w-full object-contain" />
+                    </button>
+                )) : (
+                    <div className={`flex ${compact ? 'size-full' : 'h-28'} items-center justify-center text-[11px] text-slate-400`}>
+                        {loading ? 'Đang tải bản xem trước…' : failed ? 'Không tải được bản xem trước' : 'Bản xem trước không khả dụng'}
+                    </div>
+                )}
+            </div>
+            {expanded && previewUrl && createPortal(
+                <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/85 p-4" onClick={() => setExpanded(false)}>
+                    <button type="button" onClick={() => setExpanded(false)} aria-label="Đóng xem ảnh" className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={22} /></button>
+                    {isVideo ? <video src={previewUrl} controls autoPlay playsInline className="max-h-[90vh] max-w-[92vw] rounded-lg bg-black shadow-2xl" onClick={event => event.stopPropagation()} /> : <img src={previewUrl} alt={file.file_name || 'Ảnh đã chia sẻ'} className="max-h-[90vh] max-w-[92vw] rounded-lg object-contain shadow-2xl" onClick={event => event.stopPropagation()} />}
+                </div>,
+                document.body
+            )}
+        </>
+    );
+}
+
 const CallTimelineItem = ({
     call,
-    isOwn,
     currentUserId,
     onRedial,
     senderAvatar,
@@ -281,22 +369,6 @@ export default function MessageBubble({
     currentUserId,
     onRedial
 }) {
-    if (message._timelineType === 'call') {
-        return (
-            <CallTimelineItem
-                call={message}
-                isOwn={isOwn}
-                currentUserId={currentUserId}
-                onRedial={onRedial}
-                senderAvatar={senderAvatar}
-                senderName={senderName}
-                onHideCall={onHideCall}
-                onViewProfile={onViewProfile}
-                onFocusComposer={onFocusComposer}
-            />
-        );
-    }
-
     const { content, time, isRead } = message;
     const status = message.status;
     const uploadProgress = Number(message.uploadProgress ?? message.files?.[0]?.uploadProgress ?? 0);
@@ -348,6 +420,21 @@ export default function MessageBubble({
             if (audioUrl) URL.revokeObjectURL(audioUrl);
         };
     }, [audioUrl]);
+
+    if (message._timelineType === 'call') {
+        return (
+            <CallTimelineItem
+                call={message}
+                currentUserId={currentUserId}
+                onRedial={onRedial}
+                senderAvatar={senderAvatar}
+                senderName={senderName}
+                onHideCall={onHideCall}
+                onViewProfile={onViewProfile}
+                onFocusComposer={onFocusComposer}
+            />
+        );
+    }
 
     const submitEdit = () => {
         const next = editContent.trim();
@@ -481,14 +568,11 @@ export default function MessageBubble({
                                 <div className={content ? 'mt-2 space-y-2' : 'space-y-2'}>
                                     {message.files.map(file => {
                                         const isImage = file.mime_type?.startsWith('image/');
+                                        const isVideo = file.mime_type?.startsWith('video/');
 
                                         return (
                                             <div key={file.id} className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden">
-                                                {isImage && file.previewUrl ? (
-                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="block w-full text-left" title="Tải ảnh">
-                                                        <img src={file.previewUrl} alt={file.file_name} className="max-w-[280px] max-h-[280px] object-cover" />
-                                                    </button>
-                                                ) : null}
+                                                {(isImage || isVideo) && <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} />}
 
                                                 {file.mime_type?.startsWith('audio/') ? (
                                                     <div className="px-3 pt-3">

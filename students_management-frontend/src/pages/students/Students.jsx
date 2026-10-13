@@ -9,6 +9,8 @@ import { useStudentSettings } from "@/hooks/useStudentSettings.js";
 import StudentHeader from "@/components/layout/StudentHeader.jsx";
 import StudentSidebar from "@/components/layout/StudentSidebar.jsx";
 import StudentDashboard from "@/components/students/StudentDashboard.jsx";
+import AdminOverview from "@/components/students/AdminOverview.jsx";
+import StudentPortalOverview from "@/components/students/StudentPortalOverview.jsx";
 import SettingsPage from "@/components/settings/SettingsPage.jsx";
 import AccountSettings from "@/components/settings/AccountSettings.jsx";
 import SecuritySettings from "@/components/settings/SecuritySettings.jsx";
@@ -75,7 +77,7 @@ function Students() {
     filteredStudents,
     statistics,
     classStatistics,
-  } = useStudents(search);
+  } = useStudents(search, isAdmin);
 
   // =====================================================
   // PAGINATION
@@ -167,6 +169,10 @@ function Students() {
   // =====================================================
 
   const handleSearchChange = (value) => {
+    if (isAdmin && value.trim()) {
+      setActivePage("students");
+    }
+
     const params = new URLSearchParams(searchParams);
 
     if (value.trim()) {
@@ -249,7 +255,11 @@ function Students() {
   // PAGE / SETTINGS STATE
   // =====================================================
 
-  const [activePage, setActivePage] = useState(() => searchParams.get("view") === "settings" ? "settings" : "dashboard");
+  const [activePage, setActivePage] = useState(() => {
+    if (searchParams.get("view") === "settings") return "settings";
+    if (isAdmin && searchParams.has("search")) return "students";
+    return "dashboard";
+  });
 
   const {
     settingsTab,
@@ -483,6 +493,7 @@ function Students() {
           user={user}
           search={search}
           onSearchChange={handleSearchChange}
+          showSearch={isAdmin}
           darkMode={darkMode}
           onToggleDarkMode={() =>
             setDarkMode(
@@ -509,7 +520,26 @@ function Students() {
               DASHBOARD
           ================================================= */}
 
-          {(activePage === "dashboard" || activePage === "students") && (
+          {activePage === "dashboard" && isAdmin && (
+            <AdminOverview
+              user={user}
+              statistics={statistics}
+              classStatistics={classStatistics}
+              students={students}
+              onOpenStudents={() => setActivePage("students")}
+            />
+          )}
+
+          {activePage === "dashboard" && !isAdmin && (
+            <StudentPortalOverview
+              user={user}
+              onOpenChat={() => navigate("/chat")}
+              onOpenSettings={() => openSettings("account")}
+              onOpenCalls={() => navigate("/chat?calls=1")}
+            />
+          )}
+
+          {activePage === "students" && isAdmin && (
             <StudentDashboard
               user={user}
               isAdmin={isAdmin}

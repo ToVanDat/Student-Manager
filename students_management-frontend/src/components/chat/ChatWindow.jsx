@@ -20,12 +20,20 @@ import {
     UserRound,
     FolderOpen,
     Mic,
-    Square
+    Square,
+    Image as ImageIcon,
+    FileVideo2,
+    Check,
+    FileImage,
+    PanelRight,
+    Mail,
+    Download,
+    FileText
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'sonner';
 
-import MessageBubble from './MessageBubble';
+import MessageBubble, { MessageMediaPreview } from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
 
@@ -90,6 +98,7 @@ export default function ChatWindow({
     const [showReportDialog, setShowReportDialog] = useState(false);
     const [showContactInfo, setShowContactInfo] = useState(false);
     const [showMediaPanel, setShowMediaPanel] = useState(false);
+    const [mediaPanelFilter, setMediaPanelFilter] = useState('all');
     const [reportReason, setReportReason] = useState('spam');
     const [showSearchPanel, setShowSearchPanel] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -111,6 +120,20 @@ export default function ChatWindow({
     const [recordingSeconds, setRecordingSeconds] = useState(0);
     const recordingSecondsRef = useRef(0);
     const recordingTimerRef = useRef(null);
+    const [pendingAttachment, setPendingAttachment] = useState(null);
+    const [attachmentQuality, setAttachmentQuality] = useState('standard');
+    const [attachmentPreviewUrl, setAttachmentPreviewUrl] = useState('');
+    const [showDetailsPanel, setShowDetailsPanel] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1280);
+
+    useEffect(() => {
+        if (!pendingAttachment) {
+            setAttachmentPreviewUrl('');
+            return undefined;
+        }
+        const objectUrl = URL.createObjectURL(pendingAttachment);
+        setAttachmentPreviewUrl(objectUrl);
+        return () => URL.revokeObjectURL(objectUrl);
+    }, [pendingAttachment]);
 
     const formatLastSeen = (value) => {
         if (!value) return 'Ngoại tuyến';
@@ -139,6 +162,14 @@ export default function ChatWindow({
     const presenceLabel = isDirectOnline
         ? 'Đang hoạt động'
         : formatLastSeen(activeConversation?.lastSeenAt);
+    const sharedFiles = (messages || []).flatMap(message => (message.files || []).map(file => ({ ...file, messageId: message.id })));
+    const filteredSharedFiles = sharedFiles.filter(file => {
+        const mimeType = String(file.mime_type || '');
+        if (mediaPanelFilter === 'image') return mimeType.startsWith('image/');
+        if (mediaPanelFilter === 'video') return mimeType.startsWith('video/');
+        if (mediaPanelFilter === 'file') return !mimeType.startsWith('image/') && !mimeType.startsWith('video/');
+        return true;
+    });
 
     const [isDarkMode, setIsDarkMode] = useState(
         document.documentElement.classList.contains('dark')
@@ -437,11 +468,36 @@ export default function ChatWindow({
 
         if (!file || !onSendAttachment) return;
 
+        const canChooseImageQuality = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
+        const canChooseVideoQuality = ['video/mp4', 'video/webm'].includes(file.type);
+        if (canChooseImageQuality || canChooseVideoQuality) {
+            setPendingAttachment(file);
+            setAttachmentQuality(canChooseVideoQuality ? '720p' : 'standard');
+            return;
+        }
+
         try {
             setIsUploading(true);
-            await onSendAttachment(file);
+            await onSendAttachment(file, 'standard');
         } catch (error) {
             console.error('Lỗi gửi file:', error);
+            toast.error(error?.response?.data?.message || 'Không gửi được tệp. Vui lòng thử lại.');
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const confirmAttachmentSend = async () => {
+        if (!pendingAttachment || isUploading) return;
+        const file = pendingAttachment;
+        const quality = attachmentQuality;
+        setPendingAttachment(null);
+        try {
+            setIsUploading(true);
+            await onSendAttachment(file, quality);
+        } catch (error) {
+            console.error('Lỗi gửi media:', error);
+            toast.error(error?.response?.data?.message || 'Không gửi được media. Vui lòng thử lại.');
         } finally {
             setIsUploading(false);
         }
@@ -548,7 +604,102 @@ export default function ChatWindow({
     }, []);
 
     return (
-        <section className="relative flex-1 min-w-0 flex flex-col bg-white dark:bg-slate-900">
+    <section className="relative flex flex-1 min-w-0 bg-white dark:bg-slate-900">
+        <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900">
+
+            {pendingAttachment && (
+                <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
+                    <div className="flex max-h-[94vh] w-full max-w-[900px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:px-7">
+                            <div className="flex items-center gap-3">
+                                <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                                    {pendingAttachment.type.startsWith('video/') ? <FileVideo2 size={22} /> : <ImageIcon size={22} />}
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-900 dark:text-white sm:text-lg">
+                                        Gửi {pendingAttachment.type.startsWith('video/') ? 'video' : 'ảnh'} – Chọn chất lượng
+                                    </h2>
+                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Xem trước và chọn chất lượng phù hợp trước khi gửi.</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={() => setPendingAttachment(null)} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800" aria-label="Đóng xem trước"><X size={20} /></button>
+                        </div>
+
+                        <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-5 sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
+                            <div className="min-w-0">
+                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                    <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">1</span>
+                                    Xem trước
+                                </div>
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-950">
+                                    {attachmentPreviewUrl && (pendingAttachment.type.startsWith('video/') ? (
+                                        <video src={attachmentPreviewUrl} controls className="max-h-[320px] w-full bg-black object-contain" />
+                                    ) : (
+                                        <img src={attachmentPreviewUrl} alt="Xem trước tệp sẽ gửi" className="max-h-[320px] w-full object-contain" />
+                                    ))}
+                                    <div className="flex min-w-0 items-center gap-3 border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+                                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-300">
+                                            {pendingAttachment.type.startsWith('video/') ? <FileVideo2 size={18} /> : <FileImage size={18} />}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{pendingAttachment.name}</p>
+                                            <p className="mt-0.5 text-[11px] text-slate-500">{(pendingAttachment.size / (1024 * 1024)).toFixed(2)} MB · {pendingAttachment.type || 'Media'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="min-w-0">
+                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                    <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">2</span>
+                                    Chọn chất lượng
+                                </div>
+                                <div className="space-y-2">
+                                    {(pendingAttachment.type.startsWith('video/') ? [
+                                        { value: '480p', title: 'Tiết kiệm dung lượng · 480p', body: 'Phù hợp khi mạng yếu hoặc muốn gửi nhanh.', ratio: 0.3 },
+                                        { value: '720p', title: 'Tiêu chuẩn · 720p', body: 'Cân bằng giữa độ rõ và dung lượng.', ratio: 0.55 },
+                                        { value: '1080p', title: 'Chất lượng cao · 1080p', body: 'Giữ hình ảnh rõ hơn, tệp sẽ lớn hơn.', ratio: 0.78 },
+                                        { value: 'original', title: 'Video gốc', body: 'Gửi nguyên tệp, không chuyển mã.', ratio: 1 }
+                                    ] : [
+                                        { value: 'standard', title: 'Tiêu chuẩn', body: 'Tự tối ưu kích thước và dung lượng.', ratio: 0.55 },
+                                        { value: 'hd', title: 'HD · Chất lượng cao', body: 'Giữ độ phân giải cao, ưu tiên độ rõ.', ratio: 0.82 },
+                                        { value: 'original', title: 'Ảnh gốc', body: 'Gửi nguyên tệp, không nén ảnh.', ratio: 1 }
+                                    ]).map(option => (
+                                        <button
+                                            type="button"
+                                            key={option.value}
+                                            aria-pressed={attachmentQuality === option.value}
+                                            onClick={() => setAttachmentQuality(option.value)}
+                                            className={`flex w-full items-start gap-3 rounded-2xl border p-3.5 text-left transition ${attachmentQuality === option.value ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-100 dark:border-blue-400 dark:bg-blue-950/30 dark:ring-blue-900/40' : 'border-slate-200 hover:border-blue-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'}`}
+                                        >
+                                            <span className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border ${attachmentQuality === option.value ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-300 dark:border-slate-600'}`}>
+                                                {attachmentQuality === option.value && <Check size={12} strokeWidth={3} />}
+                                            </span>
+                                            <span className="min-w-0 flex-1">
+                                                <span className="flex flex-wrap items-center justify-between gap-1 text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                                    <span>{option.title}</span>
+                                                    <span className="text-[10px] font-medium text-slate-400">≈ {(pendingAttachment.size * option.ratio / (1024 * 1024)).toFixed(1)} MB</span>
+                                                </span>
+                                                <span className="mt-1 block text-[11px] leading-4 text-slate-500 dark:text-slate-400">{option.body}</span>
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                    Dung lượng hiển thị là ước tính. Chất lượng ảnh/video được xử lý trên server khi gửi; nếu bộ mã hóa không khả dụng, server sẽ giữ tệp gốc.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:justify-between sm:px-7">
+                            <button type="button" onClick={() => { setPendingAttachment(null); fileInputRef.current?.click(); }} className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Chọn tệp khác</button>
+                            <button type="button" onClick={confirmAttachmentSend} disabled={isUploading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+                                {isUploading ? 'Đang gửi…' : `Gửi ${pendingAttachment.type.startsWith('video/') ? 'video' : 'ảnh'}`}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ================= HEADER ================= */}
 
@@ -632,6 +783,17 @@ export default function ChatWindow({
                             </button>
                         </>
                     )}
+
+                    <button
+                        type="button"
+                        onClick={() => setShowDetailsPanel(value => !value)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showDetailsPanel ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                        aria-label={showDetailsPanel ? 'Ẩn thông tin cuộc trò chuyện' : 'Hiện thông tin cuộc trò chuyện'}
+                        aria-expanded={showDetailsPanel}
+                        title="Thông tin cuộc trò chuyện"
+                    >
+                        <PanelRight size={18} />
+                    </button>
 
                     <div className="relative" ref={moreMenuRef}>
                         <button
@@ -806,17 +968,27 @@ export default function ChatWindow({
                             <h4 className="font-bold text-slate-900 dark:text-slate-100">File & Media</h4>
                             <button type="button" onClick={() => setShowMediaPanel(false)}><X size={18}/></button>
                         </div>
-                        <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
-                            {messages.flatMap(message => (message.files || []).map(file => ({ file, message }))).length === 0 ? (
+                        <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
+                            {[
+                                ['all', 'Tất cả'],
+                                ['image', 'Ảnh'],
+                                ['video', 'Video'],
+                                ['file', 'Tài liệu']
+                            ].map(([key, label]) => <button key={key} type="button" onClick={() => setMediaPanelFilter(key)} className={`flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold transition ${mediaPanelFilter === key ? 'bg-white text-blue-700 shadow-sm dark:bg-slate-700 dark:text-blue-300' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>{label}</button>)}
+                        </div>
+                        <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
+                            {filteredSharedFiles.length === 0 ? (
                                 <p className="py-10 text-center text-sm text-slate-400">Chưa có file hoặc media nào.</p>
                             ) : (
-                                messages.flatMap(message => (message.files || []).map(file => ({ file, message }))).map(({ file }) => (
-                                    <button type="button" key={file.id} onClick={() => onDownloadFile?.(file)} className="flex w-full items-center gap-3 rounded-xl border border-slate-100 px-3 py-2 text-left hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800">
-                                        <FolderOpen size={18} className="text-blue-500"/>
-                                        <span className="min-w-0 flex-1 truncate text-sm">{file.file_name}</span>
-                                        <span className="text-xs text-slate-400">Tải</span>
-                                    </button>
-                                ))
+                                filteredSharedFiles.map(file => {
+                                    const image = String(file.mime_type || '').startsWith('image/');
+                                    const video = String(file.mime_type || '').startsWith('video/');
+                                    return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 px-3 py-2 dark:border-slate-800">
+                                        {image || video ? <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} compact /> : <FolderOpen size={18} className="shrink-0 text-blue-500" />}
+                                        <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium text-slate-800 dark:text-slate-100">{file.file_name}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
+                                        {!image && !video && <button type="button" onClick={() => onDownloadFile?.(file)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Tải</button>}
+                                    </div>;
+                                })
                             )}
                         </div>
                     </div>
@@ -1117,13 +1289,74 @@ export default function ChatWindow({
                 <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="w-12 h-12 flex items-center justify-center bg-[#4b63f5] hover:bg-[#3f56e8] disabled:opacity-50 text-white rounded-full shadow-sm"
+                    className="flex size-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
                     title="Gửi tin nhắn"
                 >
                     <Send size={18} />
                 </button>
 
             </form>
+        </div>
+
+        {showDetailsPanel && (
+            <aside className="absolute inset-y-0 right-0 z-[80] flex w-[min(360px,88vw)] min-w-0 shrink-0 flex-col border-l border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900 xl:static xl:z-auto xl:w-[280px] xl:shadow-none 2xl:w-[300px]">
+                <div className="flex h-[76px] items-center justify-between border-b border-slate-100 px-5 dark:border-slate-800">
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Thông tin</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? 'Cuộc trò chuyện nhóm' : 'Hồ sơ liên hệ'}</p></div>
+                    <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 xl:hidden" aria-label="Đóng bảng thông tin"><X size={18} /></button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                    <div className="flex flex-col items-center border-b border-slate-100 px-5 py-6 text-center dark:border-slate-800">
+                        <AvatarFallback name={activeConversation.name} src={activeConversation.avatar} size="xl" showStatus={activeConversation.type !== 'group'} isOnline={isDirectOnline} />
+                        <h4 className="mt-3 max-w-full truncate text-base font-bold text-slate-900 dark:text-white">{activeConversation.name}</h4>
+                        <p className={`mt-1 text-xs ${isDirectOnline ? 'text-emerald-600' : 'text-slate-500 dark:text-slate-400'}`}>{activeConversation.type === 'group' ? `${activeConversation.memberCount || conversationMembers.length} thành viên` : presenceLabel}</p>
+                        <div className="mt-4 flex items-center gap-2">
+                            {activeConversation.type !== 'group' && <>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversation.avatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:bg-slate-800 dark:text-blue-300" title="Gọi thoại"><Phone size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversation.avatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50 dark:bg-slate-800 dark:text-blue-300" title="Gọi video"><Video size={17} /></button>
+                            </>}
+                            <button type="button" onClick={() => { positionSearchPanel(); setShowSearchPanel(true); }} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300" title="Tìm tin nhắn"><Search size={17} /></button>
+                            {activeConversation.type === 'group' && <button type="button" onClick={() => setShowGroupInfo(true)} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100 dark:bg-slate-800 dark:text-slate-300" title="Quản lý nhóm"><MoreVertical size={17} /></button>}
+                        </div>
+                    </div>
+
+                    {activeConversation.type === 'direct' ? (
+                        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wide text-slate-500">Thông tin cá nhân</h5>
+                            <div className="space-y-3">
+                                <div className="flex items-start gap-2.5 text-xs"><UserRound size={15} className="mt-0.5 shrink-0 text-slate-400" /><span className="min-w-0"><span className="block text-[10px] text-slate-400">Tài khoản</span><span className="break-all font-medium text-slate-700 dark:text-slate-200">{activeConversation.name || '—'}</span></span></div>
+                                <div className="flex items-start gap-2.5 text-xs"><Mail size={15} className="mt-0.5 shrink-0 text-slate-400" /><span className="min-w-0"><span className="block text-[10px] text-slate-400">Email</span><span className="break-all font-medium text-slate-700 dark:text-slate-200">{activeConversation.email || 'Chưa cập nhật'}</span></span></div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                            <div className="mb-3 flex items-center justify-between"><h5 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Thành viên</h5><span className="text-[10px] text-slate-400">{conversationMembers.length}</span></div>
+                            <div className="space-y-3">
+                                {conversationMembers.slice(0, 6).map(member => <div key={member.user_id} className="flex min-w-0 items-center gap-2.5"><AvatarFallback name={member.username || member.name} src={member.avatar_url || member.avatar} size="sm" showStatus isOnline={onlineUserIds.has(Number(member.user_id))} /><span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-200">{member.username || member.name || 'Thành viên'}</span>{member.role === 'owner' && <span className="text-[9px] font-semibold text-blue-600">Trưởng nhóm</span>}</div>)}
+                                {conversationMembers.length === 0 && <p className="text-xs text-slate-400">Chưa tải được danh sách thành viên.</p>}
+                                {conversationMembers.length > 6 && <button type="button" onClick={() => setShowGroupInfo(true)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Xem tất cả thành viên</button>}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="px-5 py-4">
+                        <div className="mb-3 flex items-center justify-between"><h5 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Tệp đã chia sẻ</h5><button type="button" onClick={() => setShowMediaPanel(true)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">Xem tất cả</button></div>
+                        {sharedFiles.length ? (
+                            <div className="space-y-2">
+                                {sharedFiles.slice(-6).reverse().map(file => {
+                                    const image = String(file.mime_type || '').startsWith('image/');
+                                    const video = String(file.mime_type || '').startsWith('video/');
+                                    return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 p-2 dark:border-slate-800">
+                                        {image || video ? <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} compact /> : <button type="button" onClick={() => onDownloadFile?.(file)} className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-blue-600 hover:bg-blue-50 dark:bg-slate-800 dark:text-blue-300"><FileText size={17} /></button>}
+                                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-slate-700 dark:text-slate-200">{file.file_name || 'Tệp đính kèm'}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
+                                        {!image && !video && <button type="button" onClick={() => onDownloadFile?.(file)} aria-label="Tải xuống" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><Download size={14} /></button>}
+                                    </div>;
+                                })}
+                            </div>
+                        ) : <p className="rounded-xl bg-slate-50 px-3 py-5 text-center text-[11px] text-slate-400 dark:bg-slate-800">Chưa có tệp được chia sẻ.</p>}
+                    </div>
+                </div>
+            </aside>
+        )}
 
         </section>
     );
