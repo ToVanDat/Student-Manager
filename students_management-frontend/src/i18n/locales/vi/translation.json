@@ -163,5 +163,7 @@
   "alreadyHaveAccount": "Đã có tài khoản?",
   "registerNow": "Đăng ký ngay",
   "backToLogin": "Quay lại đăng nhập",
-  "confirmPasswordLabel": "Xác nhận mật khẩu"
+  "confirmPasswordLabel": "Xác nhận mật khẩu",
+  "enterEmail": "Vui lòng nhập email",
+  "confirmPasswordRequired": "Vui lòng xác nhận mật khẩu"
 }
