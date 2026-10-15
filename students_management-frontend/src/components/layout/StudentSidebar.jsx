@@ -3,14 +3,12 @@ import {
     BarChart3,
     BookOpen,
     CalendarDays,
-    ChevronRight,
     ClipboardList,
     GraduationCap,
     Home,
     Layers,
     MessageSquare, // Import icon Tin nhắn
     Settings,
-    Sparkles,
     Users,
     ShieldCheck,
     UserCog,
@@ -46,7 +44,7 @@ function StudentSidebar({
                 <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}`}>TỔNG QUAN</div>
                     <button
-                        title={collapsed ? 'Trang chủ' : undefined}
+                        title="Trang chủ"
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
@@ -54,7 +52,7 @@ function StudentSidebar({
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>Trang chủ</span>
                     </button>
                     <button
-                        title={collapsed ? 'Sinh viên' : undefined}
+                        title="Sinh viên"
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('students')}
                     >
@@ -73,7 +71,7 @@ function StudentSidebar({
                                 { key: 'semesters', label: 'Học kỳ', icon: CalendarDays },
                                 { key: 'results', label: 'Kết quả học tập', icon: ChartNoAxesColumn },
                             ].map(({ key, label, icon: Icon }) => (
-                                <button key={key} type="button" onClick={() => onNavigate(key)}
+                                <button key={key} type="button" title={label} aria-label={label} onClick={() => onNavigate(key)}
                                     className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
@@ -94,7 +92,7 @@ function StudentSidebar({
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
                     <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}`}>LIÊN LẠC</div>
                     <button
-                        title={collapsed ? 'Tin nhắn' : undefined}
+                        title="Tin nhắn"
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#dbeafe] text-[#1d4ed8] font-semibold shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('chat')}
                     >
@@ -108,7 +106,7 @@ function StudentSidebar({
                     </button>
 
                     <button
-                        title={collapsed ? 'Cài đặt' : undefined}
+                        title="Cài đặt"
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'settings' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={onOpenSettings}
                     >
@@ -116,18 +114,6 @@ function StudentSidebar({
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>Cài đặt</span>
                     </button>
                 </nav>
-
-                <div className={`relative mt-auto mb-4 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-linear-to-br from-white to-slate-50 p-4 shadow-md shadow-slate-900/5 ${collapsed ? 'min-[801px]:hidden' : ''}`}>
-                    <div className="relative z-10">
-                        <span className="text-[9px] font-bold tracking-widest text-cyan-300">HỌC TẬP</span>
-                        <h3 className="my-2 text-xs leading-relaxed font-semibold">Học tập là hành trình không có điểm dừng</h3>
-                        <button className="flex items-center gap-1 border-0 bg-transparent p-0 text-[10px] font-semibold text-blue-700 transition-colors hover:text-blue-900">
-                            Khám phá
-                            <ChevronRight size={15} />
-                        </button>
-                    </div>
-                    <Sparkles className="absolute -right-3 -bottom-3 text-white/10" size={64} />
-                </div>
 
                 <div className={`flex shrink-0 items-center gap-3 border-t border-slate-200 px-1 pt-4 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
                     {user?.avatar_url || user?.avatar ? (
