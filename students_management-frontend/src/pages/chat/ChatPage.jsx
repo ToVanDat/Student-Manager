@@ -13,9 +13,11 @@ import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function ChatPage() {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const { user, logoutUser, webRTCCall } = useAuth();
     const [callCenterOpen, setCallCenterOpen] = useState(() => new URLSearchParams(window.location.search).get('calls') === '1');
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -329,8 +331,8 @@ export default function ChatPage() {
                             </div>
                             <div className={`mb-2 px-2 ${chatNavCollapsed ? "text-center" : ""}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500 dark:text-slate-400">MENU</p>}</div>
                             <nav className="space-y-1">
-                                <button type="button" title="Tổng quan" aria-label="Tổng quan" onClick={() => navigate('/students')} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8] ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Home size={17} />{!chatNavCollapsed && "Tổng quan"}</button>
-                                <button type="button" title={`Trò chuyện${totalUnreadMessages ? ` — ${totalUnreadMessages} tin chưa đọc` : ""}`} aria-label={`Trò chuyện${totalUnreadMessages ? `, ${totalUnreadMessages} tin chưa đọc` : ""}`} aria-current="page" className={`relative flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><MessageSquare size={17} />{!chatNavCollapsed && "Trò chuyện"}{totalUnreadMessages > 0 && <span className={`absolute rounded-full bg-rose-500 text-center text-[9px] font-bold leading-4 text-white ${chatNavCollapsed ? "right-0 top-0 min-w-4 px-1" : "right-2 min-w-5 px-1"}`}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</span>}</button>
+                                <button type="button" title={t("overviewNav")} aria-label={t("overviewNav")} onClick={() => navigate('/students')} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8] ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Home size={17} />{!chatNavCollapsed && t("overviewNav")}</button>
+                                <button type="button" title={`${t("chat")}${totalUnreadMessages ? ` — ${totalUnreadMessages} ${t("unread")}` : ""}`} aria-label={`${t("chat")}${totalUnreadMessages ? `, ${totalUnreadMessages} ${t("unread")}` : ""}`} aria-current="page" className={`relative flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><MessageSquare size={17} />{!chatNavCollapsed && t("chat")}{totalUnreadMessages > 0 && <span className={`absolute rounded-full bg-rose-500 text-center text-[9px] font-bold leading-4 text-white ${chatNavCollapsed ? "right-0 top-0 min-w-4 px-1" : "right-2 min-w-5 px-1"}`}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</span>}</button>
                             </nav>
                             <div className="mt-auto border-t border-[#e3eaf4] dark:border-slate-700 pt-3">
                                 <div className={`flex min-w-0 items-center gap-2 px-2 pt-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`} title={user?.username || "Người dùng"}><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" />{!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800 dark:text-slate-100">{user?.username || "Người dùng"}</strong><small className="text-[9px] text-slate-400">{user?.role === "admin" ? "Quản trị viên" : "Sinh viên"}</small></span>}</div>
