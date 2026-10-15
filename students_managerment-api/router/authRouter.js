@@ -14,6 +14,7 @@ const authRateLimiter =
 const requireRole = require('../middleware/roleMiddleware.js');
 const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
 const avatarController = require('../controller/avatarController');
+const userPreferencesController = require('../controller/userPreferencesController.js');
 
 // REGISTER
 router.post('/register', authRateLimiter, authController.register);
@@ -23,6 +24,10 @@ router.post('/login', authRateLimiter, authController.login);
 
 // REFRESH
 router.post('/refresh', authRateLimiter, authController.refresh);
+
+// Account-level UI preferences (shared across devices)
+router.get('/preferences', authMiddleware, userPreferencesController.getPreferences);
+router.patch('/preferences', authMiddleware, userPreferencesController.updatePreferences);
 
 // GET CURRENT USER
 router.get('/me', authMiddleware, authController.getMe);
