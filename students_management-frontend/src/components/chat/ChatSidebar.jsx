@@ -104,14 +104,14 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] dark:border-slate-700 bg-[#f4f8fd] dark:bg-slate-950 p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
+        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f4f8fd] p-3 text-slate-800 sm:p-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-slate-100">{t('chat')}</h2>
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
-                        className="flex size-9 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#60708a] dark:text-slate-400 ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:text-blue-300"
+                        className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                         title={t("createGroup")}
                         aria-label={t("createGroup")}
                         type="button"
@@ -144,7 +144,7 @@ export default function ChatSidebar({
                             </h3>
                             <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{mode === 'group' ? t('setGroupNameAndMembers') : t('findUserToChat')}</p>
                         </div>
-                        <button type="button" aria-label={t("close")} title={t("close")} onClick={closeNewChat} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 hover:text-slate-900"><X size={18} /></button>
+                        <button type="button" aria-label={t("close")} title={t("close")} onClick={closeNewChat} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"><X size={18} /></button>
                     </div>
                     <div className="space-y-3 overflow-y-auto px-5 py-4 sm:px-6">
 
@@ -154,7 +154,7 @@ export default function ChatSidebar({
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder={t("groupNamePlaceholder")}
-                            className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                            className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                         />
                     )}
 
@@ -163,19 +163,19 @@ export default function ChatSidebar({
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder={mode === 'group' ? t('findSelectMembers') : t('findUsernameEmail')}
-                        className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                        className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                     />
 
                     {mode === 'group' && selectedIds.length > 0 && (
                         <p className="text-xs text-blue-500 mt-2">{t('selectedMembers')} {selectedIds.length} {t('user')}</p>
                     )}
                     {newChatError && (
-                        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-300">
                             {newChatError}
                         </p>
                     )}
 
-                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800 p-1">
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
                         {searchResults.map(user => {
                             const selected = selectedIds.includes(Number(user.id));
                             return (
@@ -200,7 +200,7 @@ export default function ChatSidebar({
                             );
                         })}
                         {userSearch && searchResults.length === 0 && (
-                            <p className="text-xs text-slate-400 text-center py-3">{t('noUsersFound')}</p>
+                            <p className="py-3 text-center text-xs text-slate-400 dark:text-slate-500">{t('noUsersFound')}</p>
                         )}
                     </div>
 
