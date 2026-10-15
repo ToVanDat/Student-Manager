@@ -251,6 +251,40 @@ const updateUser = (partialUser) => {
         const handleSessionRevoked = (data) => {
             console.log('[SOCKET][session revoked]', data);
 
+            // A login in this same tab intentionally replaces its previous
+            // session. Do not let the old socket event clear the new login.
+            if (sessionStorage.getItem('auth:login-in-progress') === 'true') {
+                return;
+            }
+
+            // Ignore delayed revoke events for a session that is no longer
+            // the one represented by the currently stored access token.
+            const currentToken = localStorage.getItem('accessToken');
+            let currentSessionId = null;
+            try {
+                const payload = currentToken?.split('.')?.[1];
+                if (payload) {
+                    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+                    currentSessionId = JSON.parse(
+                        decodeURIComponent(
+                            atob(normalized).split('').map(char =>
+                                '%' + char.charCodeAt(0).toString(16).padStart(2, '0')
+                            ).join('')
+                        )
+                    )?.sessionId;
+                }
+            } catch {
+                currentSessionId = null;
+            }
+
+            if (
+                data?.sessionId != null &&
+                currentSessionId != null &&
+                String(data.sessionId) !== String(currentSessionId)
+            ) {
+                return;
+            }
+
             alert(
                 'Phiên đăng nhập của bạn đã kết thúc. ' +
                 'Tài khoản vừa được đăng nhập trên một thiết bị khác.'
@@ -258,6 +292,7 @@ const updateUser = (partialUser) => {
 
             localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
+            setApiAccessToken(null);
             setAccessToken(null);
             setUser(null);
             socket.disconnect();
