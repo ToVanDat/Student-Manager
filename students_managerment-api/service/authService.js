@@ -161,7 +161,7 @@ const emitSessionRevoked = (
     try {
 
         const { emitSessionRevoked: revokeSocketSession } =
-            require('../socket/socket');
+            require('../src/socket/socket.js');
 
         revokeSocketSession(sessionId, reason);
 
