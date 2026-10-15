@@ -247,6 +247,10 @@ export default function ChatPage() {
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
     );
+    const totalUnreadMessages = conversations.reduce(
+        (total, conversation) => total + Math.max(0, Number(conversation.unreadCount) || 0),
+        0
+    );
 
     return (
         <div className="min-h-screen bg-[#f5f8ff] font-sans text-[#203754]">
@@ -327,11 +331,11 @@ export default function ChatPage() {
                             <div className={`mb-2 flex ${chatNavCollapsed ? "justify-center" : "justify-between px-2"}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>}<button type="button" onClick={() => setChatNavCollapsed(value => !value)} title={chatNavCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} aria-label={chatNavCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-100 hover:text-blue-700">{chatNavCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}</button></div>
                             <nav className="space-y-1">
                                 <button type="button" title="Tổng quan" aria-label="Tổng quan" onClick={() => navigate('/students')} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8] ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Home size={17} />{!chatNavCollapsed && "Tổng quan"}</button>
-                                <button type="button" title="Trò chuyện" aria-label="Trò chuyện" aria-current="page" className={`flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><MessageSquare size={17} />{!chatNavCollapsed && "Trò chuyện"}</button>
+                                <button type="button" title={`Trò chuyện${totalUnreadMessages ? ` — ${totalUnreadMessages} tin chưa đọc` : ""}`} aria-label={`Trò chuyện${totalUnreadMessages ? `, ${totalUnreadMessages} tin chưa đọc` : ""}`} aria-current="page" className={`relative flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><MessageSquare size={17} />{!chatNavCollapsed && "Trò chuyện"}{totalUnreadMessages > 0 && <span className={`absolute rounded-full bg-rose-500 text-center text-[9px] font-bold leading-4 text-white ${chatNavCollapsed ? "right-0 top-0 min-w-4 px-1" : "right-2 min-w-5 px-1"}`}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</span>}</button>
                                 <button type="button" title="Tạo nhóm" aria-label="Tạo nhóm" onClick={() => document.querySelector('[data-create-group]')?.click()} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Users size={17} />{!chatNavCollapsed && "Nhóm"}</button>
                             </nav>
                             <div className="mt-auto border-t border-[#e3eaf4] pt-3">
-                                <div className={`mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4 ${chatNavCollapsed ? "justify-center px-0" : ""}`} title={user?.username || "Người dùng"}><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" />{!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || "Người dùng"}</strong><small className="text-[9px] text-slate-400">{user?.role === "admin" ? "Quản trị viên" : "Sinh viên"}</small></span>}</div>
+                                <div className={`flex min-w-0 items-center gap-2 px-2 pt-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`} title={user?.username || "Người dùng"}><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" />{!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || "Người dùng"}</strong><small className="text-[9px] text-slate-400">{user?.role === "admin" ? "Quản trị viên" : "Sinh viên"}</small></span>}</div>
                             </div>
                         </aside>
                         <ChatSidebar
