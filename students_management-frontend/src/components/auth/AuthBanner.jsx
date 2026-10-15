@@ -34,7 +34,14 @@ function AuthBanner() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
-    const banner = banners[currentIndex];
+    const localizedBanners = language === 'en'
+        ? [
+            { id: 'campus', badge: 'STUDENT MANAGEMENT SYSTEM', title: 'Student Management', description: 'Manage student profiles and academic records in one place.' },
+            { id: 'academic', badge: 'ACADEMIC MANAGEMENT', title: 'Academic administration', description: 'Manage classes, subjects, semesters, and academic information centrally.' },
+            { id: 'community', badge: 'STUDENT SERVICES', title: 'Connect students', description: 'Organize student information quickly, accurately, and efficiently.' },
+        ]
+        : banners;
+    const banner = localizedBanners[currentIndex];
 
     useEffect(() => {
         const timer = setInterval(() => {
