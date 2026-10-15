@@ -87,7 +87,7 @@ function StudentDashboard({
                                 {filteredStudents.length !== students.length && ` (${t('total')}: ${students.length} ${t('totalStudentsSuffix')})`}
                             </span>
                             <label className="flex items-center gap-1.5">
-                                <span{t('rows')}</span>
+                                <span>{t('rows')}</span>
                                 <select
                                     className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                     value={pageSize}
