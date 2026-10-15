@@ -11,7 +11,6 @@ import {
 } from '@/api/client.js';
 import socket from '@/socket/socket.js';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
-import CallPanel from '@/components/call/CallPanel.jsx';
 
 const AuthContext = createContext(null);
 
@@ -403,12 +402,6 @@ const updateUser = (partialUser) => {
         >
             {children}
 
-            {accessToken && (
-                <CallPanel
-                    {...webRTCCall}
-                    targetUsername={webRTCCall.call?.remoteUsername || 'User'}
-                />
-            )}
         </AuthContext.Provider>
     );
 };
