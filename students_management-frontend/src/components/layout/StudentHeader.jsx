@@ -22,6 +22,7 @@ function StudentHeader({
     user,
     search,
     onSearchChange,
+    showSearch = true,
     darkMode,
     onToggleDarkMode,
     onOpenSettings,
@@ -133,16 +134,15 @@ function StudentHeader({
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
                 />
-            </div>
+            </div>}
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
                 <div className="relative">
                     <button type="button" onClick={() => setLanguageMenuOpen(open => !open)} className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#71829b] transition hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300" aria-label={t('quickLanguage')} title={t('quickLanguage')} aria-expanded={languageMenuOpen}>
-                        <Languages size={18} /><span>{language.toUpperCase()}</span>
+                        <Languages size={18} /><span aria-hidden="true">{language === "vi" ? "🇻🇳" : "🇬🇧"}</span><span>{language.toUpperCase()}</span>
                     </button>
                     {languageMenuOpen && <div className="absolute right-0 top-[44px] z-50 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900" role="menu" aria-label={t('language')}>
-                        {[{ value: 'vi', label: t('vietnamese') }, { value: 'en', label: t('english') }].map(option => <button key={option.value} type="button" role="menuitemradio" aria-checked={language === option.value} onClick={() => { setLanguage(option.value); setLanguageMenuOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${language === option.value ? 'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}><span>{option.label}</span><span>{language === option.value ? '✓' : ''}</span></button>)}
-                        <button type="button" onClick={() => { setLanguageMenuOpen(false); onOpenSettings('language'); }} className="mt-1 w-full border-t border-slate-100 px-3 py-2 text-left text-xs text-blue-600 hover:bg-blue-50 dark:border-slate-800 dark:text-blue-300 dark:hover:bg-slate-800">{t('language')} · {t('settingsTitle')}</button>
+                        {[{ value: 'vi', label: t('vietnamese'), flag: '🇻🇳' }, { value: 'en', label: t('english'), flag: '🇬🇧' }].map(option => <button key={option.value} type="button" role="menuitemradio" aria-checked={language === option.value} onClick={() => { setLanguage(option.value); setLanguageMenuOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${language === option.value ? 'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}><span className="flex items-center gap-2"><span aria-hidden="true">{option.flag}</span>{option.label}</span><span>{language === option.value ? '✓' : ''}</span></button>)}
                     </div>}
                 </div>
                 <button
