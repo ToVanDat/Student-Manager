@@ -1,4 +1,5 @@
 import { Bell, KeyRound, LogOut, Monitor, ShieldCheck, UserRound } from 'lucide-react';
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 
 const ITEMS = [
     { id: 'account', label: 'Thông tin tài khoản', Icon: UserRound },
@@ -8,12 +9,12 @@ const ITEMS = [
     { id: 'password', label: 'Đổi mật khẩu', Icon: KeyRound },
 ];
 
-export default function GlobalMoreMenu({ user, onSelectSettings, onLogout, compact = false }) {
+export default function GlobalMoreMenu({ user, onSelectSettings, onLogout }) {
     return (
-        <div role="menu" aria-label="Menu toàn website" className={`absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl ${compact ? '' : ''}`}>
+        <div role="menu" aria-label="Menu toàn website" className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
             <div className="flex items-center gap-3 px-3 py-3">
                 {user?.avatar_url || user?.avatarUrl || user?.avatar ? (
-                    <img src={user.avatar_url || user.avatarUrl || user.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+                    <img src={resolveMediaUrl(user.avatar_url || user.avatarUrl || user.avatar)} alt="" className="size-10 shrink-0 rounded-full object-cover" />
                 ) : (
                     <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                 )}
