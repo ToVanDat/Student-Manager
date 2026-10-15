@@ -380,7 +380,7 @@
   "saveChanges": "Lưu thay đổi",
   "lightThemeDescription": "Giao diện sáng mặc định",
   "darkThemeDescription": "Giảm độ sáng khi sử dụng ban đêm",
-  "chooseAppearanceDescription": "Chọn giao diện cho ứng dụng. Lựa chọn được lưu trên trình duyệt này.",
+  "chooseAppearanceDescription": "Chọn giao diện cho ứng dụng. Lựa chọn được lưu vào tài khoản và đồng bộ trên các thiết bị.",
   "currentPasswordLabel": "Mật khẩu hiện tại",
   "confirmNewPassword": "Xác nhận mật khẩu mới",
   "changePassword": "Đổi mật khẩu",
