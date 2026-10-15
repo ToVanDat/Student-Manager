@@ -348,7 +348,7 @@ export default function GroupInfoPanel({
                                                                     onClick={() => handleRole(memberId, member.role === 'admin' ? 'member' : 'admin')}
                                                                     className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                                                                 >
-                                                                    {member.role === 'admin' ? t(member.role === 'admin' ? 'demoteToMember' : 'promoteToAdmin')}
+                                                                    {t(member.role === 'admin' ? 'demoteToMember' : 'promoteToAdmin')}
                                                                 </button>
                                                                 <button
                                                                     type="button"
