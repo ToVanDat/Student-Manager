@@ -27,10 +27,10 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
             <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-[.14em] text-blue-600">Bảng điều khiển quản trị</p>
-                    <h1 className="text-2xl font-bold tracking-tight text-[#203754] dark:text-slate-100 dark:text-slate-100 sm:text-[28px]">Chào mừng, {user?.username || 'Admin'}!</h1>
-                    <p className="mt-1 text-sm text-[#71829b] dark:text-slate-400 dark:text-slate-400">Tổng quan hệ thống quản lý sinh viên</p>
+                    <h1 className="text-2xl font-bold tracking-tight text-[#203754] dark:text-slate-100 sm:text-[28px]">Chào mừng, {user?.username || 'Admin'}!</h1>
+                    <p className="mt-1 text-sm text-[#71829b] dark:text-slate-400">Tổng quan hệ thống quản lý sinh viên</p>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-[#71829b] dark:text-slate-400 dark:text-slate-400 shadow-sm">
+                <div className="inline-flex items-center gap-2 rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-[#71829b] dark:text-slate-400 shadow-sm">
                     <CalendarDays size={15} className="text-blue-600" />
                     <span className="capitalize">{today}</span>
                 </div>
@@ -43,8 +43,8 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                             <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
                             <span className="rounded-full bg-[#f5f8ff] dark:bg-slate-800 px-2 py-1 text-[10px] font-medium text-[#8190a7] dark:text-slate-400">Hiện tại</span>
                         </div>
-                        <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400 dark:text-slate-400">{label}</p>
-                        <p className="mt-1 text-[27px] font-bold leading-none tracking-tight text-[#203754] dark:text-slate-100 dark:text-slate-100">{value}</p>
+                        <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
+                        <p className="mt-1 text-[27px] font-bold leading-none tracking-tight text-[#203754] dark:text-slate-100">{value}</p>
                         <p className="mt-2 text-[11px] text-[#8190a7]">{detail}</p>
                     </article>
                 ))}
@@ -60,7 +60,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                         <div className="space-y-4">
                             {classStatistics.slice(0, 6).map((item, index) => (
                                 <div key={item.code}>
-                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="truncate font-medium text-slate-700">{item.name || item.code}</span><span className="shrink-0 text-[#71829b] dark:text-slate-400 dark:text-slate-400">{number(item.count)} sinh viên</span></div>
+                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="truncate font-medium text-slate-700">{item.name || item.code}</span><span className="shrink-0 text-[#71829b] dark:text-slate-400">{number(item.count)} sinh viên</span></div>
                                     <div className="h-2 overflow-hidden rounded-full bg-[#edf3fb]"><div className={`h-full rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-cyan-500', 'bg-rose-500'][index]}`} style={{ width: `${Math.max(4, (item.count / maxClassSize) * 100)}%` }} /></div>
                                 </div>
                             ))}
