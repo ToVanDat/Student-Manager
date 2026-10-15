@@ -1,5 +1,9 @@
 {
-  "comingSoon": "Coming soon",
+  "previousBanner": "Previous banner",
+  "nextBanner": "Next banner",
+  "goToBanner": "Go to banner {{number}}",
+  "swipeToChange": "← Swipe to navigate →",
+"comingSoon": "Coming soon",
   "loginHeading": "Sign in",
   "registerHeading": "Create an account",
   "forgotHeading": "Reset your password",
