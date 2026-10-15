@@ -267,5 +267,13 @@
   "updating": "Đang cập nhật...",
   "resetPassword": "Đặt lại mật khẩu",
   "globalMenu": "Menu toàn website",
-  "emailNotUpdated": "Chưa cập nhật email"
+  "emailNotUpdated": "Chưa cập nhật email",
+  "calls": "Cuộc gọi",
+  "callHistoryAndNotifications": "Lịch sử và thông báo cuộc gọi",
+  "history": "Lịch sử",
+  "noCallHistory": "Chưa có lịch sử cuộc gọi.",
+  "missedCall": "Cuộc gọi nhỡ",
+  "outgoingCall": "Cuộc gọi đi",
+  "incomingCall": "Cuộc gọi đến",
+  "noNewNotifications": "Không có thông báo mới."
 }
