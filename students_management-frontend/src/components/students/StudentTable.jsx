@@ -1,6 +1,7 @@
 // Student list table
 import { useLanguage } from '@/context/LanguageContext.jsx';
 function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = false, loading = false }) {
+    const { t } = useLanguage();
     return (
         <div className="w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
             <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
