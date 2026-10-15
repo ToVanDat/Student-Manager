@@ -335,7 +335,7 @@ function Students() {
   useEffect(() => {
     if (searchParams.get("view") !== "settings") return;
     const requestedTab = searchParams.get("tab");
-    const allowedTabs = ["account", "notifications", "security", "sessions", "password"];
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance", "language"];
     if (allowedTabs.includes(requestedTab) && requestedTab !== settingsTab) {
       setSettingsTab(requestedTab);
       if (requestedTab === "sessions") loadSessions();
@@ -707,7 +707,6 @@ function Students() {
                 {settingsTab === "notifications" && <NotificationSettings />}
 
                 {settingsTab === "appearance" && <AppearanceSettings />}
-                {settingsTab === "language" && <LanguageSettings />}
                 {settingsTab === "language" && <LanguageSettings />}
 
                 {/* =========================================
