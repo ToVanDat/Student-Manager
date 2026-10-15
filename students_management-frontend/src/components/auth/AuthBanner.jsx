@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Languages } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 const banners = [
     {
@@ -29,6 +30,7 @@ const bannerBackgrounds = [
 ];
 
 function AuthBanner() {
+    const { language, setLanguage, t } = useLanguage();
     const [currentIndex, setCurrentIndex] = useState(0);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
@@ -65,6 +67,19 @@ function AuthBanner() {
             onTouchMove={(event) => { touchEndX.current = event.touches[0].clientX; }}
             onTouchEnd={handleTouchEnd}
         >
+            <div className="absolute right-4 top-4 z-20 flex items-center gap-1 rounded-full border border-white/25 bg-slate-950/35 p-1 backdrop-blur-md" aria-label={t('language')}>
+                <Languages size={15} className="mx-1 text-white/80" />
+                {[
+                    { value: 'vi', label: 'VI' },
+                    { value: 'en', label: 'EN' },
+                ].map(option => (
+                    <button key={option.value} type="button" onClick={() => setLanguage(option.value)}
+                        aria-pressed={language === option.value}
+                        className={"rounded-full px-2.5 py-1 text-[10px] font-bold transition " + (language === option.value ? 'bg-white text-slate-900' : 'text-white hover:bg-white/15')}>
+                        {option.label}
+                    </button>
+                ))}
+            </div>
             <div key={currentIndex} className={`absolute inset-0 z-[1] h-full w-full animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]}`} />
             <div className="absolute inset-0 z-[2] bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:52px_52px] opacity-35" />
             <div className="absolute inset-0 z-[2] bg-linear-to-r from-slate-950/35 via-slate-950/10 to-transparent" />
