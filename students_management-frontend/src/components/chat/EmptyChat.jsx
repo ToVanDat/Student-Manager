@@ -19,7 +19,7 @@ export default function EmptyChat({ onStartConversation }) {
                     onClick={onStartConversation}
                     className="mt-5 rounded-xl bg-[#4b63f5] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f56e8]"
                 >
-                    Tin nhắn mới
+                    Bắt đầu trò chuyện
                 </button>
             )}
         </div>
