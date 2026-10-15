@@ -73,7 +73,7 @@ function StudentSidebar({
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" title={label + " — sắp ra mắt"} aria-label={label + " — sắp ra mắt"} disabled
                                     className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
-                                    <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>{!collapsed && <span className="ml-auto text-[9px] text-slate-400">Sắp ra mắt</span>}
+                                    <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>{!collapsed && <span className="ml-auto text-[9px] text-slate-400">Sắp ra mắt</span>}{!collapsed && <span className="ml-auto text-[9px] text-slate-400">Sắp ra mắt</span>}
                                 </button>
                             ))}
                             <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}`}>QUẢN TRỊ HỆ THỐNG</div>
