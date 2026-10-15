@@ -82,27 +82,40 @@ let refreshPromise = null;
 
 export const refreshAccessToken = async () => {
   if (!refreshPromise) {
-    refreshPromise = axios
-      .post(
+    const performRefresh = async () => {
+      const response = await axios.post(
         `${API_BASE_URL}/api/auth/refresh`,
         {},
-        {
-          withCredentials: true,
-        },
-      )
-      .then((response) => {
-        const newAccessToken = response.data?.accessToken;
+        { withCredentials: true },
+      );
+      const newAccessToken = response.data?.accessToken;
 
-        if (!newAccessToken) {
-          throw new Error("Refresh response không có accessToken");
-        }
+      if (!newAccessToken) {
+        throw new Error("Refresh response không có accessToken");
+      }
 
-        setAccessToken(newAccessToken);
-        return newAccessToken;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+    };
+
+    // A module-level promise prevents duplicate refreshes in this tab.
+    // Web Locks extends that protection across tabs sharing the same cookie,
+    // avoiding two tabs rotating the same single-use refresh token at once.
+    const refreshAcrossTabs = () => {
+      if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+        return navigator.locks.request('student-management-auth-refresh', async () => {
+          // Another tab may have refreshed while this tab waited. The refresh
+          // cookie is shared by the origin, so refresh only after acquiring lock.
+          return performRefresh();
+        });
+      }
+
+      return performRefresh();
+    };
+
+    refreshPromise = refreshAcrossTabs().finally(() => {
+      refreshPromise = null;
+    });
   }
 
   return refreshPromise;
