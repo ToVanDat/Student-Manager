@@ -62,14 +62,14 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
                                         className="rounded-md bg-amber-500 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-600"
                                         onClick={() => onEdit(student)}
                                     >
-                                        Sửa
+                                        {t('edit')}
                                     </button>
 
                                     <button
                                         className="rounded-md bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-700"
                                         onClick={() => onDelete(student.id)}
                                     >
-                                        Xóa
+                                        {t('delete')}
                                     </button>
                                     </div>
                                 </td>}
