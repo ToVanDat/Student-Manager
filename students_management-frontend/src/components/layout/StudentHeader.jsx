@@ -131,7 +131,7 @@ function StudentHeader({
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
                 <div className="relative">
-                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 hover:text-brand-700" aria-label="Thông báo" aria-expanded={notificationsOpen}>
+                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-slate-800 hover:text-brand-700 dark:hover:text-blue-300" aria-label="Thông báo" aria-expanded={notificationsOpen}>
                         <Bell size={20} />
                         {notificationUnreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}</span>}
                     </button>
