@@ -188,5 +188,9 @@
   "hello": "Hello",
   "dailyGreeting": "Have a productive day.",
   "studentOverviewCard": "Student overview",
-  "studentCount": "Student count"
+  "studentCount": "Student count",
+  "studentQuote": "“Knowledge is the key to the future.”",
+  "genderDistribution": "Gender distribution",
+  "systemData": "System data",
+  "currentlyDisplayedResults": "Currently displayed results"
 }
