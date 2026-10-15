@@ -1,5 +1,8 @@
 {
-  "previousBanner": "Banner trước",
+  "moduleWorkspaceTitle": "Không gian quản lý chức năng",
+  "moduleWorkspaceDescription": "Bạn đã mở đúng phân hệ. Giao diện và kết nối API chi tiết của phân hệ này sẽ được triển khai tiếp; các mục điều hướng vẫn hoạt động và bạn có thể quay lại trang chủ hoặc quản lý sinh viên.",
+  "backToDashboard": "Về trang chủ",
+"previousBanner": "Banner trước",
   "nextBanner": "Banner tiếp theo",
   "goToBanner": "Chuyển đến banner {{number}}",
   "swipeToChange": "← Kéo để chuyển →",
