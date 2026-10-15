@@ -565,7 +565,7 @@ export default function MessageBubble({
                                         const isVideo = file.mime_type?.startsWith('video/');
 
                                         return (
-                                            <div key={file.id} className="rounded-xl border border-white/20 bg-black/5 overflow-hidden">
+                                            <div key={file.id} className="rounded-xl bg-black/5 overflow-hidden">
                                                 {(isImage || isVideo) && <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} />}
 
                                                 {file.mime_type?.startsWith('audio/') ? (
@@ -592,20 +592,16 @@ export default function MessageBubble({
                                                 ) : null}
 
                                                 <div className="flex items-center gap-2 px-3 py-2">
-                                                    <FileText size={18} className="shrink-0" />
-                                                    <div className="min-w-0 flex-1">
+                                                    {!isImage && !isVideo && <FileText size={18} className="shrink-0" />}
+                                                    {!isImage && !isVideo && <div className="min-w-0 flex-1">
                                                         <p className="truncate text-xs font-medium">{file.file_name}</p>
                                                         <p className="text-[10px] opacity-70">{formatFileSize(file.file_size)}</p>
-                                                    </div>
-                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title="Tải xuống">
+                                                    </div>}
+                                                    {(isImage || isVideo) && <span className="min-w-0 flex-1 text-[10px] opacity-70">{formatFileSize(file.file_size)}</span>}
+                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title="Tải xuống" aria-label="Tải tệp xuống">
                                                         <Download size={15} />
                                                     </button>
-                                                    {isOwn && (
-                                                        <button type="button" onClick={() => onDeleteFile?.(file)} className="p-1.5 rounded-lg text-red-500 hover:bg-red-50" title="Xoá file">
-                                                            <Trash2 size={15} />
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                </div>>
                                             </div>
                                         );
                                     })}
@@ -671,14 +667,7 @@ export default function MessageBubble({
                             <Trash2 size={15} /> <span>Xoá ở phía tôi</span>
                         </button>
 
-                        {isOwn && !isRecalled && !isDeleted && (
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onDeleteForEveryone?.(message.id);
-                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
-                                <Trash2 size={15} /> <span>Xoá ở mọi người</span>
-                            </button>
-                        )}
+}
                     </div>
                 )}
 
