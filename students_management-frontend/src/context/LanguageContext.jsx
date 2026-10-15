@@ -18,6 +18,13 @@ const messages = {
     settingsTitle: 'Cài đặt tài khoản', settingsDescription: 'Quản lý thông tin tài khoản, bảo mật và các phiên đăng nhập.',
     dashboard: 'Bảng điều khiển quản trị', welcome: 'Chào mừng',
     overview: 'Tổng quan hệ thống quản lý sinh viên',
+    totalStudents: 'Tổng số sinh viên', totalClasses: 'Tổng số lớp', male: 'Nam', female: 'Nữ', current: 'Hiện tại',
+    studentsInSystem: 'Sinh viên trong hệ thống', classesWithStudents: 'Lớp đang có sinh viên', studentProfile: 'Theo hồ sơ sinh viên',
+    classDistribution: 'Phân bố sinh viên theo lớp', classCounts: 'Sĩ số theo dữ liệu hiện có', recentStudents: 'Sinh viên gần đây', newestProfiles: 'Hồ sơ mới nhất trong danh sách',
+    viewAll: 'Xem tất cả', students: 'Sinh viên', classes: 'Quản lý lớp học', departments: 'Quản lý khoa - ngành', subjects: 'Quản lý môn học',
+    enrollments: 'Đăng ký học', semesters: 'Học kỳ', results: 'Kết quả học tập', home: 'Trang chủ', overviewGroup: 'TỔNG QUAN', trainingGroup: 'QUẢN LÝ ĐÀO TẠO',
+    systemGroup: 'QUẢN TRỊ HỆ THỐNG', studentsCount: 'sinh viên', noClassData: 'Chưa có dữ liệu lớp', addClassHint: 'Thêm hồ sơ sinh viên có lớp để xem thống kê.',
+    noStudentProfiles: 'Chưa có hồ sơ sinh viên', createFirstProfile: 'Tạo hồ sơ đầu tiên để bắt đầu quản lý.', manageStudents: 'Quản lý sinh viên',
   },
   en: {
     language: 'Language', vietnamese: 'Vietnamese', english: 'English',
@@ -33,6 +40,13 @@ const messages = {
     settingsTitle: 'Account settings', settingsDescription: 'Manage account information, security, and active sessions.',
     dashboard: 'Admin dashboard', welcome: 'Welcome',
     overview: 'Student management overview',
+    totalStudents: 'Total students', totalClasses: 'Total classes', male: 'Male', female: 'Female', current: 'Current',
+    studentsInSystem: 'Students in the system', classesWithStudents: 'Classes with students', studentProfile: 'Based on student profiles',
+    classDistribution: 'Students by class', classCounts: 'Enrollment based on current data', recentStudents: 'Recent students', newestProfiles: 'Latest profiles in the list',
+    viewAll: 'View all', students: 'Students', classes: 'Manage classes', departments: 'Manage departments', subjects: 'Manage subjects',
+    enrollments: 'Enrollments', semesters: 'Semesters', results: 'Academic results', home: 'Home', overviewGroup: 'OVERVIEW', trainingGroup: 'ACADEMIC MANAGEMENT',
+    systemGroup: 'SYSTEM ADMINISTRATION', studentsCount: 'students', noClassData: 'No class data yet', addClassHint: 'Add students with class assignments to see statistics.',
+    noStudentProfiles: 'No student profiles yet', createFirstProfile: 'Create the first profile to get started.', manageStudents: 'Manage students',
   },
 };
 
