@@ -328,5 +328,19 @@
   "turnCameraOff": "Tắt camera",
   "turnCameraOn": "Bật camera",
   "stopScreenSharing": "Dừng chia sẻ màn hình",
-  "shareScreen": "Chia sẻ màn hình"
+  "shareScreen": "Chia sẻ màn hình",
+  "messageOptions": "Tùy chọn tin nhắn",
+  "messageDeleted": "Tin nhắn đã bị xóa",
+  "messageRecalled": "Tin nhắn đã được thu hồi",
+  "messageWithFile": "Tin nhắn có tệp",
+  "repliedMessage": "Tin nhắn được trả lời",
+  "attachment": "Tệp đính kèm",
+  "messageWithAttachment": "Tin nhắn có tệp đính kèm",
+  "playVoiceMessage": "Phát tin nhắn thoại",
+  "download": "Tải xuống",
+  "downloadFile": "Tải tệp xuống",
+  "sendFailed": "Gửi thất bại",
+  "processing": "Đang xử lý",
+  "uploadingPercent": "Đang tải {{percent}}%",
+  "sending": "Đang gửi..."
 }
