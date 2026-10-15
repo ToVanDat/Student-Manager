@@ -3,7 +3,7 @@ import SettingsMenu from '@/components/settings/SettingsMenu.jsx';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 function SettingsPage({ activeTab, onTabChange, activeSessions, loading, onRefresh, children }) {
-    const { t, language } = useLanguage();
+    const { t } = useLanguage();
     return (
         <div className="w-full">
             <div className="mb-6 flex items-center justify-between gap-5 max-[640px]:items-start max-[640px]:flex-col">
@@ -14,7 +14,7 @@ function SettingsPage({ activeTab, onTabChange, activeSessions, loading, onRefre
                 </div>
                 {activeTab === 'sessions' && (
                     <button className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 text-xs font-semibold text-slate-600 shadow-sm hover:border-brand-100 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300" onClick={onRefresh} disabled={loading}>
-                        <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />Làm mới
+                        <RefreshCw size={17} className={loading ? 'animate-spin' : ''} />{t('refresh')}
                     </button>
                 )}
             </div>
