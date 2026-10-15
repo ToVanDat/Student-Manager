@@ -111,15 +111,15 @@ function StudentHeader({
 
     return (
         <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px]">
-            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu" title="Mở menu">
+            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label={t("openMenu")} title={t("openMenu")}>
                 <Menu size={22} />
             </button>
             <button
                 type="button"
                 className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:inline-flex"
                 onClick={onToggleDesktopSidebar}
-                aria-label={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
-                title={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
+                aria-label={sidebarCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+                title={sidebarCollapsed ? t('expandSidebar') : t('collapseSidebar')}
             >
                 {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
@@ -155,7 +155,7 @@ function StudentHeader({
                     {darkMode ? <Sun size={19} /> : <Moon size={19} />}
                 </button>
                 <div className="relative">
-                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-slate-800 hover:text-brand-700 dark:hover:text-blue-300" aria-label="Thông báo" aria-expanded={notificationsOpen}>
+                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-slate-800 hover:text-brand-700 dark:hover:text-blue-300" aria-label={t('notifications')} aria-expanded={notificationsOpen}>
                         <Bell size={20} />
                         {notificationUnreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}</span>}
                     </button>
@@ -166,7 +166,7 @@ function StudentHeader({
                                     <strong className="text-sm text-[#293b55] dark:text-slate-100">{t('notifications')}</strong>
                                     <p className="mt-0.5 text-[11px] text-slate-400">{notificationUnreadCount} {t('unread')}</p>
                                 </div>
-                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title="Đánh dấu tất cả đã đọc">
+                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title={t("markAllRead")}>
                                     <CheckCheck size={14} /> Đọc tất cả
                                 </button>
                             </div>
@@ -201,7 +201,7 @@ function StudentHeader({
                         onClick={() => setMenuOpen((open) => !open)}
                     >
                         {user?.avatar_url || user?.avatar ? (
-                            <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt="Avatar tài khoản" className="size-8 shrink-0 rounded-full object-cover" />
+                            <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-8 shrink-0 rounded-full object-cover" />
                         ) : (
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
                                 {user?.username?.charAt(0)?.toUpperCase() || 'U'}
@@ -210,7 +210,7 @@ function StudentHeader({
                         <div className="hidden min-w-0 flex-col sm:flex">
                             <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.username || 'User'}</strong>
                             <span className="text-[10px] text-[#71829b] dark:text-slate-400">
-                                {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                                {user?.role === 'admin' ? t('administrator') : t('user')}
                             </span>
                         </div>
                         <MoreVertical size={20} />
