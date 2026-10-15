@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { notificationApi } from '@/api/notificationApi.js';
 import socket from '@/socket/socket.js';
+import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
 
 function StudentHeader({
     user,
@@ -193,34 +194,14 @@ function StudentHeader({
                     </button>
 
                     {menuOpen && (
-                        <div className="absolute top-full right-0 z-50 mt-2 w-64 rounded-lg border border-[#e3eaf4] bg-white p-2 shadow-xl">
-                            <div className="flex items-center gap-3 p-2">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                                    {user?.username?.charAt(0)?.toUpperCase() || 'U'}
-                                </div>
-                                <div className="min-w-0">
-                                    <strong className="block truncate text-xs text-[#293b55]">{user?.username || 'User'}</strong>
-                                    <span className="block truncate text-[11px] text-[#71829b]">{user?.email || 'user@example.com'}</span>
-                                </div>
-                            </div>
-                            <div className="my-1 border-t border-[#e8eef7]" />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    onOpenSettings();
-                                }}
-                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-[#64748b] hover:bg-[#f5f8ff]"
-                            >
-                                <User size={18} />
-                                <span>Cài đặt tài khoản</span>
-                            </button>
-                            <div className="my-1 border-t border-[#e8eef7]" />
-                            <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-red-600 hover:bg-red-50" onClick={handleLogout}>
-                                <LogOut size={18} />
-                                <span>Đăng xuất</span>
-                            </button>
-                        </div>
+                        <GlobalMoreMenu
+                            user={user}
+                            onSelectSettings={(tab) => {
+                                setMenuOpen(false);
+                                onOpenSettings(tab);
+                            }}
+                            onLogout={handleLogout}
+                        />
                     )}
                 </div>
             </div>
