@@ -1045,7 +1045,7 @@ export default function ChatWindow({
                             <Palette size={18} />
                         </button>
                         {showChatThemePicker && (
-                            <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                            <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border p-3 shadow-xl" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
                                 <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{t('chatTheme')}</p>
                                 <div className="grid grid-cols-2 gap-2">
                                     {chatThemes.map(item => (
@@ -1425,7 +1425,7 @@ export default function ChatWindow({
                     if (msg._timelineType === 'date') {
                         return (
                             <div key={msg.id} className="flex justify-center py-3">
-                                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 shadow-sm">
+                                <span className="rounded-full px-3 py-1 text-[11px] font-medium shadow-sm" style={{ backgroundColor: 'var(--chat-theme-surface)', color: 'var(--chat-theme-meta)', border: '1px solid var(--chat-theme-border)' }}>
                                     {msg.dateLabel}
                                 </span>
                             </div>
@@ -1482,7 +1482,7 @@ export default function ChatWindow({
 
                 {isTyping && (
                     <div role="status" aria-live="polite" className="mb-3 ml-1 flex items-center gap-2">
-                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 shadow-sm">
+                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border px-3.5 py-2.5 shadow-sm" style={{ backgroundColor: 'var(--chat-theme-other-bubble)', borderColor: 'var(--chat-theme-border)' }}>
                             <span className="sr-only">{activeConversation.name} đang nhập</span>
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.24s]" />
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.12s]" />
@@ -1500,7 +1500,7 @@ export default function ChatWindow({
             {/* ================= INPUT AREA ================= */}
 
             {replyTo && (
-                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2">
+                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border px-3 py-2" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
                     <div className="min-w-0 flex-1 border-l-[3px] border-blue-500 pl-2.5">
                         <p className="text-[11px] font-semibold leading-4 text-blue-700">Đang trả lời {replyTo.sender_name || replyTo.username || 'tin nhắn'}</p>
                         <p className="truncate text-xs leading-5 text-slate-600 dark:text-slate-300">
@@ -1636,7 +1636,8 @@ export default function ChatWindow({
                         event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 160)}px`;
                     }}
                     aria-label="Soạn tin nhắn"
-                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm leading-5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border px-4 py-3 text-sm leading-5 placeholder:text-slate-400 outline-none transition focus:ring-4 focus:ring-blue-50"
+                    style={{ backgroundColor: 'var(--chat-theme-bg)', color: 'var(--chat-theme-other-text)', borderColor: 'var(--chat-theme-border)' }}
                 />
 
                 {/* ================= SEND ================= */}
