@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessageSquareDashed } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function EmptyChat({ onStartConversation }) {
     return (
@@ -8,10 +9,10 @@ export default function EmptyChat({ onStartConversation }) {
                 <MessageSquareDashed size={32} />
             </div>
             <h3 className="text-base font-bold text-slate-800 mb-1">
-                Chưa chọn cuộc trò chuyện nào
+                {t('emptyChatTitle')}
             </h3>
             <p className="text-sm text-slate-400 max-w-sm">
-                Chọn một cuộc trò chuyện bên trái hoặc bắt đầu một cuộc trò chuyện mới.
+                {t('emptyChatDescription')}
             </p>
             {onStartConversation && (
                 <button
@@ -19,7 +20,7 @@ export default function EmptyChat({ onStartConversation }) {
                     onClick={onStartConversation}
                     className="mt-5 rounded-xl bg-[#4b63f5] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3f56e8]"
                 >
-                    Bắt đầu trò chuyện
+                    {t('startChatting')}
                 </button>
             )}
         </div>
