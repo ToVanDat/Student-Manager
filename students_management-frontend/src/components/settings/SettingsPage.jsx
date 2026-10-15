@@ -8,7 +8,7 @@ function SettingsPage({ activeTab, onTabChange, activeSessions, loading, onRefre
         <div className="w-full">
             <div className="mb-6 flex items-center justify-between gap-5 max-[640px]:items-start max-[640px]:flex-col">
                 <div>
-                    <span className="text-[10px] font-bold tracking-[.14em] text-brand-700 dark:text-blue-300">{language === "en" ? "ACCOUNT & SECURITY" : "TÀI KHOẢN & BẢO MẬT"}</span>
+                    <span className="text-[10px] font-bold tracking-[.14em] text-brand-700 dark:text-blue-300">{t('accountSecurity')}</span>
                     <h1 className="mt-1.5 mb-1.5 font-display text-[26px] leading-tight font-bold text-ink dark:text-white">{t("settingsTitle")}</h1>
                     <p className="m-0 text-[13px] text-slate-500 dark:text-slate-400">{t("settingsDescription")}</p>
                 </div>
