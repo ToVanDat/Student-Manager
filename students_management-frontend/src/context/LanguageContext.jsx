@@ -90,6 +90,18 @@ export function LanguageProvider({ children }) {
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
-  if (!context) throw new Error('useLanguage must be used inside LanguageProvider');
+  // AuthProvider mounts the global CallPanel beside its children, so that panel
+  // currently renders outside LanguageProvider. Keep it from crashing the whole
+  // app; provider-backed components still use the selected account language.
+  if (!context) {
+    return {
+      language: 'vi',
+      setLanguage: () => {},
+      t: (key, options = {}) => Object.entries(options).reduce(
+        (text, [name, value]) => text.replaceAll(`{{${name}}}`, String(value ?? '')),
+        viTranslations[key] ?? key
+      ),
+    };
+  }
   return context;
 }
