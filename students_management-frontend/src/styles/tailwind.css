@@ -113,3 +113,35 @@
         transition-duration: .01ms !important;
     }
 }
+
+
+/* Global dark-theme fallback for surfaces that predate dark: utility classes. */
+.dark body {
+    color: #e2e8f0;
+    background-color: #0b1220 !important;
+    background-image: radial-gradient(ellipse at 8% 0%, rgba(30, 58, 138, .18), transparent 34%),
+                      radial-gradient(ellipse at 100% 100%, rgba(14, 116, 144, .12), transparent 32%);
+}
+.dark .bg-white { background-color: #0f172a !important; }
+.dark .bg-slate-50 { background-color: #111c2e !important; }
+.dark .bg-slate-100 { background-color: #1e293b !important; }
+.dark .bg-\\[\\#f5f8ff\\],
+.dark [class~="bg-[#f5f8ff]"] { background-color: #0b1220 !important; }
+.dark [class~="bg-[#f1f5fb]"] { background-color: #111c2e !important; }
+.dark [class~="text-[#203754]"],
+.dark [class~="text-[#293b55]"],
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 { color: #e2e8f0 !important; }
+.dark .text-slate-600,
+.dark .text-slate-500 { color: #94a3b8 !important; }
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-\\[\\#e9edf5\\],
+.dark [class~="border-[#e9edf5]"],
+.dark [class~="border-[#e3eaf4]"] { border-color: #263449 !important; }
+.dark input,
+.dark textarea,
+.dark select { color: #e2e8f0; }
+.dark input::placeholder,
+.dark textarea::placeholder { color: #64748b; }
