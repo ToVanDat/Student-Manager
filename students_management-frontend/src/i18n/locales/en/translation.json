@@ -380,7 +380,7 @@
   "saveChanges": "Save changes",
   "lightThemeDescription": "Default light appearance",
   "darkThemeDescription": "Reduce brightness when using the app at night",
-  "chooseAppearanceDescription": "Choose the app appearance. This preference is saved in this browser.",
+  "chooseAppearanceDescription": "Choose the app appearance. This preference is saved to your account and synced across devices.",
   "currentPasswordLabel": "Current password",
   "confirmNewPassword": "Confirm new password",
   "changePassword": "Change password",
