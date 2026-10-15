@@ -60,7 +60,7 @@ function StudentDashboard({
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
             <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="app-card min-w-0 overflow-hidden">
                     <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
                         <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-800 ring-1 ring-blue-100 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
                         {isAdmin && <button className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#174a7e] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#123b66]" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
@@ -141,7 +141,7 @@ function StudentDashboard({
                 <div className="grid gap-4">
                     <StudentActivity />
                     <StudentClassStatistics classStatistics={classStatistics} />
-                    <div className="flex min-h-[100px] items-center gap-3 rounded-[13px] bg-linear-to-br from-[#5269e9] to-[#6256d9] p-[17px] text-white shadow-xl shadow-indigo-700/20">
+                    <div className="flex min-h-[100px] min-w-0 items-center gap-3 rounded-2xl border border-indigo-400/20 bg-linear-to-br from-[#5269e9] to-[#6256d9] p-4 text-white shadow-sm sm:p-5">
                         <div className="flex size-[43px] shrink-0 items-center justify-center rounded-[11px] bg-white/15"><GraduationCap size={25} /></div>
                         <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">{t("academicManagement")}</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">{t('studentOverviewCard')}</p></div>
                         <ChevronRight className="shrink-0" size={18} />
