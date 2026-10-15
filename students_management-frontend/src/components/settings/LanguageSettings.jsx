@@ -4,8 +4,8 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 export default function LanguageSettings() {
     const { language, setLanguage, t } = useLanguage();
     const options = [
-        { value: 'vi', label: t('vietnamese'), detail: 'Vietnamese' },
-        { value: 'en', label: t('english'), detail: 'English' },
+        { value: 'vi', label: t('vietnamese'), detail: 'Vietnamese', flag: '🇻🇳' },
+        { value: 'en', label: t('english'), detail: 'English', flag: '🇬🇧' },
     ];
     return (
         <section className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel dark:border-slate-700 dark:bg-slate-900 sm:p-6">
@@ -23,7 +23,7 @@ export default function LanguageSettings() {
                 {options.map(option => (
                     <button key={option.value} type="button" onClick={() => setLanguage(option.value)} aria-pressed={language === option.value}
                         className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${language === option.value ? 'border-blue-500 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/40' : 'border-line bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'}`}>
-                        <span className="flex size-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><Languages size={19} /></span>
+                        <span className="flex size-10 items-center justify-center rounded-lg bg-slate-100 text-xl dark:bg-slate-800" aria-hidden="true">{option.flag}</span>
                         <span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{option.label}</span><span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{option.detail}</span></span>
                         {language === option.value && <Check size={18} className="text-blue-600 dark:text-blue-300" />}
                     </button>
