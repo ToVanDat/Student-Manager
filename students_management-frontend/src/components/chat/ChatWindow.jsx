@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     MoreVertical,
@@ -92,14 +92,14 @@ export default function ChatWindow({
     const [chatTheme, setChatTheme] = useState('default');
     const [showChatThemePicker, setShowChatThemePicker] = useState(false);
     const [savingChatTheme, setSavingChatTheme] = useState(false);
-    const chatThemes = [
+    const chatThemes = useMemo(() => [
         { value: 'default', label: t('chatThemeDefault'), color: '#f5f8ff', dark: '#0f172a' },
         { value: 'ocean', label: t('chatThemeOcean'), color: '#e0f2fe', dark: '#082f49' },
         { value: 'lavender', label: t('chatThemeLavender'), color: '#f3e8ff', dark: '#2e1065' },
         { value: 'mint', label: t('chatThemeMint'), color: '#dcfce7', dark: '#052e16' },
         { value: 'rose', label: t('chatThemeRose'), color: '#ffe4e6', dark: '#4c0519' },
         { value: 'amber', label: t('chatThemeAmber'), color: '#fef3c7', dark: '#451a03' },
-    ];
+    ], [t]);
     const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
     const [savingConversationNotifications, setSavingConversationNotifications] = useState(false);
     const [replyTo, setReplyTo] = useState(null);
