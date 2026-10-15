@@ -44,7 +44,7 @@ const validateAccountPreferencePatch = preferences => {
     }
     return entries;
 };
-
+ 
 const validatePushSubscription = subscription => {
     if (!subscription ||
         !isAllowedPushEndpoint(subscription.endpoint) ||
