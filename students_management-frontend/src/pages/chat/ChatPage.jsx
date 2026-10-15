@@ -353,6 +353,7 @@ export default function ChatPage() {
                         {activeId && activeConversation ? (
                             <ChatWindow
                                 activeConversation={activeConversation}
+                                onBackToList={() => setActiveId(null)}
                                 messages={timelineMessages}
                                 currentUserId={Number(user?.id)}
                                 onSendMessage={sendMessage}
