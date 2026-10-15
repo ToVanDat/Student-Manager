@@ -48,7 +48,7 @@ function StudentSidebar({
                     <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('overviewGroup')}</div>
                     <button
                         title={t("home")}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
@@ -56,7 +56,7 @@ function StudentSidebar({
                     </button>
                     <button
                         title={user?.role === 'admin' ? t('manageStudents') : t('students')}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
@@ -67,25 +67,25 @@ function StudentSidebar({
                         <>
                             <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('trainingGroup')}</div>
                             {[
-                                { key: 'classes', label: t('classes'), icon: Layers, unavailable: true },
-                                { key: 'departments', label: t('departments'), icon: GraduationCap, unavailable: true },
-                                { key: 'subjects', label: t('subjects'), icon: BookOpen, unavailable: true },
-                                { key: 'enrollments', label: t('enrollments'), icon: ClipboardList, unavailable: true },
-                                { key: 'semesters', label: t('semesters'), icon: CalendarDays, unavailable: true },
-                                { key: 'results', label: t('results'), icon: ChartNoAxesColumn, unavailable: true },
-                            ].map(({ key, label, icon: Icon, unavailable }) => (
-                                <button key={key} type="button" title={unavailable ? label + ' — ' + t('comingSoon') : label} aria-label={label} disabled={unavailable}
+                                { key: 'classes', label: t('classes'), icon: Layers },
+                                { key: 'departments', label: t('departments'), icon: GraduationCap },
+                                { key: 'subjects', label: t('subjects'), icon: BookOpen },
+                                { key: 'enrollments', label: t('enrollments'), icon: ClipboardList },
+                                { key: 'semesters', label: t('semesters'), icon: CalendarDays },
+                                { key: 'results', label: t('results'), icon: ChartNoAxesColumn },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button key={key} type="button" title={label} aria-label={label}
                                     onClick={() => onNavigate(key)}
-                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-40 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}>
+                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
                             ))}
                             <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('systemGroup')}</div>
                             {[
-                                { key: 'users', label: t('user'), icon: UserCog, unavailable: true },
-                                { key: 'permissions', label: t('security'), icon: ShieldCheck, unavailable: true },
-                            ].map(({ key, label, icon: Icon, unavailable }) => (
-                                <button key={key} type="button" title={unavailable ? label + ' — ' + t('comingSoon') : label} aria-label={label} disabled={unavailable}
+                                { key: 'users', label: t('user'), icon: UserCog },
+                                { key: 'permissions', label: t('security'), icon: ShieldCheck },
+                            ].map(({ key, label, icon: Icon }) => (
+                                <button key={key} type="button" title={label} aria-label={label}
                                     onClick={() => onNavigate(key)}
                                     className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
