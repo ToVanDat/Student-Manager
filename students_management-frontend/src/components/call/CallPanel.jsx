@@ -98,7 +98,7 @@ export default function CallPanel({
             stopSound('outgoingCall');
             if (state === 'failed') {
                 void playSound('callError', { volume: 0.55, durationMs: 900 });
-            } else if (state === 'idle' && previousCallStateRef.current !== 'idle') {
+            } else if (state === 'idle' && previousCallStateRef.current !== 'idle' && previousCallStateRef.current !== 'failed') {
                 const isBusy = /bận|busy|từ chối|rejected/i.test(error || '');
                 const callId = call?.callId || null;
                 if (!callId || lastEndedCallIdRef.current !== callId) {
