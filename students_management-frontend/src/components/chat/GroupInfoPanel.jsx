@@ -138,7 +138,7 @@ export default function GroupInfoPanel({
                 <div className="flex h-[72px] items-center justify-between border-b border-slate-100 bg-white px-5">
                     <div>
                         <h3 className="text-base font-bold text-slate-900">
-                            Thông tin nhóm
+                            {t('groupInformation')}
                         </h3>
                         <p className="text-xs text-slate-400">
                             {members.length} thành viên · {members.filter(member => onlineUserIds.has(Number(member.user_id))).length} {t('online')}
@@ -366,7 +366,7 @@ export default function GroupInfoPanel({
                                                             className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-red-600 hover:bg-red-50"
                                                         >
                                                             <UserMinus size={14} />
-                                                            Xoá khỏi nhóm
+                                                            {t('removeFromGroup')}
                                                         </button>
                                                     </div>
                                                 )}
