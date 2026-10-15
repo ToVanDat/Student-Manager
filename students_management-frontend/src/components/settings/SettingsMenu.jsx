@@ -1,13 +1,16 @@
-import { Bell, KeyRound, Monitor, Moon, ShieldCheck, User } from 'lucide-react';
+import { Bell, KeyRound, Languages, Monitor, Moon, ShieldCheck, User } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 function SettingsMenu({ activeTab, onChange, activeSessions }) {
+    const { t } = useLanguage();
     const items = [
-        { id: 'account', label: 'Tài khoản', Icon: User },
-        { id: 'notifications', label: 'Thông báo', Icon: Bell },
-        { id: 'security', label: 'Bảo mật', Icon: ShieldCheck },
-        { id: 'sessions', label: 'Phiên đăng nhập', Icon: Monitor },
-        { id: 'password', label: 'Đổi mật khẩu', Icon: KeyRound },
-        { id: 'appearance', label: 'Giao diện', Icon: Moon },
+        { id: 'account', label: t('account'), Icon: User },
+        { id: 'notifications', label: t('notifications'), Icon: Bell },
+        { id: 'security', label: t('security'), Icon: ShieldCheck },
+        { id: 'sessions', label: t('sessions'), Icon: Monitor },
+        { id: 'password', label: t('password'), Icon: KeyRound },
+        { id: 'appearance', label: t('appearance'), Icon: Moon },
+        { id: 'language', label: t('language'), Icon: Languages },
     ];
 
     return (
