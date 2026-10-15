@@ -220,6 +220,8 @@ export default function ChatSidebar({
 
             <div className="mb-3 mt-1 flex rounded-xl bg-slate-100/90 p-1">
                 <button
+                    type="button"
+                    aria-pressed={filter === 'all'}
                     onClick={() => setFilter('all')}
                     className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
