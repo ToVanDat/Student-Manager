@@ -142,7 +142,7 @@ function StudentDashboard({
                     <StudentClassStatistics classStatistics={classStatistics} />
                     <div className="flex min-h-[100px] items-center gap-3 rounded-[13px] bg-linear-to-br from-[#5269e9] to-[#6256d9] p-[17px] text-white shadow-xl shadow-indigo-700/20">
                         <div className="flex size-[43px] shrink-0 items-center justify-center rounded-[11px] bg-white/15"><GraduationCap size={25} /></div>
-                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">Quản lý đào tạo</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">Theo dõi lớp học, môn học và đăng ký học tập.</p></div>
+                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">Quản lý đào tạo</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">{t('studentOverviewCard')}</p></div>
                         <ChevronRight className="shrink-0" size={18} />
                     </div>
                 </div>
@@ -151,8 +151,8 @@ function StudentDashboard({
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-[18px] bg-white shadow-2xl dark:border dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
-                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">QUẢN LÝ SINH VIÊN</span><h2 className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? 'Cập nhật sinh viên' : 'Thêm sinh viên'}</h2></div>
-                            <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label="Đóng">×</button>
+                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
+                            <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
                         </div>
                         <div className="px-5 py-5 sm:px-8">
                             <StudentForm student={selectedStudent} onSubmit={onSubmit} onCancel={onCloseForm} />
