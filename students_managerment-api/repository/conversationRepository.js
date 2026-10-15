@@ -262,6 +262,27 @@ const updateConversationSettings = async (
     return rows[0];
 };
 
+const getConversationChatTheme = async (conversationId, userId) => {
+    const { rows } = await pool.query(
+        `SELECT chat_theme FROM conversation_user_settings
+         WHERE conversation_id = $1 AND user_id = $2 LIMIT 1`,
+        [conversationId, userId]
+    );
+    return rows[0]?.chat_theme || 'default';
+};
+
+const setConversationChatTheme = async (conversationId, userId, theme) => {
+    const { rows } = await pool.query(
+        `INSERT INTO conversation_user_settings (conversation_id, user_id, chat_theme, updated_at)
+         VALUES ($1, $2, $3, NOW())
+         ON CONFLICT (conversation_id, user_id)
+         DO UPDATE SET chat_theme = EXCLUDED.chat_theme, updated_at = NOW()
+         RETURNING conversation_id, user_id, chat_theme`,
+        [conversationId, userId, theme]
+    );
+    return rows[0];
+};
+
 const unhideConversationForUser = async (conversationId, userId) => {
     await pool.query(
         `
@@ -645,6 +666,8 @@ module.exports = {
     createGroupConversation,
     getConversationSettings,
     updateConversationSettings,
+    getConversationChatTheme,
+    setConversationChatTheme,
     clearConversationMessagesForUser,
     clearMarkedUnread,
     unhideConversationForMembers,
