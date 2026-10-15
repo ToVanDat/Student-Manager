@@ -188,5 +188,9 @@
   "hello": "Xin chào",
   "dailyGreeting": "Chúc bạn có một ngày làm việc hiệu quả.",
   "studentOverviewCard": "Tổng quan sinh viên",
-  "studentCount": "Số lượng sinh viên"
+  "studentCount": "Số lượng sinh viên",
+  "studentQuote": "“Tri thức là chìa khóa mở ra tương lai.”",
+  "genderDistribution": "Phân bố giới tính",
+  "systemData": "Dữ liệu hệ thống",
+  "currentlyDisplayedResults": "Kết quả đang hiển thị"
 }
