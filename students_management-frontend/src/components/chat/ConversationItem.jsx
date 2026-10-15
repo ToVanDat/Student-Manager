@@ -21,7 +21,7 @@ export default function ConversationItem({ conversation, isSelected, onClick }) 
                 {isGroup && !avatar
                     ? <span className={`flex size-12 items-center justify-center rounded-full ${isSelected ? 'bg-blue-100 text-blue-700' : 'bg-sky-50 text-sky-600'}`}><UsersRound size={21} /></span>
                     : <AvatarFallback name={name} src={avatar} size="lg" showStatus={!isGroup} isOnline={isOnline} />}
-                {isGroup && unreadCount > 0 && <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border-2 border-white bg-sky-500 text-[8px] text-white"><UsersRound size={8} /></span>}
+                {isGroup && unreadCount > 0 && <span className="absolute -bottom-0.5 -right-0.5 flex size-4 items-center justify-center rounded-full border-2 border-white dark:border-slate-800 bg-sky-500 text-[8px] text-white"><UsersRound size={8} /></span>}
             </span>
 
             <span className="min-w-0 flex-1">
