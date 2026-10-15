@@ -171,9 +171,13 @@ apiClient.interceptors.response.use(
 
       return apiClient(originalRequest);
     } catch (refreshError) {
-      setAccessToken(null);
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      // A rejected/expired refresh token requires re-authentication. Network
+      // and server errors are transient and must not destroy a valid session.
+      if (refreshError.response?.status === 401) {
+        setAccessToken(null);
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
       return Promise.reject(refreshError);
     }
   },
