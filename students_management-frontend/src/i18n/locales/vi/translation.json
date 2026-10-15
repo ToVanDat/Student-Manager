@@ -192,5 +192,18 @@
   "studentQuote": "“Tri thức là chìa khóa mở ra tương lai.”",
   "genderDistribution": "Phân bố giới tính",
   "systemData": "Dữ liệu hệ thống",
-  "currentlyDisplayedResults": "Kết quả đang hiển thị"
+  "currentlyDisplayedResults": "Kết quả đang hiển thị",
+  "updateStudent": "Cập nhật sinh viên",
+  "chooseGender": "-- Chọn giới tính --",
+  "classId": "ID lớp",
+  "enterStudentCode": "Vui lòng nhập mã sinh viên",
+  "studentCodeMax": "Mã sinh viên không được vượt quá 10 ký tự",
+  "enterFullName": "Vui lòng nhập họ và tên",
+  "fullNameMax": "Họ và tên không được vượt quá 20 ký tự",
+  "invalidEmail": "Email không hợp lệ",
+  "emailMax": "Email không được vượt quá 50 ký tự",
+  "birthDateFuture": "Ngày sinh không được lớn hơn ngày hiện tại",
+  "invalidGender": "Giới tính không hợp lệ",
+  "enterClassId": "Vui lòng nhập ID lớp",
+  "classIdPositive": "ID lớp phải lớn hơn 0"
 }
