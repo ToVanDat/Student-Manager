@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users, Search } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
+import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
@@ -263,8 +264,7 @@ export default function ChatPage() {
                         <span className="text-lg" aria-hidden="true">✉</span>
                     </div>
                     <div className="min-w-0">
-                        <h1 className="truncate text-sm font-bold">Giao diện Chat</h1>
-                        <p className="hidden text-xs text-slate-500 sm:block">Trò chuyện và kết nối realtime</p>
+                        <h1 className="truncate text-sm font-bold">Tin nhắn</h1>
                     </div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
@@ -289,7 +289,7 @@ export default function ChatPage() {
                             aria-label="Mở menu tài khoản"
                             className="flex max-w-[220px] items-center gap-2 rounded-xl border border-slate-200 px-2 py-1.5 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 sm:gap-3 sm:px-3"
                         >
-                            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                            <AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" />
                             <span className="hidden min-w-0 text-left sm:block">
                                 <span className="block max-w-28 truncate text-xs font-semibold">{user?.username || 'Người dùng'}</span>
                                 <span className="block text-[10px] text-slate-500">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
@@ -299,7 +299,7 @@ export default function ChatPage() {
                         {accountMenuOpen && (
                             <div role="menu" className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
                                 <div className="flex items-center gap-3 px-3 py-3">
-                                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                                    <AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="lg" />
                                     <span className="min-w-0">
                                         <span className="block truncate text-sm font-semibold">{user?.username || 'Người dùng'}</span>
                                         <span className="block truncate text-xs text-slate-500">{user?.email || 'Chưa cập nhật email'}</span>
@@ -307,7 +307,6 @@ export default function ChatPage() {
                                     </span>
                                 </div>
                                 <div className="my-1 border-t border-slate-100" />
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><ArrowLeft size={17} /><span>Về trang quản lý</span></button>
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><UserRound size={17} /><span>Cài đặt tài khoản</span></button>
                                 <div className="my-1 border-t border-slate-100" />
                                 <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"><LogOut size={17} /><span>Đăng xuất</span></button>
@@ -341,7 +340,7 @@ export default function ChatPage() {
                                 <button type="button" onClick={() => document.querySelector('[data-new-chat]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Search size={17} />Danh bạ</button>
                             </nav>
                             <div className="mt-auto border-t border-[#e3eaf4] pt-3">
-                                <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4"><span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
+                                <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4"><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" /><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
                             </div>
                         </aside>
                         <ChatSidebar
