@@ -29,7 +29,7 @@
     }
 
     body {
-        @apply m-0 min-h-screen bg-canvas font-sans text-ink antialiased;
+        @apply m-0 min-h-screen bg-canvas font-sans text-ink antialiased dark:bg-slate-950 dark:text-slate-100;
     }
 
     button {
