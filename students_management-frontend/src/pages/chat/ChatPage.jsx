@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users, Search } from 'lucide-react';
+import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
@@ -250,15 +250,6 @@ export default function ChatPage() {
     return (
         <div className="min-h-screen bg-[#f5f8ff] font-sans text-[#203754]">
             <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 backdrop-blur sm:px-6">
-                <button
-                    type="button"
-                    onClick={() => navigate('/students')}
-                    className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                    aria-label="Quay lại Giao diện Quản lý"
-                >
-                    <span aria-hidden="true">←</span>
-                    <span className="hidden sm:inline">Quản lý</span>
-                </button>
                 <div className="flex min-w-0 items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white">
                         <span className="text-lg" aria-hidden="true">✉</span>
@@ -337,7 +328,6 @@ export default function ChatPage() {
                                 <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8]"><Home size={17} />Tổng quan</button>
                                 <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100"><MessageSquare size={17} />Trò chuyện</button>
                                 <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Users size={17} />Nhóm</button>
-                                <button type="button" onClick={() => document.querySelector('[data-new-chat]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Search size={17} />Danh bạ</button>
                             </nav>
                             <div className="mt-auto border-t border-[#e3eaf4] pt-3">
                                 <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4"><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" /><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
