@@ -105,12 +105,12 @@ function StudentHeader({
 
     return (
         <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px]">
-            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu" title="Mở menu">
+            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu" title="Mở menu">
                 <Menu size={22} />
             </button>
             <button
                 type="button"
-                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:inline-flex"
+                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:inline-flex"
                 onClick={onToggleDesktopSidebar}
                 aria-label={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
                 title={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
@@ -118,7 +118,7 @@ function StudentHeader({
                 {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
 
-            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] dark:bg-slate-800 px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white focus-within:shadow-sm">
+            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] dark:bg-slate-800 px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:shadow-sm">
                 <Search size={18} className="shrink-0" />
                 <input
                     className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[#293b55] dark:text-slate-100 outline-none placeholder:text-slate-400"
@@ -142,7 +142,7 @@ function StudentHeader({
                                     <strong className="text-sm text-[#293b55] dark:text-slate-100">Thông báo</strong>
                                     <p className="mt-0.5 text-[11px] text-slate-400">{notificationUnreadCount} chưa đọc</p>
                                 </div>
-                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title="Đánh dấu tất cả đã đọc">
+                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title="Đánh dấu tất cả đã đọc">
                                     <CheckCheck size={14} /> Đọc tất cả
                                 </button>
                             </div>
@@ -165,7 +165,7 @@ function StudentHeader({
                                 )}
                             </div>
                             <div className="border-t border-slate-100 dark:border-slate-800 p-2">
-                                <button type="button" onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="w-full rounded-lg px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40">Mở cuộc trò chuyện</button>
+                                <button type="button" onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="w-full rounded-lg px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40">Mở cuộc trò chuyện</button>
                             </div>
                         </div>
                     )}
