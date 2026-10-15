@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users } from 'lucide-react';
+import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
@@ -18,6 +18,7 @@ export default function ChatPage() {
     const { user, logoutUser, webRTCCall } = useAuth();
     const [callCenterOpen, setCallCenterOpen] = useState(() => new URLSearchParams(window.location.search).get('calls') === '1');
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+    const [chatNavCollapsed, setChatNavCollapsed] = useState(false);
     const accountMenuRef = useRef(null);
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
@@ -318,19 +319,19 @@ export default function ChatPage() {
             <main className="chat-workspace h-[calc(100vh-4rem)] min-h-0 p-2 sm:p-3 lg:p-4">
                 <div className="chat-shell h-full min-h-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-panel">
                     <div className="flex h-full min-h-0">
-                        <aside className="hidden w-[200px] shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] px-3 py-5 text-[#263852] lg:flex">
-                            <div className="mb-7 flex items-center gap-2 px-2">
+                        <aside className={`hidden shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] py-5 text-[#263852] transition-[width,padding] duration-200 lg:flex ${chatNavCollapsed ? "w-[68px] px-2" : "w-[200px] px-3"}`}>
+                            <div className={`mb-5 flex items-center gap-2 px-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`}>
                                 <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm"><GraduationCap size={20} /></span>
-                                <span className="min-w-0"><strong className="block truncate text-xs text-[#203754]">Student-Manager</strong><small className="text-[9px] text-[#7f8ba0]">Kết nối học tập</small></span>
+                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs text-[#203754]">Student-Manager</strong><small className="text-[9px] text-[#7f8ba0]">Kết nối học tập</small></span>}
                             </div>
-                            <p className="mb-2 px-2 text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>
+                            <div className={`mb-2 flex ${chatNavCollapsed ? "justify-center" : "justify-between px-2"}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>}<button type="button" onClick={() => setChatNavCollapsed(value => !value)} title={chatNavCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} aria-label={chatNavCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-100 hover:text-blue-700">{chatNavCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}</button></div>
                             <nav className="space-y-1">
-                                <button type="button" onClick={() => navigate('/students')} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8]"><Home size={17} />Tổng quan</button>
-                                <button type="button" aria-current="page" className="flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100"><MessageSquare size={17} />Trò chuyện</button>
-                                <button type="button" onClick={() => document.querySelector('[data-create-group]')?.click()} className="flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700"><Users size={17} />Nhóm</button>
+                                <button type="button" title="Tổng quan" aria-label="Tổng quan" onClick={() => navigate('/students')} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8] ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Home size={17} />{!chatNavCollapsed && "Tổng quan"}</button>
+                                <button type="button" title="Trò chuyện" aria-label="Trò chuyện" aria-current="page" className={`flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><MessageSquare size={17} />{!chatNavCollapsed && "Trò chuyện"}</button>
+                                <button type="button" title="Tạo nhóm" aria-label="Tạo nhóm" onClick={() => document.querySelector('[data-create-group]')?.click()} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-slate-600 transition hover:bg-white hover:text-blue-700 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Users size={17} />{!chatNavCollapsed && "Nhóm"}</button>
                             </nav>
                             <div className="mt-auto border-t border-[#e3eaf4] pt-3">
-                                <div className="mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4"><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" /><span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || 'Người dùng'}</strong><small className="text-[9px] text-slate-400">{user?.role === 'admin' ? 'Quản trị viên' : 'Sinh viên'}</small></span></div>
+                                <div className={`mt-3 flex min-w-0 items-center gap-2 border-t border-[#e3eaf4] px-2 pt-4 ${chatNavCollapsed ? "justify-center px-0" : ""}`} title={user?.username || "Người dùng"}><AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="sm" />{!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-[10px] text-slate-800">{user?.username || "Người dùng"}</strong><small className="text-[9px] text-slate-400">{user?.role === "admin" ? "Quản trị viên" : "Sinh viên"}</small></span>}</div>
                             </div>
                         </aside>
                         <ChatSidebar
