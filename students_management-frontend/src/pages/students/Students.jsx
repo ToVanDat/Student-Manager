@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/useAuth.js";
+import { useTheme } from "@/context/ThemeContext.jsx";
 import { useStudents } from "@/hooks/useStudents.js";
 import { useStudentSettings } from "@/hooks/useStudentSettings.js";
 
@@ -17,6 +18,7 @@ import SecuritySettings from "@/components/settings/SecuritySettings.jsx";
 import SessionSettings from "@/components/settings/SessionSettings.jsx";
 import PasswordSettings from "@/components/settings/PasswordSettings.jsx";
 import NotificationSettings from "@/components/settings/NotificationSettings.jsx";
+import AppearanceSettings from "@/components/settings/AppearanceSettings.jsx";
 
 import {
   createStudent,
@@ -34,6 +36,7 @@ function Students() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const { user, logoutUser, updateUser } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const isAdmin = user?.role === "admin";
 
   // =====================================================
@@ -84,7 +87,6 @@ function Students() {
     });
   };
 
-  const [darkMode] = useState(false);
 
   // =====================================================
   // STUDENTS HOOK
@@ -312,7 +314,7 @@ function Students() {
   // =====================================================
 
   const openSettings = (tab = "account") => {
-    const allowedTabs = ["account", "notifications", "security", "sessions", "password"];
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance"];
     const nextTab = allowedTabs.includes(tab) ? tab : "account";
     setActivePage("settings");
     setSettingsTab(nextTab);
@@ -529,8 +531,8 @@ function Students() {
           search={search}
           onSearchChange={handleSearchChange}
           showSearch={isAdmin}
-          darkMode={false}
-          onToggleDarkMode={() => {}}
+          darkMode={isDarkMode}
+          onToggleDarkMode={toggleTheme}
           onOpenSettings={(tab = "account") =>
             openSettings(tab)
           }
@@ -658,6 +660,10 @@ function Students() {
 
               onTabChange={(tab) => {
                 setSettingsTab(tab);
+                const params = new URLSearchParams(searchParams);
+                params.set("view", "settings");
+                params.set("tab", tab);
+                setSearchParams(params);
 
                 if (tab === "sessions") {
                   loadSessions();
@@ -697,6 +703,8 @@ function Students() {
                 )}
 
                 {settingsTab === "notifications" && <NotificationSettings />}
+
+                {settingsTab === "appearance" && <AppearanceSettings />}
 
                 {/* =========================================
                     SECURITY
