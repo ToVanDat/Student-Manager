@@ -55,6 +55,7 @@ function StudentDashboard({
         ];
     });
 
+    const { t } = useLanguage();
     return (
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
