@@ -59,8 +59,8 @@ function StudentDashboard({
     return (
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
-            <div className="grid grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
+            <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.045)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-4 pt-5 sm:px-5">
                         <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs text-muted">{t('studentListDescription')}</p></div>
                         {isAdmin && <button className="inline-flex h-9 items-center gap-2 rounded-md bg-linear-to-r from-brand-600 to-brand-500 px-3.5 text-xs font-semibold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-lg hover:shadow-brand-600/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
