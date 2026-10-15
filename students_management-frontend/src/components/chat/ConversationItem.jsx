@@ -1,8 +1,10 @@
 import React from 'react';
 import { UsersRound } from 'lucide-react';
 import AvatarFallback from './AvatarFallback';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function ConversationItem({ conversation, isSelected, onClick }) {
+    const { t } = useLanguage();
     const { name, avatar, lastMessage, lastMessageAt, unreadCount, isOnline } = conversation;
     const parsedLastActivityAt = lastMessageAt ? new Date(lastMessageAt) : null;
     const time = parsedLastActivityAt && Number.isFinite(parsedLastActivityAt.getTime())
@@ -30,7 +32,7 @@ export default function ConversationItem({ conversation, isSelected, onClick }) 
                     <span className={`shrink-0 text-[10px] ${unreadCount > 0 ? 'font-medium text-blue-600 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}`}>{time}</span>
                 </span>
                 <span className="mt-1 flex items-center justify-between gap-2">
-                    <span className={`truncate text-[11px] leading-4 ${unreadCount > 0 ? 'font-medium text-[#52627a] dark:text-slate-300' : 'text-[#8492a8] dark:text-slate-400'}`}>{lastMessage || (isGroup ? 'Nhóm mới được tạo' : 'Chưa có tin nhắn')}</span>
+                    <span className={`truncate text-[11px] leading-4 ${unreadCount > 0 ? 'font-medium text-[#52627a] dark:text-slate-300' : 'text-[#8492a8] dark:text-slate-400'}`}>{lastMessage || (isGroup ? t('newGroupCreated') : t('noMessagesYet'))}</span>
                     {unreadCount > 0 && <span className="flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-[#2563eb] px-1 text-[9px] font-bold text-white shadow-sm">{unreadCount > 99 ? '99+' : unreadCount}</span>}
                 </span>
             </span>
