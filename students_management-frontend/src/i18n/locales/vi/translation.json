@@ -413,5 +413,20 @@
   "ipAddress": "Địa chỉ IP",
   "loggedInAt": "Đăng nhập",
   "lastActive": "Hoạt động cuối",
-  "revokedAt": "Thu hồi"
+  "revokedAt": "Thu hồi",
+  "newGroupCreated": "Nhóm mới được tạo",
+  "noMessagesYet": "Chưa có tin nhắn",
+  "mediaAndFiles": "Tệp & phương tiện",
+  "allMedia": "Tất cả",
+  "images": "Ảnh",
+  "videos": "Video",
+  "documents": "Tài liệu",
+  "information": "Thông tin",
+  "groupConversation": "Cuộc trò chuyện nhóm",
+  "contactProfile": "Hồ sơ liên hệ",
+  "closeInformationPanel": "Đóng bảng thông tin",
+  "membersCount": "thành viên",
+  "conversationNotificationsOn": "Đã bật thông báo cho cuộc trò chuyện",
+  "conversationNotificationsOff": "Đã tắt thông báo cho cuộc trò chuyện",
+  "conversationNotificationsUpdateFailed": "Không thể cập nhật thông báo cuộc trò chuyện"
 }
