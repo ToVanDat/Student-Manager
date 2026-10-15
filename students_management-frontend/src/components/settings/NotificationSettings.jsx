@@ -84,13 +84,13 @@ export default function NotificationSettings() {
                     ))}
                 </div>
             </div>
-            <div className="min-w-0 divide-y divide-slate-100">
+            <div className="min-w-0 divide-y divide-slate-100 dark:divide-slate-800">
                 {OPTIONS.map(option => {
                     const Icon = option.icon;
                     const checked = Boolean(preferences[option.key]);
                     return (
                         <div key={option.key} className="flex min-w-0 items-start gap-3 py-4 sm:items-center sm:gap-4">
-                            <span className="group/icon relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+                            <span className="group/icon relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300">
                                 <Icon size={19} aria-hidden="true" />
                                 <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[min(13rem,calc(100vw-2rem))] -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100 group-focus-within/icon:opacity-100">
                                     {option.title}
