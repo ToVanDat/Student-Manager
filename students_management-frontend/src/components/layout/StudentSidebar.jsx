@@ -7,6 +7,7 @@ import {
     ClipboardList,
     GraduationCap,
     Building2,
+    GraduationCap,
     Home,
     Layers,
     MessageSquare, // Import icon Tin nhắn
@@ -34,13 +35,14 @@ function StudentSidebar({
 
             <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-[#f8faff] dark:bg-slate-950 px-[15px] py-[22px] text-[#263852] dark:text-slate-100 shadow-[8px_0_28px_rgba(38,56,82,0.06)] transition-[width,transform,padding] duration-200 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className={`mb-8 flex items-center gap-3 border-b border-slate-200/80 px-2 pb-6 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
-                    <div className="relative flex size-[43px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f2f56] via-[#174a7e] to-[#2477a8] shadow-lg shadow-blue-950/20 ring-1 ring-white/20">
-                        <Building2 size={25} strokeWidth={1.8} className="text-white" />
-                        <span className="absolute bottom-1 h-[2px] w-5 rounded-full bg-sky-300" />
+                    <div className="relative flex size-[43px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#102a43] via-[#174a7e] to-[#2b7a91] shadow-lg shadow-blue-950/20 ring-1 ring-white/20">
+                        <GraduationCap size={27} strokeWidth={1.8} className="text-white" />
+                        <span className="absolute bottom-1 h-[2px] w-5 rounded-full bg-amber-300" />
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
                         <strong className="text-[13px] font-extrabold tracking-tight text-[#183653] dark:text-white">Student Manager</strong>
                         <span className="mt-1 text-[9px] font-semibold uppercase tracking-[.13em] text-[#71849b] dark:text-slate-400">{user?.role === 'admin' ? t('administrator') : t('user')}</span>
+                        <span className="mt-1 text-[8px] font-bold uppercase tracking-[.11em] text-[#2b6684] dark:text-sky-300">{t("universityPortal")}</span>
                     </div>
                 </div>
 
