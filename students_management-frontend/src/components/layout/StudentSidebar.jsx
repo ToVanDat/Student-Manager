@@ -26,6 +26,7 @@ function StudentSidebar({
     collapsed = false,
     unreadCount = 0 // Thêm prop nhận số tin nhắn chưa đọc (nếu có)
 }) {
+    const { t } = useLanguage();
     return (
         <>
             {isOpen && <div className="fixed inset-0 z-40 bg-slate-950/50 min-[801px]:hidden" onClick={onClose} />}
