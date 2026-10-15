@@ -1047,9 +1047,9 @@ export default function ChatWindow({
                         </button>
                     </div>
                     <div className="mt-2 max-h-72 overflow-y-auto">
-                        {searching && <p className="px-2 py-4 text-center text-xs text-slate-400"{t('searchingMessages')}</p>}
+                        {searching && <p className="px-2 py-4 text-center text-xs text-slate-400">{t('searchingMessages')}</p>}
                         {!searching && searchError && <p role="alert" className="px-2 py-4 text-center text-xs text-red-500">{searchError}</p>}
-                        {!searching && !searchError && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400"{t('noMessagesFound')}</p>}
+                        {!searching && !searchError && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">{t('noMessagesFound')}</p>}
                         {!searching && messageSearchResults.map(result => (
                             <button
                                 type="button"
