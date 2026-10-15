@@ -545,10 +545,10 @@ export default function MessageBubble({
                                         submitEdit();
                                     }
                                 }}
-                                className="w-full min-h-20 resize-none rounded-lg border border-white/40 bg-white/10 px-2 py-1.5 outline-none"
+                                className="w-full min-h-20 resize-none rounded-lg border border-white/40 bg-white/10 px-2 py-1.5 text-white placeholder:text-white/60 outline-none"
                             />
                             <div className="mt-2 flex justify-end gap-2 text-xs">
-                                <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10">{t('cancel')}</button>
+                                <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10 dark:hover:bg-slate-700">{t('cancel')}</button>
                                 <button type="button" onClick={submitEdit} className="px-2 py-1 rounded bg-white/20">{t('save')}</button>
                             </div>
                         </div>
@@ -690,7 +690,7 @@ export default function MessageBubble({
                                             setReactionPickerOpen(false);
                                             setHovered(false);
                                         }}
-                                        className="flex h-7 w-7 items-center justify-center rounded-full text-[17px] leading-none transition-transform hover:scale-125 hover:bg-slate-100"
+                                        className="flex h-7 w-7 items-center justify-center rounded-full text-[17px] leading-none transition-transform hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-800"
                                         title={`Thả ${emoji}`}
                                     >
                                         {emoji}
@@ -705,7 +705,7 @@ export default function MessageBubble({
                                         setMenuOpen(false);
                                         keepHovered();
                                     }}
-                                    className="flex h-7 w-7 items-center justify-center rounded-full text-base font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600"
+                                    className="flex h-7 w-7 items-center justify-center rounded-full text-base font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
                                     title="Thêm reaction"
                                     aria-label="Thêm reaction"
                                 >
