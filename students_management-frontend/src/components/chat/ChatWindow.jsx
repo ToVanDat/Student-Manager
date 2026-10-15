@@ -710,22 +710,22 @@ export default function ChatWindow({
     }, []);
 
     return (
-    <section className="relative flex min-w-0 flex-1 bg-[#f4f8fd]">
-        <div className="relative flex min-w-0 flex-1 flex-col bg-white">
+    <section className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950">
+        <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900">
 
             {pendingAttachment && (
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
-                    <div className="chat-media-composer flex max-h-[94vh] w-full max-w-[1000px] flex-col overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-2xl">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-7">
+                    <div className="chat-media-composer flex max-h-[94vh] w-full max-w-[1000px] flex-col overflow-hidden rounded-[24px] border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-7">
                             <div className="flex items-center gap-3">
                                 <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
                                     {pendingAttachment.type.startsWith('video/') ? <FileVideo2 size={22} /> : <ImageIcon size={22} />}
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-900 sm:text-lg">
+                                    <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 sm:text-lg">
                                         Gửi {pendingAttachment.type.startsWith('video/') ? 'video' : 'ảnh'} – Chọn chất lượng
                                     </h2>
-                                    <p className="mt-0.5 text-xs text-slate-500">Chọn từng tệp trong lưới để xem trước, điều chỉnh chất lượng rồi gửi lần lượt.</p>
+                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Chọn từng tệp trong lưới để xem trước, điều chỉnh chất lượng rồi gửi lần lượt.</p>
                                 </div>
                             </div>
                             <button type="button" onClick={() => { if (!isUploading) { setPendingAttachment(null); setPendingAttachmentQueue([]); setAttachmentProgress(0); } }} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng xem trước"><X size={20} /></button>
@@ -733,7 +733,7 @@ export default function ChatWindow({
 
                         <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-5 sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
                             <div className="min-w-0">
-                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
                                     <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">1</span>
                                     Xem trước · {pendingAttachmentQueue.length + 1} tệp đã chọn
                                 </div>
@@ -759,31 +759,31 @@ export default function ChatWindow({
                                             {index === 0 && <span className="absolute right-1 top-1 flex size-5 items-center justify-center rounded-full bg-blue-600 text-white"><Check size={12} /></span>}
                                             <span className="absolute inset-x-0 bottom-0 truncate bg-slate-950/65 px-1.5 py-1 text-[9px] text-white">{file.name}</span>
                                         </button>
-                                        {index > 0 && <button type="button" onClick={(event) => { event.stopPropagation(); setPendingAttachmentQueue(current => current.filter((_, queueIndex) => queueIndex !== index - 1)); }} disabled={isUploading} aria-label={`移除 ${file.name}`} title="移除文件" className="absolute -right-1.5 -top-1.5 z-10 flex size-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow hover:bg-red-50 hover:text-red-600 disabled:opacity-50"><X size={13} /></button>}
+                                        {index > 0 && <button type="button" onClick={(event) => { event.stopPropagation(); setPendingAttachmentQueue(current => current.filter((_, queueIndex) => queueIndex !== index - 1)); }} disabled={isUploading} aria-label={`移除 ${file.name}`} title="移除文件" className="absolute -right-1.5 -top-1.5 z-10 flex size-6 items-center justify-center rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 shadow hover:bg-red-50 hover:text-red-600 disabled:opacity-50"><X size={13} /></button>}
                                         </div>
                                     ))}
-                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 text-slate-500 transition hover:border-blue-400 hover:text-blue-600" aria-label="Thêm ảnh hoặc video"><span className="text-2xl">+</span></button>
+                                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex aspect-square items-center justify-center rounded-xl border-2 border-dashed border-slate-300 text-slate-500 dark:text-slate-400 transition hover:border-blue-400 hover:text-blue-600" aria-label="Thêm ảnh hoặc video"><span className="text-2xl">+</span></button>
                                 </div>
-                                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                                <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
                                     {attachmentPreviewUrl && (pendingAttachment.type.startsWith('video/') ? (
                                         <video src={attachmentPreviewUrl} controls className="max-h-[320px] w-full bg-black object-contain" />
                                     ) : (
                                         <img src={attachmentPreviewUrl} alt="Xem trước tệp sẽ gửi" className="max-h-[320px] w-full object-contain" />
                                     ))}
-                                    <div className="flex min-w-0 items-center gap-3 border-t border-slate-200 bg-white px-4 py-3">
+                                    <div className="flex min-w-0 items-center gap-3 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
                                         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                                             {pendingAttachment.type.startsWith('video/') ? <FileVideo2 size={18} /> : <FileImage size={18} />}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate text-sm font-semibold text-slate-800">{pendingAttachment.name}</p>
-                                            <p className="mt-0.5 text-[11px] text-slate-500">{(pendingAttachment.size / (1024 * 1024)).toFixed(2)} MB · {pendingAttachment.type || 'Media'}</p><p className="mt-1 text-[10px] text-slate-400">Tệp đang chọn: {pendingAttachmentQueue.length + 1} trong {pendingAttachmentQueue.length + 1} tệp còn trong hàng đợi.</p>
+                                            <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{pendingAttachment.name}</p>
+                                            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{(pendingAttachment.size / (1024 * 1024)).toFixed(2)} MB · {pendingAttachment.type || 'Media'}</p><p className="mt-1 text-[10px] text-slate-400">Tệp đang chọn: {pendingAttachmentQueue.length + 1} trong {pendingAttachmentQueue.length + 1} tệp còn trong hàng đợi.</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="min-w-0">
-                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700">
+                                <div className="mb-3 flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200">
                                     <span className="flex size-6 items-center justify-center rounded-full bg-blue-600 text-white">2</span>
                                     Chọn chất lượng
                                 </div>
@@ -809,26 +809,26 @@ export default function ChatWindow({
                                                 {attachmentQuality === option.value && <Check size={12} strokeWidth={3} />}
                                             </span>
                                             <span className="min-w-0 flex-1">
-                                                <span className="flex flex-wrap items-center justify-between gap-1 text-xs font-semibold text-slate-800">
+                                                <span className="flex flex-wrap items-center justify-between gap-1 text-xs font-semibold text-slate-800 dark:text-slate-100">
                                                     <span>{option.title}</span>
                                                     <span className="text-[10px] font-medium text-slate-400">≈ {(pendingAttachment.size * option.ratio / (1024 * 1024)).toFixed(1)} MB</span>
                                                 </span>
-                                                <span className="mt-1 block text-[11px] leading-4 text-slate-500">{option.body}</span>
+                                                <span className="mt-1 block text-[11px] leading-4 text-slate-500 dark:text-slate-400">{option.body}</span>
                                             </span>
                                         </button>
                                     ))}
                                 </div>
-                                <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-[10px] leading-4 text-slate-500">
+                                <p className="mt-3 rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">
                                     Dung lượng hiển thị là ước tính. Chất lượng ảnh/video được xử lý trên server khi gửi; nếu bộ mã hóa không khả dụng, server sẽ giữ tệp gốc.
                                 </p>
                             </div>
                         </div>
 
-                        <div className="border-t border-slate-100 px-5 py-4 sm:px-7">
-                            {isUploading && <div className="mb-3" role="status" aria-live="polite"><div className="mb-1 flex justify-between text-xs text-slate-500"><span>Đang tải lên…</span><span>{attachmentProgress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${attachmentProgress}%` }} /></div></div>}
-                            {pendingAttachmentQueue.length > 0 && <div className="mb-3 flex gap-2 overflow-x-auto pb-1" aria-label="Các tệp tiếp theo trong hàng đợi">{pendingAttachmentQueue.map((file, index) => <div key={`${file.name}-${file.lastModified}-${index}`} className="flex w-28 shrink-0 items-center gap-2 rounded-xl border border-slate-200 p-2 text-[10px]">{file.type.startsWith('video/') ? <FileVideo2 size={16} className="shrink-0 text-blue-600" /> : <FileImage size={16} className="shrink-0 text-blue-600" />}<span className="truncate">{file.name}</span></div>)}</div>}
+                        <div className="border-t border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-7">
+                            {isUploading && <div className="mb-3" role="status" aria-live="polite"><div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400"><span>Đang tải lên…</span><span>{attachmentProgress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${attachmentProgress}%` }} /></div></div>}
+                            {pendingAttachmentQueue.length > 0 && <div className="mb-3 flex gap-2 overflow-x-auto pb-1" aria-label="Các tệp tiếp theo trong hàng đợi">{pendingAttachmentQueue.map((file, index) => <div key={`${file.name}-${file.lastModified}-${index}`} className="flex w-28 shrink-0 items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 p-2 text-[10px]">{file.type.startsWith('video/') ? <FileVideo2 size={16} className="shrink-0 text-blue-600" /> : <FileImage size={16} className="shrink-0 text-blue-600" />}<span className="truncate">{file.name}</span></div>)}</div>}
                             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-                            <button type="button" disabled={isUploading} onClick={() => { setPendingAttachment(null); setPendingAttachmentQueue([]); fileInputRef.current?.click(); }} className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100">Chọn tệp khác</button>
+                            <button type="button" disabled={isUploading} onClick={() => { setPendingAttachment(null); setPendingAttachmentQueue([]); fileInputRef.current?.click(); }} className="rounded-xl px-5 py-3 text-sm font-semibold text-slate-600 dark:text-slate-300 transition hover:bg-slate-100">Chọn tệp khác</button>
                             <button type="button" onClick={confirmAttachmentSend} disabled={isUploading} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
                                 {isUploading ? 'Đang gửi…' : `Gửi ${pendingAttachment.type.startsWith('video/') ? 'video' : 'ảnh'}`}
                             </button>
@@ -840,10 +840,10 @@ export default function ChatWindow({
 
             {/* ================= HEADER ================= */}
 
-            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 bg-white backdrop-blur">
+            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur">
 
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                    <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+                    <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
                         <ArrowLeft size={19} />
                     </button>
 
@@ -856,7 +856,7 @@ export default function ChatWindow({
                     />
 
                     <div>
-                        <h3 className="text-[16px] font-bold text-slate-900">
+                        <h3 className="text-[16px] font-bold text-slate-900 dark:text-slate-100">
                             {activeConversation.name}
                         </h3>
 
@@ -877,7 +877,7 @@ export default function ChatWindow({
 
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1 text-slate-500">
+                <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
                     <button
                         type="button"
                         ref={searchTriggerRef}
@@ -916,7 +916,7 @@ export default function ChatWindow({
                                     avatar: activeConversationAvatar
                                 })}
                                 disabled={callState !== 'idle'}
-                                className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="h-9 w-9 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
                                 title="Gọi video"
                             >
                                 <Video size={18} />
@@ -961,29 +961,29 @@ export default function ChatWindow({
                                 ref={moreMenuPanelRef}
                                 role="menu"
                                 style={{ position: 'fixed', top: moreMenuPosition.top, left: moreMenuPosition.left, maxHeight: 'calc(100vh - 24px)', overflowY: 'auto' }}
-                                className="z-[1000] w-64 overflow-x-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl"
+                                className="z-[1000] w-64 overflow-x-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl"
                             >
-                                <button type="button" role="menuitem" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                                <button type="button" role="menuitem" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <UserRound size={16} /> Xem thông tin
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                                <button type="button" role="menuitem" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <FolderOpen size={16} /> File & Media
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('pin', !activeConversation.isPinned))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                                <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('pin', !activeConversation.isPinned))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <Pin size={16} /> {activeConversation.isPinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
                                 </button>
-                                <button type="button" role="menuitem" disabled={savingConversationNotifications} onClick={() => { void toggleConversationNotifications(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                                <button type="button" role="menuitem" disabled={savingConversationNotifications} onClick={() => { void toggleConversationNotifications(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
                                     {conversationNotificationsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
                                     {conversationNotificationsEnabled ? 'Tắt thông báo trên thiết bị' : 'Bật thông báo trên thiết bị'}
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); void runMoreAction(() => updateConversationSetting('mute', until)); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                                <button type="button" role="menuitem" onClick={() => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); void runMoreAction(() => updateConversationSetting('mute', until)); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? <Bell size={16} /> : <BellOff size={16} />}
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? 'Bật lại thông báo' : 'Tắt thông báo 8 giờ'}
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('unread', true))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 hover:bg-slate-50">
+                                <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('unread', true))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <MailOpen size={16} /> Đánh dấu chưa đọc
                                 </button>
-                                <div className="my-1 border-t border-slate-100" />
+                                <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                                 <button type="button" role="menuitem" onClick={() => {
                                     if (window.confirm('Xóa toàn bộ tin nhắn và lịch sử cuộc gọi chỉ ở phía bạn? Người còn lại vẫn giữ lịch sử.')) {
                                         void runMoreAction(async () => {
@@ -1000,7 +1000,7 @@ export default function ChatWindow({
                                     if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách của bạn? Tin nhắn sẽ không bị xóa.')) {
                                         void runMoreAction(() => updateConversationSetting('hide', true));
                                     } else setShowMoreMenu(false);
-                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 hover:bg-slate-50">
+                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <FolderOpen size={16} /> Ẩn cuộc trò chuyện
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) void runMoreAction(blockConversationUser); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
@@ -1023,9 +1023,9 @@ export default function ChatWindow({
                     id="chat-message-search"
                     role="search"
                     style={{ position: 'fixed', top: searchPanelPosition.top, left: searchPanelPosition.left, width: searchPanelPosition.width }}
-                    className="z-[1000] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl"
+                    className="z-[1000] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 shadow-2xl"
                 >
-                    <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3">
+                    <div className="flex items-center gap-2 rounded-xl bg-slate-50 dark:bg-slate-800 px-3">
                         <Search size={16} className="text-slate-400" />
                         <input
                             autoFocus
@@ -1056,7 +1056,7 @@ export default function ChatWindow({
                                     onOpenSearchResult?.(result);
                                     setShowSearchPanel(false);
                                 }}
-                                className="block w-full rounded-xl px-3 py-2 text-left hover:bg-slate-50"
+                                className="block w-full rounded-xl px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-800"
                             >
                                 <div className="flex items-center gap-2">
                                     <AvatarFallback
@@ -1064,14 +1064,14 @@ export default function ChatWindow({
                                         src={result.sender_avatar || activeConversationAvatar}
                                         size="xs"
                                     />
-                                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600">
+                                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-600 dark:text-slate-300">
                                         {result.sender_username || activeConversation.name}
                                     </span>
                                     <span className="shrink-0 text-[10px] text-slate-400">
                                         {new Date(result.created_at).toLocaleString('vi-VN')}
                                     </span>
                                 </div>
-                                <p className="mt-1 line-clamp-2 text-sm text-slate-700">
+                                <p className="mt-1 line-clamp-2 text-sm text-slate-700 dark:text-slate-200">
                                     {result.content}
                                 </p>
                             </button>
@@ -1083,17 +1083,17 @@ export default function ChatWindow({
 
             {showContactInfo && (
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+                    <div className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900">Thông tin người dùng</h4>
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Thông tin người dùng</h4>
                             <button type="button" onClick={() => setShowContactInfo(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-5 flex flex-col items-center text-center">
                             <AvatarFallback name={activeConversation.name} src={activeConversationAvatar} size="lg" />
                             <h3 className="mt-3 text-lg font-bold">{activeConversation.name}</h3>
-                            <p className="mt-1 text-sm text-slate-500">{presenceLabel}</p>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{presenceLabel}</p>
                             {activeConversation.type === 'direct' && activeConversation.email && (
-                                <p className="mt-1 max-w-full truncate text-sm text-slate-500">
+                                <p className="mt-1 max-w-full truncate text-sm text-slate-500 dark:text-slate-400">
                                     {activeConversation.email}
                                 </p>
                             )}
@@ -1107,12 +1107,12 @@ export default function ChatWindow({
 
             {showMediaPanel && (
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
+                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900">File & Media</h4>
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">File & Media</h4>
                             <button type="button" onClick={() => setShowMediaPanel(false)}><X size={18}/></button>
                         </div>
-                        <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 p-1">
+                        <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                             {[
                                 ['all', 'Tất cả'],
                                 ['image', 'Ảnh'],
@@ -1127,9 +1127,9 @@ export default function ChatWindow({
                                 filteredSharedFiles.map(file => {
                                     const image = String(file.mime_type || '').startsWith('image/');
                                     const video = String(file.mime_type || '').startsWith('video/');
-                                    return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 px-3 py-2">
+                                    return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 dark:border-slate-800 px-3 py-2">
                                         {image || video ? <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} compact /> : <FolderOpen size={18} className="shrink-0 text-blue-500" />}
-                                        <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium text-slate-800">{file.file_name}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
+                                        <span className="min-w-0 flex-1"><span className="block truncate text-xs font-medium text-slate-800 dark:text-slate-100">{file.file_name}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
                                         {!image && !video && <button type="button" onClick={() => onDownloadFile?.(file)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Tải</button>}
                                     </div>;
                                 })
@@ -1141,13 +1141,13 @@ export default function ChatWindow({
 
             {showReportDialog && (
                 <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900">Báo cáo người dùng</h4>
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Báo cáo người dùng</h4>
                             <button type="button" onClick={() => setShowReportDialog(false)}><X size={18} /></button>
                         </div>
-                        <p className="mt-2 text-xs text-slate-500">Chọn lý do để gửi báo cáo.</p>
-                        <select value={reportReason} onChange={e => setReportReason(e.target.value)} className="mt-4 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm">
+                        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Chọn lý do để gửi báo cáo.</p>
+                        <select value={reportReason} onChange={e => setReportReason(e.target.value)} className="mt-4 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm">
                             <option value="spam">Spam</option>
                             <option value="harassment">Quấy rối</option>
                             <option value="scam">Lừa đảo</option>
@@ -1155,7 +1155,7 @@ export default function ChatWindow({
                             <option value="other">Khác</option>
                         </select>
                         <div className="mt-4 flex justify-end gap-2">
-                            <button type="button" onClick={() => setShowReportDialog(false)} className="rounded-xl px-4 py-2 text-sm text-slate-500 hover:bg-slate-100">Hủy</button>
+                            <button type="button" onClick={() => setShowReportDialog(false)} className="rounded-xl px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100">Hủy</button>
                             <button type="button" onClick={submitConversationReport} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700">Gửi báo cáo</button>
                         </div>
                     </div>
@@ -1234,7 +1234,7 @@ export default function ChatWindow({
                                 onLoadOlder?.();
                             }}
                             disabled={loadingOlder}
-                            className="rounded-full border border-slate-200 px-4 py-1.5 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-50"
+                            className="rounded-full border border-slate-200 dark:border-slate-700 px-4 py-1.5 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50"
                         >
                             {loadingOlder ? 'Đang tải...' : 'Tải tin nhắn cũ hơn'}
                         </button>
@@ -1245,7 +1245,7 @@ export default function ChatWindow({
                     if (msg._timelineType === 'date') {
                         return (
                             <div key={msg.id} className="flex justify-center py-3">
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm">
+                                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 shadow-sm">
                                     {msg.dateLabel}
                                 </span>
                             </div>
@@ -1302,13 +1302,13 @@ export default function ChatWindow({
 
                 {isTyping && (
                     <div role="status" aria-live="polite" className="mb-3 ml-1 flex items-center gap-2">
-                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm">
+                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 shadow-sm">
                             <span className="sr-only">{activeConversation.name} đang nhập</span>
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.24s]" />
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.12s]" />
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600" />
                         </div>
-                        <span className="text-xs font-medium text-slate-600">{activeConversation.name} đang nhập...</span>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{activeConversation.name} đang nhập...</span>
                     </div>
                 )}
 
@@ -1320,14 +1320,14 @@ export default function ChatWindow({
             {/* ================= INPUT AREA ================= */}
 
             {replyTo && (
-                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2">
                     <div className="min-w-0 flex-1 border-l-[3px] border-blue-500 pl-2.5">
                         <p className="text-[11px] font-semibold leading-4 text-blue-700">Đang trả lời {replyTo.sender_name || replyTo.username || 'tin nhắn'}</p>
-                        <p className="truncate text-xs leading-5 text-slate-600">
+                        <p className="truncate text-xs leading-5 text-slate-600 dark:text-slate-300">
                             {replyTo.content || (replyTo.files?.length ? `📎 ${replyTo.files[0].file_name || 'Tệp đính kèm'}` : 'Tin nhắn đính kèm')}
                         </p>
                     </div>
-                    <button type="button" onClick={() => setReplyTo(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-slate-900" title="Hủy trả lời" aria-label="Hủy trả lời"><X size={15} /></button>
+                    <button type="button" onClick={() => setReplyTo(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 transition hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900" title="Hủy trả lời" aria-label="Hủy trả lời"><X size={15} /></button>
                 </div>
             )}
 
@@ -1348,7 +1348,7 @@ export default function ChatWindow({
 
             <form
                 onSubmit={handleSend}
-                className="min-h-[78px] border-t border-slate-100 bg-white px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
+                className="min-h-[78px] border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
             >
 
                 {/* ================= ATTACHMENT ================= */}
@@ -1366,7 +1366,7 @@ export default function ChatWindow({
                     type="button"
                     title="Đính kèm tệp"
                     disabled={isUploading}
-                    className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50"
+                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full disabled:opacity-50"
                     onClick={handleAttachmentClick}
                 >
                     <Paperclip size={20} />
@@ -1405,7 +1405,7 @@ export default function ChatWindow({
                                 (prev) => !prev
                             )
                         }
-                        className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                        className="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full"
                     >
                         <Smile size={20} />
                     </button>
@@ -1455,7 +1455,7 @@ export default function ChatWindow({
                         event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 160)}px`;
                     }}
                     aria-label="Soạn tin nhắn"
-                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-5 text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm leading-5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
                 />
 
                 {/* ================= SEND ================= */}
@@ -1473,39 +1473,39 @@ export default function ChatWindow({
         </div>
 
         {showDetailsPanel && (
-            <aside className="absolute inset-y-0 right-0 z-[80] flex w-[min(360px,88vw)] min-w-0 shrink-0 flex-col border-l border-slate-200 bg-white shadow-2xl xl:static xl:z-auto xl:w-[280px] xl:shadow-none 2xl:w-[300px]">
-                <div className="flex h-[76px] items-center justify-between border-b border-slate-100 bg-white px-5">
-                    <div><h3 className="text-sm font-bold text-slate-900">Thông tin</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? 'Cuộc trò chuyện nhóm' : 'Hồ sơ liên hệ'}</p></div>
+            <aside className="absolute inset-y-0 right-0 z-[80] flex w-[min(360px,88vw)] min-w-0 shrink-0 flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl xl:static xl:z-auto xl:w-[280px] xl:shadow-none 2xl:w-[300px]">
+                <div className="flex h-[76px] items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5">
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Thông tin</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? 'Cuộc trò chuyện nhóm' : 'Hồ sơ liên hệ'}</p></div>
                     <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 xl:hidden" aria-label="Đóng bảng thông tin"><X size={18} /></button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
-                    <div className="flex flex-col items-center border-b border-slate-100 px-5 py-6 text-center">
+                    <div className="flex flex-col items-center border-b border-slate-100 dark:border-slate-800 px-5 py-6 text-center">
                         <AvatarFallback name={activeConversation.name} src={activeConversationAvatar} size="xl" showStatus={activeConversation.type !== 'group'} isOnline={isDirectOnline} />
-                        <h4 className="mt-3 max-w-full truncate text-base font-bold text-slate-900">{activeConversation.name}</h4>
+                        <h4 className="mt-3 max-w-full truncate text-base font-bold text-slate-900 dark:text-slate-100">{activeConversation.name}</h4>
                         <p className={`mt-1 text-xs ${isDirectOnline ? 'text-emerald-600' : 'text-slate-500'}`}>{activeConversation.type === 'group' ? `${activeConversation.memberCount || conversationMembers.length} thành viên` : presenceLabel}</p>
                         <div className="mt-4 flex items-center gap-2">
                             {activeConversation.type !== 'group' && <>
-                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50" title="Gọi thoại"><Phone size={17} /></button>
-                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-blue-700 hover:bg-blue-50 disabled:opacity-50" title="Gọi video"><Video size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50" title="Gọi thoại"><Phone size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50" title="Gọi video"><Video size={17} /></button>
                             </>}
-                            <button type="button" onClick={() => { positionSearchPanel(); setShowSearchPanel(true); }} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100" title="Tìm tin nhắn"><Search size={17} /></button>
-                            {activeConversation.type === 'group' && <button type="button" onClick={() => setShowGroupInfo(true)} className="flex size-10 items-center justify-center rounded-full bg-slate-50 text-slate-600 hover:bg-slate-100" title="Quản lý nhóm"><MoreVertical size={17} /></button>}
+                            <button type="button" onClick={() => { positionSearchPanel(); setShowSearchPanel(true); }} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100" title="Tìm tin nhắn"><Search size={17} /></button>
+                            {activeConversation.type === 'group' && <button type="button" onClick={() => setShowGroupInfo(true)} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100" title="Quản lý nhóm"><MoreVertical size={17} /></button>}
                         </div>
                     </div>
 
                     {activeConversation.type === 'direct' ? (
-                        <div className="border-b border-slate-100 px-5 py-4">
-                            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wide text-slate-500">Thông tin cá nhân</h5>
+                        <div className="border-b border-slate-100 dark:border-slate-800 px-5 py-4">
+                            <h5 className="mb-3 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Thông tin cá nhân</h5>
                             <div className="space-y-3">
-                                <div className="flex items-start gap-2.5 text-xs"><UserRound size={15} className="mt-0.5 shrink-0 text-slate-400" /><span className="min-w-0"><span className="block text-[10px] text-slate-400">Tài khoản</span><span className="break-all font-medium text-slate-700">{activeConversation.name || '—'}</span></span></div>
-                                <div className="flex items-start gap-2.5 text-xs"><Mail size={15} className="mt-0.5 shrink-0 text-slate-400" /><span className="min-w-0"><span className="block text-[10px] text-slate-400">Email</span><span className="break-all font-medium text-slate-700">{activeConversation.email || 'Chưa cập nhật'}</span></span></div>
+                                <div className="flex items-start gap-2.5 text-xs"><UserRound size={15} className="mt-0.5 shrink-0 text-slate-400" /><span className="min-w-0"><span className="block text-[10px] text-slate-400">Tài khoản</span><span className="break-all font-medium text-slate-700 dark:text-slate-200">{activeConversation.name || '—'}</span></span></div>
+                                <div className="flex items-start gap-2.5 text-xs"><Mail size={15} className="mt-0.5 shrink-0 text-slate-400" /><span className="min-w-0"><span className="block text-[10px] text-slate-400">Email</span><span className="break-all font-medium text-slate-700 dark:text-slate-200">{activeConversation.email || 'Chưa cập nhật'}</span></span></div>
                             </div>
                         </div>
                     ) : (
-                        <div className="border-b border-slate-100 px-5 py-4">
-                            <div className="mb-3 flex items-center justify-between"><h5 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Thành viên</h5><span className="text-[10px] text-slate-400">{conversationMembers.length}</span></div>
+                        <div className="border-b border-slate-100 dark:border-slate-800 px-5 py-4">
+                            <div className="mb-3 flex items-center justify-between"><h5 className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Thành viên</h5><span className="text-[10px] text-slate-400">{conversationMembers.length}</span></div>
                             <div className="space-y-3">
-                                {conversationMembers.slice(0, 6).map(member => <div key={member.user_id} className="flex min-w-0 items-center gap-2.5"><AvatarFallback name={member.username || member.name} src={member.avatar_url || member.avatar} size="sm" showStatus isOnline={onlineUserIds.has(Number(member.user_id))} /><span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">{member.username || member.name || 'Thành viên'}</span>{member.role === 'owner' && <span className="text-[9px] font-semibold text-blue-600">Trưởng nhóm</span>}</div>)}
+                                {conversationMembers.slice(0, 6).map(member => <div key={member.user_id} className="flex min-w-0 items-center gap-2.5"><AvatarFallback name={member.username || member.name} src={member.avatar_url || member.avatar} size="sm" showStatus isOnline={onlineUserIds.has(Number(member.user_id))} /><span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700 dark:text-slate-200">{member.username || member.name || 'Thành viên'}</span>{member.role === 'owner' && <span className="text-[9px] font-semibold text-blue-600">Trưởng nhóm</span>}</div>)}
                                 {conversationMembers.length === 0 && <p className="text-xs text-slate-400">Chưa tải được danh sách thành viên.</p>}
                                 {conversationMembers.length > 6 && <button type="button" onClick={() => setShowGroupInfo(true)} className="text-xs font-semibold text-blue-600 hover:text-blue-700">Xem tất cả thành viên</button>}
                             </div>
@@ -1513,20 +1513,20 @@ export default function ChatWindow({
                     )}
 
                     <div className="px-5 py-4">
-                        <div className="mb-3 flex items-center justify-between"><h5 className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Tệp đã chia sẻ</h5><button type="button" onClick={() => setShowMediaPanel(true)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">Xem tất cả</button></div>
+                        <div className="mb-3 flex items-center justify-between"><h5 className="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tệp đã chia sẻ</h5><button type="button" onClick={() => setShowMediaPanel(true)} className="text-[10px] font-semibold text-blue-600 hover:text-blue-700">Xem tất cả</button></div>
                         {sharedFiles.length ? (
                             <div className="space-y-2">
                                 {sharedFiles.slice(-6).reverse().map(file => {
                                     const image = String(file.mime_type || '').startsWith('image/');
                                     const video = String(file.mime_type || '').startsWith('video/');
-                                    return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 p-2">
-                                        {image || video ? <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} compact /> : <button type="button" onClick={() => onDownloadFile?.(file)} className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-blue-600 hover:bg-blue-50"><FileText size={17} /></button>}
-                                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-slate-700">{file.file_name || 'Tệp đính kèm'}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
+                                    return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 dark:border-slate-800 p-2">
+                                        {image || video ? <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} compact /> : <button type="button" onClick={() => onDownloadFile?.(file)} className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"><FileText size={17} /></button>}
+                                        <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-slate-700 dark:text-slate-200">{file.file_name || 'Tệp đính kèm'}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
                                         {!image && !video && <button type="button" onClick={() => onDownloadFile?.(file)} aria-label="Tải xuống" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><Download size={14} /></button>}
                                     </div>;
                                 })}
                             </div>
-                        ) : <p className="rounded-xl bg-slate-50 px-3 py-5 text-center text-[11px] text-slate-400">Chưa có tệp được chia sẻ.</p>}
+                        ) : <p className="rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-5 text-center text-[11px] text-slate-400">Chưa có tệp được chia sẻ.</p>}
                     </div>
                 </div>
             </aside>
