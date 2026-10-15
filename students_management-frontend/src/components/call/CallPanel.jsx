@@ -61,7 +61,6 @@ function AvatarCountdown({ name, avatar, progress, size = 80 }) {
 
 
 export default function CallPanel({
-    const { t } = useLanguage();
     targetUsername,
     state,
     call,
@@ -81,6 +80,7 @@ export default function CallPanel({
     retryCall,
     dismissCall
 }) {
+    const { t } = useLanguage();
 
     const remoteAudioRef = useRef(null);
     const localVideoRef = useRef(null);
@@ -280,7 +280,7 @@ export default function CallPanel({
 
                             <div className="flex flex-col items-end gap-1">
                                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                                    {state === 'calling' ? t('calling') : state === 'connecting' ? 'Đang kết nối' : state === 'reconnecting' ? t('reconnecting') : state === 'failed' ? t('failed') : t('connected')}
+                                    {state === 'calling' ? t('calling') : state === 'connecting' ? t('connecting') : state === 'reconnecting' ? t('reconnecting') : state === 'failed' ? t('failed') : t('connected')}
                                 </span>
                                 {['connected', 'reconnecting'].includes(state) && (
                                     <span
