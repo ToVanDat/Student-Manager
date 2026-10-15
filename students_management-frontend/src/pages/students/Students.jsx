@@ -312,16 +312,31 @@ function Students() {
   // =====================================================
 
   const openSettings = (tab = "account") => {
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password"];
+    const nextTab = allowedTabs.includes(tab) ? tab : "account";
     setActivePage("settings");
-
-    setSettingsTab(tab);
-
+    setSettingsTab(nextTab);
     setSidebarOpen(false);
 
-    if (tab === "sessions") {
+    const params = new URLSearchParams(searchParams);
+    params.set("view", "settings");
+    params.set("tab", nextTab);
+    setSearchParams(params);
+
+    if (nextTab === "sessions") {
       loadSessions();
     }
   };
+
+  useEffect(() => {
+    if (searchParams.get("view") !== "settings") return;
+    const requestedTab = searchParams.get("tab");
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password"];
+    if (allowedTabs.includes(requestedTab) && requestedTab !== settingsTab) {
+      setSettingsTab(requestedTab);
+      if (requestedTab === "sessions") loadSessions();
+    }
+  }, [searchParams]);
 
   // =====================================================
   // ADD STUDENT
@@ -516,8 +531,8 @@ function Students() {
           showSearch={isAdmin}
           darkMode={false}
           onToggleDarkMode={() => {}}
-          onOpenSettings={() =>
-            openSettings("account")
+          onOpenSettings={(tab = "account") =>
+            openSettings(tab)
           }
           onLogout={handleLogout}
           onToggleSidebar={() =>
