@@ -104,13 +104,13 @@ function StudentHeader({
     };
 
     return (
-        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] bg-white px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px]">
-            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu" title="Mở menu">
+        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px]">
+            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label="Mở menu" title="Mở menu">
                 <Menu size={22} />
             </button>
             <button
                 type="button"
-                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:inline-flex"
+                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] hover:text-[#1d4ed8] min-[801px]:inline-flex"
                 onClick={onToggleDesktopSidebar}
                 aria-label={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
                 title={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
@@ -118,10 +118,10 @@ function StudentHeader({
                 {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
 
-            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white focus-within:shadow-sm">
+            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] dark:bg-slate-800 px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white focus-within:shadow-sm">
                 <Search size={18} className="shrink-0" />
                 <input
-                    className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[#293b55] outline-none placeholder:text-slate-400"
+                    className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[#293b55] dark:text-slate-100 outline-none placeholder:text-slate-400"
                     type="text"
                     placeholder="Tìm kiếm sinh viên, lớp học, mã sinh viên, email..."
                     value={search}
@@ -131,18 +131,18 @@ function StudentHeader({
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
                 <div className="relative">
-                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] hover:bg-brand-50 hover:text-brand-700" aria-label="Thông báo" aria-expanded={notificationsOpen}>
+                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 hover:text-brand-700" aria-label="Thông báo" aria-expanded={notificationsOpen}>
                         <Bell size={20} />
                         {notificationUnreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}</span>}
                     </button>
                     {notificationsOpen && (
-                        <div className="absolute right-0 top-[48px] z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#e3eaf4] bg-white shadow-xl">
-                            <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                        <div className="absolute right-0 top-[48px] z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
                                 <div>
-                                    <strong className="text-sm text-[#293b55]">Thông báo</strong>
+                                    <strong className="text-sm text-[#293b55] dark:text-slate-100">Thông báo</strong>
                                     <p className="mt-0.5 text-[11px] text-slate-400">{notificationUnreadCount} chưa đọc</p>
                                 </div>
-                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40" title="Đánh dấu tất cả đã đọc">
+                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title="Đánh dấu tất cả đã đọc">
                                     <CheckCheck size={14} /> Đọc tất cả
                                 </button>
                             </div>
@@ -154,8 +154,8 @@ function StudentHeader({
                                         <span className="flex items-start gap-2">
                                             {!item.is_read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-600" />}
                                             <span className="min-w-0 flex-1">
-                                                <span className="block truncate text-xs font-semibold text-[#293b55]">{item.title}</span>
-                                                <span className="mt-1 block break-words text-xs leading-5 text-[#71829b]">{item.body}</span>
+                                                <span className="block truncate text-xs font-semibold text-[#293b55] dark:text-slate-100">{item.title}</span>
+                                                <span className="mt-1 block break-words text-xs leading-5 text-[#71829b] dark:text-slate-400">{item.body}</span>
                                                 <span className="mt-1 block text-[10px] text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
                                             </span>
                                         </span>
@@ -164,8 +164,8 @@ function StudentHeader({
                                     <p className="px-4 py-8 text-center text-xs text-slate-400">Chưa có thông báo nào.</p>
                                 )}
                             </div>
-                            <div className="border-t border-slate-100 p-2">
-                                <button type="button" onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="w-full rounded-lg px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50">Mở cuộc trò chuyện</button>
+                            <div className="border-t border-slate-100 dark:border-slate-800 p-2">
+                                <button type="button" onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="w-full rounded-lg px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40">Mở cuộc trò chuyện</button>
                             </div>
                         </div>
                     )}
@@ -184,8 +184,8 @@ function StudentHeader({
                             </div>
                         )}
                         <div className="hidden min-w-0 flex-col sm:flex">
-                            <strong className="max-w-28 truncate text-xs text-[#293b55]">{user?.username || 'User'}</strong>
-                            <span className="text-[10px] text-[#71829b]">
+                            <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.username || 'User'}</strong>
+                            <span className="text-[10px] text-[#71829b] dark:text-slate-400">
                                 {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
                             </span>
                         </div>
