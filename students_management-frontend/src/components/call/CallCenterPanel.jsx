@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Phone, Video, PhoneMissed, Bell, X, CheckCheck } from 'lucide-react';
 import { callApi } from '@/api/callApi.js';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 const formatDuration = seconds => {
     const total = Math.max(Number(seconds) || 0, 0);
@@ -10,7 +11,7 @@ const formatDuration = seconds => {
 };
 
 const formatTime = value =>
-    value ? new Date(value).toLocaleString('vi-VN', {
+    value ? new Date(value).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN', {
         day: '2-digit',
         month: '2-digit',
         hour: '2-digit',
@@ -24,6 +25,7 @@ export default function CallCenterPanel({
     notifications = [],
     onMarkNotificationRead
 }) {
+    const { t, language } = useLanguage();
     const [tab, setTab] = useState('history');
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -60,8 +62,8 @@ export default function CallCenterPanel({
             <section className="absolute right-5 top-20 flex max-h-[calc(100vh-110px)] w-[420px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                 <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                     <div>
-                        <h2 className="font-semibold text-slate-900 dark:text-white">Cuộc gọi</h2>
-                        <p className="text-xs text-slate-400">Lịch sử và thông báo cuộc gọi</p>
+                        <h2 className="font-semibold text-slate-900 dark:text-white">{t('calls')}</h2>
+                        <p className="text-xs text-slate-400">{t('callHistoryAndNotifications')}</p>
                     </div>
                     <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800">
                         <X size={18} />
@@ -92,11 +94,11 @@ export default function CallCenterPanel({
 
                 <div className="min-h-0 flex-1 overflow-y-auto p-3">
                     {loading && (
-                        <p className="py-8 text-center text-sm text-slate-400">Đang tải...</p>
+                        <p className="py-8 text-center text-sm text-slate-400">{t('loading')}</p>
                     )}
 
                     {!loading && tab === 'history' && history.length === 0 && (
-                        <p className="py-8 text-center text-sm text-slate-400">Chưa có lịch sử cuộc gọi.</p>
+                        <p className="py-8 text-center text-sm text-slate-400">{t('noCallHistory')}</p>
                     )}
 
                     {!loading && tab === 'history' && history.map(item => {
@@ -113,7 +115,7 @@ export default function CallCenterPanel({
                                 <div className="min-w-0 flex-1">
                                     <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{otherName || 'User'}</p>
                                     <p className="text-xs text-slate-500">
-                                        {missed ? 'Cuộc gọi nhỡ' : outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'}
+                                        {missed ? t('missedCall') : outgoing ? t('outgoingCall') : t('incomingCall')}
                                         {item.status === 'completed' && ` · ${formatDuration(item.duration_seconds)}`}
                                     </p>
                                 </div>
@@ -123,7 +125,7 @@ export default function CallCenterPanel({
                     })}
 
                     {!loading && tab === 'notifications' && notifications.length === 0 && (
-                        <p className="py-8 text-center text-sm text-slate-400">Không có thông báo mới.</p>
+                        <p className="py-8 text-center text-sm text-slate-400">{t('noNewNotifications')}</p>
                     )}
 
                     {!loading && tab === 'notifications' && notifications.map(item => (
