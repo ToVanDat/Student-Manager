@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 // form infomation student and validation 
 function StudentForm({ student, onSubmit, onCancel }) {
+    const { t } = useLanguage();
     const [formData, setFormData] = useState({
         student_code: '',
         name: '',
@@ -59,32 +61,32 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
         // Mã sinh viên
         if (!formData.student_code.trim()) {
-            newErrors.student_code = 'Vui lòng nhập mã sinh viên';
+            newErrors.student_code = t('enterStudentCode');
         } else if (formData.student_code.trim().length > 10) {
             newErrors.student_code =
-                'Mã sinh viên không được vượt quá 10 ký tự';
+                t('studentCodeMax');
         }
 
         // Họ tên
         if (!formData.name.trim()) {
-            newErrors.name = 'Vui lòng nhập họ và tên';
+            newErrors.name = t('enterFullName');
         } else if (formData.name.trim().length > 20) {
             newErrors.name =
-                'Họ và tên không được vượt quá 20 ký tự';
+                t('fullNameMax');
         }
 
         // Email
         if (!formData.email.trim()) {
-            newErrors.email = 'Vui lòng nhập email';
+            newErrors.email = t('enterEmail');
         } else {
             const emailRegex =
                 /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             if (!emailRegex.test(formData.email)) {
-                newErrors.email = 'Email không hợp lệ';
+                newErrors.email = t('invalidEmail');
             } else if (formData.email.length >50) {
                 newErrors.email =
-                    'Email không được vượt quá 50 ký tự';
+                    t('emailMax');
             }
         }
 
@@ -95,7 +97,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
             if (birthDate > today) {
                 newErrors.date_of_birth =
-                    'Ngày sinh không được lớn hơn ngày hiện tại';
+                    t('birthDateFuture');
             }
         }
 
@@ -104,15 +106,15 @@ function StudentForm({ student, onSubmit, onCancel }) {
             formData.gender &&
             !['Nam', 'Nữ'].includes(formData.gender)
         ) {
-            newErrors.gender = 'Giới tính không hợp lệ';
+            newErrors.gender = t('invalidGender');
         }
 
         // Class ID
         if (!formData.class_id) {
-            newErrors.class_id = 'Vui lòng nhập ID lớp';
+            newErrors.class_id = t('enterClassId');
         } else if (Number(formData.class_id) <= 0) {
             newErrors.class_id =
-                'ID lớp phải lớn hơn 0';
+                t('classIdPositive');
         }
 
         setErrors(newErrors);
@@ -141,14 +143,14 @@ function StudentForm({ student, onSubmit, onCancel }) {
         <div className="rounded-b-xl bg-white dark:bg-slate-900">
             <h2 className="sr-only">
                 {student
-                    ? 'Cập nhật sinh viên'
-                    : 'Thêm sinh viên'}
+                    ? t('updateStudent')
+                    : t('addStudent')}
             </h2>
 
             <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
                 {/* Mã sinh viên */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mã sinh viên</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('studentCode')}</label>
 
                     <input
                         className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -168,7 +170,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Họ tên */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Họ và tên</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('fullName')}</label>
 
                     <input
                         className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -208,7 +210,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Ngày sinh */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Ngày sinh</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('dateOfBirth')}</label>
 
                     <input
                         className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -227,7 +229,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Giới tính */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Giới tính</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('gender')}</label>
 
                     <select
                         className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -236,15 +238,15 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         onChange={handleChange}
                     >
                         <option value="">
-                            -- Chọn giới tính --
+                            {t('chooseGender')}
                         </option>
 
                         <option value="Nam">
-                            Nam
+                            {t('male')}
                         </option>
 
                         <option value="Nữ">
-                            Nữ
+                            {t('female')}
                         </option>
                     </select>
 
@@ -257,7 +259,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* ID lớp */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">ID lớp</label>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('classId')}</label>
 
                     <input
                         className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -283,8 +285,8 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         className="rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
                     >
                         {student
-                            ? 'Cập nhật'
-                            : 'Thêm sinh viên'}
+                            ? t('update')
+                            : t('addStudent')}
                     </button>
 
                     {student && (
@@ -293,7 +295,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                             className="rounded-md bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
                             onClick={onCancel}
                         >
-                            Hủy
+                            {t('cancel')}
                         </button>
                     )}
                 </div>
