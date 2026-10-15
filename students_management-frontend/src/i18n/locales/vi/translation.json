@@ -158,5 +158,10 @@
   "editShort": "Sửa",
   "loadingStudents": "Đang tải danh sách sinh viên…",
   "noStudentsShort": "Chưa có sinh viên",
-  "accountSecurity": "TÀI KHOẢN & BẢO MẬT"
+  "accountSecurity": "TÀI KHOẢN & BẢO MẬT",
+  "noAccountYet": "Chưa có tài khoản?",
+  "alreadyHaveAccount": "Đã có tài khoản?",
+  "registerNow": "Đăng ký ngay",
+  "backToLogin": "Quay lại đăng nhập",
+  "confirmPasswordLabel": "Xác nhận mật khẩu"
 }
