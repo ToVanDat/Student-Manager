@@ -413,5 +413,20 @@
   "ipAddress": "IP address",
   "loggedInAt": "Signed in",
   "lastActive": "Last active",
-  "revokedAt": "Revoked at"
+  "revokedAt": "Revoked at",
+  "newGroupCreated": "New group created",
+  "noMessagesYet": "No messages yet",
+  "mediaAndFiles": "Files & media",
+  "allMedia": "All",
+  "images": "Images",
+  "videos": "Videos",
+  "documents": "Documents",
+  "information": "Information",
+  "groupConversation": "Group conversation",
+  "contactProfile": "Contact profile",
+  "closeInformationPanel": "Close information panel",
+  "membersCount": "members",
+  "conversationNotificationsOn": "Conversation notifications enabled",
+  "conversationNotificationsOff": "Conversation notifications disabled",
+  "conversationNotificationsUpdateFailed": "Could not update conversation notifications"
 }
