@@ -176,7 +176,7 @@ export default function ChatSidebar({
                                     }}
                                     className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 text-left"
                                 >
-                                    <AvatarFallback name={user.username} src={user.avatar} size="md" />
+                                    <AvatarFallback name={user.username} src={user.avatar_url || user.avatarUrl || user.avatar} size="md" />
                                     <span className="text-sm font-medium text-slate-800 flex-1">{user.username}</span>
                                     {mode === 'group' && selected && <Check size={16} className="text-blue-500" />}
                                     {mode === 'direct' && startingDirectId === Number(user.id) && (
