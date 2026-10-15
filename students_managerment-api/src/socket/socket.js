@@ -192,8 +192,7 @@ const initSocket = (server) => {
         if (pendingDisconnectTimer) {
             clearTimeout(pendingDisconnectTimer);
             disconnectGraceTimers.delete(userId);
-            console.log('[CALL][disconnect grace cancelled]', { userId, socketId: socket.id });
-        }
+                    }
 
         if (wasOffline) {
             try {
@@ -818,13 +817,7 @@ const initSocket = (server) => {
             const targetId = Number(targetUserId);
             const validCallId = isValidCallId(callId);
 
-            console.log('[CALL][start]', {
-                callId: validCallId ? callId : '[invalid]',
-                userId,
-                targetId,
-                callType
-            });
-
+            
             // Socket payloads are untrusted. Bound the identifier before it
             // reaches SQL/logging and reject malformed call requests early.
             if (!validCallId || !isValidCallType(callType) || !(await canCallUser(targetId))) {
@@ -868,13 +861,7 @@ const initSocket = (server) => {
                     replayed: false
                 });
             } else {
-                console.log('[CALL][receiver offline; keep ringing until timeout]', {
-                    callId,
-                    callerId: userId,
-                    receiverId: targetId,
-                    timeoutMs: CALL_RING_TIMEOUT_MS
-                });
-            }
+                            }
 
             callTimers.set(callId, setTimeout(async () => {
                 try {
@@ -917,8 +904,7 @@ const initSocket = (server) => {
                     message: 'Cuộc gọi không còn khả dụng.'
                 });
             }
-            console.log('[CALL][accept]', { callId, userId, targetId });
-
+            
             // The call was already authorized and created by call:start.
             // For accept, authorize by the call record itself instead of
             // re-running the current relationship/block check. Otherwise a
@@ -1056,8 +1042,7 @@ const initSocket = (server) => {
 
         socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][offer]', { callId, userId, targetId, hasOffer: !!offer });
-            const call = await getAuthorizedCall(callId, targetId);
+                        const call = await getAuthorizedCall(callId, targetId);
             if (!call || !offer || !['connecting', 'connected'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:offer', {
                 callId, fromUserId: userId, toUserId: targetId, offer
@@ -1066,8 +1051,7 @@ const initSocket = (server) => {
 
         socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][answer]', { callId, userId, targetId, hasAnswer: !!answer });
-            const call = await getAuthorizedCall(callId, targetId);
+                        const call = await getAuthorizedCall(callId, targetId);
             if (!call || !answer || !['connecting', 'connected'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
@@ -1149,8 +1133,7 @@ const initSocket = (server) => {
 
         socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
             const targetId = Number(targetUserId);
-            console.log('[CALL][ice]', { callId, userId, targetId, hasCandidate: !!candidate });
-            const call = await getAuthorizedCall(callId, targetId);
+                        const call = await getAuthorizedCall(callId, targetId);
             if (!call || !candidate || !['connecting', 'connected'].includes(call.status)) return;
             io.to(`user:${targetId}`).emit('call:ice-candidate', {
                 callId, fromUserId: userId, toUserId: targetId, candidate
@@ -1203,15 +1186,7 @@ const initSocket = (server) => {
             }
 
             emitCallActivityUpdated(updated);
-            console.log('[CALL][end]', {
-                callId,
-                userId,
-                targetId,
-                previousStatus: currentCall.status,
-                status: updated.status,
-                reason: safeReason
-            });
-
+            
             io.to(`user:${targetId}`).emit('call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason: safeReason
             });
@@ -1270,8 +1245,7 @@ const initSocket = (server) => {
 
                         const currentSockets = onlineUsers.get(userId);
                         if (currentSockets && currentSockets.size > 0) {
-                            console.log('[CALL][disconnect grace skipped]', { userId });
-                            return;
+                                                        return;
                         }
 
                         try {
