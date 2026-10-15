@@ -1,4 +1,4 @@
-import { Bell, KeyRound, LogOut, Monitor, ShieldCheck, UserRound } from 'lucide-react';
+import { Bell, KeyRound, LogOut, Monitor, Moon, ShieldCheck, UserRound } from 'lucide-react';
 import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 
 const ITEMS = [
@@ -7,6 +7,7 @@ const ITEMS = [
     { id: 'security', label: 'Bảo mật', Icon: ShieldCheck },
     { id: 'sessions', label: 'Phiên đăng nhập', Icon: Monitor },
     { id: 'password', label: 'Đổi mật khẩu', Icon: KeyRound },
+    { id: 'appearance', label: 'Giao diện', Icon: Moon },
 ];
 
 export default function GlobalMoreMenu({ user, onSelectSettings, onLogout }) {
