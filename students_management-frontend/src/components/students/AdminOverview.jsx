@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowRight, BookOpen, CalendarDays, GraduationCap, Users, UserRound, ChartNoAxesCombined, CirclePlus, Activity, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BookOpen, CalendarDays, GraduationCap, Users, UserRound, ChartNoAxesCombined, CirclePlus } from 'lucide-react';
 
 const number = value => new Intl.NumberFormat('vi-VN').format(Number(value) || 0);
 
@@ -80,21 +80,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                 </section>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-2">
-                <section className="rounded-xl border border-[#e3eaf4] bg-white p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)]">
-                    <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-[#203754]">Cơ cấu sinh viên theo lớp</h2><p className="mt-1 text-xs text-[#8190a7]">Tỷ lệ dựa trên dữ liệu lớp hiện có</p></div><Activity size={18} className="text-blue-600" /></div>
-                    {classStatistics.length ? <div className="space-y-3">{classStatistics.slice(0, 6).map((item, index) => <div key={item.code}><div className="mb-1.5 flex justify-between gap-3 text-xs"><span className="truncate text-slate-600">{item.name || item.code}</span><span className="shrink-0 font-semibold text-slate-700">{number(item.count)}</span></div><div className="h-2 overflow-hidden rounded-full bg-[#edf3fb]"><div className={`h-full rounded-full ${['bg-blue-500','bg-emerald-500','bg-violet-500','bg-amber-500','bg-cyan-500','bg-rose-500'][index]}`} style={{ width: `${Math.max(2, (Number(item.count || 0) / maxClassSize) * 100)}%` }} /></div></div>)}</div> : <p className="py-8 text-center text-xs text-[#8190a7]">Chưa có dữ liệu để tổng hợp.</p>}
-                </section>
-                <section className="rounded-xl border border-[#e3eaf4] bg-white p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)]">
-                    <div className="mb-4 flex items-center gap-2"><ShieldCheck size={18} className="text-blue-600" /><div><h2 className="text-sm font-bold text-[#203754]">Tình trạng dữ liệu</h2><p className="mt-1 text-xs text-[#8190a7]">Tổng hợp từ dữ liệu đang tải</p></div></div>
-                    <div className="space-y-3"><div className="flex items-center justify-between rounded-lg bg-[#f5f8ff] px-3 py-3"><span className="text-xs text-slate-600">Hồ sơ sinh viên</span><strong className="text-sm text-[#203754]">{number(statistics.totalStudents)}</strong></div><div className="flex items-center justify-between rounded-lg bg-[#f5f8ff] px-3 py-3"><span className="text-xs text-slate-600">Lớp trong hệ thống</span><strong className="text-sm text-[#203754]">{number(statistics.totalClasses)}</strong></div><p className="text-[11px] leading-5 text-[#8190a7]">Biểu đồ theo học kỳ và nhật ký hoạt động cần nguồn dữ liệu lịch sử riêng; dashboard không tự tạo số liệu minh họa.</p></div>
-                </section>
-            </div>
 
-            <section className="flex flex-col gap-4 rounded-xl bg-gradient-to-r from-[#1768e8] via-[#2889f2] to-[#38b4de] p-5 text-white shadow-lg shadow-blue-600/15 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                <div><p className="text-[10px] font-bold uppercase tracking-[.16em] text-blue-100">Student Manager</p><h2 className="mt-1 text-lg font-bold">Quản lý dữ liệu đào tạo tập trung</h2><p className="mt-1 text-xs text-blue-50/90">Theo dõi danh sách sinh viên và sĩ số lớp từ cùng một trang.</p></div>
-                <button type="button" onClick={onOpenStudents} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-blue-700 shadow-sm transition hover:bg-blue-50">Mở danh sách <ArrowRight size={15} /></button>
-            </section>
         </div>
     );
 }
