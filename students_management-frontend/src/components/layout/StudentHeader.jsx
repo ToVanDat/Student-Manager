@@ -125,7 +125,7 @@ function StudentHeader({
                 {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
             </button>
 
-            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] dark:bg-slate-800 px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:shadow-sm">
+            {showSearch && <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] dark:bg-slate-800 px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:shadow-sm">
                 <Search size={18} className="shrink-0" />
                 <input
                     className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[#293b55] dark:text-slate-100 outline-none placeholder:text-slate-400"
