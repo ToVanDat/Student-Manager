@@ -269,7 +269,7 @@ function Login() {
         if (!username.trim()) {
 
             setError(
-                'Vui lòng nhập username'
+                t('enterUsername')
             );
 
             return;
@@ -291,7 +291,7 @@ function Login() {
         if (!password) {
 
             setError(
-                'Vui lòng nhập password'
+                t('enterPassword')
             );
 
             return;
@@ -369,7 +369,7 @@ function Login() {
 
                 throw new Error(
                     data.message ||
-                    'Đăng ký thất bại'
+                    t('registerFailed')
                 );
 
             }
@@ -381,7 +381,7 @@ function Login() {
 
             setSuccess(
                 data.message ||
-                'Đăng ký thành công'
+                t('registerSuccess')
             );
 
 
@@ -425,7 +425,7 @@ function Login() {
 
             setError(
                 error.message ||
-                'Đăng ký thất bại'
+                t('registerFailed')
             );
 
 
@@ -547,13 +547,13 @@ function Login() {
                             <h2 className="mb-2 text-2xl leading-tight font-bold text-slate-900 min-[451px]:text-[26px] min-[601px]:text-[28px] min-[901px]:text-[31px]">
 
                                 {mode === 'login' &&
-                                    'Đăng nhập'}
+                                    t('loginHeading')}
 
                                 {mode === 'register' &&
-                                    'Tạo tài khoản'}
+                                    t('registerHeading')}
 
                                 {mode === 'forgot' &&
-                                    'Khôi phục mật khẩu'}
+                                    t('forgotHeading')}
 
                             </h2>
 
@@ -561,13 +561,13 @@ function Login() {
                             <p className="m-0 text-xs leading-relaxed text-slate-500 min-[451px]:text-[13px]">
 
                                 {mode === 'login' &&
-                                    'Đăng nhập vào hệ thống quản lý sinh viên'}
+                                    t('loginSubtitle')}
 
                                 {mode === 'register' &&
-                                    'Đăng ký tài khoản mới để sử dụng hệ thống'}
+                                    t('registerSubtitle')}
 
                                 {mode === 'forgot' &&
-                                    'Xác thực email để đặt lại mật khẩu'}
+                                    t('forgotSubtitle')}
 
                             </p>
 
