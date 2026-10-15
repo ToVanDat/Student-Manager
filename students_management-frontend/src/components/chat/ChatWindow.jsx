@@ -730,7 +730,7 @@ export default function ChatWindow({
                                     <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Chọn từng tệp trong lưới để xem trước, điều chỉnh chất lượng rồi gửi lần lượt.</p>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => { if (!isUploading) { setPendingAttachment(null); setPendingAttachmentQueue([]); setAttachmentProgress(0); } }} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng xem trước"><X size={20} /></button>
+                            <button type="button" onClick={() => { if (!isUploading) { setPendingAttachment(null); setPendingAttachmentQueue([]); setAttachmentProgress(0); } }} className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100" aria-label="Đóng xem trước"><X size={20} /></button>
                         </div>
 
                         <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-5 sm:p-7 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,.9fr)]">
@@ -883,7 +883,7 @@ export default function ChatWindow({
                     <button
                         type="button"
                         ref={searchTriggerRef}
-                        className="p-2 rounded-full hover:bg-slate-100"
+                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
                         onClick={() => {
                             if (!showSearchPanel) positionSearchPanel();
                             setShowSearchPanel(prev => !prev);
@@ -952,7 +952,7 @@ export default function ChatWindow({
                             aria-label={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Thêm tùy chọn cuộc trò chuyện'}
                             aria-haspopup={activeConversation.type === 'group' ? 'dialog' : 'menu'}
                             aria-expanded={activeConversation.type === 'group' ? showGroupInfo : showMoreMenu}
-                            className="h-9 w-9 rounded-xl hover:bg-slate-100"
+                            className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
                             title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
                         >
                             <MoreVertical size={18} />
@@ -1041,7 +1041,7 @@ export default function ChatWindow({
                             type="button"
                             aria-label="Xóa từ khóa tìm kiếm"
                             onClick={() => { setSearchQuery(''); setMessageSearchResults([]); setSearchError(''); }}
-                            className="rounded-md p-1 hover:bg-slate-200"
+                            className="rounded-md p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
                         >
                             <X size={15} className="text-slate-400" />
                         </button>
@@ -1478,7 +1478,7 @@ export default function ChatWindow({
             <aside className="absolute inset-y-0 right-0 z-[80] flex w-[min(360px,88vw)] min-w-0 shrink-0 flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl xl:static xl:z-auto xl:w-[280px] xl:shadow-none 2xl:w-[300px]">
                 <div className="flex h-[76px] items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5">
                     <div><h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Thông tin</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? 'Cuộc trò chuyện nhóm' : 'Hồ sơ liên hệ'}</p></div>
-                    <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 xl:hidden" aria-label="Đóng bảng thông tin"><X size={18} /></button>
+                    <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 xl:hidden" aria-label="Đóng bảng thông tin"><X size={18} /></button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                     <div className="flex flex-col items-center border-b border-slate-100 dark:border-slate-800 px-5 py-6 text-center">
@@ -1524,7 +1524,7 @@ export default function ChatWindow({
                                     return <div key={file.id} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-100 dark:border-slate-800 p-2">
                                         {image || video ? <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} compact /> : <button type="button" onClick={() => onDownloadFile?.(file)} className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40"><FileText size={17} /></button>}
                                         <span className="min-w-0 flex-1"><span className="block truncate text-[11px] font-semibold text-slate-700 dark:text-slate-200">{file.file_name || 'Tệp đính kèm'}</span><span className="mt-0.5 block text-[10px] text-slate-400">{Number(file.file_size) ? `${(Number(file.file_size) / (1024 * 1024)).toFixed(1)} MB` : file.mime_type || 'Tệp'}</span></span>
-                                        {!image && !video && <button type="button" onClick={() => onDownloadFile?.(file)} aria-label="Tải xuống" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"><Download size={14} /></button>}
+                                        {!image && !video && <button type="button" onClick={() => onDownloadFile?.(file)} aria-label="Tải xuống" className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"><Download size={14} /></button>}
                                     </div>;
                                 })}
                             </div>
