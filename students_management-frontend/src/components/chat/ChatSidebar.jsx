@@ -104,7 +104,7 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] dark:border-slate-700 bg-[#f8faff] dark:bg-slate-950 p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
+        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] dark:border-slate-700 bg-[#f4f8fd] dark:bg-slate-950 p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-slate-100">{t('chat')}</h2>
                 <div className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function ChatSidebar({
                     placeholder={t("searchConversations")}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80"
+                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white dark:border-slate-700 dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80 dark:focus:border-blue-700 dark:focus:ring-blue-950/50"
                 />
             </div>
 
@@ -235,7 +235,7 @@ export default function ChatSidebar({
                     type="button"
                     aria-pressed={filter === 'all'}
                     onClick={() => setFilter('all')}
-                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
                     {t('allConversations')} <span className="ml-1">{conversations.length}</span>
                 </button>
@@ -243,7 +243,7 @@ export default function ChatSidebar({
                     type="button"
                     aria-pressed={filter === 'unread'}
                     onClick={() => setFilter('unread')}
-                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'unread' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'unread' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
                     {t('unreadOnly')} {unreadTotal > 0 && <span className="ml-1">{unreadTotal}</span>}
                 </button>
