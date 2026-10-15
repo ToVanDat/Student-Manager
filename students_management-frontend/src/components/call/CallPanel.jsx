@@ -84,6 +84,7 @@ export default function CallPanel({
     const [incomingActionBusy, setIncomingActionBusy] = useState(false);
 
     const previousCallStateRef = useRef('idle');
+    const lastEndedCallIdRef = useRef(null);
 
     useEffect(() => {
         if (state === 'incoming') {
@@ -96,10 +97,14 @@ export default function CallPanel({
             stopSound('incomingCall');
             stopSound('outgoingCall');
             if (state === 'failed') {
-                void playSound('callError', { volume: 0.55 });
+                void playSound('callError', { volume: 0.55, durationMs: 900 });
             } else if (state === 'idle' && previousCallStateRef.current !== 'idle') {
                 const isBusy = /bận|busy|từ chối|rejected/i.test(error || '');
-                void playSound(isBusy ? 'callBusy' : 'callEnded', { volume: 0.55 });
+                const callId = call?.callId || null;
+                if (!callId || lastEndedCallIdRef.current !== callId) {
+                    lastEndedCallIdRef.current = callId;
+                    void playSound(isBusy ? 'callBusy' : 'callEnded', { volume: 0.55, durationMs: 900 });
+                }
             }
         }
         previousCallStateRef.current = state;
