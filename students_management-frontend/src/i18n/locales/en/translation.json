@@ -163,5 +163,7 @@
   "alreadyHaveAccount": "Already have an account?",
   "registerNow": "Create account",
   "backToLogin": "Back to login",
-  "confirmPasswordLabel": "Confirm password"
+  "confirmPasswordLabel": "Confirm password",
+  "enterEmail": "Please enter your email",
+  "confirmPasswordRequired": "Please confirm your password"
 }
