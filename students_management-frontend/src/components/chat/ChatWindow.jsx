@@ -111,9 +111,9 @@ export default function ChatWindow({
         try {
             await notificationApi.updateConversationPreference(activeConversation.id, next);
             setConversationNotificationsEnabled(next);
-            toast.success(next ? 'Đã bật thông báo cho cuộc trò chuyện' : 'Đã tắt thông báo cho cuộc trò chuyện');
+            toast.success(next ? t('conversationNotificationsOn') : t('conversationNotificationsOff'));
         } catch (error) {
-            toast.error(error.response?.data?.message || 'Không thể cập nhật thông báo cuộc trò chuyện');
+            toast.error(error.response?.data?.message || t('conversationNotificationsUpdateFailed'));
         } finally {
             setSavingConversationNotifications(false);
         }
@@ -1111,15 +1111,15 @@ export default function ChatWindow({
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
                     <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">File & Media</h4>
+                            <h4 className="font-bold text-slate-900 dark:text-slate-100">{t("mediaAndFiles")}</h4>
                             <button type="button" onClick={() => setShowMediaPanel(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
                             {[
-                                ['all', 'Tất cả'],
-                                ['image', 'Ảnh'],
-                                ['video', 'Video'],
-                                ['file', 'Tài liệu']
+                                ['all', t('allMedia')],
+                                ['image', t('images')],
+                                ['video', t('videos')],
+                                ['file', t('documents')]
                             ].map(([key, label]) => <button key={key} type="button" onClick={() => setMediaPanelFilter(key)} className={`flex-1 rounded-lg px-2 py-2 text-[11px] font-semibold transition ${mediaPanelFilter === key ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{label}</button>)}
                         </div>
                         <div className="mt-3 max-h-80 space-y-2 overflow-y-auto">
@@ -1466,7 +1466,7 @@ export default function ChatWindow({
                     type="submit"
                     disabled={!input.trim()}
                     className="flex size-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                    title="Gửi tin nhắn"
+                    title={t("sendMessage")}
                 >
                     <Send size={18} />
                 </button>
@@ -1477,18 +1477,18 @@ export default function ChatWindow({
         {showDetailsPanel && (
             <aside className="absolute inset-y-0 right-0 z-[80] flex w-[min(360px,88vw)] min-w-0 shrink-0 flex-col border-l border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl xl:static xl:z-auto xl:w-[280px] xl:shadow-none 2xl:w-[300px]">
                 <div className="flex h-[76px] items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-5">
-                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">Thông tin</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? 'Cuộc trò chuyện nhóm' : 'Hồ sơ liên hệ'}</p></div>
-                    <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 xl:hidden" aria-label="Đóng bảng thông tin"><X size={18} /></button>
+                    <div><h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t("information")}</h3><p className="mt-0.5 text-[11px] text-slate-400">{activeConversation.type === 'group' ? t('groupConversation') : t('contactProfile')}</p></div>
+                    <button type="button" onClick={() => setShowDetailsPanel(false)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 xl:hidden" aria-label={t("closeInformationPanel")}><X size={18} /></button>
                 </div>
                 <div className="min-h-0 flex-1 overflow-y-auto">
                     <div className="flex flex-col items-center border-b border-slate-100 dark:border-slate-800 px-5 py-6 text-center">
                         <AvatarFallback name={activeConversation.name} src={activeConversationAvatar} size="xl" showStatus={activeConversation.type !== 'group'} isOnline={isDirectOnline} />
                         <h4 className="mt-3 max-w-full truncate text-base font-bold text-slate-900 dark:text-slate-100">{activeConversation.name}</h4>
-                        <p className={`mt-1 text-xs ${isDirectOnline ? 'text-emerald-600' : 'text-slate-500'}`}>{activeConversation.type === 'group' ? `${activeConversation.memberCount || conversationMembers.length} thành viên` : presenceLabel}</p>
+                        <p className={`mt-1 text-xs ${isDirectOnline ? 'text-emerald-600' : 'text-slate-500'}`}>{activeConversation.type === 'group' ? `${activeConversation.memberCount || conversationMembers.length} ${t('membersCount')}` : presenceLabel}</p>
                         <div className="mt-4 flex items-center gap-2">
                             {activeConversation.type !== 'group' && <>
-                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50" title="Gọi thoại"><Phone size={17} /></button>
-                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50" title="Gọi video"><Video size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'voice', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50" title={t("voiceCall")}><Phone size={17} /></button>
+                                <button type="button" disabled={callState !== 'idle'} onClick={() => onStartCall?.(activeConversation.userId, 'video', { name: activeConversation.name, avatar: activeConversationAvatar })} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:opacity-50" title={t("videoCall")}><Video size={17} /></button>
                             </>}
                             <button type="button" onClick={() => { positionSearchPanel(); setShowSearchPanel(true); }} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100" title="Tìm tin nhắn"><Search size={17} /></button>
                             {activeConversation.type === 'group' && <button type="button" onClick={() => setShowGroupInfo(true)} className="flex size-10 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100" title="Quản lý nhóm"><MoreVertical size={17} /></button>}
