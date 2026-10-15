@@ -1,4 +1,7 @@
+import { useLanguage } from '@/context/LanguageContext.jsx';
+
 function EmailStep({ email, onEmailChange, onSubmit, onLogin, loading }) {
+    const { t } = useLanguage();
     return (
         <form className="flex w-full flex-col gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
@@ -13,12 +16,12 @@ function EmailStep({ email, onEmailChange, onSubmit, onLogin, loading }) {
                     disabled={loading}
                 />
             </div>
-            <p className="-mt-1 text-xs leading-relaxed text-slate-500">Nhập email đã đăng ký để lấy lại mật khẩu.</p>
+            <p className="-mt-1 text-xs leading-relaxed text-slate-500">{t('forgotEmailDescription')}</p>
             <button className="flex min-h-[47px] w-full items-center justify-center rounded-[9px] bg-linear-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>
-                {loading ? 'Đang gửi mã...' : 'Gửi yêu cầu'}
+                {loading ? t('sendingCode') : t('sendRequest')}
             </button>
             <div className="flex w-full items-center justify-center gap-2">
-                <button className="border-0 bg-transparent p-0 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400" type="button" onClick={onLogin} disabled={loading}>← Quay lại đăng nhập</button>
+                <button className="border-0 bg-transparent p-0 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400" type="button" onClick={onLogin} disabled={loading}>← {t('backToLogin')}</button>
             </div>
         </form>
     );
