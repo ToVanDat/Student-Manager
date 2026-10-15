@@ -102,14 +102,14 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
+        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] dark:border-slate-700 bg-[#f8faff] dark:bg-slate-950 p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-slate-100">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
-                        className="flex size-9 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#60708a] dark:text-slate-400 ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600"
+                        className="flex size-9 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#60708a] dark:text-slate-400 dark:text-slate-400 ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600"
                         title="Tạo nhóm"
                         aria-label="Tạo nhóm"
                         type="button"
@@ -134,7 +134,7 @@ export default function ChatSidebar({
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[3px]"
                     onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
                 >
-                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
+                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-3xl border border-white/70 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
                     <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-6">
                         <div className="min-w-0">
                             <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
