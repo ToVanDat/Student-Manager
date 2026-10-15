@@ -268,6 +268,10 @@ const updateUser = (partialUser) => {
         const handleSessionRevoked = (data) => {
             console.log('[SOCKET][session revoked]', data);
 
+            // Logging out is initiated by this client; it must never be reported as
+            // a forced logout caused by a login on another device.
+            if (String(data?.reason || '').toUpperCase() === 'LOGOUT') return;
+
             // A login in this same tab intentionally replaces its previous
             // session. Do not let the old socket event clear the new login.
             if (sessionStorage.getItem('auth:login-in-progress') === 'true') {
