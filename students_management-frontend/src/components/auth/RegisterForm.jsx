@@ -20,6 +20,7 @@ function RegisterForm({
     onSubmit,
     onBackToLogin,
 }) {
+    const { t } = useLanguage();
     return (
         <form className="flex w-full flex-col gap-4 min-[451px]:gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
@@ -51,7 +52,7 @@ function RegisterForm({
             {error && <div className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-relaxed text-red-700">{error}</div>}
             {success && <div className="w-full rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-xs leading-relaxed text-green-700">{success}</div>}
             <button className="mt-0.5 flex h-[47px] w-full items-center justify-center rounded-lg bg-linear-to-r from-brand-600 to-brand-500 px-4 text-[13px] font-bold text-white shadow-lg shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none" type="submit" disabled={loading}>
-                {loading ? 'Đang đăng ký...' : 'Tạo tài khoản'}
+                {loading ? t('loading') : t('registerNow')}
             </button>
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <button className="border-0 bg-transparent p-0 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline" type="button" onClick={onBackToLogin}>← {t('backToLogin')}</button>
