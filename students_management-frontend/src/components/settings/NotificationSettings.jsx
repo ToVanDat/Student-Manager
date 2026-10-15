@@ -54,21 +54,21 @@ export default function NotificationSettings() {
     };
 
     return (
-        <section className="box-border w-full min-w-0 max-w-2xl overflow-visible rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <section className="box-border w-full min-w-0 max-w-2xl overflow-visible rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
             <div className="mb-5 min-w-0">
-                <h2 className="text-lg font-semibold text-slate-900">Cài đặt thông báo</h2>
-                <p className="mt-1 break-words text-sm text-slate-500">Áp dụng cho tài khoản này. Bạn có thể tắt riêng thông báo ở từng cuộc trò chuyện.</p>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Cài đặt thông báo</h2>
+                <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">Áp dụng cho tài khoản này. Bạn có thể tắt riêng thông báo ở từng cuộc trò chuyện.</p>
             </div>
-            <div className="mb-4 rounded-xl border border-slate-200 p-4">
-                <h3 className="text-sm font-semibold text-slate-900">Nội dung xem trước</h3>
-                <p className="mt-1 text-xs leading-5 text-slate-500">Chọn nội dung xuất hiện trong Toast, trung tâm thông báo và Push Notification.</p>
+            <div className="mb-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Nội dung xem trước</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Chọn nội dung xuất hiện trong Toast, trung tâm thông báo và Push Notification.</p>
                 <div className="mt-3 grid gap-2">
                     {[
                         { value: 'content', label: 'Hiển thị nội dung tin nhắn' },
                         { value: 'sender', label: 'Chỉ hiển thị tên người gửi' },
                         { value: 'hidden', label: 'Ẩn nội dung và tên người gửi' }
                     ].map(option => (
-                        <label key={option.value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                        <label key={option.value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                             <input type="radio" name="notification-preview-mode" value={option.value} checked={preferences.preview_mode === option.value} disabled={loading || Boolean(savingKey)} onChange={async () => {
                                 setSavingKey('preview_mode');
                                 try {
@@ -97,8 +97,8 @@ export default function NotificationSettings() {
                                 </span>
                             </span>
                             <div className="min-w-0 flex-1 break-words">
-                                <p className="text-sm font-medium text-slate-900">{option.title}</p>
-                                <p className="mt-1 text-xs leading-5 text-slate-500">{option.description}</p>
+                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{option.title}</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{option.description}</p>
                             </div>
                             <span className="group/switch relative ml-auto shrink-0 pt-1 sm:ml-0 sm:pt-0">
                                 <button
