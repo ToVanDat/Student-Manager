@@ -143,3 +143,14 @@
 .dark select { color: #e2e8f0; }
 .dark input::placeholder,
 .dark textarea::placeholder { color: #64748b; }
+
+.dark .dashboard-surface {
+    border-color: #263449 !important;
+    background: #0f172a !important;
+    color: #e2e8f0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+}
+.dark [class~="bg-[#e8f1ff]"],
+.dark [class~="bg-[#f8fbff]"] { background-color: #17243a !important; }
+.dark [class~="text-[#64748b]"],
+.dark [class~="text-[#71829b]"] { color: #94a3b8 !important; }
