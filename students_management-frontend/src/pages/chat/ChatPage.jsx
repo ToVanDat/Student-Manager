@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, Users, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 import ChatSidebar from '@/components/chat/ChatSidebar.jsx';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
