@@ -101,7 +101,7 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className="chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw]">
+        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d]">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
