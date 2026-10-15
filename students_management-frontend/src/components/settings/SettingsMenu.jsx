@@ -1,4 +1,4 @@
-import { Bell, KeyRound, Monitor, ShieldCheck, User } from 'lucide-react';
+import { Bell, KeyRound, Monitor, Moon, ShieldCheck, User } from 'lucide-react';
 
 function SettingsMenu({ activeTab, onChange, activeSessions }) {
     const items = [
@@ -7,6 +7,7 @@ function SettingsMenu({ activeTab, onChange, activeSessions }) {
         { id: 'security', label: 'Bảo mật', Icon: ShieldCheck },
         { id: 'sessions', label: 'Phiên đăng nhập', Icon: Monitor },
         { id: 'password', label: 'Đổi mật khẩu', Icon: KeyRound },
+        { id: 'appearance', label: 'Giao diện', Icon: Moon },
     ];
 
     return (
