@@ -267,5 +267,13 @@
   "updating": "Updating...",
   "resetPassword": "Reset password",
   "globalMenu": "Global menu",
-  "emailNotUpdated": "Email not provided"
+  "emailNotUpdated": "Email not provided",
+  "calls": "Calls",
+  "callHistoryAndNotifications": "Call history and notifications",
+  "history": "History",
+  "noCallHistory": "No call history yet.",
+  "missedCall": "Missed call",
+  "outgoingCall": "Outgoing call",
+  "incomingCall": "Incoming call",
+  "noNewNotifications": "No new notifications."
 }
