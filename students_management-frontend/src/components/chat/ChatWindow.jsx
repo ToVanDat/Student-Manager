@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     MoreVertical,
+    ArrowLeft,
     Search,
     Phone,
     Video,
@@ -40,6 +41,7 @@ import { notificationApi } from '@/api/notificationApi';
 
 export default function ChatWindow({
     activeConversation,
+    onBackToList,
     messages,
     currentUserId,
     onSendMessage,
@@ -838,9 +840,12 @@ export default function ChatWindow({
 
             {/* ================= HEADER ================= */}
 
-            <header className="h-[76px] px-5 flex items-center justify-between border-b border-slate-100 bg-white backdrop-blur">
+            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 bg-white backdrop-blur">
 
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                    <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+                        <ArrowLeft size={19} />
+                    </button>
 
                     <AvatarFallback
                         name={activeConversation.name}
@@ -872,7 +877,7 @@ export default function ChatWindow({
 
                 </div>
 
-                <div className="flex items-center gap-1 text-slate-500">
+                <div className="flex shrink-0 items-center gap-1 text-slate-500">
                     <button
                         type="button"
                         ref={searchTriggerRef}
