@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming, RefreshCw } from 'lucide-react';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { playSound, stopSound } from '@/services/soundService.js';
 
 
@@ -14,6 +15,10 @@ function AvatarCountdown({ name, avatar, progress, size = 80 }) {
         .map(part => part[0] || '')
         .join('')
         .toUpperCase();
+    const [imageError, setImageError] = useState(false);
+    const resolvedAvatar = resolveMediaUrl(avatar);
+
+    useEffect(() => setImageError(false), [avatar]);
 
     return (
         <div className="relative shrink-0" style={{ width: size, height: size }}>
@@ -41,8 +46,8 @@ function AvatarCountdown({ name, avatar, progress, size = 80 }) {
                 className="absolute overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700"
                 style={{ inset: size * 0.12 }}
             >
-                {avatar ? (
-                    <img src={avatar} alt={name || 'Avatar'} className="h-full w-full object-cover" />
+                {resolvedAvatar && !imageError ? (
+                    <img src={resolvedAvatar} alt={name || 'Avatar'} onError={() => setImageError(true)} className="h-full w-full object-cover" />
                 ) : (
                     <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-slate-600 dark:text-slate-200">
                         {initials || 'U'}
