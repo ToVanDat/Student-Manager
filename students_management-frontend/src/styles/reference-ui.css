@@ -40,9 +40,10 @@
 }
 @media (max-width: 767px) {
   .chat-conversation-rail {
-    flex: 0 0 min(42vw, 290px);
-    min-width: 220px;
-    max-width: 46vw;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     padding: 12px;
   }
   .chat-workspace { padding: 0 !important; height: calc(100dvh - 4rem) !important; }
