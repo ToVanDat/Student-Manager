@@ -27,7 +27,7 @@ export default function ConversationItem({ conversation, isSelected, onClick }) 
             <span className="min-w-0 flex-1">
                 <span className="flex items-center justify-between gap-2">
                     <span className={`truncate text-[13px] ${unreadCount > 0 ? 'font-bold text-[#172b4d] dark:text-slate-100' : 'font-semibold text-[#263852] dark:text-slate-200'}`}>{name}</span>
-                    <span className={`shrink-0 text-[10px] ${unreadCount > 0 ? 'font-medium text-blue-600' : 'text-slate-400'}`}>{time}</span>
+                    <span className={`shrink-0 text-[10px] ${unreadCount > 0 ? 'font-medium text-blue-600 dark:text-blue-300' : 'text-slate-400 dark:text-slate-500'}`}>{time}</span>
                 </span>
                 <span className="mt-1 flex items-center justify-between gap-2">
                     <span className={`truncate text-[11px] leading-4 ${unreadCount > 0 ? 'font-medium text-[#52627a] dark:text-slate-300' : 'text-[#8492a8] dark:text-slate-400'}`}>{lastMessage || (isGroup ? 'Nhóm mới được tạo' : 'Chưa có tin nhắn')}</span>
