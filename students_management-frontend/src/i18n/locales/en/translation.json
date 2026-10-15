@@ -328,5 +328,19 @@
   "turnCameraOff": "Turn camera off",
   "turnCameraOn": "Turn camera on",
   "stopScreenSharing": "Stop screen sharing",
-  "shareScreen": "Share screen"
+  "shareScreen": "Share screen",
+  "messageOptions": "Message options",
+  "messageDeleted": "This message was deleted",
+  "messageRecalled": "This message was recalled",
+  "messageWithFile": "Message with a file",
+  "repliedMessage": "Replied message",
+  "attachment": "Attachment",
+  "messageWithAttachment": "Message with an attachment",
+  "playVoiceMessage": "Play voice message",
+  "download": "Download",
+  "downloadFile": "Download file",
+  "sendFailed": "Failed to send",
+  "processing": "Processing",
+  "uploadingPercent": "Uploading {{percent}}%",
+  "sending": "Sending..."
 }
