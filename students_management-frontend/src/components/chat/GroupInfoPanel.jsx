@@ -97,7 +97,7 @@ export default function GroupInfoPanel({
     };
 
     const handleRemove = async (userId) => {
-        if (!window.confirm('${t('confirmRemoveGroupMember')}')) return;
+        if (!window.confirm(t('confirmRemoveGroupMember'))) return;
 
         try {
             setProcessingUserId(Number(userId));
@@ -119,7 +119,7 @@ export default function GroupInfoPanel({
 
     const handleLeave = async () => {
         if (currentRole === 'owner') return;
-        if (!window.confirm('${t('confirmLeaveGroup')}')) return;
+        if (!window.confirm(t('confirmLeaveGroup'))) return;
 
         try {
             await onLeaveGroup?.();
@@ -205,10 +205,10 @@ export default function GroupInfoPanel({
                         <div className="mb-3 flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-semibold text-slate-900">
-                                    Thành viên
+                                    {t('members')}
                                 </p>
                                 <p className="text-xs text-slate-400">
-                                    {ROLE_LABELS[currentRole]}
+                                    {t(ROLE_KEYS[currentRole] || ROLE_KEYS.member)}
                                 </p>
                             </div>
 
@@ -390,19 +390,19 @@ export default function GroupInfoPanel({
                                 </div>
                             </div>
                             <div className="rounded-xl border border-slate-100 p-3">
-                                <p className="text-xs font-semibold text-slate-700">Thêm thành viên</p>
+                                <p className="text-xs font-semibold text-slate-700">{t('addMembers')}</p>
                                 <p className="mt-1 text-[11px] text-slate-400">
-                                    {canAdd ? t(canAdd ? 'canAddMembers' : 'onlyAdminsCanAddMembers')}
+                                    {t(canAdd ? 'canAddMembers' : 'onlyAdminsCanAddMembers')}
                                 </p>
                             </div>
                             <div className="rounded-xl border border-slate-100 p-3">
-                                <p className="text-xs font-semibold text-slate-700">Quản lý thành viên</p>
+                                <p className="text-xs font-semibold text-slate-700">{t('manageMembers')}</p>
                                 <p className="mt-1 text-[11px] text-slate-400">
                                     {currentRole === 'owner'
-                                        ? 'Đổi quyền, chuyển trưởng nhóm hoặc xóa thành viên.'
+                                        ? t('ownerManageMembersDescription')
                                         : currentRole === 'admin'
-                                            ? 'Xóa thành viên thường.'
-                                            : 'Bạn không có quyền quản lý.'}
+                                            ? t('adminManageMembersDescription')
+                                            : t('noManagePermission')}
                                 </p>
                             </div>
                         </div>
@@ -418,8 +418,8 @@ export default function GroupInfoPanel({
                         >
                             <LogOut size={16} />
                             {currentRole === 'owner'
-                                ? 'Chuyển quyền trước khi rời nhóm'
-                                : 'Rời nhóm'}
+                                ? t('transferOwnershipBeforeLeaving')
+                                : t('leaveGroup')}
                         </button>
                     </div>
                 </div>
