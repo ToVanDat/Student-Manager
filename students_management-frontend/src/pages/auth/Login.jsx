@@ -1,4 +1,6 @@
 import {useEffect, useState} from 'react';
+import { Languages } from 'lucide-react';
+import { VN, GB } from 'country-flag-icons/react/3x2';
 
 import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
@@ -22,7 +24,7 @@ import ForgotPasswordForm
 function Login() {
 
     const { loginUser } = useAuth();
-    const { t } = useLanguage();
+    const { language, setLanguage, t } = useLanguage();
     const navigate = useNavigate();
 
     const [mode, setMode] = useState('login');
@@ -515,6 +517,29 @@ function Login() {
 
                     <div className="w-full max-w-[460px] px-5 py-7 min-[451px]:px-6 min-[451px]:py-8 min-[601px]:px-[30px] min-[601px]:py-[35px] min-[901px]:px-10 min-[901px]:py-[45px] min-[1101px]:p-[55px] max-[800px]:max-w-[520px]">
 
+                        {/* LANGUAGE: grouped at the top of the form, separate from the banner */}
+                        <div className="mb-6 flex items-center justify-end min-[601px]:mb-7">
+                            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label={t('language')}>
+                                <Languages size={16} aria-hidden="true" className="ml-2 mr-1 text-slate-500" />
+                                {[
+                                    { value: 'vi', label: 'Tiếng Việt', shortLabel: 'VI', Flag: VN },
+                                    { value: 'en', label: 'English', shortLabel: 'EN', Flag: GB },
+                                ].map(option => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => setLanguage(option.value)}
+                                        aria-pressed={language === option.value}
+                                        aria-label={option.label}
+                                        title={option.label}
+                                        className={"inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 " + (language === option.value ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100')}
+                                    >
+                                        <option.Flag aria-hidden="true" className="shrink-0 rounded-[2px] shadow-sm" style={{ width: 18, height: 12, display: 'inline-block' }} />
+                                        <span>{option.shortLabel}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* BRAND */}
 
