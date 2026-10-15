@@ -255,14 +255,15 @@ export default function ChatPage() {
     return (
         <div className="min-h-screen bg-[#f5f8ff] font-sans text-[#203754]">
             <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 backdrop-blur sm:px-6">
-                <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white">
-                        <span className="text-lg" aria-hidden="true">✉</span>
-                    </div>
-                    <div className="min-w-0">
-                        <h1 className="truncate text-sm font-bold">Tin nhắn</h1>
-                    </div>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => setChatNavCollapsed(value => !value)}
+                    className="hidden size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:inline-flex"
+                    aria-label={chatNavCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+                    title={chatNavCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
+                >
+                    {chatNavCollapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+                </button>
                 <div className="ml-auto flex items-center gap-2">
                     <button
                         type="button"
@@ -328,7 +329,7 @@ export default function ChatPage() {
                                 <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm"><GraduationCap size={20} /></span>
                                 {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs text-[#203754]">Student-Manager</strong><small className="text-[9px] text-[#7f8ba0]">Kết nối học tập</small></span>}
                             </div>
-                            <div className={`mb-2 flex ${chatNavCollapsed ? "justify-center" : "justify-between px-2"}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>}<button type="button" onClick={() => setChatNavCollapsed(value => !value)} title={chatNavCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} aria-label={chatNavCollapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"} className="flex size-7 items-center justify-center rounded-lg text-slate-500 hover:bg-blue-100 hover:text-blue-700">{chatNavCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}</button></div>
+                            <div className={`mb-2 px-2 ${chatNavCollapsed ? "text-center" : ""}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500">MENU</p>}</div>
                             <nav className="space-y-1">
                                 <button type="button" title="Tổng quan" aria-label="Tổng quan" onClick={() => navigate('/students')} className={`flex h-10 w-full items-center gap-3 rounded-xl px-3 text-left text-xs font-medium text-[#64748b] transition hover:bg-[#eaf3ff] hover:text-[#1d4ed8] ${chatNavCollapsed ? "justify-center px-0" : ""}`}><Home size={17} />{!chatNavCollapsed && "Tổng quan"}</button>
                                 <button type="button" title={`Trò chuyện${totalUnreadMessages ? ` — ${totalUnreadMessages} tin chưa đọc` : ""}`} aria-label={`Trò chuyện${totalUnreadMessages ? `, ${totalUnreadMessages} tin chưa đọc` : ""}`} aria-current="page" className={`relative flex h-10 w-full items-center gap-3 rounded-xl bg-[#dcecff] px-3 text-left text-xs font-semibold text-[#1d4ed8] shadow-sm shadow-blue-100 ${chatNavCollapsed ? "justify-center px-0" : ""}`}><MessageSquare size={17} />{!chatNavCollapsed && "Trò chuyện"}{totalUnreadMessages > 0 && <span className={`absolute rounded-full bg-rose-500 text-center text-[9px] font-bold leading-4 text-white ${chatNavCollapsed ? "right-0 top-0 min-w-4 px-1" : "right-2 min-w-5 px-1"}`}>{totalUnreadMessages > 99 ? "99+" : totalUnreadMessages}</span>}</button>
