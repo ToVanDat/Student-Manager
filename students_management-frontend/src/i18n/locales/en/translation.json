@@ -248,5 +248,6 @@
   "blockUser": "Block user",
   "report": "Report",
   "hideConversation": "Hide conversation",
-  "deleteConversationContent": "Delete conversation content"
+  "deleteConversationContent": "Delete conversation content",
+  "academicManagement": "Academic management"
 }
