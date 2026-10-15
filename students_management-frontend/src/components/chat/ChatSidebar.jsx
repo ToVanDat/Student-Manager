@@ -11,7 +11,8 @@ export default function ChatSidebar({
     searchResults,
     onStartConversation,
     onStartGroupConversation,
-    onlineUserIds = new Set()
+    onlineUserIds = new Set(),
+    mobileHidden = false
 }) {
     const [filter, setFilter] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
