@@ -2,14 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { Bell, Volume2, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { enableWebPush, disableWebPush, notificationApi } from '@/api/notificationApi';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 const OPTIONS = [
-    { key: 'notifications_enabled', title: 'Thông báo trong ứng dụng', description: 'Hiển thị thông báo khi đang sử dụng Student Management', icon: Bell },
-    { key: 'push_enabled', title: 'Thông báo đẩy trên trình duyệt', description: 'Nhận thông báo khi tab chat không mở ở phía trước', icon: Smartphone },
-    { key: 'sound_enabled', title: 'Âm thanh thông báo', description: 'Phát âm báo khi có thông báo mới', icon: Volume2 }
+    { key: 'notifications_enabled', titleKey: 'inAppNotifications', descriptionKey: 'inAppNotificationsDescription', icon: Bell },
+    { key: 'push_enabled', titleKey: 'browserPushNotifications', descriptionKey: 'browserPushNotificationsDescription', icon: Smartphone },
+    { key: 'sound_enabled', titleKey: 'notificationSounds', descriptionKey: 'notificationSoundsDescription', icon: Volume2 }
 ];
 
 export default function NotificationSettings() {
+    const { t } = useLanguage();
     const [preferences, setPreferences] = useState({
         notifications_enabled: true,
         push_enabled: false,
@@ -30,7 +32,7 @@ export default function NotificationSettings() {
                     preview_mode: ['content', 'sender', 'hidden'].includes(data.data.preview_mode) ? data.data.preview_mode : 'content'
                 });
             })
-            .catch(error => toast.error(error.response?.data?.message || 'Không tải được cài đặt thông báo'))
+            .catch(error => toast.error(error.response?.data?.message || t('loadNotificationSettingsFailed')))
             .finally(() => { if (active) setLoading(false); });
         return () => { active = false; };
     }, []);
@@ -45,9 +47,9 @@ export default function NotificationSettings() {
             }
             const { data } = await notificationApi.updatePreferences({ [key]: next });
             setPreferences(previous => ({ ...previous, [key]: key === 'preview_mode' ? data.data.preview_mode : Boolean(data.data[key]) }));
-            toast.success('Đã lưu cài đặt thông báo');
+            toast.success(t('notificationSettingsSaved'));
         } catch (error) {
-            toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật cài đặt');
+            toast.error(error.response?.data?.message || error.message || t('updateSettingsFailed'));
         } finally {
             setSavingKey('');
         }
@@ -56,17 +58,17 @@ export default function NotificationSettings() {
     return (
         <section className="box-border w-full min-w-0 max-w-2xl overflow-visible rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
             <div className="mb-5 min-w-0">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Cài đặt thông báo</h2>
-                <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">Áp dụng cho tài khoản này. Bạn có thể tắt riêng thông báo ở từng cuộc trò chuyện.</p>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('notificationSettings')}</h2>
+                <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">{t('notificationSettingsDescription')}</p>
             </div>
             <div className="mb-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Nội dung xem trước</h3>
-                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Chọn nội dung xuất hiện trong Toast, trung tâm thông báo và Push Notification.</p>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100"{t('notificationPreviewContent')}</h3>
+                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('notificationPreviewDescription')}</p>
                 <div className="mt-3 grid gap-2">
                     {[
-                        { value: 'content', label: 'Hiển thị nội dung tin nhắn' },
-                        { value: 'sender', label: 'Chỉ hiển thị tên người gửi' },
-                        { value: 'hidden', label: 'Ẩn nội dung và tên người gửi' }
+                        { value: 'content', label: t('showMessageContent') },
+                        { value: 'sender', label: t('showSenderOnly') },
+                        { value: 'hidden', label: t('hideMessageAndSender') }
                     ].map(option => (
                         <label key={option.value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                             <input type="radio" name="notification-preview-mode" value={option.value} checked={preferences.preview_mode === option.value} disabled={loading || Boolean(savingKey)} onChange={async () => {
@@ -74,7 +76,7 @@ export default function NotificationSettings() {
                                 try {
                                     const { data } = await notificationApi.updatePreferences({ preview_mode: option.value });
                                     setPreferences(previous => ({ ...previous, preview_mode: data.data.preview_mode }));
-                                    toast.success('Đã lưu chế độ xem trước thông báo');
+                                    toast.success(t('notificationPreviewSaved'));
                                 } catch (error) {
                                     toast.error(error.response?.data?.message || error.message || 'Không thể cập nhật cài đặt');
                                 } finally { setSavingKey(''); }
@@ -93,12 +95,12 @@ export default function NotificationSettings() {
                             <span className="group/icon relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300">
                                 <Icon size={19} aria-hidden="true" />
                                 <span role="tooltip" className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[min(13rem,calc(100vw-2rem))] -translate-x-1/2 rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover/icon:opacity-100 group-focus-within/icon:opacity-100">
-                                    {option.title}
+                                    {t(option.titleKey)}
                                 </span>
                             </span>
                             <div className="min-w-0 flex-1 break-words">
                                 <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{option.title}</p>
-                                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{option.description}</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t(option.descriptionKey)}</p>
                             </div>
                             <span className="group/switch relative ml-auto shrink-0 pt-1 sm:ml-0 sm:pt-0">
                                 <button
@@ -118,7 +120,7 @@ export default function NotificationSettings() {
                                     />
                                 </button>
                                 <span role="tooltip" className="pointer-events-none absolute right-0 top-full z-20 mt-2 w-max max-w-[min(13rem,calc(100vw-2rem))] rounded-md bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg transition-opacity group-hover/switch:opacity-100 group-focus-within/switch:opacity-100">
-                                    {option.title}: {checked ? 'Đang bật' : 'Đang tắt'}
+                                    {option.title}: {checked ? t('enabled') : t('disabled')}
                                 </span>
                             </span>
                         </div>
@@ -126,7 +128,7 @@ export default function NotificationSettings() {
                 })}
             </div>
             {!loading && preferences.push_enabled && typeof Notification !== 'undefined' && Notification.permission === 'denied' && (
-                <p className="mt-3 break-words text-sm text-amber-700">Thông báo trình duyệt đang bị chặn trong cài đặt của trình duyệt.</p>
+                <p className="mt-3 break-words text-sm text-amber-700">{t('browserNotificationsBlocked')}</p>
             )}
         </section>
     );
