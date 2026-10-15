@@ -3,6 +3,7 @@ import { MessageSquareDashed } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function EmptyChat({ onStartConversation }) {
+    const { t } = useLanguage();
     return (
         <div className="flex-1 flex flex-col items-center justify-center bg-white rounded-r-2xl p-8 text-center">
             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
