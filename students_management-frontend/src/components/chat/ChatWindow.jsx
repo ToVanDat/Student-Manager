@@ -1309,29 +1309,14 @@ export default function ChatWindow({
             {/* ================= INPUT AREA ================= */}
 
             {replyTo && (
-                <div className="mx-5 mb-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-blue-50/80 px-3 py-2.5 shadow-sm">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
-                        <Reply size={16} />
-                    </div>
-
-                    <div className="min-w-0 flex-1 border-l-2 border-blue-400 pl-3">
-                        <p className="text-[11px] font-semibold text-blue-600">
-                            Đang trả lời
-                        </p>
+                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className="min-w-0 flex-1 border-l-[3px] border-blue-500 pl-2.5">
+                        <p className="text-[11px] font-semibold leading-4 text-blue-700">Đang trả lời {replyTo.sender_name || replyTo.username || 'tin nhắn'}</p>
                         <p className="truncate text-xs leading-5 text-slate-600">
-                            {replyTo.content || '📎 Tin nhắn có tệp đính kèm'}
+                            {replyTo.content || (replyTo.files?.length ? `📎 ${replyTo.files[0].file_name || 'Tệp đính kèm'}` : 'Tin nhắn đính kèm')}
                         </p>
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={() => setReplyTo(null)}
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-white hover:text-slate-700"
-                        title="Hủy trả lời"
-                        aria-label="Hủy trả lời"
-                    >
-                        <X size={16} />
-                    </button>
+                    <button type="button" onClick={() => setReplyTo(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-slate-500 transition hover:bg-white hover:text-slate-900" title="Hủy trả lời" aria-label="Hủy trả lời"><X size={15} /></button>
                 </div>
             )}
 
