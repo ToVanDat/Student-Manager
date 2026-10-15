@@ -475,8 +475,8 @@ function Students() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 text-slate-600">
-        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-blue-600"></div>
 
         <p>Đang tải dữ liệu...</p>
       </div>
@@ -489,7 +489,7 @@ function Students() {
 
   return (
     <div
-      className="flex min-h-screen bg-[#f5f8ff] font-sans text-[#203754]"
+      className="flex min-h-screen bg-[#f5f8ff] dark:bg-slate-950 font-sans text-[#203754] dark:text-slate-100"
     >
       {/* =================================================
           SIDEBAR
