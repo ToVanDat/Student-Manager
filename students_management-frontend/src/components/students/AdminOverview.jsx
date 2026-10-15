@@ -18,10 +18,10 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
         { label: t('female'), value: number(statistics.female, language), detail: t('studentProfile'), icon: GraduationCap, color: 'rose' },
     ];
     const cardColors = {
-        blue: 'bg-[#edf5ff] text-[#3478e5]',
-        emerald: 'bg-[#e9fbf4] text-[#059669]',
-        violet: 'bg-[#f3efff] text-[#7c3aed]',
-        rose: 'bg-[#fff0f3] text-[#e11d48]',
+        blue: 'bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300',
+        emerald: 'bg-[#e9fbf4] text-[#059669] dark:bg-emerald-950/50 dark:text-emerald-300',
+        violet: 'bg-[#f3efff] text-[#7c3aed] dark:bg-violet-950/50 dark:text-violet-300',
+        rose: 'bg-[#fff0f3] text-[#e11d48] dark:bg-rose-950/50 dark:text-rose-300',
     };
 
     return (
@@ -32,7 +32,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                     <h1 className="text-2xl font-bold tracking-tight text-[#203754] dark:text-slate-100 sm:text-[28px]">{t('welcome')}, {user?.username || 'Admin'}!</h1>
                     <p className="mt-1 text-sm text-[#71829b] dark:text-slate-400">{t('overview')}</p>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-[#71829b] dark:text-slate-400 shadow-sm">
+                <div className="inline-flex items-center gap-2 rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-[#71829b] dark:text-slate-400 shadow-sm">
                     <CalendarDays size={15} className="text-blue-600" />
                     <span className="capitalize">{today}</span>
                 </div>
@@ -40,23 +40,23 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
-                    <article key={label} className="admin-kpi-card rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] transition-colors hover:border-[#bfd8ff] dark:hover:border-blue-800 sm:p-4">
+                    <article key={label} className="admin-kpi-card rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] transition-colors hover:border-[#bfd8ff] dark:hover:border-blue-800 sm:p-4">
                         <div className="flex items-start justify-between gap-3">
                             <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
                             <span className="rounded-full bg-[#f5f8ff] dark:bg-slate-800 px-2 py-1 text-[10px] font-medium text-[#8190a7] dark:text-slate-400">{t('current')}</span>
                         </div>
                         <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
                         <p className="mt-1 text-[27px] font-bold leading-none tracking-tight text-[#203754] dark:text-slate-100">{value}</p>
-                        <p className="mt-2 text-[11px] text-[#8190a7]">{detail}</p>
+                        <p className="mt-2 text-[11px] text-[#8190a7] dark:text-slate-400">{detail}</p>
                     </article>
                 ))}
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)]">
-                <section className="rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)]">
+                <section className="rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)]">
                     <div className="mb-5 flex items-center justify-between gap-3">
-                        <div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2><p className="mt-1 text-xs text-[#8190a7]">{t('classCounts')}</p></div>
-                        <span className="flex size-9 items-center justify-center rounded-xl bg-[#edf5ff] text-[#3478e5]"><ChartNoAxesCombined size={18} /></span>
+                        <div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('classCounts')}</p></div>
+                        <span className="flex size-9 items-center justify-center rounded-xl bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300"><ChartNoAxesCombined size={18} /></span>
                     </div>
                     {classStatistics.length ? (
                         <div className="space-y-4">
@@ -67,17 +67,17 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                                 </div>
                             ))}
                         </div>
-                    ) : <div className="flex min-h-44 flex-col items-center justify-center text-center"><BookOpen className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600">{t('noClassData')}</p><p className="mt-1 text-xs text-[#8190a7]">{t('addClassHint')}</p></div>}
+                    ) : <div className="flex min-h-44 flex-col items-center justify-center text-center"><BookOpen className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noClassData')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('addClassHint')}</p></div>}
                 </section>
 
-                <section className="rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
-                    <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('recentStudents')}</h2><p className="mt-1 text-xs text-[#8190a7]">{t('newestProfiles')}</p></div><button type="button" onClick={onOpenStudents} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">{t('viewAll')} <ArrowRight size={14} /></button></div>
-                    {recentStudents.length ? <div className="divide-y divide-[#e8eef7]">
+                <section className="rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('recentStudents')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('newestProfiles')}</p></div><button type="button" onClick={onOpenStudents} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">{t('viewAll')} <ArrowRight size={14} /></button></div>
+                    {recentStudents.length ? <div className="divide-y divide-[#e8eef7] dark:divide-slate-700">
                         {recentStudents.map(student => <div key={student.id} className="flex items-center gap-3 py-3 first:pt-1 last:pb-0">
-                            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">{String(student.name || 'S').trim().charAt(0).toUpperCase()}</div>
-                            <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#293b55]">{student.name || t('noData')}</p><p className="mt-0.5 truncate text-[10px] text-[#8190a7]">{student.student_code || student.email || t('studentCode')} · {student.class_code || t('className')}</p></div>
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">{String(student.name || 'S').trim().charAt(0).toUpperCase()}</div>
+                            <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#293b55] dark:text-slate-200">{student.name || t('noData')}</p><p className="mt-0.5 truncate text-[10px] text-[#8190a7] dark:text-slate-400">{student.student_code || student.email || t('studentCode')} · {student.class_code || t('className')}</p></div>
                         </div>)}
-                    </div> : <div className="flex min-h-44 flex-col items-center justify-center text-center"><Users className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600">{t('noStudentProfiles')}</p><p className="mt-1 text-xs text-[#8190a7]">{t('createFirstProfile')}</p></div>}
+                    </div> : <div className="flex min-h-44 flex-col items-center justify-center text-center"><Users className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noStudentProfiles')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('createFirstProfile')}</p></div>}
                     <button type="button" onClick={onOpenStudents} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-semibold text-white transition hover:bg-blue-700"><CirclePlus size={16} />{t('manageStudents')}</button>
                 </section>
             </div>
