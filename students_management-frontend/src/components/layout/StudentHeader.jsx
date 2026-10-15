@@ -2,7 +2,6 @@ import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { useEffect, useRef, useState } from 'react';
 import {
     Bell,
-    LogOut,
     Menu,
     PanelLeftClose,
     PanelLeftOpen,
