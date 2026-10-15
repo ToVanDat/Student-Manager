@@ -158,5 +158,10 @@
   "editShort": "Edit",
   "loadingStudents": "Loading students…",
   "noStudentsShort": "No students yet",
-  "accountSecurity": "ACCOUNT & SECURITY"
+  "accountSecurity": "ACCOUNT & SECURITY",
+  "noAccountYet": "Don't have an account?",
+  "alreadyHaveAccount": "Already have an account?",
+  "registerNow": "Create account",
+  "backToLogin": "Back to login",
+  "confirmPasswordLabel": "Confirm password"
 }
