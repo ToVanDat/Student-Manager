@@ -119,7 +119,7 @@ function StudentDashboard({
                                         key={page}
                                         type="button"
                                         onClick={() => onPageChange(page)}
-                                        aria-label={`Trang ${page}`}
+                                        aria-label={`${t("page")} ${page}`}
                                         aria-current={page === currentPage ? 'page' : undefined}
                                     >
                                         {page}
@@ -143,7 +143,7 @@ function StudentDashboard({
                     <StudentClassStatistics classStatistics={classStatistics} />
                     <div className="flex min-h-[100px] items-center gap-3 rounded-[13px] bg-linear-to-br from-[#5269e9] to-[#6256d9] p-[17px] text-white shadow-xl shadow-indigo-700/20">
                         <div className="flex size-[43px] shrink-0 items-center justify-center rounded-[11px] bg-white/15"><GraduationCap size={25} /></div>
-                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">Quản lý đào tạo</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">{t('studentOverviewCard')}</p></div>
+                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">{t("academicManagement")}</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">{t('studentOverviewCard')}</p></div>
                         <ChevronRight className="shrink-0" size={18} />
                     </div>
                 </div>
