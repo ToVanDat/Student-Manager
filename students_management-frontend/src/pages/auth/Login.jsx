@@ -152,7 +152,10 @@ function Login() {
 
 
         setLoading(true);
-
+        // Mark this tab as intentionally replacing its previous session.
+        // sessionStorage is tab-scoped, unlike localStorage, so other devices
+        // and tabs still process their own session-revoked event.
+        sessionStorage.setItem('auth:login-in-progress', 'true');
 
         try {
 
@@ -236,9 +239,8 @@ function Login() {
 
 
         } finally {
-
+            sessionStorage.removeItem('auth:login-in-progress');
             setLoading(false);
-
         }
 
     };
