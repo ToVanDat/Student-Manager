@@ -983,15 +983,10 @@ const logout = async (
             );
 
 
-        // =============================================
-        // SOCKET NOTIFICATION
-        // =============================================
-
-        emitSessionRevoked(
-            sessionId,
-            'LOGOUT'
-        );
-
+        // Do not emit session:revoked for an explicit logout. The current
+        // browser initiated the logout and will disconnect its own socket;
+        // emitting a revoke event here incorrectly triggers the "logged in on
+        // another device" warning in the same browser.
 
         return {
             success: true
