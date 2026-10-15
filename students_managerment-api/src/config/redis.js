@@ -11,8 +11,21 @@ const redisUrl = process.env.REDIS_URL || (
 
 const redisClient = createClient({ url: redisUrl });
 
+// Avoid flooding the terminal when Redis is temporarily unavailable.
+// Log the first error in an outage and report recovery when Redis is ready again.
+let redisConnectionErrorLogged = false;
+
 redisClient.on('error', (error) => {
-    console.error('Redis Error:', error.message);
+    if (redisConnectionErrorLogged) return;
+    redisConnectionErrorLogged = true;
+    console.error('[Redis] Connection error:', error.message);
+});
+
+redisClient.on('ready', () => {
+    if (redisConnectionErrorLogged) {
+        console.log('[Redis] Connection restored.');
+        redisConnectionErrorLogged = false;
+    }
 });
 
 const connectRedis = async () => {
