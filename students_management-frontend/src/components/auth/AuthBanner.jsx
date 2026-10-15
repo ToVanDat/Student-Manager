@@ -34,13 +34,11 @@ function AuthBanner() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
-    const localizedBanners = language === 'en'
-        ? [
-            { id: 'campus', badge: 'STUDENT MANAGEMENT SYSTEM', title: 'Student Management', description: 'Manage student profiles and academic records in one place.' },
-            { id: 'academic', badge: 'ACADEMIC MANAGEMENT', title: 'Academic administration', description: 'Manage classes, subjects, semesters, and academic information centrally.' },
-            { id: 'community', badge: 'STUDENT SERVICES', title: 'Connect students', description: 'Organize student information quickly, accurately, and efficiently.' },
-        ]
-        : banners;
+    const localizedBanners = [
+        { id: 'campus', badge: t('authBannerCampusBadge'), title: t('authBannerCampusTitle'), description: t('authBannerCampusDescription') },
+        { id: 'academic', badge: t('authBannerAcademicBadge'), title: t('authBannerAcademicTitle'), description: t('authBannerAcademicDescription') },
+        { id: 'community', badge: t('authBannerCommunityBadge'), title: t('authBannerCommunityTitle'), description: t('authBannerCommunityDescription') },
+    ];
     const banner = localizedBanners[currentIndex];
 
     useEffect(() => {
@@ -77,8 +75,8 @@ function AuthBanner() {
             <div className="absolute right-4 top-4 z-20 flex items-center gap-1 rounded-full border border-white/25 bg-slate-950/35 p-1 backdrop-blur-md" aria-label={t('language')}>
                 <Languages size={15} className="mx-1 text-white/80" />
                 {[
-                    { value: 'vi', label: 'VI' },
-                    { value: 'en', label: 'EN' },
+                    { value: 'vi', label: '🇻🇳 VI' },
+                    { value: 'en', label: '🇬🇧 EN' },
                 ].map(option => (
                     <button key={option.value} type="button" onClick={() => setLanguage(option.value)}
                         aria-pressed={language === option.value}
@@ -102,9 +100,9 @@ function AuthBanner() {
                 </p>
                 <div className="my-4 h-0.5 w-[45px] rounded-full bg-white min-[601px]:my-7 min-[601px]:h-[3px] min-[601px]:w-[60px]" />
                 <div className="flex items-center gap-3 min-[451px]:gap-4 min-[601px]:gap-8">
-                    <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">01</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">Quản lý sinh viên</span></div>
-                    <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">02</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">Quản lý lớp học</span></div>
-                    <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">03</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">Quản lý đào tạo</span></div>
+                    <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">01</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">{t("authFeatureStudents")}</span></div>
+                    <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">02</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">{t("authFeatureClasses")}</span></div>
+                    <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">03</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">{t("authFeatureAcademics")}</span></div>
                 </div>
             </div>
             <button type="button" className="absolute left-2.5 top-1/2 z-[5] flex size-[34px] -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/30 text-white opacity-100 backdrop-blur transition hover:scale-105 hover:bg-white/15 min-[451px]:left-[15px] min-[451px]:size-[38px] min-[801px]:left-[25px] min-[801px]:size-[46px] min-[801px]:opacity-0 min-[801px]:hover:opacity-100" onClick={goPrevious} aria-label="Banner trước"><ChevronLeft size={24} /></button>
