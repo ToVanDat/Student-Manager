@@ -198,6 +198,7 @@ function Students() {
     }
 
     const params = new URLSearchParams(searchParams);
+    if (isAdmin && value.trim()) params.set("view", "students");
 
     if (value.trim()) {
       params.set("search", value);
@@ -280,8 +281,9 @@ function Students() {
   // =====================================================
 
   const [activePage, setActivePage] = useState(() => {
-    if (searchParams.get("view") === "settings") return "settings";
-    if (isAdmin && searchParams.has("search")) return "students";
+    const requestedView = searchParams.get("view");
+    if (requestedView === "settings") return "settings";
+    if (requestedView === "students" || (isAdmin && searchParams.has("search"))) return "students";
     return "dashboard";
   });
 
@@ -510,8 +512,18 @@ function Students() {
             navigate("/chat");
             return;
           }
+          if (!["dashboard", "students"].includes(page)) return;
 
           setActivePage(page);
+          const params = new URLSearchParams(searchParams);
+          params.set("view", page);
+          params.delete("tab");
+          if (page === "dashboard") {
+            params.delete("search");
+            params.delete("page");
+            params.delete("pageSize");
+          }
+          setSearchParams(params, { replace: true });
         }}
         onOpenSettings={() =>
           openSettings("account")
@@ -531,7 +543,7 @@ function Students() {
           user={user}
           search={search}
           onSearchChange={handleSearchChange}
-          showSearch={isAdmin}
+          showSearch={isAdmin && activePage !== "students" && activePage !== "settings"}
           darkMode={isDarkMode}
           onToggleDarkMode={toggleTheme}
           onOpenSettings={(tab = "account") =>
@@ -562,7 +574,12 @@ function Students() {
               statistics={statistics}
               classStatistics={classStatistics}
               students={students}
-              onOpenStudents={() => setActivePage("students")}
+              onOpenStudents={() => {
+                setActivePage("students");
+                const params = new URLSearchParams(searchParams);
+                params.set("view", "students");
+                setSearchParams(params, { replace: true });
+              }}
             />
           )}
 
