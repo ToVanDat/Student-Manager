@@ -19,6 +19,7 @@ import SessionSettings from "@/components/settings/SessionSettings.jsx";
 import PasswordSettings from "@/components/settings/PasswordSettings.jsx";
 import NotificationSettings from "@/components/settings/NotificationSettings.jsx";
 import AppearanceSettings from "@/components/settings/AppearanceSettings.jsx";
+import LanguageSettings from "@/components/settings/LanguageSettings.jsx";
 
 import {
   createStudent,
@@ -314,7 +315,7 @@ function Students() {
   // =====================================================
 
   const openSettings = (tab = "account") => {
-    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance"];
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance", "language"];
     const nextTab = allowedTabs.includes(tab) ? tab : "account";
     setActivePage("settings");
     setSettingsTab(nextTab);
@@ -705,6 +706,7 @@ function Students() {
                 {settingsTab === "notifications" && <NotificationSettings />}
 
                 {settingsTab === "appearance" && <AppearanceSettings />}
+                {settingsTab === "language" && <LanguageSettings />}
 
                 {/* =========================================
                     SECURITY
