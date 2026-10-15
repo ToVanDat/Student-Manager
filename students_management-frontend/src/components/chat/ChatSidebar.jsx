@@ -130,13 +130,21 @@ export default function ChatSidebar({
             </div>
 
             {showNewChat && (
-                <div className="absolute z-30 left-5 right-5 top-20 bg-white border border-slate-200 rounded-2xl shadow-2xl p-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-semibold text-slate-800">
-                            {mode === 'group' ? 'Tạo nhóm' : 'Tìm kiếm người dùng'}
-                        </h3>
-                        <button type="button" aria-label="Đóng" onClick={closeNewChat}><X size={16} /></button>
+                <div
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[3px]"
+                    onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
+                >
+                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)]">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+                        <div className="min-w-0">
+                            <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900">
+                                {mode === 'group' ? 'Tạo nhóm mới' : 'Tin nhắn mới'}
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500">{mode === 'group' ? 'Đặt tên nhóm và chọn người muốn thêm.' : 'Tìm người dùng để bắt đầu trò chuyện.'}</p>
+                        </div>
+                        <button type="button" aria-label="Đóng" title="Đóng" onClick={closeNewChat} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"><X size={18} /></button>
                     </div>
+                    <div className="space-y-3 overflow-y-auto px-5 py-4 sm:px-6">
 
                     {mode === 'group' && (
                         <input
@@ -144,7 +152,7 @@ export default function ChatSidebar({
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder="Tên nhóm..."
-                            className="w-full mb-2 px-3 py-2 text-sm bg-slate-50 text-slate-800 rounded-lg outline-none"
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                         />
                     )}
 
@@ -153,7 +161,7 @@ export default function ChatSidebar({
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder={mode === 'group' ? 'Tìm và chọn thành viên...' : 'Tìm username, email...'}
-                        className="w-full px-3 py-2 text-sm bg-slate-50 text-slate-800 rounded-lg outline-none"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                     />
 
                     {mode === 'group' && selectedIds.length > 0 && (
@@ -165,7 +173,7 @@ export default function ChatSidebar({
                         </p>
                     )}
 
-                    <div className="mt-2 max-h-52 overflow-y-auto">
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 p-1">
                         {searchResults.map(user => {
                             const selected = selectedIds.includes(Number(user.id));
                             return (
@@ -178,7 +186,7 @@ export default function ChatSidebar({
                                         }
                                         await handleStartDirectConversation(user.id);
                                     }}
-                                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 text-left"
+                                    type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50"
                                 >
                                     <AvatarFallback name={user.username} src={user.avatar_url || user.avatarUrl || user.avatar} size="md" />
                                     <span className="text-sm font-medium text-slate-800 flex-1">{user.username}</span>
@@ -199,11 +207,13 @@ export default function ChatSidebar({
                             type="button"
                             disabled={!groupName.trim() || selectedIds.length < 1 || creatingGroup}
                             onClick={handleCreateGroup}
-                            className="w-full mt-3 h-10 rounded-lg bg-[#4b63f5] text-white text-sm font-semibold disabled:opacity-50"
+                            className="mt-1 h-11 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                         >
                             {creatingGroup ? 'Đang tạo...' : 'Tạo nhóm'}
                         </button>
                     )}
+                    </div>
+                    </section>
                 </div>
             )}
 
