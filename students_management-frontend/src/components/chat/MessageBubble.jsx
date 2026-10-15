@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 2
 const formatFileSize = (size) => {
     const bytes = Number(size);
@@ -369,6 +370,7 @@ export default function MessageBubble({
     currentUserId,
     onRedial
 }) {
+    const { t, language } = useLanguage();
     const { content, time, isRead } = message;
     const status = message.status;
     const uploadProgress = Number(message.uploadProgress ?? message.files?.[0]?.uploadProgress ?? 0);
@@ -500,8 +502,8 @@ export default function MessageBubble({
                                 setReactionPickerOpen(false);
                             }}
                             className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 ${isOwn ? 'text-white/70 hover:text-white' : ''}`}
-                            title="Tuỳ chọn"
-                            aria-label="Tuỳ chọn tin nhắn"
+                            title={t('messageOptions')}
+                            aria-label={t("messageOptions")}
                         >
                             <MoreHorizontal size={17} />
                         </button>
@@ -512,21 +514,21 @@ export default function MessageBubble({
                             className={`mb-2 w-full max-w-[280px] overflow-hidden rounded-r-lg border-l-[3px] px-2.5 py-1.5 ${
                                 isOwn ? 'border-blue-500 bg-blue-100/80 text-slate-700' : 'border-slate-400 bg-slate-50 text-slate-700'
                             }`}
-                            title={message.reply_to.content || 'Tin nhắn có tệp'}
+                            title={message.reply_to.content || t('messageWithFile')}
                         >
                             <p className="mb-0.5 truncate text-[10px] font-semibold leading-4 text-blue-700">
-                                {message.reply_to.sender_name || message.reply_to.username || 'Tin nhắn được trả lời'}
+                                {message.reply_to.sender_name || message.reply_to.username || t('repliedMessage')}
                             </p>
                             <p className="truncate text-xs leading-4 opacity-90">
-                                {message.reply_to.content || (message.reply_to.files?.length ? `📎 ${message.reply_to.files[0].file_name || 'Tệp đính kèm'}` : '📎 Tin nhắn có tệp đính kèm')}
+                                {message.reply_to.content || (message.reply_to.files?.length ? `📎 ${message.reply_to.files[0].file_name || t('attachment')}` : '📎 Tin nhắn có tệp đính kèm')}
                             </p>
                         </div>
                     )}
 
                     {isDeleted ? (
-                        <p className="leading-relaxed italic opacity-70">Tin nhắn đã bị xoá</p>
+                        <p className="leading-relaxed italic opacity-70">{t('messageDeleted')}</p>
                     ) : isRecalled ? (
-                        <p className="leading-relaxed italic opacity-70">Tin nhắn đã được thu hồi</p>
+                        <p className="leading-relaxed italic opacity-70">{t('messageRecalled')}</p>
                     ) : editing ? (
                         <div className="min-w-[220px]">
                             <textarea
@@ -546,8 +548,8 @@ export default function MessageBubble({
                                 className="w-full min-h-20 resize-none rounded-lg border border-white/40 bg-white/10 px-2 py-1.5 outline-none"
                             />
                             <div className="mt-2 flex justify-end gap-2 text-xs">
-                                <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10">Huỷ</button>
-                                <button type="button" onClick={submitEdit} className="px-2 py-1 rounded bg-white/20">Lưu</button>
+                                <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10">{t('cancel')}</button>
+                                <button type="button" onClick={submitEdit} className="px-2 py-1 rounded bg-white/20">{t('save')}</button>
                             </div>
                         </div>
                     ) : (
@@ -598,7 +600,7 @@ export default function MessageBubble({
                                                         <p className="text-[10px] opacity-70">{formatFileSize(file.file_size)}</p>
                                                     </div>}
                                                     {(isImage || isVideo) && <span className="min-w-0 flex-1 text-[10px] opacity-70">{formatFileSize(file.file_size)}</span>}
-                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title="Tải xuống" aria-label="Tải tệp xuống">
+                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title={t("download")} aria-label={t("downloadFile")}>
                                                         <Download size={15} />
                                                     </button>
                                                 </div>
@@ -618,7 +620,7 @@ export default function MessageBubble({
                             status === 'failed'
                                 ? <span className="text-red-400 font-medium">Gửi thất bại</span>
                                 : status === 'uploading' || status === 'processing'
-                                    ? <span className="text-blue-200">{status === 'processing' ? 'Đang xử lý' : `Đang tải ${uploadProgress}%`}</span>
+                                    ? <span className="text-blue-200">{status === 'processing' ? t('processing') : t('uploadingPercent', { percent: uploadProgress })}</span>
                                     : status === 'sending'
                                         ? <span className="text-blue-200">Đang gửi...</span>
                                         : isRead
