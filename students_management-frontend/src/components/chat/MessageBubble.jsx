@@ -250,7 +250,7 @@ const CallTimelineItem = ({
 
     return (
         <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
-            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 shadow-sm">
                 <div className="relative shrink-0">
                     <AvatarFallback name={senderName || 'Người dùng'} src={senderAvatar} size="md" />
                     <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${iconClass}`}>
@@ -260,7 +260,7 @@ const CallTimelineItem = ({
 
                 <div className="min-w-0 flex-1">
                     <div className={`truncate text-[13px] font-semibold ${statusClass}`}>{title}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
                         <span>{formatCallDate(startedAt)}</span>
                         <span>·</span>
                         <span>{formatCallTime(startedAt)}</span>
@@ -302,7 +302,7 @@ const CallTimelineItem = ({
                                 aria-haspopup="menu"
                                 aria-expanded={menuOpen}
                                 onClick={() => setMenuOpen(value => !value)}
-                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-800"
                             >
                                 <MoreHorizontal size={17} />
                             </button>
@@ -312,13 +312,13 @@ const CallTimelineItem = ({
                                     role="menu"
                                     aria-label="Tùy chọn cuộc gọi"
                                     style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, width: 208, zIndex: 9999 }}
-                                    className="rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl"
+                                    className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl"
                                 >
                                     <button
                                         type="button"
                                         role="menuitem"
                                         onClick={() => { setMenuOpen(false); onFocusComposer?.(); }}
-                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
                                     >
                                         Nhắn tin
                                     </button>
@@ -326,7 +326,7 @@ const CallTimelineItem = ({
                                         type="button"
                                         role="menuitem"
                                         onClick={() => { setMenuOpen(false); onViewProfile?.(); }}
-                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
                                     >
                                         Xem hồ sơ
                                     </button>
@@ -462,7 +462,7 @@ export default function MessageBubble({
     if (message.message_type === 'system' || message.messageType === 'system') {
         return (
             <div className="flex justify-center px-4 py-1.5" role="status">
-                <div className="max-w-[85%] rounded-full bg-slate-100 px-3.5 py-1.5 text-center text-[11px] font-medium text-slate-500 shadow-sm">
+                <div className="max-w-[85%] rounded-full bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 text-center text-[11px] font-medium text-slate-500 dark:text-slate-400 shadow-sm">
                     {message.content}
                     {time && (
                         <span className="ml-2 font-normal opacity-70">{time}</span>
@@ -638,7 +638,7 @@ export default function MessageBubble({
                         <button type="button" onClick={() => {
                             setMenuOpen(false);
                             onReply?.(message);
-                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                             <Reply size={15} /> <span>Trả lời</span>
                         </button>
 
@@ -646,7 +646,7 @@ export default function MessageBubble({
                             <button type="button" onClick={() => {
                                 setEditing(true);
                                 setMenuOpen(false);
-                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                 <Pencil size={15} /> <span>Chỉnh sửa</span>
                             </button>
                         )}
@@ -655,7 +655,7 @@ export default function MessageBubble({
                             <button type="button" onClick={() => {
                                 setMenuOpen(false);
                                 onRecall?.(message.id);
-                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                 <RotateCcw size={15} /> <span>Thu hồi</span>
                             </button>
                         )}
@@ -663,7 +663,7 @@ export default function MessageBubble({
                         <button type="button" onClick={() => {
                             setMenuOpen(false);
                             onDeleteForMe?.(message.id);
-                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50">
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                             <Trash2 size={15} /> <span>Xoá ở phía tôi</span>
                         </button>
 
@@ -678,7 +678,7 @@ export default function MessageBubble({
                         onMouseLeave={scheduleHoverClose}
                     >
                         <div className="relative">
-                            <div className="flex items-center gap-0.5 rounded-full border border-slate-200 bg-white/98 px-1.5 py-1 shadow-lg">
+                            <div className="flex items-center gap-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white/98 px-1.5 py-1 shadow-lg">
                                 {quickReactions.slice(0, 4).map(emoji => (
                                     <button
                                         key={emoji}
@@ -718,7 +718,7 @@ export default function MessageBubble({
                                     onMouseLeave={scheduleHoverClose}
                                     onMouseDown={event => event.stopPropagation()}
                                 >
-                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                                    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
                                         <EmojiPicker
                                             onEmojiClick={(emojiData) => {
                                                 onToggleReaction?.(message.id, emojiData.emoji);
@@ -757,7 +757,7 @@ export default function MessageBubble({
                                 >
                                     <span>{emoji}</span>
                                     {reactions.length > 1 && (
-                                        <span className="ml-0.5 text-[10px] font-semibold text-slate-500">
+                                        <span className="ml-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                                             {reactions.length}
                                         </span>
                                     )}
