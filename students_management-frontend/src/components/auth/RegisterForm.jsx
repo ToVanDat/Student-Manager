@@ -23,15 +23,15 @@ function RegisterForm({
     return (
         <form className="flex w-full flex-col gap-4 min-[451px]:gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
-                <label className="text-xs leading-[1.4] font-semibold text-slate-700"{t('username')}</label>
+                <label className="text-xs leading-[1.4] font-semibold text-slate-700">{t('username')}</label>
                 <input className="h-[46px] w-full rounded-lg border border-line bg-slate-50 px-3.5 text-[13px] text-ink outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10" type="text" value={username} onChange={(event) => onUsernameChange(event.target.value)} placeholder={t("enterUsernamePlaceholder")} autoComplete="username" />
             </div>
             <div className="flex w-full flex-col gap-[7px]">
-                <label className="text-xs leading-[1.4] font-semibold text-slate-700"{t('email')}</label>
+                <label className="text-xs leading-[1.4] font-semibold text-slate-700">{t('email')}</label>
                 <input className="h-[46px] w-full rounded-lg border border-line bg-slate-50 px-3.5 text-[13px] text-ink outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10" type="email" value={email} onChange={(event) => onEmailChange(event.target.value)} placeholder="you@example.com" autoComplete="email" />
             </div>
             <div className="flex w-full flex-col gap-[7px]">
-                <label className="text-xs leading-[1.4] font-semibold text-slate-700"{t('password')}</label>
+                <label className="text-xs leading-[1.4] font-semibold text-slate-700">{t('password')}</label>
                 <div className="relative w-full">
                     <input className="h-[46px] w-full rounded-lg border border-line bg-slate-50 px-3.5 pr-[50px] text-[13px] text-ink outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10" type={showPassword ? 'text' : 'password'} value={password} onChange={(event) => onPasswordChange(event.target.value)} placeholder={t("enterPasswordPlaceholder")} autoComplete="new-password" />
                     <button type="button" className="absolute top-1/2 right-2.5 flex size-[34px] -translate-y-1/2 items-center justify-center border-0 bg-transparent text-slate-500 opacity-70 transition hover:text-brand-600 hover:opacity-100" onClick={onTogglePassword} aria-label={showPassword ? t('hidePassword') : t('showPassword')}>
@@ -40,7 +40,7 @@ function RegisterForm({
                 </div>
             </div>
             <div className="flex w-full flex-col gap-[7px]">
-                <label className="text-xs leading-[1.4] font-semibold text-slate-700"{t('confirmPasswordLabel')}</label>
+                <label className="text-xs leading-[1.4] font-semibold text-slate-700">{t('confirmPasswordLabel')}</label>
                 <div className="relative w-full">
                     <input className="h-[46px] w-full rounded-lg border border-line bg-slate-50 px-3.5 pr-[50px] text-[13px] text-ink outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(event) => onConfirmPasswordChange(event.target.value)} placeholder={t("confirmPasswordPlaceholder")} autoComplete="new-password" />
                     <button type="button" className="absolute top-1/2 right-2.5 flex size-[34px] -translate-y-1/2 items-center justify-center border-0 bg-transparent text-slate-500 opacity-70 transition hover:text-brand-600 hover:opacity-100" onClick={onToggleConfirmPassword} aria-label={showConfirmPassword ? t('hidePassword') : t('showPassword')}>
