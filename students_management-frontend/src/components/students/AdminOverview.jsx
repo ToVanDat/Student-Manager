@@ -40,20 +40,20 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
-                    <article key={label} className="admin-kpi-card relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:p-5">
-                        <div className="absolute inset-x-0 top-0 h-1 bg-blue-600" /><div className="flex items-start justify-between gap-3">
+                    <article key={label} className="app-card relative overflow-hidden p-4 sm:p-5">
+                        <div className="flex items-start justify-between gap-3">
                             <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
-                            <span className="rounded-full bg-[#f5f8ff] dark:bg-slate-800 px-2 py-1 text-[10px] font-medium text-[#8190a7] dark:text-slate-400">{t('current')}</span>
+                            <span className="mt-1 size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-950/60" aria-hidden="true" />
                         </div>
                         <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
-                        <p className="mt-1 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-white">{value}</p>
+                        <p className="mt-1.5 text-[30px] font-bold leading-9 tracking-[-.04em] text-slate-900 dark:text-white sm:text-[32px]">{value}</p>
                         <p className="mt-2 text-[11px] text-[#8190a7] dark:text-slate-400">{detail}</p>
                     </article>
                 ))}
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)]">
-                <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+                <section className="app-card p-4 sm:p-6">
                     <div className="mb-5 flex items-center justify-between gap-3">
                         <div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('classCounts')}</p></div>
                         <span className="flex size-9 items-center justify-center rounded-xl bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300"><ChartNoAxesCombined size={18} /></span>
@@ -70,7 +70,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                     ) : <div className="flex min-h-44 flex-col items-center justify-center text-center"><BookOpen className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noClassData')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('addClassHint')}</p></div>}
                 </section>
 
-                <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+                <section className="app-card p-4 sm:p-6">
                     <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('recentStudents')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('newestProfiles')}</p></div><button type="button" onClick={onOpenStudents} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">{t('viewAll')} <ArrowRight size={14} /></button></div>
                     {recentStudents.length ? <div className="divide-y divide-[#e8eef7] dark:divide-slate-700">
                         {recentStudents.map(student => <div key={student.id} className="flex items-center gap-3 py-3 first:pt-1 last:pb-0">

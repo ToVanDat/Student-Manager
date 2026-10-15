@@ -9,9 +9,9 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
         <div className="w-full min-w-0">
             <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 lg:hidden">
                 {loading || students.length === 0 ? (
-                    <div className="col-span-full rounded-xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-700">{emptyMessage}</div>
+                    <div className="app-card col-span-full border-dashed px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</div>
                 ) : students.map((student, index) => (
-                    <article key={student.id} className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <article key={student.id} className="app-card min-w-0 p-4 sm:p-5">
                         <div className="flex items-start gap-3">
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200"><GraduationCap size={20} /></div>
                             <div className="min-w-0 flex-1">

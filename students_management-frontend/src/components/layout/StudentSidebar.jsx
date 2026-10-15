@@ -34,13 +34,16 @@ function StudentSidebar({
 
             <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-[#f8faff] dark:bg-slate-950 px-[15px] py-[22px] text-[#263852] dark:text-slate-100 shadow-[8px_0_28px_rgba(38,56,82,0.06)] transition-[width,transform,padding] duration-200 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className={`mb-8 flex items-center gap-3 border-b border-slate-200/80 px-2 pb-6 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
-                    <div className="relative flex size-[43px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f2f56] via-[#174a7e] to-[#2477a8] shadow-lg shadow-blue-950/20 ring-1 ring-white/20">
-                        <Building2 size={25} strokeWidth={1.8} className="text-white" />
-                        <span className="absolute bottom-1 h-[2px] w-5 rounded-full bg-sky-300" />
+                    <div aria-label="Student Manager" className="relative flex size-12 shrink-0 items-center justify-center rounded-[17px] bg-gradient-to-br from-[#0c2340] via-[#174a7e] to-[#247c91] shadow-[0_7px_18px_rgba(23,74,126,.24)] ring-1 ring-white/50">
+                        <span className="absolute inset-[4px] rounded-[13px] border border-white/15" />
+                        <BookOpen size={23} strokeWidth={1.8} className="absolute bottom-[8px] text-sky-100" />
+                        <GraduationCap size={24} strokeWidth={2} className="absolute top-[5px] -translate-y-[1px] text-white drop-shadow-sm" />
+                        <span className="absolute bottom-[5px] h-[2px] w-4 rounded-full bg-amber-300" />
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
-                        <strong className="text-[13px] font-extrabold tracking-tight text-[#183653] dark:text-white">Student Manager</strong>
-                        <span className="mt-1 text-[9px] font-semibold uppercase tracking-[.13em] text-[#71849b] dark:text-slate-400">{user?.role === 'admin' ? t('administrator') : t('user')}</span>
+                        <strong className="text-[14px] font-extrabold leading-tight tracking-[-.025em] text-[#183653] dark:text-white">Student Manager</strong>
+                        <span className="mt-1 text-[9px] font-semibold uppercase tracking-[.12em] text-[#71849b] dark:text-slate-400">{user?.role === 'admin' ? t('administrator') : t('user')}</span>
+                        <span className="mt-1 inline-flex w-fit items-center rounded-md bg-sky-50 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[.1em] text-[#2b6684] dark:bg-sky-950/60 dark:text-sky-300">{t("universityPortal")}</span>
                     </div>
                 </div>
 

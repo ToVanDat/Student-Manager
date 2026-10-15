@@ -326,8 +326,8 @@ export default function ChatPage() {
                     <div className="flex h-full min-h-0 min-w-0">
                         <aside className={`hidden shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] py-5 text-[#263852] transition-[width,padding] duration-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 lg:flex ${chatNavCollapsed ? "w-[68px] px-2" : "w-[200px] px-3"}`}>
                             <div className={`mb-5 flex items-center gap-2 px-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`}>
-                                <span className="flex size-9 items-center justify-center rounded-xl bg-blue-500 text-white shadow-sm"><GraduationCap size={20} /></span>
-                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs text-[#203754] dark:text-slate-100">Student-Manager</strong><small className="text-[9px] text-[#7f8ba0] dark:text-slate-400">Kết nối học tập</small></span>}
+                                <span className="relative flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#102a43] via-[#174a7e] to-[#2b7a91] text-white shadow-md shadow-blue-950/20 ring-1 ring-white/20"><GraduationCap size={21} /><span className="absolute bottom-1 h-px w-4 rounded-full bg-amber-300" /></span>
+                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs font-extrabold tracking-tight text-[#203754] dark:text-slate-100">Student Manager</strong><small className="mt-0.5 block text-[8px] font-semibold uppercase tracking-[.1em] text-[#2b6684] dark:text-sky-300">{t("universityPortal")}</small></span>}
                             </div>
                             <div className={`mb-2 px-2 ${chatNavCollapsed ? "text-center" : ""}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500 dark:text-slate-400">MENU</p>}</div>
                             <nav className="space-y-1">
@@ -392,6 +392,12 @@ export default function ChatPage() {
                                 loadingOlder={loadingOlder}
                                 onLoadOlder={loadOlderMessages}
                             />
+                        ) : activeId ? (
+                            <div className="max-[767px]:hidden flex min-w-0 flex-1 flex-col items-center justify-center gap-3 bg-[#f4f8fd] text-center dark:bg-slate-950" role="status" aria-live="polite">
+                                <span className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300"><MessageSquare size={23} /></span>
+                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t("openingConversation")}</p>
+                                <span className="size-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 dark:border-slate-700 dark:border-t-blue-400" aria-hidden="true" />
+                            </div>
                         ) : (
                             <div className="max-[767px]:hidden min-w-0 flex-1">
                                 <EmptyChat

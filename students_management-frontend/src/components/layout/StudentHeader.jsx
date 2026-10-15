@@ -17,6 +17,7 @@ import { notificationApi } from '@/api/notificationApi.js';
 import socket from '@/socket/socket.js';
 import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
 import { useLanguage } from '@/context/LanguageContext.jsx';
+import { VN, GB } from 'country-flag-icons/react/3x2';
 
 function StudentHeader({
     user,
@@ -139,10 +140,10 @@ function StudentHeader({
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
                 <div className="relative">
                     <button type="button" onClick={() => setLanguageMenuOpen(open => !open)} className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#71829b] transition hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300" aria-label={t('quickLanguage')} title={t('quickLanguage')} aria-expanded={languageMenuOpen}>
-                        <Languages size={18} /><span aria-hidden="true">{language === "vi" ? "🇻🇳" : "🇬🇧"}</span><span>{language.toUpperCase()}</span>
+                        <Languages size={18} />{language === "vi" ? <VN title="Tiếng Việt" className="h-3.5 w-5 rounded-[2px]" /> : <GB title="English" className="h-3.5 w-5 rounded-[2px]" />}<span>{language.toUpperCase()}</span>
                     </button>
                     {languageMenuOpen && <div className="absolute right-0 top-[44px] z-50 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900" role="menu" aria-label={t('language')}>
-                        {[{ value: 'vi', label: t('vietnamese'), flag: '🇻🇳' }, { value: 'en', label: t('english'), flag: '🇬🇧' }].map(option => <button key={option.value} type="button" role="menuitemradio" aria-checked={language === option.value} onClick={() => { setLanguage(option.value); setLanguageMenuOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${language === option.value ? 'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}><span className="flex items-center gap-2"><span aria-hidden="true">{option.flag}</span>{option.label}</span><span>{language === option.value ? '✓' : ''}</span></button>)}
+                        {[{ value: 'vi', label: t('vietnamese'), Flag: VN }, { value: 'en', label: t('english'), Flag: GB }].map(option => <button key={option.value} type="button" role="menuitemradio" aria-checked={language === option.value} onClick={() => { setLanguage(option.value); setLanguageMenuOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${language === option.value ? 'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}><span className="flex items-center gap-2"><option.Flag aria-hidden="true" className="h-3.5 w-5 rounded-[2px]" />{option.label}</span><span>{language === option.value ? '✓' : ''}</span></button>)}
                     </div>}
                 </div>
                 <button
