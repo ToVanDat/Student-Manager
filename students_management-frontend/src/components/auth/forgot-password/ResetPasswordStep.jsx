@@ -30,7 +30,7 @@ function ResetPasswordStep({ newPassword, onNewPasswordChange, confirmPassword, 
             </div>
             <p className="-mt-1 text-xs leading-relaxed text-slate-500">{t('resetPasswordDescription')}</p>
             <button className="flex min-h-[47px] w-full items-center justify-center rounded-[9px] bg-linear-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-[13px] font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>
-                {loading ? t('updating') : t('resetPassword')}}
+                {loading ? t('updating') : t('resetPassword')}
             </button>
         </form>
     );
