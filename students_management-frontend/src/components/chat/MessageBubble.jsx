@@ -251,7 +251,7 @@ const CallTimelineItem = ({
 
     return (
         <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
-            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3 shadow-sm">
+            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border px-3 py-3 shadow-sm" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
                 <div className="relative shrink-0">
                     <AvatarFallback name={senderName || 'Người dùng'} src={senderAvatar} size="md" />
                     <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${iconClass}`}>
@@ -464,7 +464,7 @@ export default function MessageBubble({
     if (message.message_type === 'system' || message.messageType === 'system') {
         return (
             <div className="flex justify-center px-4 py-1.5" role="status">
-                <div className="max-w-[85%] rounded-full bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 text-center text-[11px] font-medium text-slate-500 dark:text-slate-400 shadow-sm">
+                <div className="max-w-[85%] rounded-full px-3.5 py-1.5 text-center text-[11px] font-medium shadow-sm" style={{ backgroundColor: 'var(--chat-theme-surface)', color: 'var(--chat-theme-meta)', border: '1px solid var(--chat-theme-border)' }}>
                     {message.content}
                     {time && (
                         <span className="ml-2 font-normal opacity-70">{time}</span>
@@ -486,11 +486,16 @@ export default function MessageBubble({
                 onMouseEnter={keepHovered}
                 onMouseLeave={scheduleHoverClose}
             >
-                <div className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
-                    isOwn
-                        ? 'bg-[#d8eaff] text-slate-900 rounded-br-[5px]'
-                        : 'bg-white text-slate-800 rounded-bl-[5px] border border-slate-100'
-                }`}>
+                <div
+                    className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
+                        isOwn ? 'rounded-br-[5px]' : 'rounded-bl-[5px] border'
+                    }`}
+                    style={{
+                        backgroundColor: isOwn ? 'var(--chat-theme-own-bubble)' : 'var(--chat-theme-other-bubble)',
+                        color: isOwn ? 'var(--chat-theme-own-text)' : 'var(--chat-theme-other-text)',
+                        borderColor: isOwn ? 'transparent' : 'var(--chat-theme-border)'
+                    }}
+                >
                     {hovered && !isDeleted && !isRecalled && (
                         <button
                             type="button"
@@ -501,7 +506,7 @@ export default function MessageBubble({
                                 setMenuOpen(prev => !prev);
                                 setReactionPickerOpen(false);
                             }}
-                            className={`absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-black/10 hover:text-slate-700 ${isOwn ? 'text-white/70 hover:text-white' : ''}`}
+                            className="absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition hover:bg-black/10 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
                             title={t('messageOptions')}
                             aria-label={t("messageOptions")}
                         >
@@ -511,12 +516,15 @@ export default function MessageBubble({
 
                     {message.reply_to && !isDeleted && !isRecalled && (
                         <div
-                            className={`mb-2 w-full max-w-[280px] overflow-hidden rounded-r-lg border-l-[3px] px-2.5 py-1.5 ${
-                                isOwn ? 'border-blue-500 bg-blue-100/80 text-slate-700' : 'border-slate-400 bg-slate-50 text-slate-700'
-                            }`}
+                            className="mb-2 w-full max-w-[280px] overflow-hidden rounded-r-lg border-l-[3px] px-2.5 py-1.5"
+                            style={{
+                                backgroundColor: isOwn ? 'var(--chat-theme-own-quote)' : 'var(--chat-theme-quote)',
+                                color: isOwn ? 'var(--chat-theme-own-text)' : 'var(--chat-theme-other-text)',
+                                borderLeftColor: 'var(--chat-theme-accent)'
+                            }}
                             title={message.reply_to.content || t('messageWithFile')}
                         >
-                            <p className="mb-0.5 truncate text-[10px] font-semibold leading-4 text-blue-700">
+                            <p className="mb-0.5 truncate text-[10px] font-semibold leading-4" style={{ color: 'var(--chat-theme-accent)' }}>
                                 {message.reply_to.sender_name || message.reply_to.username || t('repliedMessage')}
                             </p>
                             <p className="truncate text-xs leading-4 opacity-90">
@@ -545,7 +553,8 @@ export default function MessageBubble({
                                         submitEdit();
                                     }
                                 }}
-                                className="w-full min-h-20 resize-none rounded-lg border border-white/40 bg-white/10 px-2 py-1.5 text-white placeholder:text-white/60 outline-none"
+                                className="w-full min-h-20 resize-none rounded-lg border bg-transparent px-2 py-1.5 placeholder:opacity-60 outline-none"
+                                style={{ color: 'var(--chat-theme-own-text)', borderColor: 'var(--chat-theme-border)' }}
                             />
                             <div className="mt-2 flex justify-end gap-2 text-xs">
                                 <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10 dark:hover:bg-slate-700">{t('cancel')}</button>
@@ -612,20 +621,18 @@ export default function MessageBubble({
                         </>
                     )}
 
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${
-                        isOwn ? 'text-blue-200' : 'text-slate-400'
-                    }`}>
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px]" style={{ color: 'var(--chat-theme-meta)' }}>
                         <span>{time}</span>
                         {isOwn && (
                             status === 'failed'
                                 ? <span className="text-red-400 font-medium">Gửi thất bại</span>
                                 : status === 'uploading' || status === 'processing'
-                                    ? <span className="text-blue-200">{status === 'processing' ? t('processing') : t('uploadingPercent', { percent: uploadProgress })}</span>
+                                    ? <span style={{ color: 'var(--chat-theme-meta)' }}>{status === 'processing' ? t('processing') : t('uploadingPercent', { percent: uploadProgress })}</span>
                                     : status === 'sending'
-                                        ? <span className="text-blue-200">Đang gửi...</span>
+                                        ? <span style={{ color: 'var(--chat-theme-meta)' }}>Đang gửi...</span>
                                         : isRead
-                                            ? <CheckCheck size={14} className="text-blue-200" />
-                                            : <Check size={14} className="text-blue-300" />
+                                            ? <CheckCheck size={14} style={{ color: 'var(--chat-theme-accent)' }} />
+                                            : <Check size={14} style={{ color: 'var(--chat-theme-accent)' }} />
                         )}
                     </div>
                 </div>
