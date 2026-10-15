@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, GraduationCap, Plus } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 import StudentForm from '@/components/students/StudentForm.jsx';
 import StudentTable from '@/components/students/StudentTable.jsx';
 import StudentStats from '@/components/students/StudentStats.jsx';
@@ -60,14 +61,14 @@ function StudentDashboard({
             <div className="grid grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-4 pt-5 sm:px-5">
-                        <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white">Danh sách sinh viên</h2><p className="mt-1 mb-0 text-xs text-muted">Quản lý thông tin và theo dõi học tập của sinh viên</p></div>
-                        {isAdmin && <button className="inline-flex h-9 items-center gap-2 rounded-md bg-linear-to-r from-brand-600 to-brand-500 px-3.5 text-xs font-semibold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-lg hover:shadow-brand-600/25" onClick={onAdd}><Plus size={17} />Thêm sinh viên</button>}
+                        <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white"{t('studentList')}</h2><p className="mt-1 mb-0 text-xs text-muted"{t('studentListDescription')}</p></div>
+                        {isAdmin && <button className="inline-flex h-9 items-center gap-2 rounded-md bg-linear-to-r from-brand-600 to-brand-500 px-3.5 text-xs font-semibold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-lg hover:shadow-brand-600/25" onClick={onAdd}><Plus size={17} /{t('addStudent')}</button>}
                     </div>
                     <div className="px-4 sm:px-5">
                         <StudentSearch value={search} onChange={onSearchChange} />
                     </div>
-                    {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">Thử lại</button></div>}
-                    {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />Đang tải dữ liệu sinh viên…</div>}
+                    {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50"{t('retry')}</button></div>}
+                    {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" /{t('loadingStudentsData')}</div>}
                     <div className="w-full min-w-0">
                         <StudentTable
                             students={paginatedStudents}
@@ -81,16 +82,16 @@ function StudentDashboard({
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-muted sm:px-5 dark:border-slate-800">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span>
-                                Hiển thị {firstStudentIndex}-{lastStudentIndex} trong {filteredStudents.length} kết quả
-                                {filteredStudents.length !== students.length && ` (tổng ${students.length} sinh viên)`}
+                                {t('showing')} {firstStudentIndex}-{lastStudentIndex} {t('to')} {filteredStudents.length} {t('resultsCount')}
+                                {filteredStudents.length !== students.length && ` (${t('total')}: ${students.length} ${t('totalStudentsSuffix')})`}
                             </span>
                             <label className="flex items-center gap-1.5">
-                                <span>Số dòng</span>
+                                <span{t('rows')}</span>
                                 <select
                                     className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                     value={pageSize}
                                     onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                                    aria-label="Số sinh viên mỗi trang"
+                                    aria-label={t("studentsPerPage")}
                                 >
                                     {[10, 25, 50].map((size) => (
                                         <option key={size} value={size}>{size}</option>
@@ -98,13 +99,13 @@ function StudentDashboard({
                                 </select>
                             </label>
                         </div>
-                        <nav className="flex items-center gap-1" aria-label="Phân trang danh sách sinh viên">
+                        <nav className="flex items-center gap-1" aria-label={t("studentPagination")}>
                             <button
                                 className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                                 type="button"
                                 onClick={() => onPageChange(currentPage - 1)}
                                 disabled={currentPage <= 1}
-                                aria-label="Trang trước"
+                                aria-label={t("previousPage")}
                             >
                                 <ChevronLeft size={15} />
                             </button>
@@ -129,7 +130,7 @@ function StudentDashboard({
                                 type="button"
                                 onClick={() => onPageChange(currentPage + 1)}
                                 disabled={currentPage >= pageCount}
-                                aria-label="Trang sau"
+                                aria-label={t("nextPage")}
                             >
                                 <ChevronRight size={15} />
                             </button>
