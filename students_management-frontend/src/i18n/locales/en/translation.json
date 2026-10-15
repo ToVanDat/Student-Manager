@@ -485,5 +485,6 @@
   "chatThemeMint": "Mint",
   "chatThemeRose": "Rose",
   "chatThemeAmber": "Amber",
-  "chatThemeSaveFailed": "Could not save chat theme."
+  "chatThemeSaveFailed": "Could not save chat theme.",
+  "userThemeSaveFailed": "Could not save account appearance. The previous choice was restored."
 }
