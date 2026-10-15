@@ -9,6 +9,7 @@ import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
 import { callApi } from '@/api/callApi.js';
 import socket from '@/socket/socket.js';
+import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -294,20 +295,17 @@ export default function ChatPage() {
                             <MoreVertical size={17} className="shrink-0 text-slate-500" />
                         </button>
                         {accountMenuOpen && (
-                            <div role="menu" className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-                                <div className="flex items-center gap-3 px-3 py-3">
-                                    <AvatarFallback name={user?.username} src={user?.avatar_url || user?.avatarUrl || user?.avatar} size="lg" />
-                                    <span className="min-w-0">
-                                        <span className="block truncate text-sm font-semibold">{user?.username || 'Người dùng'}</span>
-                                        <span className="block truncate text-xs text-slate-500">{user?.email || 'Chưa cập nhật email'}</span>
-                                        <span className="mt-1 inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">{user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}</span>
-                                    </span>
-                                </div>
-                                <div className="my-1 border-t border-slate-100" />
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); navigate('/students?view=settings'); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-100"><UserRound size={17} /><span>Cài đặt tài khoản</span></button>
-                                <div className="my-1 border-t border-slate-100" />
-                                <button type="button" role="menuitem" onClick={() => { setAccountMenuOpen(false); logoutUser(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 hover:bg-rose-50"><LogOut size={17} /><span>Đăng xuất</span></button>
-                            </div>
+                            <GlobalMoreMenu
+                                user={user}
+                                onSelectSettings={(tab) => {
+                                    setAccountMenuOpen(false);
+                                    navigate(`/students?view=settings&tab=${encodeURIComponent(tab)}`);
+                                }}
+                                onLogout={() => {
+                                    setAccountMenuOpen(false);
+                                    logoutUser();
+                                }}
+                            />
                         )}
                     </div>
                 </div>
