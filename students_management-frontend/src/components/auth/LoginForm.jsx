@@ -17,6 +17,8 @@ function LoginForm({
     onSubmit,
     onOpenRegister,
 }) {
+    const { t } = useLanguage();
+
     return (
         <form className="flex w-full flex-col gap-4 min-[451px]:gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
