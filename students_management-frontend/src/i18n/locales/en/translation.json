@@ -1,5 +1,8 @@
 {
-  "previousBanner": "Previous banner",
+  "moduleWorkspaceTitle": "Module workspace",
+  "moduleWorkspaceDescription": "You are in the selected module. Its detailed interface and API integration will be implemented next; navigation remains available, and you can return to the dashboard or student management.",
+  "backToDashboard": "Back to dashboard",
+"previousBanner": "Previous banner",
   "nextBanner": "Next banner",
   "goToBanner": "Go to banner {{number}}",
   "swipeToChange": "← Swipe to navigate →",
