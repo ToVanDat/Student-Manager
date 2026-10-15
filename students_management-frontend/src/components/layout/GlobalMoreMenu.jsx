@@ -17,7 +17,7 @@ export default function GlobalMoreMenu({ user, onSelectSettings, onLogout }) {
                 {user?.avatar_url || user?.avatarUrl || user?.avatar ? (
                     <img src={resolveMediaUrl(user.avatar_url || user.avatarUrl || user.avatar)} alt="" className="size-10 shrink-0 rounded-full object-cover" />
                 ) : (
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-950 text-sm font-bold text-blue-700 dark:text-blue-300">{user?.username?.charAt(0)?.toUpperCase() || 'U'}</span>
                 )}
                 <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{user?.username || 'Người dùng'}</span>
