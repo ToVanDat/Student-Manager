@@ -45,7 +45,7 @@ function StudentSidebar({
                     <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] ${collapsed ? 'min-[801px]:hidden' : ''}`}>TỔNG QUAN</div>
                     <button
                         title="Trang chủ"
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
@@ -53,7 +53,7 @@ function StudentSidebar({
                     </button>
                     <button
                         title="Sinh viên"
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
@@ -71,7 +71,7 @@ function StudentSidebar({
                                 { key: 'semesters', label: 'Học kỳ', icon: CalendarDays },
                                 { key: 'results', label: 'Kết quả học tập', icon: ChartNoAxesColumn },
                             ].map(({ key, label, icon: Icon }) => (
-                                <button key={key} type="button" title={label} aria-label={label} onClick={() => onNavigate(key)}
+                                <button key={key} type="button" title={label + " — sắp ra mắt"} aria-label={label + " — sắp ra mắt"} disabled
                                     className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] text-[#1d4ed8] shadow-sm shadow-blue-100' : 'text-[#334155] hover:bg-[#e8f1ff] hover:text-[#1d4ed8]'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
