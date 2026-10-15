@@ -528,11 +528,11 @@ function Login() {
                             <div>
 
                                 <h1 className="m-0 text-[15px] leading-[1.3] font-bold text-slate-900 min-[451px]:text-[17px]">
-                                    Student Management
+                                    {t('authBrandTitle')}
                                 </h1>
 
                                 <p className="mt-[3px] mb-0 text-[9px] leading-[1.3] font-medium text-slate-400 min-[451px]:text-[11px]">
-                                    School Management System
+                                    {t('authBrandSubtitle')}
                                 </p>
 
                             </div>
