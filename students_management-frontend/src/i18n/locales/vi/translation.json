@@ -1,5 +1,9 @@
 {
-  "comingSoon": "Sắp ra mắt",
+  "previousBanner": "Banner trước",
+  "nextBanner": "Banner tiếp theo",
+  "goToBanner": "Chuyển đến banner {{number}}",
+  "swipeToChange": "← Kéo để chuyển →",
+"comingSoon": "Sắp ra mắt",
   "loginHeading": "Đăng nhập",
   "registerHeading": "Tạo tài khoản",
   "forgotHeading": "Khôi phục mật khẩu",
