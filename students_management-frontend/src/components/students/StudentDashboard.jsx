@@ -68,7 +68,7 @@ function StudentDashboard({
                         <StudentSearch value={search} onChange={onSearchChange} />
                     </div>
                     {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">{t('retry')}</button></div>}
-                    {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" /{t('loadingStudentsData')}</div>}
+                    {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />{t('loadingStudentsData')}</div>}
                     <div className="w-full min-w-0">
                         <StudentTable
                             students={paginatedStudents}
