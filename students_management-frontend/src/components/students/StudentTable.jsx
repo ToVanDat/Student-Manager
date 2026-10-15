@@ -1,11 +1,12 @@
 // Student list table
 import { useLanguage } from '@/context/LanguageContext.jsx';
+import { Pencil, Trash2 } from 'lucide-react';
 function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = false, loading = false }) {
     const { t } = useLanguage();
     return (
-        <div className="w-full min-w-0 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-700">
+        <div className="w-full min-w-0 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
             <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
-                <thead className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <thead className="bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     <tr>
                         <th className="w-12 px-2 py-3">{t('studentNumber')}</th>
                         <th className="w-20 px-2 py-3">{t('studentCodeShort')}</th>
@@ -29,7 +30,7 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
                         </tr>
                     ) : (
                         students.map((student, index) => (
-                            <tr className="border-t border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/60" key={student.id}>
+                            <tr className="border-t border-slate-100 transition-colors hover:bg-blue-50/50 dark:border-slate-800 dark:hover:bg-slate-800/60" key={student.id}>
                                 <td className="truncate px-2 py-3 text-slate-500">{firstRowNumber + index}</td>
 
                                 <td className="truncate px-2 py-3 font-medium text-slate-700 dark:text-slate-200" title={student.student_code}>{student.student_code}</td>
@@ -59,17 +60,17 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
                                 {canManage && <td className="px-2 py-3">
                                     <div className="flex items-center gap-1">
                                     <button
-                                        className="rounded-md bg-amber-500 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-amber-600"
+                                        className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50"
                                         onClick={() => onEdit(student)}
                                     >
-                                        {t('edit')}
+                                        <Pencil size={12} />{t('edit')}
                                     </button>
 
                                     <button
-                                        className="rounded-md bg-red-600 px-2 py-1.5 text-[11px] font-semibold text-white hover:bg-red-700"
+                                        className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50"
                                         onClick={() => onDelete(student.id)}
                                     >
-                                        {t('delete')}
+                                        <Trash2 size={12} />{t('delete')}
                                     </button>
                                     </div>
                                 </td>}
