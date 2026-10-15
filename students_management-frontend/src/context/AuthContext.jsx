@@ -143,10 +143,30 @@ const updateUser = (partialUser) => {
                         const newToken = await refreshAccessToken();
                         setAccessToken(newToken);
                     } catch (error) {
-                        console.error(
-                            'Không thể tự refresh Access Token:',
-                            error
-                        );
+                        console.warn('Không thể tự refresh Access Token:', error.message);
+
+                        // Only a definitive 401 means the refresh credential is
+                        // invalid/revoked. A temporary network/5xx failure should
+                        // retry later rather than logging the user out.
+                        if (error.response?.status !== 401) {
+                            timerId = window.setTimeout(async () => {
+                                try {
+                                    setAccessToken(await refreshAccessToken());
+                                } catch (retryError) {
+                                    if (retryError.response?.status === 401) {
+                                        socket.disconnect();
+                                        setApiAccessToken(null);
+                                        localStorage.removeItem('user');
+                                        setAccessToken(null);
+                                        setUser(null);
+                                        window.location.href = '/login';
+                                    } else {
+                                        console.warn('Refresh vẫn tạm thời thất bại:', retryError.message);
+                                    }
+                                }
+                            }, 10_000);
+                            return;
+                        }
 
                         socket.disconnect();
                         setApiAccessToken(null);
@@ -318,7 +338,11 @@ const updateUser = (partialUser) => {
                         socket.auth = { accessToken: newToken };
                         setAccessToken(newToken);
                     })
-                    .catch(() => {
+                    .catch((refreshError) => {
+                        if (refreshError.response?.status !== 401) {
+                            console.warn('[SOCKET][refresh deferred]', refreshError.message);
+                            return;
+                        }
                         setApiAccessToken(null);
                         localStorage.removeItem('user');
                         setAccessToken(null);
