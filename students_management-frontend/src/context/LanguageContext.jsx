@@ -76,7 +76,13 @@ export function LanguageProvider({ children }) {
     language,
     setLanguage,
     // Keep Vietnamese as a fallback for untranslated keys during the migration.
-    t: (key) => translations[language]?.[key] ?? translations.vi[key] ?? key,
+    t: (key, options = {}) => {
+      const template = translations[language]?.[key] ?? translations.vi[key] ?? key;
+      return Object.entries(options).reduce(
+        (text, [name, value]) => text.replaceAll(`{{${name}}}`, String(value ?? '')),
+        template
+      );
+    },
   }), [language, isAuthenticated, user?.id]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
