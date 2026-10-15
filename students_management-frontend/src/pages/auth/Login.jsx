@@ -9,6 +9,7 @@ import AuthBanner from '@/components/auth/AuthBanner.jsx';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/hooks/useAuth.js';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 import ForgotPasswordForm
     from '@/components/auth/forgot-password/ForgotPasswordForm.jsx';
@@ -21,6 +22,7 @@ import ForgotPasswordForm
 function Login() {
 
     const { loginUser } = useAuth();
+    const { t } = useLanguage();
     const navigate = useNavigate();
 
     const [mode, setMode] = useState('login');
@@ -132,7 +134,7 @@ function Login() {
         if (!username.trim()) {
 
             setError(
-                'Vui lòng nhập username'
+                t('enterUsername')
             );
 
             return;
@@ -143,7 +145,7 @@ function Login() {
         if (!password) {
 
             setError(
-                'Vui lòng nhập password'
+                t('enterPassword')
             );
 
             return;
@@ -212,7 +214,7 @@ function Login() {
 
             setSuccess(
                 data.message ||
-                'Đăng nhập thành công'
+                t('loginSuccess')
             );
 
 
@@ -234,7 +236,7 @@ function Login() {
             setError(
                 error.response?.data?.message ||
                 error.message ||
-                'Đăng nhập thất bại'
+                t('loginFailed')
             );
 
 
@@ -278,7 +280,7 @@ function Login() {
         if (!email.trim()) {
 
             setError(
-                'Vui lòng nhập email'
+                t('enterEmail')
             );
 
             return;
@@ -300,7 +302,7 @@ function Login() {
         if (!confirmPassword) {
 
             setError(
-                'Vui lòng xác nhận password'
+                t('confirmPasswordRequired')
             );
 
             return;
@@ -314,7 +316,7 @@ function Login() {
         ) {
 
             setError(
-                'Mật khẩu xác nhận không khớp'
+                t('passwordMismatch')
             );
 
             return;
