@@ -283,6 +283,7 @@ function Students() {
   const [activePage, setActivePage] = useState(() => {
     const requestedView = searchParams.get("view");
     if (requestedView === "settings") return "settings";
+    if (["students", "classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"].includes(requestedView) && isAdmin) return requestedView;
     if (requestedView === "students" || (isAdmin && searchParams.has("search"))) return "students";
     return "dashboard";
   });
