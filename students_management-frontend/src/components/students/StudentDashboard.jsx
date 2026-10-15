@@ -59,13 +59,13 @@ function StudentDashboard({
     return (
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
-            <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_8px_28px_rgba(15,23,42,0.045)] dark:border-slate-700 dark:bg-slate-900 dark:shadow-none">
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-4 pt-5 sm:px-5">
-                        <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs text-muted">{t('studentListDescription')}</p></div>
-                        {isAdmin && <button className="inline-flex h-9 items-center gap-2 rounded-md bg-linear-to-r from-brand-600 to-brand-500 px-3.5 text-xs font-semibold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-lg hover:shadow-brand-600/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
+            <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
+                        <div><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div>
+                        {isAdmin && <button className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#174a7e] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#123b66]" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
                     </div>
-                    <div className="px-4 sm:px-5">
+                    <div className="px-4 pt-4 sm:px-6">
                         <StudentSearch value={search} onChange={onSearchChange} />
                     </div>
                     {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">{t('retry')}</button></div>}
@@ -80,7 +80,7 @@ function StudentDashboard({
                             loading={loading}
                         />
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-muted sm:px-5 dark:border-slate-800">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-[11px] text-muted sm:px-6 dark:border-slate-800 dark:bg-slate-950/40">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span>
                                 {t('showing')} {firstStudentIndex}-{lastStudentIndex} {t('to')} {filteredStudents.length} {t('resultsCount')}
@@ -138,7 +138,7 @@ function StudentDashboard({
                         </nav>
                     </div>
                 </div>
-                <div className="grid gap-[17px]">
+                <div className="grid gap-4">
                     <StudentActivity />
                     <StudentClassStatistics classStatistics={classStatistics} />
                     <div className="flex min-h-[100px] items-center gap-3 rounded-[13px] bg-linear-to-br from-[#5269e9] to-[#6256d9] p-[17px] text-white shadow-xl shadow-indigo-700/20">
