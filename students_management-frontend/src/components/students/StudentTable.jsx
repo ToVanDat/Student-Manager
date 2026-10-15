@@ -6,14 +6,14 @@ function StudentTable({ students, firstRowNumber, onEdit, onDelete, canManage = 
             <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
                 <thead className="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                     <tr>
-                        <th className="w-12 px-2 py-3"{t('studentNumber')}</th>
-                        <th className="w-20 px-2 py-3"{t('studentCodeShort')}</th>
-                        <th className="w-28 px-2 py-3"{t('studentName')}</th>
+                        <th className="w-12 px-2 py-3">{t('studentNumber')}</th>
+                        <th className="w-20 px-2 py-3">{t('studentCodeShort')}</th>
+                        <th className="w-28 px-2 py-3">{t('studentName')}</th>
                         <th className="w-40 px-2 py-3">Email</th>
-                        <th className="w-32 px-2 py-3"{t('dateOfBirthShort')}</th>
-                        <th className="w-20 px-2 py-3"{t('gender')}</th>
-                        <th className="w-40 px-2 py-3"{t('className')}</th>
-                        {canManage && <th className="w-28 px-2 py-3"{t('actions')}</th>}
+                        <th className="w-32 px-2 py-3">{t('dateOfBirthShort')}</th>
+                        <th className="w-20 px-2 py-3">{t('gender')}</th>
+                        <th className="w-40 px-2 py-3">{t('className')}</th>
+                        {canManage && <th className="w-28 px-2 py-3">{t('actions')}</th>}
                     </tr>
                 </thead>
 
