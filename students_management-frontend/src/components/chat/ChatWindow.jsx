@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     MoreVertical,
+    Palette,
     ArrowLeft,
     Search,
     Phone,
@@ -38,6 +39,8 @@ import MessageBubble, { MessageMediaPreview } from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
 import { notificationApi } from '@/api/notificationApi';
+import { getConversationChatTheme, updateConversationChatTheme } from '@/api/chatApi.js';
+import { useTheme } from '@/context/ThemeContext.jsx';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function ChatWindow({
@@ -83,11 +86,66 @@ export default function ChatWindow({
     onOpenSearchResult
 }) {
     const { t, language } = useLanguage();
+    const { isDarkMode } = useTheme();
     const activeConversationAvatar = activeConversation?.avatar_url || activeConversation?.avatarUrl || activeConversation?.avatar || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
+    const [chatTheme, setChatTheme] = useState('default');
+    const [showChatThemePicker, setShowChatThemePicker] = useState(false);
+    const [savingChatTheme, setSavingChatTheme] = useState(false);
+    const chatThemes = [
+        { value: 'default', label: t('chatThemeDefault'), color: '#f5f8ff', dark: '#0f172a' },
+        { value: 'ocean', label: t('chatThemeOcean'), color: '#e0f2fe', dark: '#082f49' },
+        { value: 'lavender', label: t('chatThemeLavender'), color: '#f3e8ff', dark: '#2e1065' },
+        { value: 'mint', label: t('chatThemeMint'), color: '#dcfce7', dark: '#052e16' },
+        { value: 'rose', label: t('chatThemeRose'), color: '#ffe4e6', dark: '#4c0519' },
+        { value: 'amber', label: t('chatThemeAmber'), color: '#fef3c7', dark: '#451a03' },
+    ];
     const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
     const [savingConversationNotifications, setSavingConversationNotifications] = useState(false);
     const [replyTo, setReplyTo] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+        if (!activeConversation?.id) {
+            setChatTheme('default');
+            return () => { active = false; };
+        }
+        const storageKey = `chat-theme:${currentUserId}:${activeConversation.id}`;
+        const cached = (() => {
+            try { return localStorage.getItem(storageKey); } catch { return null; }
+        })();
+        if (chatThemes.some(item => item.value === cached)) setChatTheme(cached);
+        getConversationChatTheme(activeConversation.id)
+            .then(({ data }) => {
+                const savedTheme = data?.data?.theme;
+                if (active && chatThemes.some(item => item.value === savedTheme)) {
+                    setChatTheme(savedTheme);
+                    try { localStorage.setItem(storageKey, savedTheme); } catch { /* optional cache */ }
+                }
+            })
+            .catch(() => {
+                // Cached theme remains available if the migration has not been applied yet.
+            });
+        return () => { active = false; };
+    }, [activeConversation?.id, currentUserId]);
+
+    const chooseChatTheme = async (nextTheme) => {
+        if (!activeConversation?.id || savingChatTheme || !chatThemes.some(item => item.value === nextTheme)) return;
+        const previousTheme = chatTheme;
+        setChatTheme(nextTheme);
+        setShowChatThemePicker(false);
+        setSavingChatTheme(true);
+        const storageKey = `chat-theme:${currentUserId}:${activeConversation.id}`;
+        try { localStorage.setItem(storageKey, nextTheme); } catch { /* optional cache */ }
+        try {
+            await updateConversationChatTheme(activeConversation.id, nextTheme);
+        } catch (error) {
+            toast.error(error.response?.data?.message || t('chatThemeSaveFailed'));
+            setChatTheme(previousTheme);
+        } finally {
+            setSavingChatTheme(false);
+        }
+    };
     useEffect(() => {
         let active = true;
         if (!activeConversation?.id) {
@@ -220,8 +278,8 @@ export default function ChatWindow({
         return true;
     });
 
-    // Chat UI is intentionally light-mode; keep embedded emoji picker in the same palette.
-    const isDarkMode = false;
+    const selectedChatTheme = chatThemes.find(item => item.value === chatTheme) || chatThemes[0];
+    const chatBackground = isDarkMode ? selectedChatTheme.dark : selectedChatTheme.color;
 
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -712,7 +770,7 @@ export default function ChatWindow({
     }, []);
 
     return (
-    <section className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950">
+    <section className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950" style={{ "--chat-theme-bg": chatBackground }}>
         <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900">
 
             {pendingAttachment && (
@@ -880,6 +938,24 @@ export default function ChatWindow({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
+                    <div className="relative">
+                        <button type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
+                            <Palette size={18} />
+                        </button>
+                        {showChatThemePicker && (
+                            <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                                <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{t('chatTheme')}</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {chatThemes.map(item => (
+                                        <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatTheme} aria-pressed={chatTheme === item.value} className={`flex items-center gap-2 rounded-lg border p-2 text-left text-[11px] transition ${chatTheme === item.value ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-slate-200 dark:border-slate-700'} disabled:opacity-50`}>
+                                            <span className="size-4 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: isDarkMode ? item.dark : item.color }} />
+                                            <span className="truncate text-slate-700 dark:text-slate-200">{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <button
                         type="button"
                         ref={searchTriggerRef}
@@ -1222,7 +1298,7 @@ export default function ChatWindow({
                         onLoadOlder?.();
                     }
                 }}
-                className="h-full overflow-y-auto bg-[#f5f8ff] px-5 py-6">
+                className="h-full overflow-y-auto px-5 py-6" style={{ backgroundColor: chatBackground }}>
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
