@@ -742,8 +742,10 @@ const refresh = async (req, res) => {
             hasRefreshCookie: Boolean(req.cookies?.refreshToken)
         });
 
-        return res.status(401).json({
-            message
+        return res.status(invalidRefreshToken ? 401 : 500).json({
+            message: invalidRefreshToken
+                ? message
+                : 'Không thể làm mới phiên đăng nhập lúc này. Vui lòng thử lại.'
         });
     }
 
