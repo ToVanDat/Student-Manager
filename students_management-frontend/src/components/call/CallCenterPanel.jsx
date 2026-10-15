@@ -10,7 +10,7 @@ const formatDuration = seconds => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-const formatTime = value =>
+const formatTime = (value, language = 'vi') =>
     value ? new Date(value).toLocaleString(language === 'en' ? 'en-US' : 'vi-VN', {
         day: '2-digit',
         month: '2-digit',
@@ -119,7 +119,7 @@ export default function CallCenterPanel({
                                         {item.status === 'completed' && ` · ${formatDuration(item.duration_seconds)}`}
                                     </p>
                                 </div>
-                                <span className="text-[10px] text-slate-400">{formatTime(item.started_at)}</span>
+                                <span className="text-[10px] text-slate-400">{formatTime(item.started_at, language)}</span>
                             </div>
                         );
                     })}
@@ -139,7 +139,7 @@ export default function CallCenterPanel({
                             <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{item.title}</span>
                                 <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{item.body}</span>
-                                <span className="mt-1 block text-[10px] text-slate-400">{formatTime(item.created_at)}</span>
+                                <span className="mt-1 block text-[10px] text-slate-400">{formatTime(item.created_at, language)}</span>
                             </span>
                             {item.is_read && <CheckCheck size={15} className="text-slate-400" />}
                         </button>
