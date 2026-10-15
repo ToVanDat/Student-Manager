@@ -79,7 +79,7 @@ export default function ChatWindow({
     onSearchMessages,
     onOpenSearchResult
 }) {
-    const activeConversationAvatar = activeConversation?.avatar || activeConversation?.avatar_url || activeConversation?.conversationAvatar || null;
+    const activeConversationAvatar = activeConversation?.avatar_url || activeConversation?.avatarUrl || activeConversation?.avatar || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
     const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
     const [savingConversationNotifications, setSavingConversationNotifications] = useState(false);
