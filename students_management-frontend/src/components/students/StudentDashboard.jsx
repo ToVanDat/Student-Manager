@@ -61,13 +61,13 @@ function StudentDashboard({
             <div className="grid grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-4 pt-5 sm:px-5">
-                        <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white"{t('studentList')}</h2><p className="mt-1 mb-0 text-xs text-muted"{t('studentListDescription')}</p></div>
+                        <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs text-muted">{t('studentListDescription')}</p></div>
                         {isAdmin && <button className="inline-flex h-9 items-center gap-2 rounded-md bg-linear-to-r from-brand-600 to-brand-500 px-3.5 text-xs font-semibold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-lg hover:shadow-brand-600/25" onClick={onAdd}><Plus size={17} /{t('addStudent')}</button>}
                     </div>
                     <div className="px-4 sm:px-5">
                         <StudentSearch value={search} onChange={onSearchChange} />
                     </div>
-                    {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50"{t('retry')}</button></div>}
+                    {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">{t('retry')}</button></div>}
                     {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" /{t('loadingStudentsData')}</div>}
                     <div className="w-full min-w-0">
                         <StudentTable
