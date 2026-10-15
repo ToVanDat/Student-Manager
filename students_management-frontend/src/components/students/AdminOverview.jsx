@@ -25,35 +25,35 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
     };
 
     return (
-        <div className="admin-overview mx-auto max-w-[1500px] space-y-6">
-            <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="admin-overview mx-auto max-w-[1500px] space-y-6 pb-6">
+            <header className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-[#102d4d] via-[#17466c] to-[#216f91] px-5 py-6 text-white shadow-xl shadow-blue-950/10 sm:px-8 sm:py-8"><div className="absolute -right-10 -top-16 -z-10 size-64 rounded-full border-[28px] border-white/5" /><div className="absolute right-24 -bottom-28 -z-10 size-64 rounded-full border border-white/10" /><div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
                 <div>
-                    <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-blue-700 dark:border-blue-900/70 dark:bg-blue-950/50 dark:text-blue-300"><span className="size-1.5 rounded-full bg-blue-600 dark:bg-blue-400" />{t('administrator')}</div>
-                    <h1 className="text-2xl font-bold tracking-tight text-[#203754] dark:text-slate-100 sm:text-[28px]">{t('welcome')}, {user?.username || 'Admin'}!</h1>
-                    <p className="mt-1 text-sm text-[#71829b] dark:text-slate-400">{t('overview')}</p>
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-sky-100"><GraduationCap size={14} />{t('administrator')}</div>
+                    <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('welcome')}, {user?.username || 'Admin'}!</h1>
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-blue-100/85">{t('overview')}</p>
                 </div>
-                <div className="inline-flex items-center gap-2 rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs text-[#71829b] dark:text-slate-400 shadow-sm">
-                    <CalendarDays size={15} className="text-blue-600" />
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-xs text-white backdrop-blur-sm">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-white/10"><CalendarDays size={19} /></span><span className="hidden text-[10px] font-semibold uppercase tracking-wider text-blue-100/70 sm:block">{t('current')}</span>
                     <span className="capitalize">{today}</span>
                 </div>
-            </div>
+            </div></header>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
-                    <article key={label} className="admin-kpi-card rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)] transition-colors hover:border-[#bfd8ff] dark:hover:border-blue-800 sm:p-4">
-                        <div className="flex items-start justify-between gap-3">
+                    <article key={label} className="admin-kpi-card relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:p-5">
+                        <div className="absolute inset-x-0 top-0 h-1 bg-blue-600" /><div className="flex items-start justify-between gap-3">
                             <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
                             <span className="rounded-full bg-[#f5f8ff] dark:bg-slate-800 px-2 py-1 text-[10px] font-medium text-[#8190a7] dark:text-slate-400">{t('current')}</span>
                         </div>
                         <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
-                        <p className="mt-1 text-[27px] font-bold leading-none tracking-tight text-[#203754] dark:text-slate-100">{value}</p>
+                        <p className="mt-1 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-white">{value}</p>
                         <p className="mt-2 text-[11px] text-[#8190a7] dark:text-slate-400">{detail}</p>
                     </article>
                 ))}
             </div>
 
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)]">
-                <section className="rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-[0_5px_18px_rgba(15,40,80,0.045)]">
+                <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-5 flex items-center justify-between gap-3">
                         <div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('classCounts')}</p></div>
                         <span className="flex size-9 items-center justify-center rounded-xl bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300"><ChartNoAxesCombined size={18} /></span>
@@ -70,7 +70,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                     ) : <div className="flex min-h-44 flex-col items-center justify-center text-center"><BookOpen className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noClassData')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('addClassHint')}</p></div>}
                 </section>
 
-                <section className="rounded-xl border border-[#e3eaf4] dark:border-slate-700 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm">
+                <section className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
                     <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('recentStudents')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('newestProfiles')}</p></div><button type="button" onClick={onOpenStudents} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">{t('viewAll')} <ArrowRight size={14} /></button></div>
                     {recentStudents.length ? <div className="divide-y divide-[#e8eef7] dark:divide-slate-700">
                         {recentStudents.map(student => <div key={student.id} className="flex items-center gap-3 py-3 first:pt-1 last:pb-0">
@@ -78,7 +78,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                             <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#293b55] dark:text-slate-200">{student.name || t('noData')}</p><p className="mt-0.5 truncate text-[10px] text-[#8190a7] dark:text-slate-400">{student.student_code || student.email || t('studentCode')} · {student.class_code || t('className')}</p></div>
                         </div>)}
                     </div> : <div className="flex min-h-44 flex-col items-center justify-center text-center"><Users className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noStudentProfiles')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('createFirstProfile')}</p></div>}
-                    <button type="button" onClick={onOpenStudents} className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-xs font-semibold text-white transition hover:bg-blue-700 dark:bg-blue-900/70 dark:hover:bg-blue-800/80 dark:shadow-sm dark:shadow-blue-950/30"><CirclePlus size={16} />{t('manageStudents')}</button>
+                    <button type="button" onClick={onOpenStudents} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174a7e] px-4 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#123b66] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900"><CirclePlus size={16} />{t('manageStudents')}</button>
                 </section>
             </div>
 
