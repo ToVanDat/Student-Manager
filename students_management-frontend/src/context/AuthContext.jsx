@@ -300,6 +300,14 @@ const updateUser = (partialUser) => {
         };
 
         const handleConnectError = (error) => {
+            // The old socket can fail authentication while this tab is
+            // replacing its session. Do not refresh the old refresh cookie or
+            // clear the newly-authenticating state during that race.
+            if (sessionStorage.getItem('auth:login-in-progress') === 'true') {
+                console.warn('[SOCKET][connect error ignored during login]', error.message);
+                return;
+            }
+
             console.error('[SOCKET][connect error]', error.message);
 
             // Only refresh the token here when the server explicitly rejects
