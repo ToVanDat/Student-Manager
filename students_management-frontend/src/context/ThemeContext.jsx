@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import AuthContext from './AuthContext.jsx';
+import { useLanguage } from './LanguageContext.jsx';
 import { getUserPreferences, updateUserPreferences } from '@/api/preferencesApi.js';
 
 const ThemeContext = createContext(null);
@@ -25,6 +26,7 @@ function getSystemTheme() {
 export function ThemeProvider({ children }) {
     const auth = useContext(AuthContext);
     const user = auth?.user;
+    const { t } = useLanguage();
     const isAuthenticated = Boolean(auth?.isAuthenticated && user?.id);
     const [theme, setThemeState] = useState(readInitialTheme);
     const [systemTheme, setSystemTheme] = useState(getSystemTheme);
@@ -82,7 +84,7 @@ export function ThemeProvider({ children }) {
                 if (isLatestRequest && sameAccount) {
                     setThemeState(previousTheme);
                     try { localStorage.setItem(STORAGE_KEY, previousTheme); } catch { /* optional cache */ }
-                    toast.error('Không thể lưu giao diện tài khoản. Đã khôi phục lựa chọn trước đó.');
+                    toast.error(t('userThemeSaveFailed'));
                 }
                 console.error('[PREFERENCES] Could not save account theme:', error.response?.data?.message || error.message);
             });
@@ -95,7 +97,7 @@ export function ThemeProvider({ children }) {
         isDarkMode: effectiveTheme === 'dark',
         setTheme,
         toggleTheme: () => setTheme(effectiveTheme === 'dark' ? 'light' : 'dark')
-    }), [theme, effectiveTheme, isAuthenticated, user?.id]);
+    }), [theme, effectiveTheme, isAuthenticated, user?.id, t]);
 
     return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
