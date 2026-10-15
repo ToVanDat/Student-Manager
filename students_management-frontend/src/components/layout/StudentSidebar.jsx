@@ -34,11 +34,9 @@ function StudentSidebar({
 
             <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-[#f8faff] dark:bg-slate-950 px-[15px] py-[22px] text-[#263852] dark:text-slate-100 shadow-[8px_0_28px_rgba(38,56,82,0.06)] transition-[width,transform,padding] duration-200 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className={`mb-8 flex items-center gap-3 border-b border-slate-200/80 px-2 pb-6 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
-                    <div aria-label="Student Manager" className="relative flex size-12 shrink-0 items-center justify-center rounded-[17px] bg-gradient-to-br from-[#0c2340] via-[#174a7e] to-[#247c91] shadow-[0_7px_18px_rgba(23,74,126,.24)] ring-1 ring-white/50">
-                        <span className="absolute inset-[4px] rounded-[13px] border border-white/15" />
-                        <BookOpen size={23} strokeWidth={1.8} className="absolute bottom-[8px] text-sky-100" />
-                        <GraduationCap size={24} strokeWidth={2} className="absolute top-[5px] -translate-y-[1px] text-white drop-shadow-sm" />
-                        <span className="absolute bottom-[5px] h-[2px] w-4 rounded-full bg-amber-300" />
+                    <div aria-label="Student Manager" className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-br from-[#0c2340] via-[#174a7e] to-[#247c91] shadow-[0_7px_18px_rgba(23,74,126,.24)] ring-1 ring-white/50">
+                        <span aria-hidden="true" className="absolute inset-[4px] rounded-[12px] border border-white/20" />
+                        <GraduationCap size={27} strokeWidth={1.9} className="relative z-10 text-white drop-shadow-sm" aria-hidden="true" />
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
                         <strong className="text-[14px] font-extrabold leading-tight tracking-[-.025em] text-[#183653] dark:text-white">Student Manager</strong>
