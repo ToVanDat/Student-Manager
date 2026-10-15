@@ -38,6 +38,7 @@ import MessageBubble, { MessageMediaPreview } from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
 import { notificationApi } from '@/api/notificationApi';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function ChatWindow({
     activeConversation,
@@ -81,6 +82,7 @@ export default function ChatWindow({
     onSearchMessages,
     onOpenSearchResult
 }) {
+    const { t, language } = useLanguage();
     const activeConversationAvatar = activeConversation?.avatar_url || activeConversation?.avatarUrl || activeConversation?.avatar || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
     const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
@@ -183,7 +185,7 @@ export default function ChatWindow({
     }, [pendingAttachment]);
 
     const formatLastSeen = (value) => {
-        if (!value) return 'Ngoại tuyến';
+        if (!value) return t('offlineStatus');
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return 'Ngoại tuyến';
         const now = new Date();
@@ -194,12 +196,12 @@ export default function ChatWindow({
         const diffMinutes = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMinutes / 60);
         if (date >= startOfToday) {
-            if (diffMinutes < 1) return 'Hoạt động vừa xong';
-            if (diffMinutes < 60) return 'Hoạt động ' + diffMinutes + ' phút trước';
-            if (diffHours < 24) return 'Hoạt động ' + diffHours + ' giờ trước';
+            if (diffMinutes < 1) return t('activeJustNow');
+            if (diffMinutes < 60) return t('activeMinutesAgo').replace('{{count}}', String(diffMinutes));
+            if (diffHours < 24) return t('activeHoursAgo').replace('{{count}}', String(diffHours));
         }
-        if (date >= startOfYesterday) return 'Hoạt động hôm qua';
-        return 'Hoạt động ' + date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        if (date >= startOfYesterday) return t('activeYesterday');
+        return 'Hoạt động ' + date.toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
 
     const directUserId = Number(activeConversation?.userId);
@@ -207,7 +209,7 @@ export default function ChatWindow({
         && Number.isInteger(directUserId)
         && onlineUserIds.has(directUserId);
     const presenceLabel = isDirectOnline
-        ? 'Đang hoạt động'
+        ? t('activeNow')
         : formatLastSeen(activeConversation?.lastSeenAt);
     const sharedFiles = (messages || []).flatMap(message => (message.files || []).map(file => ({ ...file, messageId: message.id })));
     const filteredSharedFiles = sharedFiles.filter(file => {
@@ -886,10 +888,10 @@ export default function ChatWindow({
                             if (!showSearchPanel) positionSearchPanel();
                             setShowSearchPanel(prev => !prev);
                         }}
-                        aria-label="Tìm kiếm tin nhắn"
+                        aria-label={t("conversationSearch")}
                         aria-expanded={showSearchPanel}
                         aria-controls="chat-message-search"
-                        title="Tìm kiếm tin nhắn"
+                        title={t("conversationSearch")}
                     >
                         <Search size={18} />
                     </button>
@@ -904,7 +906,7 @@ export default function ChatWindow({
                                 })}
                                 disabled={callState !== 'idle'}
                                 className="h-9 w-9 rounded-xl hover:bg-emerald-50 hover:text-emerald-600 disabled:cursor-not-allowed disabled:opacity-40"
-                                title="Gọi thoại"
+                                title={t("callVoice")}
                             >
                                 <Phone size={18} />
                             </button>
@@ -917,7 +919,7 @@ export default function ChatWindow({
                                 })}
                                 disabled={callState !== 'idle'}
                                 className="h-9 w-9 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
-                                title="Gọi video"
+                                title={t("callVideo")}
                             >
                                 <Video size={18} />
                             </button>
@@ -964,7 +966,7 @@ export default function ChatWindow({
                                 className="z-[1000] w-64 overflow-x-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl"
                             >
                                 <button type="button" role="menuitem" onClick={() => { setShowContactInfo(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <UserRound size={16} /> Xem thông tin
+                                    <UserRound size={16} /> {t('conversationInfo')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <FolderOpen size={16} /> File & Media
@@ -981,7 +983,7 @@ export default function ChatWindow({
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? 'Bật lại thông báo' : 'Tắt thông báo 8 giờ'}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('unread', true))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <MailOpen size={16} /> Đánh dấu chưa đọc
+                                    <MailOpen size={16} /> {t('markUnread')}
                                 </button>
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                                 <button type="button" role="menuitem" onClick={() => {
@@ -1004,7 +1006,7 @@ export default function ChatWindow({
                                     <FolderOpen size={16} /> Ẩn cuộc trò chuyện
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) void runMoreAction(blockConversationUser); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                                    <Ban size={16} /> Chặn người dùng
+                                    <Ban size={16} /> {t('blockUser')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
                                     <Flag size={16} /> Báo cáo
@@ -1045,9 +1047,9 @@ export default function ChatWindow({
                         </button>
                     </div>
                     <div className="mt-2 max-h-72 overflow-y-auto">
-                        {searching && <p className="px-2 py-4 text-center text-xs text-slate-400">Đang tìm...</p>}
+                        {searching && <p className="px-2 py-4 text-center text-xs text-slate-400"{t('searchingMessages')}</p>}
                         {!searching && searchError && <p role="alert" className="px-2 py-4 text-center text-xs text-red-500">{searchError}</p>}
-                        {!searching && !searchError && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400">Không tìm thấy tin nhắn</p>}
+                        {!searching && !searchError && searchQuery.trim() && messageSearchResults.length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-400"{t('noMessagesFound')}</p>}
                         {!searching && messageSearchResults.map(result => (
                             <button
                                 type="button"
