@@ -1327,7 +1327,7 @@ export default function ChatWindow({
 
             <form
                 onSubmit={handleSend}
-                className="min-h-[78px] border-t border-slate-100 bg-white px-5 py-3 flex items-center gap-2"
+                className="min-h-[78px] border-t border-slate-100 bg-white px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
             >
 
                 {/* ================= ATTACHMENT ================= */}
@@ -1359,8 +1359,15 @@ export default function ChatWindow({
                     className={`flex items-center gap-1 rounded-full p-2 ${recordingVoice ? 'bg-red-50 text-red-600' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600'} disabled:opacity-50`}
                 >
                     {recordingVoice ? <Square size={18} /> : <Mic size={20} />}
-                    {recordingVoice && <span className="text-[11px]">{recordingSeconds}s</span>}
+                    {recordingVoice && <span className="text-[11px] font-medium">{recordingSeconds}s</span>}
                 </button>
+
+                {recordingVoice && (
+                    <span role="status" aria-live="polite" className="hidden shrink-0 items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1.5 text-[11px] font-medium text-red-600 sm:inline-flex">
+                        <span className="size-2 animate-pulse rounded-full bg-red-500" />
+                        Đang ghi âm
+                    </span>
+                )}
 
                 {/* ================= EMOJI ================= */}
 
@@ -1406,13 +1413,28 @@ export default function ChatWindow({
 
                 {/* ================= TEXT INPUT ================= */}
 
-                <input
+                <textarea
                     ref={composerInputRef}
-                    type="text"
-                    placeholder="Nhập tin nhắn..."
+                    rows={1}
+                    placeholder="Nhập tin nhắn... (Enter để gửi, Shift + Enter để xuống dòng)"
                     value={input}
-                    onChange={handleChange}
-                    className="h-12 flex-1 rounded-full border border-slate-200 bg-white px-5 text-sm text-slate-800 placeholder:text-slate-400 focus:border-blue-300 focus:outline-none focus:ring-4 focus:ring-blue-50"
+                    onChange={event => {
+                        handleChange(event);
+                        event.currentTarget.style.height = 'auto';
+                        event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 160)}px`;
+                    }}
+                    onKeyDown={event => {
+                        if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent?.isComposing) {
+                            event.preventDefault();
+                            handleSend(event);
+                        }
+                    }}
+                    onInput={event => {
+                        event.currentTarget.style.height = 'auto';
+                        event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 160)}px`;
+                    }}
+                    aria-label="Soạn tin nhắn"
+                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm leading-5 text-slate-800 placeholder:text-slate-400 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
                 />
 
                 {/* ================= SEND ================= */}
