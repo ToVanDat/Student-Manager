@@ -11,12 +11,12 @@ import './styles/reference-ui.css';
 
 createRoot(document.getElementById('root')).render(
     // <StrictMode>
-        <LanguageProvider>
-            <ThemeProvider>
-                <AuthProvider>
+        <AuthProvider>
+            <LanguageProvider>
+                <ThemeProvider>
                     <App />
-                </AuthProvider>
-            </ThemeProvider>
-        </LanguageProvider>
+                </ThemeProvider>
+            </LanguageProvider>
+        </AuthProvider>
    //  </StrictMode>
 );
