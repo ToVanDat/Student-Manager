@@ -474,5 +474,7 @@
   "moduleUsersTitle": "User management workspace",
   "moduleUsersDescription": "Manage user accounts and their system access status.",
   "modulePermissionsTitle": "Permissions workspace",
-  "modulePermissionsDescription": "Configure and review roles and access permissions for administrative features."
+  "modulePermissionsDescription": "Configure and review roles and access permissions for administrative features.",
+  "universityPortal": "University Portal",
+  "openingConversation": "Opening conversation…"
 }
