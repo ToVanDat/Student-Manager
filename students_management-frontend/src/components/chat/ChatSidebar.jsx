@@ -107,7 +107,7 @@ export default function ChatSidebar({
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
-                        onClick={() => { setShowNewChat(true); setMode('group'); }>
+                        onClick={() => { setShowNewChat(true); setMode('group'); }}
                         className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600"
                         title="Tạo nhóm"
                     >
