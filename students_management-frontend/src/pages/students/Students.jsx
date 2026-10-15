@@ -20,6 +20,7 @@ import PasswordSettings from "@/components/settings/PasswordSettings.jsx";
 import NotificationSettings from "@/components/settings/NotificationSettings.jsx";
 import AppearanceSettings from "@/components/settings/AppearanceSettings.jsx";
 import LanguageSettings from "@/components/settings/LanguageSettings.jsx";
+import LanguageSettings from "@/components/settings/LanguageSettings.jsx";
 
 import {
   createStudent,
@@ -706,6 +707,7 @@ function Students() {
                 {settingsTab === "notifications" && <NotificationSettings />}
 
                 {settingsTab === "appearance" && <AppearanceSettings />}
+                {settingsTab === "language" && <LanguageSettings />}
                 {settingsTab === "language" && <LanguageSettings />}
 
                 {/* =========================================
