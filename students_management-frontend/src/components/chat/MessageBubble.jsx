@@ -370,7 +370,7 @@ export default function MessageBubble({
     currentUserId,
     onRedial
 }) {
-    const { t, language } = useLanguage();
+    const { t } = useLanguage();
     const { content, time, isRead } = message;
     const status = message.status;
     const uploadProgress = Number(message.uploadProgress ?? message.files?.[0]?.uploadProgress ?? 0);
