@@ -102,9 +102,7 @@ const updateUser = (partialUser) => {
 
             socket.disconnect();
 
-            localStorage.removeItem(
-                'accessToken'
-            );
+            setApiAccessToken(null);
 
             localStorage.removeItem(
                 'user'
@@ -151,7 +149,7 @@ const updateUser = (partialUser) => {
                         );
 
                         socket.disconnect();
-                        localStorage.removeItem('accessToken');
+                        setApiAccessToken(null);
                         localStorage.removeItem('user');
                         setAccessToken(null);
                         setUser(null);
@@ -321,7 +319,7 @@ const updateUser = (partialUser) => {
                         setAccessToken(newToken);
                     })
                     .catch(() => {
-                        localStorage.removeItem('accessToken');
+                        setApiAccessToken(null);
                         localStorage.removeItem('user');
                         setAccessToken(null);
                         setUser(null);
