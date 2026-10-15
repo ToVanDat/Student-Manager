@@ -1431,7 +1431,7 @@ export default function ChatWindow({
                 <textarea
                     ref={composerInputRef}
                     rows={1}
-                    placeholder="Nhập tin nhắn... (Enter để gửi, Shift + Enter để xuống dòng)"
+                    placeholder="Nhập tin nhắn..."
                     value={input}
                     onChange={event => {
                         handleChange(event);
