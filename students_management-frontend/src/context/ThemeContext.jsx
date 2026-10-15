@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import AuthContext from './AuthContext.jsx';
 import { getUserPreferences, updateUserPreferences } from '@/api/preferencesApi.js';
 
@@ -27,6 +28,9 @@ export function ThemeProvider({ children }) {
     const isAuthenticated = Boolean(auth?.isAuthenticated && user?.id);
     const [theme, setThemeState] = useState(readInitialTheme);
     const [systemTheme, setSystemTheme] = useState(getSystemTheme);
+    const themeSaveSequenceRef = useRef(0);
+    const userIdRef = useRef(user?.id);
+    userIdRef.current = user?.id;
 
     useEffect(() => {
         const media = window.matchMedia?.('(prefers-color-scheme: dark)');
@@ -64,10 +68,22 @@ export function ThemeProvider({ children }) {
 
     const setTheme = (nextTheme) => {
         if (!VALID_THEMES.includes(nextTheme)) return;
+
+        const previousTheme = theme;
+        const requestId = ++themeSaveSequenceRef.current;
+        const requestUserId = user?.id;
         setThemeState(nextTheme);
         try { localStorage.setItem(STORAGE_KEY, nextTheme); } catch { /* optional cache */ }
+
         if (isAuthenticated) {
             updateUserPreferences({ theme: nextTheme }).catch((error) => {
+                const isLatestRequest = requestId === themeSaveSequenceRef.current;
+                const sameAccount = String(userIdRef.current) === String(requestUserId);
+                if (isLatestRequest && sameAccount) {
+                    setThemeState(previousTheme);
+                    try { localStorage.setItem(STORAGE_KEY, previousTheme); } catch { /* optional cache */ }
+                    toast.error('Không thể lưu giao diện tài khoản. Đã khôi phục lựa chọn trước đó.');
+                }
                 console.error('[PREFERENCES] Could not save account theme:', error.response?.data?.message || error.message);
             });
         }
