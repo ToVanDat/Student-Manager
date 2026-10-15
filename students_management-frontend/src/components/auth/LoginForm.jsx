@@ -65,7 +65,7 @@ function LoginForm({
             </button>
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <span>{t('noAccountYet')}</span>
-                <button className="rounded border-0 bg-transparent px-1 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700" type="button" onClick={onOpenRegister}>Tạo tài khoản</button>
+                <button className="rounded border-0 bg-transparent px-1 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700" type="button" onClick={onOpenRegister}>{t('registerNow')}</button>
             </div>
         </form>
     );
