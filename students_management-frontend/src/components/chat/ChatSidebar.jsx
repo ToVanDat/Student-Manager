@@ -104,12 +104,12 @@ export default function ChatSidebar({
     return (
         <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
             <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d]">Tin nhắn</h2>
+                <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-slate-100">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
-                        className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600"
+                        className="flex size-9 items-center justify-center rounded-xl bg-white dark:bg-slate-900 text-[#60708a] dark:text-slate-400 ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600"
                         title="Tạo nhóm"
                         aria-label="Tạo nhóm"
                         type="button"
@@ -134,15 +134,15 @@ export default function ChatSidebar({
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[3px]"
                     onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
                 >
-                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)]">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
+                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-3xl border border-white/70 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-6">
                         <div className="min-w-0">
-                            <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900">
+                            <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
                                 {mode === 'group' ? 'Tạo nhóm mới' : 'Tin nhắn mới'}
                             </h3>
-                            <p className="mt-1 text-xs text-slate-500">{mode === 'group' ? 'Đặt tên nhóm và chọn người muốn thêm.' : 'Tìm người dùng để bắt đầu trò chuyện.'}</p>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{mode === 'group' ? 'Đặt tên nhóm và chọn người muốn thêm.' : 'Tìm người dùng để bắt đầu trò chuyện.'}</p>
                         </div>
-                        <button type="button" aria-label="Đóng" title="Đóng" onClick={closeNewChat} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"><X size={18} /></button>
+                        <button type="button" aria-label="Đóng" title="Đóng" onClick={closeNewChat} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 hover:text-slate-900"><X size={18} /></button>
                     </div>
                     <div className="space-y-3 overflow-y-auto px-5 py-4 sm:px-6">
 
@@ -152,7 +152,7 @@ export default function ChatSidebar({
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder="Tên nhóm..."
-                            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                            className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                         />
                     )}
 
@@ -161,7 +161,7 @@ export default function ChatSidebar({
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder={mode === 'group' ? 'Tìm và chọn thành viên...' : 'Tìm username, email...'}
-                        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
+                        className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50"
                     />
 
                     {mode === 'group' && selectedIds.length > 0 && (
@@ -173,7 +173,7 @@ export default function ChatSidebar({
                         </p>
                     )}
 
-                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 p-1">
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 dark:border-slate-800 p-1">
                         {searchResults.map(user => {
                             const selected = selectedIds.includes(Number(user.id));
                             return (
@@ -186,10 +186,10 @@ export default function ChatSidebar({
                                         }
                                         await handleStartDirectConversation(user.id);
                                     }}
-                                    type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50"
+                                    type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800"
                                 >
                                     <AvatarFallback name={user.username} src={user.avatar_url || user.avatarUrl || user.avatar} size="md" />
-                                    <span className="text-sm font-medium text-slate-800 flex-1">{user.username}</span>
+                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100 flex-1">{user.username}</span>
                                     {mode === 'group' && selected && <Check size={16} className="text-blue-500" />}
                                     {mode === 'direct' && startingDirectId === Number(user.id) && (
                                         <span className="text-xs text-blue-500">Đang mở...</span>
@@ -224,7 +224,7 @@ export default function ChatSidebar({
                     placeholder="Tìm kiếm cuộc trò chuyện..."
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80"
+                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80"
                 />
             </div>
 
