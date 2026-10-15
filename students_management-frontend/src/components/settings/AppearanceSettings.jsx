@@ -1,18 +1,20 @@
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext.jsx';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function AppearanceSettings() {
     const { theme, setTheme } = useTheme();
+    const { t } = useLanguage();
     const options = [
-        { value: 'light', title: 'Sáng', description: 'Giao diện sáng mặc định', Icon: Sun },
-        { value: 'dark', title: 'Tối', description: 'Giảm độ sáng khi sử dụng ban đêm', Icon: Moon },
+        { value: 'light', title: t('light'), description: t('lightThemeDescription'), Icon: Sun },
+        { value: 'dark', title: t('dark'), description: t('darkThemeDescription'), Icon: Moon },
     ];
 
     return (
         <section className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-5 border-b border-slate-100 pb-5 dark:border-slate-800">
-                <h2 className="m-0 text-base font-bold text-ink dark:text-white">Giao diện</h2>
-                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Chọn giao diện cho ứng dụng. Lựa chọn được lưu trên trình duyệt này.</p>
+                <h2 className="m-0 text-base font-bold text-ink dark:text-white">{t('appearance')}</h2>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('chooseAppearanceDescription')}</p>
             </div>
             <div className="grid gap-3">
                 {options.map(({ value, title, description, Icon }) => (
