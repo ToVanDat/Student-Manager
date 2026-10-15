@@ -148,3 +148,71 @@
         transition-duration: .01ms !important;
     }
 }
+
+
+/* Account theme coverage for feature modules, dialogs, and native controls. */
+@layer base {
+    .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+    .dark select,
+    .dark textarea {
+        color-scheme: dark;
+    }
+
+    .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder,
+    .dark textarea::placeholder {
+        color: #94a3b8;
+    }
+
+    .dark input:disabled,
+    .dark select:disabled,
+    .dark textarea:disabled {
+        background-color: #1e293b;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+
+    .dark option {
+        background-color: #0f172a;
+        color: #e2e8f0;
+    }
+
+    .dark table tbody tr {
+        border-color: #334155;
+    }
+
+    .dark [role="dialog"],
+    .dark dialog {
+        color: #e2e8f0;
+    }
+
+    .dark [role="dialog"] :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+        color-scheme: dark;
+    }
+}
+
+/* Shared semantic surface utilities for pages and modules that use reusable classes. */
+@layer components {
+    .feature-surface {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: #fff;
+        color: #1e293b;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .05);
+        transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+    }
+
+    .dark .feature-surface {
+        border-color: #334155;
+        background: #0f172a;
+        color: #e2e8f0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .18);
+    }
+
+    .feature-muted {
+        color: #64748b;
+    }
+
+    .dark .feature-muted {
+        color: #94a3b8;
+    }
+}
