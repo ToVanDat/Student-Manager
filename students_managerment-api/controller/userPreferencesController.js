@@ -24,8 +24,8 @@ const updatePreferences = async (req, res) => {
     if (preferredLanguage !== undefined && !['vi', 'en'].includes(preferredLanguage)) {
         return res.status(400).json({ message: 'Ngôn ngữ chỉ hỗ trợ vi hoặc en' });
     }
-    if (theme !== undefined && !['light', 'dark'].includes(theme)) {
-        return res.status(400).json({ message: 'Giao diện chỉ hỗ trợ light hoặc dark' });
+    if (theme !== undefined && !['light', 'dark', 'system'].includes(theme)) {
+        return res.status(400).json({ message: 'Giao diện chỉ hỗ trợ light, dark hoặc system' });
     }
 
     try {
