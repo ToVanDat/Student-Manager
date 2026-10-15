@@ -1301,8 +1301,14 @@ export default function ChatWindow({
                 })}
 
                 {isTyping && (
-                    <div className="text-[11px] text-slate-400 mb-3 ml-1">
-                        {activeConversation.name} đang nhập...
+                    <div role="status" aria-live="polite" className="mb-3 ml-1 flex items-center gap-2">
+                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3.5 py-2.5 shadow-sm">
+                            <span className="sr-only">{activeConversation.name} đang nhập</span>
+                            <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.24s]" />
+                            <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.12s]" />
+                            <span className="size-1.5 animate-bounce rounded-full bg-blue-600" />
+                        </div>
+                        <span className="text-xs font-medium text-slate-600">{activeConversation.name} đang nhập...</span>
                     </div>
                 )}
 
