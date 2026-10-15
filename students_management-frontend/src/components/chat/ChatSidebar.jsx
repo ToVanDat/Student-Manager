@@ -101,7 +101,7 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className="chat-conversation-rail relative flex h-full w-[320px] min-w-[290px] max-w-[36vw] flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-4">
+        <div className="chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f8faff] p-3 sm:p-4 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw]">
             <div className="flex items-center justify-between mb-5">
                 <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d]">Tin nhắn</h2>
                 <div className="flex items-center gap-2">
@@ -110,6 +110,8 @@ export default function ChatSidebar({
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
                         className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600"
                         title="Tạo nhóm"
+                        aria-label="Tạo nhóm"
+                        type="button"
                     >
                         <Users size={18} />
                     </button>
@@ -119,6 +121,7 @@ export default function ChatSidebar({
                         className="flex size-9 items-center justify-center rounded-xl bg-[#2563eb] text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
                         title="Tìm kiếm người dùng"
                         aria-label="Tìm kiếm người dùng"
+                        type="button"
                     >
                         <Search size={18} />
                     </button>
@@ -222,6 +225,8 @@ export default function ChatSidebar({
                     Tất cả <span className="ml-1">{conversations.length}</span>
                 </button>
                 <button
+                    type="button"
+                    aria-pressed={filter === 'unread'}
                     onClick={() => setFilter('unread')}
                     className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'unread' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
