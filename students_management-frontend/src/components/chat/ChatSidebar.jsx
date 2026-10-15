@@ -209,7 +209,7 @@ export default function ChatSidebar({
                             type="button"
                             disabled={!groupName.trim() || selectedIds.length < 1 || creatingGroup}
                             onClick={handleCreateGroup}
-                            className="mt-1 h-11 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                            className="mt-1 h-11 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
                         >
                             {creatingGroup ? t('creating') : t('createGroup')}
                         </button>
@@ -230,7 +230,7 @@ export default function ChatSidebar({
                 />
             </div>
 
-            <div className="mb-3 mt-1 flex rounded-xl bg-slate-100/90 p-1">
+            <div className="mb-3 mt-1 flex rounded-xl bg-slate-100/90 p-1 dark:bg-slate-800">
                 <button
                     type="button"
                     aria-pressed={filter === 'all'}
