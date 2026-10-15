@@ -59,7 +59,7 @@ function StudentSidebar({
                     >
                         <Users size={19} />
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("students")}</span>
-                        <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
+                        <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
                     </button>
                     {user?.role === 'admin' && (
                         <>
@@ -111,7 +111,7 @@ function StudentSidebar({
 
                 </nav>
 
-                <div className={`flex shrink-0 items-center gap-3 border-t border-slate-200 px-1 pt-4 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
+                <div className={`flex shrink-0 items-center gap-3 border-t border-slate-200 px-1 pt-4 dark:border-slate-800 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
                     {user?.avatar_url || user?.avatar ? (
                         <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-9 shrink-0 rounded-full object-cover" />
                     ) : (
