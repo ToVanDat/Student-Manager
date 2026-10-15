@@ -62,7 +62,7 @@ export default function NotificationSettings() {
                 <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">{t('notificationSettingsDescription')}</p>
             </div>
             <div className="mb-4 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100"{t('notificationPreviewContent')}</h3>
+               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('notificationPreviewContent')}</h3>
                 <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('notificationPreviewDescription')}</p>
                 <div className="mt-3 grid gap-2">
                     {[
