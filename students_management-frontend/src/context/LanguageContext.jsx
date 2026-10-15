@@ -1,0 +1,62 @@
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+
+const LanguageContext = createContext(null);
+const STORAGE_KEY = 'student-management-language';
+
+const messages = {
+  vi: {
+    language: 'Ngôn ngữ', vietnamese: 'Tiếng Việt', english: 'English',
+    languageDescription: 'Chọn ngôn ngữ hiển thị cho giao diện ứng dụng.',
+    languageSaved: 'Lựa chọn được lưu trên trình duyệt này.',
+    quickLanguage: 'Đổi ngôn ngữ', themeLight: 'Giao diện sáng', themeDark: 'Giao diện tối',
+    searchStudents: 'Tìm kiếm sinh viên, lớp học, mã sinh viên, email...',
+    notifications: 'Thông báo', markAllRead: 'Đọc tất cả', openNotifications: 'Mở thông báo',
+    loadingNotifications: 'Đang tải thông báo...', noNotifications: 'Chưa có thông báo nào.',
+    unread: 'chưa đọc', account: 'Thông tin tài khoản', security: 'Bảo mật',
+    sessions: 'Phiên đăng nhập', password: 'Đổi mật khẩu', appearance: 'Giao diện',
+    logout: 'Đăng xuất', administrator: 'Quản trị viên', user: 'Người dùng',
+    settingsTitle: 'Cài đặt tài khoản', settingsDescription: 'Quản lý thông tin tài khoản, bảo mật và các phiên đăng nhập.',
+    dashboard: 'Bảng điều khiển quản trị', welcome: 'Chào mừng',
+    overview: 'Tổng quan hệ thống quản lý sinh viên',
+  },
+  en: {
+    language: 'Language', vietnamese: 'Vietnamese', english: 'English',
+    languageDescription: 'Choose the language used throughout the application.',
+    languageSaved: 'Your choice is saved in this browser.',
+    quickLanguage: 'Change language', themeLight: 'Light theme', themeDark: 'Dark theme',
+    searchStudents: 'Search students, classes, student ID, email...',
+    notifications: 'Notifications', markAllRead: 'Mark all read', openNotifications: 'Open notifications',
+    loadingNotifications: 'Loading notifications...', noNotifications: 'No notifications yet.',
+    unread: 'unread', account: 'Account information', security: 'Security',
+    sessions: 'Active sessions', password: 'Change password', appearance: 'Appearance',
+    logout: 'Log out', administrator: 'Administrator', user: 'User',
+    settingsTitle: 'Account settings', settingsDescription: 'Manage account information, security, and active sessions.',
+    dashboard: 'Admin dashboard', welcome: 'Welcome',
+    overview: 'Student management overview',
+  },
+};
+
+function readLanguage() {
+  try { return localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : 'vi'; }
+  catch { return 'vi'; }
+}
+
+export function LanguageProvider({ children }) {
+  const [language, setLanguage] = useState(readLanguage);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    try { localStorage.setItem(STORAGE_KEY, language); } catch { /* Storage may be unavailable. */ }
+  }, [language]);
+  const value = useMemo(() => ({
+    language,
+    setLanguage,
+    t: (key) => messages[language]?.[key] ?? messages.vi[key] ?? key,
+  }), [language]);
+  return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+  if (!context) throw new Error('useLanguage phải được sử dụng bên trong LanguageProvider');
+  return context;
+}
