@@ -104,9 +104,9 @@ export default function ChatSidebar({
     };
 
     return (
-        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e4eaf3] bg-[#f4f8fd] p-3 text-slate-800 sm:p-4 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
-            <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[22px] font-bold tracking-tight text-[#172b4d] dark:text-slate-100">{t('chat')}</h2>
+        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e5eaf2] bg-[#f7f9fc] p-3 text-slate-800 sm:p-4 dark:border-slate-800 dark:bg-[#0b1220] dark:text-slate-100 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
+            <div className="mb-4 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0"><h2 className="text-[22px] font-bold tracking-[-.035em] text-[#172b4d] dark:text-slate-100">{t('chat')}</h2><p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{t('chat')}</p></div>
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
