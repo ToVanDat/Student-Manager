@@ -512,12 +512,14 @@ function Students() {
             navigate("/chat");
             return;
           }
-          if (!["dashboard", "students"].includes(page)) return;
+          const adminViews = ["dashboard", "students", "classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"];
+          if (!adminViews.includes(page) || (!isAdmin && page !== "dashboard")) return;
 
           setActivePage(page);
           const params = new URLSearchParams(searchParams);
           params.set("view", page);
           params.delete("tab");
+          if (page !== "students") params.delete("search");
           if (page === "dashboard") {
             params.delete("search");
             params.delete("page");
@@ -592,6 +594,27 @@ function Students() {
             />
           )}
 
+          {isAdmin && ["classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"].includes(activePage) && (
+            <div className="mx-auto max-w-6xl">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="border-b border-slate-200 bg-gradient-to-r from-[#102d4f] via-[#174a7e] to-[#246b9d] px-6 py-7 text-white sm:px-8">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">{t("trainingGroup")}</p>
+                  <h1 className="mt-2 text-2xl font-bold tracking-tight">{({ classes: t("classes"), departments: t("departments"), subjects: t("subjects"), enrollments: t("enrollments"), semesters: t("semesters"), results: t("results"), users: t("user"), permissions: t("security") })[activePage]}</h1>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">{t("moduleWorkspaceDescription")}</p>
+                </div>
+                <div className="p-6 sm:p-8">
+                  <div className="flex items-start gap-4 rounded-xl border border-blue-100 bg-blue-50/70 p-5 dark:border-blue-900/70 dark:bg-blue-950/30">
+                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300"><Building2 size={22} /></div>
+                    <div><h2 className="font-semibold text-slate-900 dark:text-white">{t("moduleWorkspaceTitle")}</h2><p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{t("moduleWorkspaceDescription")}</p></div>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <button type="button" onClick={() => { setActivePage("dashboard"); const params = new URLSearchParams(searchParams); params.set("view", "dashboard"); params.delete("tab"); setSearchParams(params, { replace: true }); }} className="rounded-xl bg-[#163d66] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#205582]">{t("backToDashboard")}</button>
+                    <button type="button" onClick={() => { setActivePage("students"); const params = new URLSearchParams(searchParams); params.set("view", "students"); params.delete("tab"); setSearchParams(params, { replace: true }); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">{t("manageStudents")}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
           {activePage === "students" && isAdmin && (
             <StudentDashboard
               user={user}
