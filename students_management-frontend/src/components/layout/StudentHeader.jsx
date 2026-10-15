@@ -167,7 +167,7 @@ function StudentHeader({
                                     <p className="mt-0.5 text-[11px] text-slate-400">{notificationUnreadCount} {t('unread')}</p>
                                 </div>
                                 <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title={t("markAllRead")}>
-                                    <CheckCheck size={14} /> Đọc tất cả
+                                    <CheckCheck size={14} /> {t('markAllRead')}
                                 </button>
                             </div>
                             <div className="max-h-[min(65vh,26rem)] overflow-y-auto">
