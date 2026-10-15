@@ -1,4 +1,4 @@
-import { Moon, Sun } from 'lucide-react';
+import { Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext.jsx';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
@@ -8,6 +8,7 @@ export default function AppearanceSettings() {
     const options = [
         { value: 'light', title: t('light'), description: t('lightThemeDescription'), Icon: Sun },
         { value: 'dark', title: t('dark'), description: t('darkThemeDescription'), Icon: Moon },
+        { value: 'system', title: t('system'), description: t('systemThemeDescription'), Icon: Monitor },
     ];
 
     return (
