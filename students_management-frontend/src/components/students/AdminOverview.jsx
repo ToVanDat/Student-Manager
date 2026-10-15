@@ -52,25 +52,34 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                 ))}
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,.9fr)]">
-                <section className="app-card p-4 sm:p-6">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                        <div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('classCounts')}</p></div>
-                        <span className="flex size-9 items-center justify-center rounded-xl bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300"><ChartNoAxesCombined size={18} /></span>
+            <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
+                <section className="app-card min-w-0 p-5 sm:p-6">
+                    <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0">
+                            <p className="mb-1 text-[10px] font-bold uppercase tracking-[.16em] text-blue-600 dark:text-blue-300">{t('classCounts')}</p>
+                            <h2 className="text-base font-bold tracking-tight text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2>
+                            <p className="mt-1.5 text-xs leading-5 text-[#8190a7] dark:text-slate-400">{t('studentsCount')} · {number(classStatistics.reduce((sum, item) => sum + (Number(item.count) || 0), 0), language)}</p>
+                        </div>
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-900"><ChartNoAxesCombined size={19} /></span>
                     </div>
                     {classStatistics.length ? (
-                        <div className="space-y-4">
-                            {classStatistics.slice(0, 6).map((item, index) => (
-                                <div key={item.code}>
-                                    <div className="mb-1.5 flex items-center justify-between gap-3 text-xs"><span className="truncate font-medium text-slate-700 dark:text-slate-200">{item.name || item.code}</span><span className="shrink-0 text-[#71829b] dark:text-slate-400">{number(item.count, language)} {t('studentsCount')}</span></div>
-                                    <div className="h-2 overflow-hidden rounded-full bg-[#edf3fb] dark:bg-slate-800"><div className={`h-full rounded-full ${['bg-blue-500', 'bg-emerald-500', 'bg-violet-500', 'bg-amber-500', 'bg-cyan-500', 'bg-rose-500'][index]}`} style={{ width: `${Math.max(4, (item.count / maxClassSize) * 100)}%` }} /></div>
-                                </div>
-                            ))}
+                        <div className="space-y-5">
+                            {[...classStatistics].sort((a, b) => (Number(b.count) || 0) - (Number(a.count) || 0)).slice(0, 6).map((item, index) => {
+                                const count = Number(item.count) || 0;
+                                const percent = Number(statistics.totalStudents) > 0 ? Math.round((count / Number(statistics.totalStudents)) * 100) : 0;
+                                return <div key={item.code || item.name || index}>
+                                    <div className="mb-2 flex items-end justify-between gap-3">
+                                        <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.name || item.code || t('className')}</p><p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{item.code || ''}</p></div>
+                                        <div className="shrink-0 text-right"><p className="text-sm font-bold tabular-nums text-slate-900 dark:text-white">{number(count, language)}</p><p className="text-[10px] text-slate-500 dark:text-slate-400">{percent}%</p></div>
+                                    </div>
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full transition-[width] duration-500 ${['bg-blue-500','bg-emerald-500','bg-violet-500','bg-amber-500','bg-cyan-500','bg-rose-500'][index]}`} style={{ width: `${Math.min(100, (count / maxClassSize) * 100)}%` }} /></div>
+                                </div>;
+                            })}
                         </div>
-                    ) : <div className="flex min-h-44 flex-col items-center justify-center text-center"><BookOpen className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noClassData')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('addClassHint')}</p></div>}
+                    ) : <div className="flex min-h-48 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-5 text-center dark:border-slate-700 dark:bg-slate-950/30"><span className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm dark:bg-slate-800"><BookOpen size={24} /></span><p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('noClassData')}</p><p className="mt-1 max-w-xs text-xs leading-5 text-slate-500 dark:text-slate-400">{t('addClassHint')}</p></div>}
                 </section>
 
-                <section className="app-card p-4 sm:p-6">
+                <section className="app-card min-w-0 p-5 sm:p-6">
                     <div className="mb-4 flex items-center justify-between gap-3"><div><h2 className="text-sm font-bold text-[#203754] dark:text-slate-100">{t('recentStudents')}</h2><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('newestProfiles')}</p></div><button type="button" onClick={onOpenStudents} className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700">{t('viewAll')} <ArrowRight size={14} /></button></div>
                     {recentStudents.length ? <div className="divide-y divide-[#e8eef7] dark:divide-slate-700">
                         {recentStudents.map(student => <div key={student.id} className="flex items-center gap-3 py-3 first:pt-1 last:pb-0">
