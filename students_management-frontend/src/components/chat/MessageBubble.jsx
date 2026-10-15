@@ -4,7 +4,7 @@ import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText,
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-2
+
 const formatFileSize = (size) => {
     const bytes = Number(size);
     if (!Number.isFinite(bytes) || bytes <= 0) return '';
