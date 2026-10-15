@@ -1,4 +1,5 @@
 import { resolveMediaUrl } from '@/utils/mediaUrl.js';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 import {
     BarChart3,
     BookOpen,
@@ -36,39 +37,39 @@ function StudentSidebar({
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
                         <strong className="text-sm font-bold">StudentOS</strong>
-                        <span className="mt-0.5 text-[10px] text-[#8190a7] dark:text-slate-400">{user?.role === 'admin' ? 'Admin Console' : 'Student Portal'}</span>
+                        <span className="mt-0.5 text-[10px] text-[#8190a7] dark:text-slate-400">{user?.role === 'admin' ? t('administrator') : t('user')}</span>
                     </div>
                 </div>
 
                 <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>TỔNG QUAN</div>
+                    <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('overviewGroup')}</div>
                     <button
-                        title="Trang chủ"
+                        title={t("home")}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
-                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>Trang chủ</span>
+                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("home")}</span>
                     </button>
                     <button
-                        title="Sinh viên"
+                        title={t("students")}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
-                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>Sinh viên</span>
+                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("students")}</span>
                         <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
                     </button>
                     {user?.role === 'admin' && (
                         <>
-                            <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>QUẢN LÝ ĐÀO TẠO</div>
+                            <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('trainingGroup')}</div>
                             {[
-                                { key: 'classes', label: 'Quản lý lớp học', icon: Layers },
-                                { key: 'departments', label: 'Quản lý khoa - ngành', icon: GraduationCap },
-                                { key: 'subjects', label: 'Quản lý môn học', icon: BookOpen },
-                                { key: 'enrollments', label: 'Đăng ký học', icon: ClipboardList },
-                                { key: 'semesters', label: 'Học kỳ', icon: CalendarDays },
-                                { key: 'results', label: 'Kết quả học tập', icon: ChartNoAxesColumn },
+                                { key: 'classes', label: t('classes'), icon: Layers },
+                                { key: 'departments', label: t('departments'), icon: GraduationCap },
+                                { key: 'subjects', label: t('subjects'), icon: BookOpen },
+                                { key: 'enrollments', label: t('enrollments'), icon: ClipboardList },
+                                { key: 'semesters', label: t('semesters'), icon: CalendarDays },
+                                { key: 'results', label: t('results'), icon: ChartNoAxesColumn },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" title={label} aria-label={label}
                                     onClick={() => onNavigate(key)}
@@ -76,10 +77,10 @@ function StudentSidebar({
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
                             ))}
-                            <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>QUẢN TRỊ HỆ THỐNG</div>
+                            <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('systemGroup')}</div>
                             {[
-                                { key: 'users', label: 'Người dùng', icon: UserCog },
-                                { key: 'permissions', label: 'Phân quyền', icon: ShieldCheck },
+                                { key: 'users', label: t('user'), icon: UserCog },
+                                { key: 'permissions', label: t('security'), icon: ShieldCheck },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" title={label} aria-label={label}
                                     onClick={() => onNavigate(key)}
@@ -91,14 +92,14 @@ function StudentSidebar({
                     )}
 
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
-                    <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>LIÊN LẠC</div>
+                    <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('chat')}</div>
                     <button
-                        title="Tin nhắn"
+                        title={t("chat")}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 font-semibold shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('chat')}
                     >
                         <MessageSquare size={19} />
-                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>Tin nhắn</span>
+                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("chat")}</span>
                         {unreadCount > 0 && !collapsed && (
                             <span className="ml-auto rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">
                                 {unreadCount}
@@ -111,7 +112,7 @@ function StudentSidebar({
 
                 <div className={`flex shrink-0 items-center gap-3 border-t border-slate-200 px-1 pt-4 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
                     {user?.avatar_url || user?.avatar ? (
-                        <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt="Avatar tài khoản" className="size-9 shrink-0 rounded-full object-cover" />
+                        <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-9 shrink-0 rounded-full object-cover" />
                     ) : (
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
                             {user?.username?.charAt(0)?.toUpperCase() || 'U'}
@@ -120,7 +121,7 @@ function StudentSidebar({
                     <div className={collapsed ? 'min-[801px]:hidden flex min-w-0 flex-col' : 'flex min-w-0 flex-col'}>
                         <strong className="truncate text-xs">{user?.username || 'User'}</strong>
                         <span className="mt-0.5 text-[10px] text-[#8190a7] dark:text-slate-400">
-                            {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                            {user?.role === 'admin' ? t('administrator') : t('user')}
                         </span>
                     </div>
                 </div>
