@@ -6,6 +6,7 @@ import {
     CalendarDays,
     ClipboardList,
     GraduationCap,
+    LayoutDashboard,
     Home,
     Layers,
     MessageSquare, // Import icon Tin nhắn
@@ -34,10 +35,10 @@ function StudentSidebar({
             <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-[#f8faff] dark:bg-slate-950 px-[15px] py-[22px] text-[#263852] dark:text-slate-100 shadow-[8px_0_28px_rgba(38,56,82,0.06)] transition-[width,transform,padding] duration-200 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className={`mb-[30px] flex items-center gap-3 px-2 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
                     <div className="flex size-[43px] items-center justify-center rounded-[13px] bg-linear-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30">
-                        <GraduationCap size={27} className="text-white" />
+                        <LayoutDashboard size={23} strokeWidth={2.2} className="text-white" />
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
-                        <strong className="text-sm font-bold">StudentOS</strong>
+                        <strong className="text-sm font-bold tracking-tight">Student Manager</strong>
                         <span className="mt-0.5 text-[10px] text-[#8190a7] dark:text-slate-400">{user?.role === 'admin' ? t('administrator') : t('user')}</span>
                     </div>
                 </div>
@@ -53,12 +54,12 @@ function StudentSidebar({
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("home")}</span>
                     </button>
                     <button
-                        title={t("students")}
+                        title={user?.role === 'admin' ? t('manageStudents') : t('students')}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
-                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("students")}</span>
+                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{user?.role === 'admin' ? t('manageStudents') : t('students')}</span>
                         <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
                     </button>
                     {user?.role === 'admin' && (
