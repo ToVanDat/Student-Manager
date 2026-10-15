@@ -474,5 +474,7 @@
   "moduleUsersTitle": "Không gian quản lý tài khoản",
   "moduleUsersDescription": "Quản lý tài khoản người dùng và trạng thái truy cập hệ thống.",
   "modulePermissionsTitle": "Không gian phân quyền",
-  "modulePermissionsDescription": "Thiết lập và kiểm tra vai trò, quyền truy cập các chức năng quản trị."
+  "modulePermissionsDescription": "Thiết lập và kiểm tra vai trò, quyền truy cập các chức năng quản trị.",
+  "universityPortal": "Cổng quản trị đại học",
+  "openingConversation": "Đang mở cuộc trò chuyện…"
 }
