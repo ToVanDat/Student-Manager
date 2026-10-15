@@ -10,12 +10,9 @@ import {
     ChevronDown
 } from 'lucide-react';
 import AvatarFallback from './AvatarFallback';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
-const ROLE_LABELS = {
-    owner: 'Trưởng nhóm',
-    admin: 'Quản trị viên',
-    member: 'Thành viên'
-};
+const ROLE_KEYS = { owner: 'groupOwner', admin: 'groupAdmin', member: 'groupMember' };
 
 const ROLE_ORDER = {
     owner: 0,
@@ -38,6 +35,7 @@ export default function GroupInfoPanel({
     onLeaveGroup,
     onClose
 }) {
+    const { t } = useLanguage();
     const [memberSearch, setMemberSearch] = useState('');
     const [processingUserId, setProcessingUserId] = useState(null);
     const [showAddMember, setShowAddMember] = useState(false);
@@ -99,7 +97,7 @@ export default function GroupInfoPanel({
     };
 
     const handleRemove = async (userId) => {
-        if (!window.confirm('Bạn có chắc muốn xoá thành viên này khỏi nhóm?')) return;
+        if (!window.confirm('${t('confirmRemoveGroupMember')}')) return;
 
         try {
             setProcessingUserId(Number(userId));
@@ -121,7 +119,7 @@ export default function GroupInfoPanel({
 
     const handleLeave = async () => {
         if (currentRole === 'owner') return;
-        if (!window.confirm('Bạn có chắc muốn rời nhóm này?')) return;
+        if (!window.confirm('${t('confirmLeaveGroup')}')) return;
 
         try {
             await onLeaveGroup?.();
@@ -143,7 +141,7 @@ export default function GroupInfoPanel({
                             Thông tin nhóm
                         </h3>
                         <p className="text-xs text-slate-400">
-                            {members.length} thành viên · {members.filter(member => onlineUserIds.has(Number(member.user_id))).length} đang online
+                            {members.length} thành viên · {members.filter(member => onlineUserIds.has(Number(member.user_id))).length} {t('online')}
                         </p>
                     </div>
 
@@ -151,7 +149,7 @@ export default function GroupInfoPanel({
                         type="button"
                         onClick={onClose}
                         className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
-                        aria-label="Đóng"
+                        aria-label={t("close")}
                     >
                         <X size={19} />
                     </button>
@@ -165,7 +163,7 @@ export default function GroupInfoPanel({
                             size="xl"
                         />
                         <h4 className="mt-3 text-lg font-bold text-slate-900">
-                            {conversation.name || 'Nhóm chat'}
+                            {conversation.name || t('groupChat')}
                         </h4>
                         {editingGroup && currentRole === 'owner' ? (
                             <div className="mt-3 flex w-full gap-2">
@@ -181,7 +179,7 @@ export default function GroupInfoPanel({
                                     onClick={handleSaveGroup}
                                     className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
                                 >
-                                    {savingGroup ? 'Lưu...' : 'Lưu'}
+                                    {savingGroup ? t('saving') : t('save')}
                                 </button>
                             </div>
                         ) : (
@@ -231,7 +229,7 @@ export default function GroupInfoPanel({
                                 <input
                                     value={memberSearch}
                                     onChange={event => handleSearch(event.target.value)}
-                                    placeholder="Tìm username hoặc email..."
+                                    placeholder={t("searchUsernameOrEmail")}
                                     autoFocus
                                     className="w-full rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-800 outline-none ring-0 placeholder:text-slate-400"
                                 />
@@ -301,7 +299,7 @@ export default function GroupInfoPanel({
                                             {onlineUserIds.has(memberId) && (
                                                 <span
                                                     className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-500"
-                                                    title="Đang online"
+                                                    title={t("online")}
                                                 />
                                             )}
                                         </div>
@@ -323,7 +321,7 @@ export default function GroupInfoPanel({
                                                 ) : (
                                                     <UserRound size={12} />
                                                 )}
-                                                <span>{onlineUserIds.has(memberId) ? 'Đang online' : ROLE_LABELS[member.role] || ROLE_LABELS.member}</span>
+                                                <span>{onlineUserIds.has(memberId) ? t('online') : t(ROLE_KEYS[member.role] || ROLE_KEYS.member)}</span>
                                             </div>
                                         </div>
 
@@ -338,7 +336,7 @@ export default function GroupInfoPanel({
                                                     className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
                                                     title="Quản lý thành viên"
                                                 >
-                                                    <span>Quản lý</span><ChevronDown size={14} />
+                                                    <span>{t('manage')}</span><ChevronDown size={14} />
                                                 </button>
 
                                                 {showRoleMenu === memberId && (
@@ -350,7 +348,7 @@ export default function GroupInfoPanel({
                                                                     onClick={() => handleRole(memberId, member.role === 'admin' ? 'member' : 'admin')}
                                                                     className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-slate-50"
                                                                 >
-                                                                    {member.role === 'admin' ? 'Hạ xuống thành viên' : 'Đặt làm quản trị viên'}
+                                                                    {member.role === 'admin' ? t(member.role === 'admin' ? 'demoteToMember' : 'promoteToAdmin')}
                                                                 </button>
                                                                 <button
                                                                     type="button"
@@ -381,20 +379,20 @@ export default function GroupInfoPanel({
                     </div>
 
                     <div className="border-b border-slate-100 p-5">
-                        <p className="mb-3 text-sm font-bold text-slate-900">Quyền nhóm</p>
+                        <p className="mb-3 text-sm font-bold text-slate-900">{t('groupPermissions')}</p>
                         <div className="space-y-2">
                             <div className="rounded-xl bg-slate-50 p-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-semibold text-slate-700">Vai trò của bạn</span>
+                                    <span className="text-xs font-semibold text-slate-700">{t('yourRole')}</span>
                                     <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-600">
-                                        {ROLE_LABELS[currentRole] || 'Thành viên'}
+                                        {t(ROLE_KEYS[currentRole] || ROLE_KEYS.member)}
                                     </span>
                                 </div>
                             </div>
                             <div className="rounded-xl border border-slate-100 p-3">
                                 <p className="text-xs font-semibold text-slate-700">Thêm thành viên</p>
                                 <p className="mt-1 text-[11px] text-slate-400">
-                                    {canAdd ? 'Bạn có quyền thêm thành viên.' : 'Chỉ trưởng nhóm và quản trị viên.'}
+                                    {canAdd ? t(canAdd ? 'canAddMembers' : 'onlyAdminsCanAddMembers')}
                                 </p>
                             </div>
                             <div className="rounded-xl border border-slate-100 p-3">
@@ -411,7 +409,7 @@ export default function GroupInfoPanel({
                     </div>
 
                     <div className="p-5">
-                        <p className="mb-3 text-sm font-semibold text-slate-900">Hành động</p>
+                        <p className="mb-3 text-sm font-semibold text-slate-900">{t('actions')}</p>
                         <button
                             type="button"
                             disabled={currentRole === 'owner'}
