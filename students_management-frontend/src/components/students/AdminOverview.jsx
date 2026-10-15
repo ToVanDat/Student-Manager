@@ -41,12 +41,12 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
                     <article key={label} className="app-card relative overflow-hidden p-4 sm:p-5">
-                        <div className="absolute inset-x-0 top-0 h-1 bg-blue-600" /><div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-3">
                             <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
-                            <span className="rounded-full bg-[#f5f8ff] dark:bg-slate-800 px-2 py-1 text-[10px] font-medium text-[#8190a7] dark:text-slate-400">{t('current')}</span>
+                            <span className="mt-1 size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-950/60" aria-hidden="true" />
                         </div>
                         <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
-                        <p className="mt-1 text-3xl font-bold leading-none tracking-tight text-slate-900 dark:text-white">{value}</p>
+                        <p className="mt-1.5 text-[30px] font-bold leading-9 tracking-[-.04em] text-slate-900 dark:text-white sm:text-[32px]">{value}</p>
                         <p className="mt-2 text-[11px] text-[#8190a7] dark:text-slate-400">{detail}</p>
                     </article>
                 ))}
