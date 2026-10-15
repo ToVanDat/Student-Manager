@@ -339,6 +339,7 @@ export default function ChatPage() {
                             </div>
                         </aside>
                         <ChatSidebar
+                            mobileHidden={Boolean(activeId && activeConversation)}
                             conversations={conversations}
                             onlineUserIds={onlineUserIds}
                             activeId={activeId}
@@ -391,12 +392,14 @@ export default function ChatPage() {
                                 onLoadOlder={loadOlderMessages}
                             />
                         ) : (
-                            <EmptyChat
-                                onStartConversation={() => {
-                                    const newChatButton = document.querySelector('[data-new-chat]');
-                                    newChatButton?.click();
-                                }}
-                            />
+                            <div className="max-[767px]:hidden min-w-0 flex-1">
+                                <EmptyChat
+                                    onStartConversation={() => {
+                                        const newChatButton = document.querySelector('[data-new-chat]');
+                                        newChatButton?.click();
+                                    }}
+                                />
+                            </div>
                         )}
                     </div>
                 </div>
