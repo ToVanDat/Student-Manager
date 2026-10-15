@@ -8,8 +8,9 @@ const SOUND_PATHS = Object.freeze({
 });
 
 const audioCache = new Map();
+const stopTimers = new Map();
 
-export const playSound = async (name, { volume = 0.65, loop = false } = {}) => {
+export const playSound = async (name, { volume = 0.65, loop = false, durationMs } = {}) => {
     const src = SOUND_PATHS[name];
     if (!src || typeof window === 'undefined') return null;
     try {
@@ -19,11 +20,16 @@ export const playSound = async (name, { volume = 0.65, loop = false } = {}) => {
             audio.preload = 'auto';
             audioCache.set(name, audio);
         }
+        const existingTimer = stopTimers.get(name);
+        if (existingTimer) { clearTimeout(existingTimer); stopTimers.delete(name); }
         audio.pause();
         audio.currentTime = 0;
         audio.volume = Math.min(1, Math.max(0, Number(volume) || 0));
         audio.loop = Boolean(loop);
         await audio.play();
+        if (!loop && Number.isFinite(durationMs) && durationMs > 0) {
+            stopTimers.set(name, setTimeout(() => stopSound(name), durationMs));
+        }
         return audio;
     } catch (error) {
         // Browsers can block autoplay until the user interacts with the page.
@@ -35,12 +41,16 @@ export const playSound = async (name, { volume = 0.65, loop = false } = {}) => {
 export const stopSound = name => {
     const audio = audioCache.get(name);
     if (!audio) return;
+    const timer = stopTimers.get(name);
+    if (timer) { clearTimeout(timer); stopTimers.delete(name); }
     audio.pause();
     audio.currentTime = 0;
     audio.loop = false;
 };
 
 export const stopAllSounds = () => {
+    for (const timer of stopTimers.values()) clearTimeout(timer);
+    stopTimers.clear();
     for (const audio of audioCache.values()) {
         audio.pause();
         audio.currentTime = 0;
