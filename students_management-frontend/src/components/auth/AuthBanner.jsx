@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Languages } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
+import { VN, GB } from 'country-flag-icons/react/3x2';
 
 const banners = [
     {
@@ -75,13 +76,13 @@ function AuthBanner() {
             <div className="absolute right-4 top-4 z-20 flex items-center gap-1 rounded-full border border-white/25 bg-slate-950/35 p-1 backdrop-blur-md" aria-label={t('language')}>
                 <Languages size={15} className="mx-1 text-white/80" />
                 {[
-                    { value: 'vi', label: '🇻🇳 VI' },
-                    { value: 'en', label: '🇬🇧 EN' },
+                    { value: 'vi', label: 'VI', Flag: VN },
+                    { value: 'en', label: 'EN', Flag: GB },
                 ].map(option => (
                     <button key={option.value} type="button" onClick={() => setLanguage(option.value)}
                         aria-pressed={language === option.value}
                         className={"rounded-full px-2.5 py-1 text-[10px] font-bold transition " + (language === option.value ? 'bg-white text-slate-900' : 'text-white hover:bg-white/15')}>
-                        {option.label}
+                        <option.Flag aria-hidden="true" className="mr-1 inline-block h-3 w-4 rounded-[1px] align-middle" />{option.label}
                     </button>
                 ))}
             </div>
