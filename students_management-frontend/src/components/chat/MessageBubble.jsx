@@ -601,7 +601,7 @@ export default function MessageBubble({
                                                     <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title="Tải xuống" aria-label="Tải tệp xuống">
                                                         <Download size={15} />
                                                     </button>
-                                                </div>>
+                                                </div>
                                             </div>
                                         );
                                     })}
@@ -667,7 +667,7 @@ export default function MessageBubble({
                             <Trash2 size={15} /> <span>Xoá ở phía tôi</span>
                         </button>
 
-}
+
                     </div>
                 )}
 
