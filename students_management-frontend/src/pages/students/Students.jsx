@@ -57,6 +57,19 @@ function Students() {
     : 10;
 
   const search = searchParams.get("search") || "";
+  const sortableColumns = [
+    "id",
+    "student_code",
+    "name",
+    "email",
+    "date_of_birth",
+    "gender",
+    "class_code",
+    "class_name",
+  ];
+  const requestedSortBy = searchParams.get("sortBy") || "id";
+  const sortBy = sortableColumns.includes(requestedSortBy) ? requestedSortBy : "id";
+  const sortOrder = searchParams.get("sortOrder") === "desc" ? "desc" : "asc";
 
   // =====================================================
   // STUDENT STATE
@@ -99,9 +112,10 @@ function Students() {
     error,
     loadStudents,
     filteredStudents,
+    totalCount,
     statistics,
     classStatistics,
-  } = useStudents(search, isAdmin);
+  } = useStudents(search, isAdmin, currentPage, pageSize, sortBy, sortOrder);
 
   // =====================================================
   // PAGINATION
@@ -109,7 +123,7 @@ function Students() {
 
   const pageCount = Math.max(
     1,
-    Math.ceil(filteredStudents.length / pageSize)
+    Math.ceil(totalCount / pageSize)
   );
 
   /*
@@ -127,19 +141,17 @@ function Students() {
     Math.min(currentPage, pageCount)
   );
 
-  const firstStudentIndex = filteredStudents.length
+  const firstStudentIndex = totalCount
     ? (visiblePage - 1) * pageSize + 1
     : 0;
 
   const lastStudentIndex = Math.min(
     visiblePage * pageSize,
-    filteredStudents.length
+    totalCount
   );
 
-  const paginatedStudents = filteredStudents.slice(
-    firstStudentIndex - 1,
-    lastStudentIndex
-  );
+  // The API already returns exactly the requested page. Do not paginate the page again.
+  const paginatedStudents = filteredStudents;
 
   // =====================================================
   // FIX INVALID PAGE IN URL
@@ -241,6 +253,22 @@ function Students() {
       params.delete("search");
     }
 
+    setSearchParams(params);
+  };
+
+  // =====================================================
+  // SORT
+  // =====================================================
+
+  const handleSortChange = (column) => {
+    if (!sortableColumns.includes(column)) return;
+
+    const nextSortOrder = sortBy === column && sortOrder === "asc" ? "desc" : "asc";
+    const params = new URLSearchParams(searchParams);
+    params.set("sortBy", column);
+    params.set("sortOrder", nextSortOrder);
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
     setSearchParams(params);
   };
 
@@ -622,9 +650,10 @@ function Students() {
               isAdmin={isAdmin}
               statistics={statistics}
 
-              filteredCount={
-                filteredStudents.length
-              }
+              filteredCount={totalCount}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
 
               students={students}
 
