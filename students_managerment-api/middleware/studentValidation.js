@@ -15,6 +15,21 @@ const validateStudent = ({ partial = false } = {}) => (req, res, next) => {
     } = body;
 
     const errors = {};
+    const allowedFields = new Set([
+        'student_code',
+        'name',
+        'email',
+        'date_of_birth',
+        'gender',
+        'class_id'
+    ]);
+    const unknownFields = Object.keys(body).filter((field) => !allowedFields.has(field));
+    if (unknownFields.length > 0) {
+        return res.status(400).json({
+            message: 'Dữ liệu không hợp lệ',
+            errors: { body: `Trường không được hỗ trợ: ${unknownFields.join(', ')}` }
+        });
+    }
     const shouldValidate = (field) => !partial || has(field);
 
     if (partial && !['student_code', 'name', 'email', 'date_of_birth', 'gender', 'class_id'].some(has)) {
