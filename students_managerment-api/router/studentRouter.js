@@ -11,6 +11,8 @@ const authMiddleware =
 const requireRole =
     require('../middleware/roleMiddleware.js');
 
+const validateStudent = require('../middleware/studentValidation.js');
+
 
 // User + Admin
 router.get(
@@ -25,6 +27,7 @@ router.post(
     '/',
     authMiddleware,
     requireRole('admin'),
+    validateStudent,
     studentController.createStudent
 );
 
@@ -32,6 +35,7 @@ router.patch(
     '/:id',
     authMiddleware,
     requireRole('admin'),
+    validateStudent,
     studentController.updateStudent
 );
 
