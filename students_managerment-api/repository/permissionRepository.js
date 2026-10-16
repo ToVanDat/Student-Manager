@@ -18,8 +18,8 @@ const listAllRolesPermissions = async () => {
     const { rows } = await pool.query(
         `SELECT p.permission_key, p.module_key, p.label_vi, p.label_en,
                 p.description_vi, p.description_en, p.is_sensitive,
-                COALESCE(MAX(rp.allowed) FILTER (WHERE rp.role = 'admin'), FALSE) AS admin_allowed,
-                COALESCE(MAX(rp.allowed) FILTER (WHERE rp.role = 'user'), FALSE) AS user_allowed
+                COALESCE(BOOL_OR(rp.allowed) FILTER (WHERE rp.role = 'admin'), FALSE) AS admin_allowed,
+                COALESCE(BOOL_OR(rp.allowed) FILTER (WHERE rp.role = 'user'), FALSE) AS user_allowed
          FROM permissions p
          LEFT JOIN role_permissions rp ON rp.permission_key = p.permission_key
          GROUP BY p.permission_key, p.module_key, p.label_vi, p.label_en,
