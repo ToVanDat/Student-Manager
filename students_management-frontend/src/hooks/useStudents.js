@@ -3,7 +3,7 @@ import { getStudents } from '@/api/studentApi.js';
 
 const emptyStatistics = { totalStudents: 0, totalClasses: 0, male: 0, female: 0 };
 
-export function useStudents(search, enabled = true, page = 1, pageSize = 10, sortBy = 'id', sortOrder = 'asc') {
+export function useStudents(search, enabled = true, page = 1, pageSize = 10, sortBy = 'id', sortOrder = 'asc', classId = '', gender = '') {
     const [students, setStudents] = useState([]);
     const [recentStudents, setRecentStudents] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
@@ -23,7 +23,10 @@ export function useStudents(search, enabled = true, page = 1, pageSize = 10, sor
         setError('');
 
         try {
-            const result = await getStudents({ page, pageSize, search, sortBy, sortOrder });
+            const query = { page, pageSize, search, sortBy, sortOrder };
+            if (classId) query.classId = classId;
+            if (gender) query.gender = gender;
+            const result = await getStudents(query);
             if (requestSequence !== requestSequenceRef.current || !enabledRef.current) return;
 
             if (!result || !Array.isArray(result.data) || !result.pagination) {
@@ -53,7 +56,7 @@ export function useStudents(search, enabled = true, page = 1, pageSize = 10, sor
                 setLoading(false);
             }
         }
-    }, [enabled, page, pageSize, search, sortBy, sortOrder]);
+    }, [enabled, page, pageSize, search, sortBy, sortOrder, classId, gender]);
 
     useEffect(() => {
         if (!enabled) {
