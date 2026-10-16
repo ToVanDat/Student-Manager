@@ -15,6 +15,7 @@ import StudentDashboard from "@/components/students/StudentDashboard.jsx";
 import AdminOverview from "@/components/students/AdminOverview.jsx";
 import StudentPortalOverview from "@/components/students/StudentPortalOverview.jsx";
 import ClassManagement from "@/components/management/ClassManagement.jsx";
+import CatalogManagement from "@/components/management/CatalogManagement.jsx";
 import SettingsPage from "@/components/settings/SettingsPage.jsx";
 import AccountSettings from "@/components/settings/AccountSettings.jsx";
 import SecuritySettings from "@/components/settings/SecuritySettings.jsx";
@@ -689,7 +690,9 @@ function Students() {
 
           {isAdmin && activePage === "classes" && <ClassManagement />}
 
-          {isAdmin && ["departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"].includes(activePage) && (
+          {isAdmin && ["departments", "subjects", "semesters"].includes(activePage) && <CatalogManagement resource={activePage} />}
+
+          {isAdmin && ["enrollments", "results", "users", "permissions"].includes(activePage) && (
             <div className="mx-auto max-w-6xl">
               <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div className="border-b border-slate-200 bg-gradient-to-r from-[#102d4f] via-[#174a7e] to-[#246b9d] px-6 py-7 text-white sm:px-8">
