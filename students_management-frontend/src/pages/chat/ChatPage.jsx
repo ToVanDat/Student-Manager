@@ -256,8 +256,8 @@ export default function ChatPage() {
     );
 
     return (
-        <div className="min-h-screen bg-[#f6f8fb] dark:bg-slate-950 font-sans text-[#203754] dark:text-slate-100">
-            <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 backdrop-blur sm:px-6">
+        <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#f6f8fb] font-sans text-[#203754] dark:bg-slate-950 dark:text-slate-100">
+            <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900 sm:px-6">
                 <button
                     type="button"
                     onClick={() => setChatNavCollapsed(value => !value)}
@@ -321,13 +321,13 @@ export default function ChatPage() {
                 onMarkNotificationRead={markCallNotificationRead}
             />
 
-            <main className="chat-workspace h-[calc(100dvh-4rem)] min-h-0 p-0 sm:p-3 lg:p-4">
+            <main className="chat-workspace min-h-0 flex-1 overflow-hidden p-0 sm:p-3 lg:p-4">
                 <div className="chat-shell h-full min-h-0 overflow-hidden rounded-none border-0 bg-white shadow-panel dark:bg-slate-900 sm:rounded-xl sm:border sm:border-slate-200 dark:sm:border-slate-700">
                     <div className="flex h-full min-h-0 min-w-0">
                         <aside className={`hidden shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] py-5 text-[#263852] transition-[width,padding] duration-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 lg:flex ${chatNavCollapsed ? "w-[68px] px-2" : "w-[200px] px-3"}`}>
                             <div className={`mb-5 flex items-center gap-2 px-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`}>
                                 <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#174a7e] text-white"><GraduationCap size={21} /></span>
-                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs font-extrabold tracking-tight text-[#203754] dark:text-slate-100">Student Manager</strong><small className="mt-0.5 block text-[8px] font-semibold uppercase tracking-[.1em] text-[#2b6684] dark:text-sky-300">{t("universityPortal")}</small></span>}
+                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs font-extrabold tracking-tight text-[#203754] dark:text-slate-100">Student Manager</strong></span>}
                             </div>
                             <div className={`mb-2 px-2 ${chatNavCollapsed ? "text-center" : ""}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500 dark:text-slate-400">{t("navigation")}</p>}</div>
                             <nav className="space-y-1">
