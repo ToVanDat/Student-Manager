@@ -18,10 +18,10 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
         { label: t('female'), value: number(statistics.female, language), detail: t('studentProfile'), icon: GraduationCap, color: 'rose' },
     ];
     const cardColors = {
-        blue: 'bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300',
-        emerald: 'bg-[#e9fbf4] text-[#059669] dark:bg-emerald-950/50 dark:text-emerald-300',
-        violet: 'bg-[#f3efff] text-[#7c3aed] dark:bg-violet-950/50 dark:text-violet-300',
-        rose: 'bg-[#fff0f3] text-[#e11d48] dark:bg-rose-950/50 dark:text-rose-300',
+        blue: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        emerald: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        violet: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        rose: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
     };
 
     return (
@@ -71,7 +71,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                                         <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.name || item.code || t('className')}</p><p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{item.code || ''}</p></div>
                                         <div className="shrink-0 text-right"><p className="text-sm font-bold tabular-nums text-slate-900 dark:text-white">{number(count, language)}</p><p className="text-[10px] text-slate-500 dark:text-slate-400">{percent}%</p></div>
                                     </div>
-                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full transition-[width] duration-500 ${['bg-blue-500','bg-emerald-500','bg-violet-500','bg-amber-500','bg-cyan-500','bg-rose-500'][index]}`} style={{ width: `${Math.min(100, (count / maxClassSize) * 100)}%` }} /></div>
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-[#4d78a8] transition-[width] duration-500" style={{ width: `${Math.min(100, (count / maxClassSize) * 100)}%` }} /></div>
                                 </div>;
                             })}
                         </div>
