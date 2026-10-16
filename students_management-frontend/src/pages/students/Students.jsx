@@ -16,6 +16,8 @@ import AdminOverview from "@/components/students/AdminOverview.jsx";
 import StudentPortalOverview from "@/components/students/StudentPortalOverview.jsx";
 import ClassManagement from "@/components/management/ClassManagement.jsx";
 import CatalogManagement from "@/components/management/CatalogManagement.jsx";
+import UserManagement from "@/components/management/UserManagement.jsx";
+import PermissionsOverview from "@/components/management/PermissionsOverview.jsx";
 import EnrollmentManagement from "@/components/management/EnrollmentManagement.jsx";
 import SettingsPage from "@/components/settings/SettingsPage.jsx";
 import AccountSettings from "@/components/settings/AccountSettings.jsx";
@@ -698,30 +700,10 @@ function Students() {
 
           {isAdmin && activePage === "results" && <EnrollmentManagement view="results" />}
 
-          {isAdmin && ["users", "permissions"].includes(activePage) && (
-            <div className="mx-auto max-w-6xl">
-              <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <div className="border-b border-slate-200 bg-gradient-to-r from-[#102d4f] via-[#174a7e] to-[#246b9d] px-6 py-7 text-white sm:px-8">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">{t("trainingGroup")}</p>
-                  <h1 className="mt-2 text-2xl font-bold tracking-tight">{activePage === "users" ? t("user") : t("security")}</h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">{t(activePage === "users" ? "moduleUsersDescription" : "modulePermissionsDescription")}</p>
-                </div>
-                <div className="p-6 sm:p-8">
-                  <div role="status" className="flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900/70 dark:bg-amber-950/30">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-amber-700 shadow-sm dark:bg-slate-800 dark:text-amber-300"><Building2 size={22} /></div>
-                    <div>
-                      <h2 className="font-semibold text-slate-900 dark:text-white">{t("modulePendingTitle")}</h2>
-                      <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">{t(activePage === "users" ? "moduleUsersPending" : "modulePermissionsPending")}</p>
-                    </div>
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button type="button" onClick={() => { setActivePage("dashboard"); const params = new URLSearchParams(searchParams); params.set("view", "dashboard"); params.delete("tab"); setSearchParams(params, { replace: true }); }} className="rounded-xl bg-[#163d66] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#205582]">{t("backToDashboard")}</button>
-                    <button type="button" onClick={() => { setActivePage("students"); const params = new URLSearchParams(searchParams); params.set("view", "students"); params.delete("tab"); setSearchParams(params, { replace: true }); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">{t("manageStudents")}</button>
-                  </div>
-                </div>
-              </section>
-            </div>
-          )}
+          {isAdmin && activePage === "users" && <UserManagement />}
+
+          {isAdmin && activePage === "permissions" && <PermissionsOverview />}
+
           {activePage === "students" && isAdmin && (
             <StudentDashboard
               user={user}
