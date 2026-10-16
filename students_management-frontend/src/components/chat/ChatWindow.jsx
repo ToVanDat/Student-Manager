@@ -212,8 +212,13 @@ export default function ChatWindow({
                     try { localStorage.setItem(storageKey, savedTheme); } catch { /* optional cache */ }
                     }
                 })
-                .catch(() => {
-                    // Cached theme remains available when the API or migration is unavailable.
+                .catch((error) => {
+                    // Keep the cached appearance, but surface schema setup errors so
+                    // a missing database migration is not mistaken for a UI bug.
+                    console.warn('[CHAT THEME] Could not load saved theme:', error?.response?.data?.message || error?.message);
+                    if (active && error?.response?.status === 503) {
+                        toast.error(error.response.data?.message || t('chatThemeLoadFailed'));
+                    }
                 });
         }
         return () => { active = false; };
