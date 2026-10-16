@@ -1,4 +1,5 @@
 const departmentService = require('../service/departmentService.js');
+const { respondWithDatabaseError } = require('../utils/databaseErrorResponse.js');
 
 // GET tất cả khoa
 const getAllDepartments = async (req, res) => {
@@ -8,12 +9,7 @@ const getAllDepartments = async (req, res) => {
         res.json(departments);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -34,12 +30,7 @@ const getDepartmentById = async (req, res) => {
         res.json(department);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -52,12 +43,7 @@ const createDepartment = async (req, res) => {
         res.status(201).json(department);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm khoa',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể thêm khoa');
     }
 };
 
@@ -81,12 +67,7 @@ const updateDepartment = async (req, res) => {
         res.json(department);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật khoa',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể cập nhật khoa');
     }
 };
 
@@ -110,12 +91,7 @@ const deleteDepartment = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể xóa khoa',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể xóa khoa');
     }
 };
 
