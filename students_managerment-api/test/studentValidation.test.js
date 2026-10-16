@@ -115,3 +115,18 @@ test('rejects impossible calendar dates', () => {
     assert.equal(result.passed, false);
     assert.ok(result.responseBody.errors.date_of_birth);
 });
+
+
+test('rejects unsupported fields instead of silently ignoring them', () => {
+    const result = runValidation({ ...basePayload(), is_admin: true });
+    assert.equal(result.passed, false);
+    assert.equal(result.statusCode, 400);
+    assert.match(result.responseBody.errors.body, /is_admin/);
+});
+
+test('rejects unsupported fields in a partial update', () => {
+    const result = runValidation.partial({ name: 'Nguyen Van An', role: 'admin' });
+    assert.equal(result.passed, false);
+    assert.equal(result.statusCode, 400);
+    assert.match(result.responseBody.errors.body, /role/);
+});
