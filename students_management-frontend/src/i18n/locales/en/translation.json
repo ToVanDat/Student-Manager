@@ -475,6 +475,7 @@
   "moduleUsersDescription": "Manage user accounts and their system access status.",
   "modulePermissionsTitle": "Permissions workspace",
   "modulePermissionsDescription": "Configure and review roles and access permissions for administrative features.",
+  "universityPortal": "",
   "universityPortal": "University Portal",
   "openingConversation": "Opening conversation…",
   "systemThemeDescription": "Automatically follow your device's light or dark appearance.",
