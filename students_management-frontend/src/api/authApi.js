@@ -31,9 +31,11 @@ export const registerApi = async (username, email, password) => {
 
 //refresh
 export const refreshApi = async () => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/refresh`, {
-    withCredentials: true,
-  });
+  const response = await axios.post(
+    `${API_BASE_URL}/api/auth/refresh`,
+    {},
+    { withCredentials: true },
+  );
 
   return response.data;
 };

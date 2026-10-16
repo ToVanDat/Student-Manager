@@ -22,6 +22,18 @@ const createMessage = async (
         );
     }
 
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (conversation?.type === 'direct') {
+        const members = await conversationRepository.getConversationMembers(conversationId);
+        const target = members.find(member => Number(member.user_id) !== Number(senderId));
+
+        if (target && await conversationRepository.isUserBlocked(senderId, target.user_id)) {
+            const error = new Error('Không thể gửi tin nhắn vì một trong hai người dùng đã chặn người còn lại');
+            error.statusCode = 403;
+            throw error;
+        }
+    }
+
     if (!content || !content.trim()) {
         throw new Error(
             'Nội dung message không được để trống'
@@ -98,6 +110,23 @@ const getMessagesByConversation = async (
  * - Message đã delete for everyone không được sửa.
  * - Content mới không được rỗng.
  */
+const searchMessages = async (conversationId, userId, query, limit = 30) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const normalized = typeof query === 'string' ? query.trim() : '';
+    if (!normalized) {
+        const error = new Error('Từ khóa tìm kiếm không được để trống');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return messageRepository.searchMessages(conversationId, userId, normalized.slice(0, 100), limit);
+};
+
 const updateMessage = async (
     messageId,
     userId,
@@ -372,6 +401,12 @@ const addReaction = async (messageId, userId, emoji) => {
         throw error;
     }
 
+    if (Number(message.sender_id) === Number(userId)) {
+        const error = new Error('Không thể thả reaction vào message của chính bạn');
+        error.statusCode = 400;
+        throw error;
+    }
+
     if (typeof emoji !== 'string' || !emoji.trim() || emoji.trim().length > 32) {
         const error = new Error('Emoji không hợp lệ');
         error.statusCode = 400;
@@ -407,6 +442,7 @@ const removeReaction = async (messageId, userId, emoji) => {
 module.exports = {
     createMessage,
     getMessagesByConversation,
+    searchMessages,
     updateMessage,
     recallMessage,
     deleteMessageForMe,

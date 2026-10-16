@@ -24,11 +24,16 @@ const uploadFile = async (req, res) => {
             });
         }
 
+        const requestedQuality = String(req.body?.quality || 'standard');
+        const allowedQualities = new Set(['original', 'standard', 'hd', '480p', '720p', '1080p']);
+        const quality = allowedQualities.has(requestedQuality) ? requestedQuality : 'standard';
+
         const savedFile =
             await messageFileService.uploadFile(
                 messageId,
                 req.user.id,
-                req.file
+                req.file,
+                quality
             );
 
         const message = await messageRepository.getMessageById(messageId);
@@ -38,11 +43,6 @@ const uploadFile = async (req, res) => {
             ...message,
             files: [savedFile]
         };
-
-        io.to(`conversation:${message.conversation_id}`).emit(
-            'message:new',
-            messageWithFile
-        );
 
         io.to(`conversation:${message.conversation_id}`).emit(
             'message:file:uploaded',
@@ -100,14 +100,34 @@ const downloadFile = async (req, res) => {
                 req.user.id
             );
 
-        res.setHeader(
-            'Content-Type',
-            file.mime_type
+        // Keep uploaded content as a download and prevent MIME sniffing.
+        res.setHeader('Content-Type', file.mime_type || 'application/octet-stream');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Cache-Control', 'private, no-store');
+
+        const rawFileName = String(file.file_name || 'download');
+        const safeFallbackName = [...rawFileName].map((character) => {
+            const code = character.charCodeAt(0);
+            return (
+                code < 0x20 ||
+                code > 0x7e ||
+                character === String.fromCharCode(34) ||
+                character === String.fromCharCode(92)
+            ) ? '_' : character;
+        }).join('').slice(0, 150) || 'download';
+
+        const encodedFileName = encodeURIComponent(
+            [...rawFileName]
+                .filter((character) => {
+                    const code = character.charCodeAt(0);
+                    return code !== 10 && code !== 13;
+                })
+                .join('')
         );
 
         res.setHeader(
             'Content-Disposition',
-            `attachment; filename="${encodeURIComponent(file.file_name)}"`
+            `attachment; filename="${safeFallbackName}"; filename*=UTF-8''${encodedFileName}`
         );
 
         res.sendFile(file.filePath);
@@ -131,15 +151,6 @@ const deleteFile = async (req, res) => {
                 fileId,
                 req.user.id
             );
-
-        const message = await messageRepository.getMessageById(deleted.message_id);
-        if (message) {
-            getIO().to(`conversation:${message.conversation_id}`).emit('message:file:deleted', {
-                messageId: message.id,
-                conversationId: message.conversation_id,
-                fileId: deleted.id
-            });
-        }
 
         const message = await messageRepository.getMessageById(deleted.message_id);
         if (message) {

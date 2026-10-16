@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { chatApi } from '@/api/chatApi';
+import { callApi } from '@/api/callApi';
 import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
+import { toast } from 'sonner';
 
 export const useChat = () => {
     const { user } = useAuth();
@@ -17,6 +19,12 @@ export const useChat = () => {
     const [messagePage, setMessagePage] = useState(1);
     const [isTyping, setIsTyping] = useState(false);
     const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+    const [conversationMembers, setConversationMembers] = useState([]);
+    const [callHistory, setCallHistory] = useState([]);
+    const searchJumpIdRef = useRef(null);
+    const messageSearchRequestRef = useRef(0);
+    const seenMessageEventIdsRef = useRef(new Set());
+    const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
     const fetchConversations = useCallback(async () => {
         try {
@@ -35,6 +43,8 @@ export const useChat = () => {
         setActiveId(null);
         setSearchResults([]);
         setOnlineUserIds(new Set());
+        setConversationMembers([]);
+        setCallHistory([]);
 
         if (currentUserId > 0) {
             fetchConversations();
@@ -44,6 +54,7 @@ export const useChat = () => {
     useEffect(() => {
         if (!activeId) {
             setMessages([]);
+            setConversationMembers([]);
             return;
         }
 
@@ -55,14 +66,35 @@ export const useChat = () => {
                 const res = await chatApi.getMessages(activeId, 1, 50);
                 if (cancelled) return;
 
-                setMessages(res.data?.data || []);
+                const loadedMessages = res.data?.data || [];
+                if (cancelled) return;
+
+                const callsResponse = await callApi.getHistory(100, 0, activeId);
+                if (cancelled) return;
+                const loadedCalls = (callsResponse.data?.data || []).map(call => ({
+                    ...call,
+                    id: `call:${call.call_id}`,
+                    _timelineType: 'call'
+                }));
+                setCallHistory(loadedCalls);
+                setMessages(loadedMessages);
+
+                const membersResponse = await chatApi.getConversationMembers(activeId);
+                if (cancelled) return;
+                setConversationMembers(membersResponse.data?.data || []);
                 setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
                 setMessagePage(1);
+
                 await chatApi.markAsRead(activeId);
+                if (cancelled) return;
+                await chatApi.updateConversationSettings(activeId, 'unread', false);
+                if (cancelled) return;
                 if (socket.connected) socket.emit('message:read', { conversationId: activeId });
 
                 setConversations(prev => prev.map(c =>
-                    c.id === activeId ? { ...c, unreadCount: 0 } : c
+                    Number(c.id) === Number(activeId)
+                        ? { ...c, unreadCount: 0, markedUnread: false }
+                        : c
                 ));
 
                 if (socket.connected) {
@@ -70,6 +102,14 @@ export const useChat = () => {
                 }
             } catch (error) {
                 console.error('Lỗi lấy tin nhắn:', error);
+
+                if (error?.response?.status === 403 || error?.response?.status === 404) {
+                    socket.emit('conversation:leave', { conversationId: activeId });
+                    setMessages([]);
+                    setConversationMembers([]);
+                    setActiveId(null);
+                    toast.error('Bạn không còn quyền truy cập nhóm này');
+                }
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -84,6 +124,51 @@ export const useChat = () => {
             }
             setIsTyping(false);
         };
+    }, [activeId]);
+
+    const refreshConversationMembers = useCallback(async (conversationId = activeId) => {
+        if (!conversationId) return [];
+
+        try {
+            const res = await chatApi.getConversationMembers(conversationId);
+            const members = res.data?.data || [];
+            setConversationMembers(members);
+            return members;
+        } catch (error) {
+            console.error('Lỗi lấy thành viên conversation:', error);
+            setConversationMembers([]);
+            return [];
+        }
+    }, [activeId]);
+
+    const hideCallHistory = useCallback(async (callId) => {
+        try {
+            await callApi.hideHistory(callId);
+            setCallHistory(previous => previous.filter(call => String(call.call_id) !== String(callId)));
+            // Hiding a call is per-user, so recalculate this user's sidebar preview.
+            await fetchConversations();
+            toast.success('Đã xóa cuộc gọi khỏi lịch sử của bạn');
+            return true;
+        } catch (error) {
+            console.error('Lỗi ẩn cuộc gọi khỏi lịch sử:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xóa cuộc gọi khỏi lịch sử');
+            return false;
+        }
+    }, []);
+
+    const refreshCallHistory = useCallback(async (conversationId = activeId) => {
+        if (!conversationId) return;
+        try {
+            const response = await callApi.getHistory(100, 0, conversationId);
+            const calls = (response.data?.data || []).map(call => ({
+                ...call,
+                id: `call:${call.call_id}`,
+                _timelineType: 'call'
+            }));
+            setCallHistory(calls);
+        } catch (error) {
+            console.error('Lỗi lấy lịch sử cuộc gọi:', error);
+        }
     }, [activeId]);
 
     useEffect(() => {
@@ -101,32 +186,158 @@ export const useChat = () => {
             joinActiveConversation();
         };
 
+        const refreshCallsFromSocket = (activity = null) => {
+            // Call state changes affect both the active timeline and the sidebar preview.
+            void fetchConversations();
+            if (
+                !activity?.conversationId ||
+                Number(activity.conversationId) === Number(activeId)
+            ) {
+                void refreshCallHistory();
+            }
+        };
+
         const handleNewMessage = (message) => {
             const conversationId = Number(message.conversation_id ?? message.conversationId);
+            const messageId = message?.id == null ? null : String(message.id);
+            const seenIds = seenMessageEventIdsRef.current;
+            const isFirstDelivery = !messageId || !seenIds.has(messageId);
+
+            if (messageId && isFirstDelivery) {
+                seenIds.add(messageId);
+                // Bound memory for long-lived tabs; IDs only deduplicate realtime deliveries.
+                if (seenIds.size > 5000) {
+                    const oldestId = seenIds.values().next().value;
+                    seenIds.delete(oldestId);
+                }
+            }
 
             if (conversationId === Number(activeId)) {
                 setMessages(prev => {
-                    if (prev.some(item => item.id === message.id)) return prev;
+                    // The sender receives the same Socket.IO event that the
+                    // REST request also confirms. Reconcile the optimistic
+                    // placeholder instead of appending a second message.
+                    const optimisticIndex = prev.findIndex(item =>
+                        String(item.id).startsWith('temp-') &&
+                        Number(item.sender_id ?? item.senderId) === Number(currentUserId) &&
+                        String(item.content ?? '') === String(message.content ?? '') &&
+                        (item.status === 'sending' || item.status === 'uploading' || item.status === 'processing')
+                    );
+
+                    if (optimisticIndex !== -1) {
+                        const next = [...prev];
+                        next[optimisticIndex] = { ...message, status: 'sent' };
+                        return next;
+                    }
+
+                    if (prev.some(item => Number(item.id) === Number(message.id))) {
+                        return prev;
+                    }
+
                     return [...prev, message];
                 });
                 chatApi.markAsRead(conversationId).catch(() => {});
             }
 
-            setConversations(prev => prev.map(c => {
-                if (Number(c.id) !== conversationId) return c;
+            setConversations(prev => {
+                const next = prev.map(c => {
+                    if (Number(c.id) !== conversationId) return c;
 
-                return {
-                    ...c,
-                    lastMessage: message.content,
-                    lastMessageAt: message.created_at,
-                    unreadCount: Number(c.id) === Number(activeId) || Number(message.sender_id ?? message.senderId) === currentUserId
-                        ? 0
-                        : (c.unreadCount || 0) + 1
-                };
-            }));
+                    const incomingAt = Date.parse(message.created_at ?? message.createdAt ?? '');
+                    const currentAt = Date.parse(c.lastMessageAt ?? '');
+                    const incomingIsOlder =
+                        Number.isFinite(incomingAt) &&
+                        Number.isFinite(currentAt) &&
+                        incomingAt < currentAt;
+
+                    return {
+                        ...c,
+                        // An out-of-order message event must not overwrite a newer call preview.
+                        ...(incomingIsOlder ? {} : {
+                            lastMessage: message.content || 'Tin nhắn',
+                            lastMessageAt: Number.isFinite(incomingAt)
+                                ? new Date(incomingAt).toISOString()
+                                : c.lastMessageAt
+                        }),
+                        unreadCount: Number(c.id) === Number(activeId) || Number(message.sender_id ?? message.senderId) === currentUserId
+                            ? 0
+                            : (c.unreadCount || 0) + (isFirstDelivery ? 1 : 0)
+                    };
+                });
+
+                return next.sort((a, b) => {
+                    const pinnedDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+                    if (pinnedDiff) return pinnedDiff;
+                    const aTime = Date.parse(a.lastMessageAt ?? '') || 0;
+                    const bTime = Date.parse(b.lastMessageAt ?? '') || 0;
+                    return bTime - aTime;
+                });
+            });
         };
 
-        const handleConversationUpdated = ({ conversationId, lastMessage, senderId, updatedAt }) => {
+        const handleUserProfileUpdated = ({ userId, username, avatarUrl }) => {
+            if (!userId) return;
+            setConversations(previous => previous.map(item =>
+                item.type === 'direct' && Number(item.userId) === Number(userId)
+                    ? { ...item, name: username || item.name, avatar: avatarUrl || null }
+                    : item
+            ));
+            setConversationMembers(previous => previous.map(member =>
+                Number(member.user_id) === Number(userId)
+                    ? { ...member, username: username || member.username, avatar: avatarUrl || null }
+                    : member
+            ));
+        };
+
+        const handleConversationUpdated = async ({ conversationId, lastMessage, senderId, updatedAt, action, member, conversation }) => {
+            const sameConversation = Number(conversationId) === Number(activeId);
+            const memberId = Number(member?.user_id);
+
+            // Khi chính mình bị kick/rời nhóm, đóng conversation ngay lập tức.
+            // Không gọi refresh members trước vì request đó sẽ 403 sau khi bị remove.
+            if ((action === 'member-removed' || action === 'member-left')
+                && memberId === currentUserId
+                && sameConversation) {
+                closeRemovedGroup(
+                    conversationId,
+                    action === 'member-removed'
+                        ? 'Bạn đã bị xóa khỏi nhóm'
+                        : 'Bạn đã rời nhóm'
+                );
+                await fetchConversations();
+                return;
+            }
+
+            if (action === 'member-added' || action === 'member-removed' || action === 'member-left') {
+                if (sameConversation) {
+                    await refreshConversationMembers(conversationId);
+                }
+                await fetchConversations();
+                return;
+            }
+
+            if (action === 'member-role-updated') {
+                // Apply the role change immediately from the realtime event.
+                // The next fetch is only for conversation-list metadata.
+                if (sameConversation && member?.user_id != null) {
+                    setConversationMembers(prev => prev.map(item =>
+                        Number(item.user_id) === memberId
+                            ? { ...item, ...member }
+                            : item
+                    ));
+                }
+                await fetchConversations();
+                return;
+            }
+
+            if (conversation) {
+                await fetchConversations();
+                if (Number(conversationId) === Number(activeId)) {
+                    await refreshConversationMembers(conversationId);
+                }
+                return;
+            }
+
             setConversations(prev => {
                 const exists = prev.some(c => Number(c.id) === Number(conversationId));
 
@@ -139,11 +350,11 @@ export const useChat = () => {
                     .map(c => Number(c.id) === Number(conversationId)
                         ? {
                             ...c,
-                            lastMessage: lastMessage?.content || '',
-                            lastMessageAt: updatedAt,
-                            unreadCount: Number(c.id) === Number(activeId) || Number(senderId) === currentUserId
-                                ? 0
-                                : (c.unreadCount || 0) + 1
+                            lastMessage: lastMessage?.content || c.lastMessage || '',
+                            lastMessageAt: updatedAt || c.lastMessageAt,
+                            // message:new is the sole event that increments unreadCount.
+                            // conversation:updated only refreshes preview metadata.
+                            unreadCount: c.unreadCount
                         }
                         : c)
                     .sort((a, b) =>
@@ -209,8 +420,22 @@ export const useChat = () => {
 
                 const reactions = Array.isArray(item.reactions) ? item.reactions : [];
                 if (action === 'add') {
-                    if (reactions.some(r => Number(r.id) === Number(reaction?.id))) return item;
-                    return { ...item, reactions: [...reactions, reaction] };
+                    if (!reaction?.id) return item;
+
+                    // Backend guarantees one reaction/user/message.
+                    // Remove the user's previous reaction before adding the new one.
+                    const nextReactions = reactions.filter(
+                        r => Number(r.user_id) !== Number(reaction.user_id)
+                    );
+
+                    if (nextReactions.some(r => Number(r.id) === Number(reaction.id))) {
+                        return { ...item, reactions: nextReactions };
+                    }
+
+                    return {
+                        ...item,
+                        reactions: [...nextReactions, reaction]
+                    };
                 }
 
                 return {
@@ -321,7 +546,7 @@ export const useChat = () => {
             });
         };
 
-        const handlePresenceOffline = ({ userId }) => {
+        const handlePresenceOffline = ({ userId, lastSeenAt = null }) => {
             const id = Number(userId);
             if (!Number.isInteger(id)) return;
 
@@ -333,14 +558,97 @@ export const useChat = () => {
             });
 
             setConversations(prev => prev.map(c =>
-                Number(c.userId) === id && c.isOnline
-                    ? { ...c, isOnline: false }
+                Number(c.userId) === id
+                    ? {
+                        ...c,
+                        isOnline: false,
+                        lastSeenAt: lastSeenAt || c.lastSeenAt || null
+                    }
                     : c
             ));
         };
 
+        const closeRemovedGroup = (conversationId, message) => {
+            if (Number(conversationId) !== Number(activeId)) return false;
+
+            socket.emit('conversation:leave', { conversationId });
+            setMessages([]);
+            setConversationMembers([]);
+            setIsTyping(false);
+            setActiveId(null);
+            toast.error(message || 'Bạn không còn quyền truy cập nhóm');
+            return true;
+        };
+
+        const handleMemberAdded = async ({ conversationId }) => {
+            await fetchConversations();
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+        };
+
+        const handleMemberRemoved = async ({ conversationId, member, message }) => {
+            const removedUserId = Number(member?.user_id);
+            const isMe = removedUserId === currentUserId;
+
+            if (isMe) {
+                closeRemovedGroup(conversationId, message || 'Bạn đã bị xóa khỏi nhóm');
+                await fetchConversations();
+                return;
+            }
+
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+            await fetchConversations();
+        };
+
+        const handleMemberLeft = async ({ conversationId, member, message }) => {
+            if (Number(member?.user_id) === currentUserId) {
+                closeRemovedGroup(conversationId, message || 'Bạn đã rời nhóm');
+                await fetchConversations();
+                return;
+            }
+
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+            await fetchConversations();
+        };
+
+        const handleMemberRoleUpdated = async ({ conversationId }) => {
+            if (Number(conversationId) === Number(activeId)) {
+                await refreshConversationMembers(conversationId);
+            }
+            await fetchConversations();
+        };
+
+        const handleConversationError = ({ code, conversationId, message }) => {
+            if (code !== 'NOT_MEMBER') return;
+            closeRemovedGroup(conversationId, message);
+        };
+
+        const handleConversationCreated = () => {
+            fetchConversations();
+        };
+
+        const handleConversationHistoryCleared = ({ conversationId }) => {
+            if (Number(conversationId) === Number(activeId)) {
+                setMessages([]);
+                setCallHistory([]);
+            }
+            fetchConversations();
+        };
+
         socket.on('connect', handleSocketConnect);
         socket.on('presence:snapshot', handlePresenceSnapshot);
+        socket.on('conversation:created', handleConversationCreated);
+        socket.on('conversation:history-cleared', handleConversationHistoryCleared);
+        socket.on('member:added', handleMemberAdded);
+        socket.on('member:removed', handleMemberRemoved);
+        socket.on('member:left', handleMemberLeft);
+        socket.on('member:role-updated', handleMemberRoleUpdated);
+        socket.on('conversation:error', handleConversationError);
         if (socket.connected) {
             socket.emit('presence:sync');
             joinActiveConversation();
@@ -348,6 +656,14 @@ export const useChat = () => {
         socket.on('presence:online', handlePresenceOnline);
         socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
+        socket.on('call:incoming', refreshCallsFromSocket);
+        socket.on('call:accepted', refreshCallsFromSocket);
+        socket.on('call:connected', refreshCallsFromSocket);
+        socket.on('call:timeout', refreshCallsFromSocket);
+        socket.on('call:ended', refreshCallsFromSocket);
+        socket.on('call:rejected', refreshCallsFromSocket);
+        socket.on('call:activity:updated', refreshCallsFromSocket);
+        socket.on('user:profile-updated', handleUserProfileUpdated);
         socket.on('conversation:updated', handleConversationUpdated);
         socket.on('typing:start', handleTypingStart);
         socket.on('typing:stop', handleTypingStop);
@@ -364,9 +680,24 @@ export const useChat = () => {
         return () => {
             socket.off('connect', handleSocketConnect);
             socket.off('presence:snapshot', handlePresenceSnapshot);
+            socket.off('conversation:created', handleConversationCreated);
+            socket.off('conversation:history-cleared', handleConversationHistoryCleared);
+            socket.off('member:added', handleMemberAdded);
+            socket.off('member:removed', handleMemberRemoved);
+            socket.off('member:left', handleMemberLeft);
+            socket.off('member:role-updated', handleMemberRoleUpdated);
+            socket.off('conversation:error', handleConversationError);
             socket.off('presence:online', handlePresenceOnline);
             socket.off('presence:offline', handlePresenceOffline);
             socket.off('message:new', handleNewMessage);
+            socket.off('call:incoming', refreshCallsFromSocket);
+            socket.off('call:accepted', refreshCallsFromSocket);
+            socket.off('call:connected', refreshCallsFromSocket);
+            socket.off('call:timeout', refreshCallsFromSocket);
+            socket.off('call:ended', refreshCallsFromSocket);
+            socket.off('call:rejected', refreshCallsFromSocket);
+            socket.off('call:activity:updated', refreshCallsFromSocket);
+            socket.off('user:profile-updated', handleUserProfileUpdated);
             socket.off('conversation:updated', handleConversationUpdated);
             socket.off('typing:start', handleTypingStart);
             socket.off('typing:stop', handleTypingStop);
@@ -380,7 +711,145 @@ export const useChat = () => {
             socket.off('message:file:deleted', handleMessageFileDeleted);
             socket.off('message:error', handleMessageError);
         };
-    }, [activeId, fetchConversations, currentUserId]);
+    }, [activeId, fetchConversations, currentUserId, refreshConversationMembers, refreshCallHistory]);
+
+    useEffect(() => {
+        // Ignore results that were requested for a conversation the user has left.
+        messageSearchRequestRef.current += 1;
+    }, [activeId]);
+
+    const searchMessages = useCallback(async (query) => {
+        if (!activeId) throw new Error('Chọn một cuộc trò chuyện trước khi tìm kiếm.');
+        const normalizedQuery = String(query || '').trim();
+        if (!normalizedQuery) return [];
+
+        const requestId = ++messageSearchRequestRef.current;
+        const conversationId = Number(activeId);
+        const res = await chatApi.searchMessages(conversationId, normalizedQuery);
+        if (requestId !== messageSearchRequestRef.current) return [];
+
+        const results = res.data?.data;
+        if (!Array.isArray(results)) {
+            throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
+        }
+        return results;
+    }, [activeId]);
+
+    const openSearchResult = useCallback((result) => {
+        if (!result?.id) return;
+
+        const targetId = String(result.id);
+        searchJumpIdRef.current = targetId;
+        setSearchJumpVersion(version => version + 1);
+
+        setMessages(prev => {
+            if (prev.some(item => String(item.id) === targetId)) return prev;
+            return [...prev, result].sort(
+                (a, b) => new Date(a.created_at || a.createdAt || 0) - new Date(b.created_at || b.createdAt || 0)
+            );
+        });
+    }, []);
+
+    useEffect(() => {
+        const targetId = searchJumpIdRef.current;
+        if (!targetId) return;
+
+        const node = Array.from(document.querySelectorAll('[data-message-id]'))
+            .find(element => element.dataset.messageId === targetId);
+        if (!node) return;
+
+        searchJumpIdRef.current = null;
+        node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        node.classList.add('ring-2', 'ring-blue-400', 'rounded-2xl');
+
+        const timer = window.setTimeout(() => {
+            node.classList.remove('ring-2', 'ring-blue-400', 'rounded-2xl');
+        }, 1800);
+
+        return () => window.clearTimeout(timer);
+    }, [messages, searchJumpVersion]);
+
+    const clearConversationMessages = useCallback(async () => {
+        if (!activeId) throw new Error('Chưa chọn cuộc trò chuyện.');
+        const conversationId = Number(activeId);
+        const res = await chatApi.clearConversationMessages(conversationId);
+        setMessages([]);
+        setCallHistory([]);
+        setConversations(prev => prev.map(item =>
+            Number(item.id) === conversationId
+                ? { ...item, lastMessage: '', lastMessageAt: null, unreadCount: 0, markedUnread: false }
+                : item
+        ).sort((a, b) => {
+            const pinDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+            if (pinDiff) return pinDiff;
+            return (Date.parse(b.lastMessageAt ?? '') || 0) - (Date.parse(a.lastMessageAt ?? '') || 0);
+        }));
+        return res.data?.data;
+    }, [activeId]);
+
+    const updateConversationSettings = useCallback(async (action, value) => {
+        if (!activeId) return null;
+        const res = await chatApi.updateConversationSettings(activeId, action, value);
+        const settings = res.data?.data;
+
+        if (action === 'hide' && value) {
+            setConversations(prev => prev.filter(item => Number(item.id) !== Number(activeId)));
+            setActiveId(null);
+            setMessages([]);
+            setConversationMembers([]);
+        } else {
+            setConversations(prev => {
+                const next = prev.map(item =>
+                    Number(item.id) === Number(activeId)
+                        ? {
+                            ...item,
+                            ...(settings ? {
+                                isPinned: Boolean(settings.pinned),
+                                mutedUntil: settings.muted_until || null,
+                                markedUnread: Boolean(settings.marked_unread)
+                            } : {})
+                        }
+                        : item
+                );
+                // Apply pin/unpin ordering immediately without waiting for a refetch.
+                return next.sort((a, b) => {
+                    const pinDiff = Number(Boolean(b.isPinned)) - Number(Boolean(a.isPinned));
+                    if (pinDiff) return pinDiff;
+                    const aTime = Date.parse(a.lastMessageAt ?? '') || 0;
+                    const bTime = Date.parse(b.lastMessageAt ?? '') || 0;
+                    return bTime - aTime;
+                });
+            });
+            if (action === 'unread' && value) {
+                setConversations(prev => prev.map(item =>
+                    Number(item.id) === Number(activeId)
+                        ? { ...item, unreadCount: Math.max(1, Number(item.unreadCount) || 0), markedUnread: true }
+                        : item
+                ));
+            }
+        }
+
+        return settings;
+    }, [activeId]);
+
+    const blockUser = useCallback(async (targetUserId) => {
+        if (!activeId || !targetUserId) throw new Error('Chưa chọn cuộc trò chuyện hoặc người dùng không hợp lệ.');
+        await chatApi.blockUser(activeId, targetUserId);
+        setConversations(prev => prev.filter(item => Number(item.id) !== Number(activeId)));
+        setActiveId(null);
+        setMessages([]);
+        setConversationMembers([]);
+    }, [activeId]);
+
+    const unblockUser = useCallback(async (targetUserId) => {
+        if (!activeId || !targetUserId) return;
+        return chatApi.unblockUser(activeId, targetUserId);
+    }, [activeId]);
+
+    const reportConversation = useCallback(async (targetUserId, reason, details = null) => {
+        if (!activeId || !targetUserId) throw new Error('Chưa chọn cuộc trò chuyện hoặc người dùng không hợp lệ.');
+        return chatApi.reportConversation(activeId, targetUserId, reason, details);
+    }, [activeId]);
 
     const editMessage = useCallback(async (messageId, content) => {
         const text = typeof content === 'string' ? content.trim() : '';
@@ -418,6 +887,7 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Không thể thu hồi message:', error);
+            toast.error(error?.response?.data?.message || 'Không thể thu hồi tin nhắn');
         }
     }, []);
 
@@ -431,6 +901,7 @@ export const useChat = () => {
             );
         } catch (error) {
             console.error('Không thể xoá message cho tôi:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn');
         }
     }, []);
 
@@ -450,49 +921,145 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Không thể xoá message cho tất cả:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn cho mọi người');
         }
     }, []);
 
-    const sendAttachment = useCallback(async (file) => {
+    const sendAttachment = useCallback(async (file, quality = 'standard', onUploadProgress) => {
         if (!activeId || !file) return;
 
+        const tempId = `temp-file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const placeholder = `📎 ${file.name}`;
-        const messageResponse = await chatApi.sendMessage(activeId, placeholder);
-        const message = messageResponse.data?.data;
 
-        if (!message?.id) {
-            throw new Error('Không tạo được message cho file');
-        }
+        const optimisticMessage = {
+            id: tempId,
+            tempId,
+            conversation_id: activeId,
+            sender_id: currentUserId,
+            content: placeholder,
+            created_at: new Date().toISOString(),
+            status: 'uploading',
+            uploadProgress: 0,
+            files: [{
+                id: `temp-file-${Date.now()}`,
+                file_name: file.name,
+                file_size: file.size,
+                mime_type: file.type,
+                uploadStatus: 'uploading',
+                uploadProgress: 0
+            }]
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
 
         try {
-            const uploadResponse = await chatApi.uploadFile(message.id, file);
+            const messageResponse = await chatApi.sendMessage(activeId, placeholder);
+            const message = messageResponse.data?.data;
+
+            if (!message?.id) throw new Error('Không tạo được message cho file');
+
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId
+                    ? { ...message, status: 'uploading', uploadProgress: 0 }
+                    : item
+            ));
+
+            const uploadResponse = await chatApi.uploadFile(
+                message.id,
+                file,
+                progressEvent => {
+                    const total = progressEvent.total || file.size;
+                    const progress = Math.min(100, Math.round((progressEvent.loaded / total) * 100));
+                    if (typeof onUploadProgress === 'function') {
+                        onUploadProgress({ loaded: progressEvent.loaded, total, progress });
+                    }
+
+                    setMessages(prev => prev.map(item =>
+                        Number(item.id) === Number(message.id)
+                            ? {
+                                ...item,
+                                status: progress >= 100 ? 'processing' : 'uploading',
+                                uploadProgress: progress,
+                                files: [{
+                                    id: `temp-upload-${message.id}`,
+                                    file_name: file.name,
+                                    file_size: file.size,
+                                    mime_type: file.type,
+                                    uploadStatus: progress >= 100 ? 'processing' : 'uploading',
+                                    uploadProgress: progress
+                                }]
+                            }
+                            : item
+                    ));
+                },
+                quality
+            );
+
             const uploadedFile = uploadResponse.data?.file;
 
-            if (uploadedFile) {
-                setMessages(prev => prev.map(item =>
-                    Number(item.id) === Number(message.id)
-                        ? { ...item, files: [uploadedFile] }
-                        : item
-                ));
-            }
+            setMessages(prev => prev.map(item =>
+                Number(item.id) === Number(message.id)
+                    ? {
+                        ...item,
+                        status: 'sent',
+                        uploadProgress: 100,
+                        files: uploadedFile ? [uploadedFile] : item.files
+                    }
+                    : item
+            ));
 
             return uploadedFile;
         } catch (error) {
-            // Không xoá message tự động để tránh xoá nhầm trong race condition.
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId || Number(item.id) === Number(tempId)
+                    ? { ...item, status: 'failed', uploadProgress: 0 }
+                    : item
+            ));
             throw error;
         }
-    }, [activeId]);
+    }, [activeId, currentUserId]);
 
-    const sendMessage = useCallback((content, replyToMessageId = null) => {
+    const sendMessage = useCallback(async (content, replyToMessageId = null) => {
         const text = typeof content === 'string' ? content.trim() : '';
-        if (!activeId || !text || !socket.connected) return;
+        if (!activeId || !text) return;
 
-        socket.emit('message:send', {
-            conversationId: activeId,
+        const tempId = `temp-message-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const optimisticMessage = {
+            id: tempId,
+            tempId,
+            conversation_id: activeId,
+            sender_id: currentUserId,
             content: text,
-            replyToMessageId
-        });
-    }, [activeId]);
+            reply_to_message_id: replyToMessageId,
+            created_at: new Date().toISOString(),
+            status: 'sending',
+            is_read: false
+        };
+
+        setMessages(prev => [...prev, optimisticMessage]);
+
+        try {
+            // REST là nguồn xác nhận message chính; Socket.IO vẫn dùng để realtime
+            // cho người nhận. Khi socket event quay lại, duplicate sẽ bị bỏ qua.
+            const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
+            const saved = res.data?.data;
+
+            if (!saved?.id) throw new Error('Server không trả về message');
+
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId
+                    ? { ...saved, status: 'sent' }
+                    : item
+            ));
+        } catch (error) {
+            setMessages(prev => prev.map(item =>
+                item.tempId === tempId
+                    ? { ...item, status: 'failed' }
+                    : item
+            ));
+            console.error('Không thể gửi message:', error);
+        }
+    }, [activeId, currentUserId]);
 
     const loadOlderMessages = useCallback(async () => {
         if (!activeId || loadingOlder || !hasMoreMessages) return;
@@ -508,6 +1075,7 @@ export const useChat = () => {
                 const uniqueOlder = older.filter(item => !existing.has(Number(item.id)));
                 return [...uniqueOlder, ...prev];
             });
+
             setHasMoreMessages(Boolean(res.data?.pagination?.hasMore));
             setMessagePage(nextPage);
         } catch (error) {
@@ -561,22 +1129,116 @@ export const useChat = () => {
         window.URL.revokeObjectURL(blobUrl);
     }, []);
 
+    const previewFile = useCallback(async (file) => {
+        if (!file?.id) return null;
+        const response = await chatApi.downloadFile(file.id);
+        return window.URL.createObjectURL(response.data);
+    }, []);
+
+    const userSearchRequestRef = useRef(0);
+
     const searchUsers = useCallback(async (search) => {
+        const requestId = ++userSearchRequestRef.current;
+        const normalizedSearch = String(search || '').trim();
+
+        if (!normalizedSearch) {
+            setSearchResults([]);
+            return;
+        }
+
         try {
-            const res = await userApi.searchForChat(search);
+            const res = await userApi.searchForChat(normalizedSearch);
+            // A slow response for an older query must not overwrite newer results.
+            if (requestId !== userSearchRequestRef.current) return;
             setSearchResults(res.data?.data || []);
         } catch (error) {
+            if (requestId !== userSearchRequestRef.current) return;
             console.error('Lỗi tìm user:', error);
             setSearchResults([]);
         }
     }, []);
 
-    const startConversation = useCallback(async (targetUserId) => {
-        const res = await chatApi.createDirectConversation(targetUserId);
+    const startGroupConversation = useCallback(async (name, memberIds) => {
+        const res = await chatApi.createGroupConversation(name, memberIds);
         const conversation = res.data?.data;
 
         await fetchConversations();
         if (conversation?.id) setActiveId(conversation.id);
+
+        return conversation;
+    }, [fetchConversations]);
+
+    const updateGroupConversation = useCallback(async (name, avatarUrl = null) => {
+        if (!activeId || !name?.trim()) return;
+
+        const res = await chatApi.updateGroupConversation(
+            activeId,
+            name.trim(),
+            avatarUrl
+        );
+
+        await fetchConversations();
+        await refreshConversationMembers(activeId);
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
+    const addGroupMember = useCallback(async (userId) => {
+        if (!activeId || !userId) return;
+
+        const res = await chatApi.addGroupMember(activeId, userId);
+        await refreshConversationMembers(activeId);
+        await fetchConversations();
+
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
+    const removeGroupMember = useCallback(async (userId) => {
+        if (!activeId || !userId) return;
+
+        const res = await chatApi.removeGroupMember(activeId, userId);
+        await refreshConversationMembers(activeId);
+        await fetchConversations();
+
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
+    const leaveGroup = useCallback(async () => {
+        if (!activeId) return;
+
+        await chatApi.leaveGroup(activeId);
+        setConversationMembers([]);
+        setActiveId(null);
+        await fetchConversations();
+    }, [activeId, fetchConversations]);
+
+    const updateGroupMemberRole = useCallback(async (userId, role) => {
+        if (!activeId || !userId || !role) return;
+
+        const res = await chatApi.updateGroupMemberRole(activeId, userId, role);
+        await refreshConversationMembers(activeId);
+        await fetchConversations();
+
+        return res.data?.data;
+    }, [activeId, fetchConversations, refreshConversationMembers]);
+
+    const startConversation = useCallback(async (targetUserId) => {
+        const normalizedUserId = Number(targetUserId);
+        if (!Number.isInteger(normalizedUserId) || normalizedUserId <= 0) {
+            throw new Error('Người dùng không hợp lệ');
+        }
+
+        const res = await chatApi.createDirectConversation(normalizedUserId);
+        const conversation = res.data?.data;
+
+        if (!conversation?.id) {
+            throw new Error('Server không trả về conversation');
+        }
+
+        // Chuyển ngay sang conversation vừa tạo/lấy được.
+        setActiveId(Number(conversation.id));
+
+        // Đồng bộ sidebar sau khi conversation đã được chọn.
+        await fetchConversations();
 
         return conversation;
     }, [fetchConversations]);
@@ -592,8 +1254,16 @@ export const useChat = () => {
     return {
         conversations,
         activeId,
+        conversationMembers,
         setActiveId,
+        addGroupMember,
+        removeGroupMember,
+        leaveGroup,
+        updateGroupMemberRole,
+        updateGroupConversation,
         messages,
+        callHistory,
+        hideCallHistory,
         onlineUserIds,
         loading,
         isTyping,
@@ -604,6 +1274,7 @@ export const useChat = () => {
         toggleReaction,
         sendAttachment,
         downloadFile,
+        previewFile,
         deleteFile,
         editMessage,
         recallMessage,
@@ -612,7 +1283,15 @@ export const useChat = () => {
         searchResults,
         searchUsers,
         startConversation,
+        startGroupConversation,
         setTyping,
+        updateConversationSettings,
+        clearConversationMessages,
+        blockUser,
+        unblockUser,
+        reportConversation,
+        searchMessages,
+        openSearchResult,
         refetchConversations: fetchConversations
     };
 };

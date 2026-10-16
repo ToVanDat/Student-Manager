@@ -1,4 +1,5 @@
 const conversationRepository = require('../repository/conversationRepository');
+const { canRemoveMember, canChangeMemberRole } = require('./groupAuthorization');
 const userRepository = require('../repository/userRepository');
 
 const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
@@ -11,38 +12,342 @@ const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
         throw new Error('Người dùng không tồn tại hoặc đã bị khóa');
     }
 
+    if (await conversationRepository.isUserBlocked(currentUserId, targetUserId)) {
+        const error = new Error('Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn');
+        error.statusCode = 403;
+        throw error;
+    }
+
     const existingConversation = await conversationRepository.findDirectConversation(
         currentUserId,
         targetUserId
     );
 
-    if (existingConversation) return existingConversation;
+    if (existingConversation) {
+        // Opening a hidden direct conversation from user search restores it
+        // only for the current user; the other participant's setting is untouched.
+        await conversationRepository.unhideConversationForUser(
+            existingConversation.id,
+            currentUserId
+        );
+        return existingConversation;
+    }
 
     const conversation = await conversationRepository.createConversation('direct');
-
-    try {
-        await conversationRepository.addMember(conversation.id, currentUserId);
-        await conversationRepository.addMember(conversation.id, targetUserId);
-    } catch (error) {
-        throw error;
-    }
+    await conversationRepository.addMember(conversation.id, currentUserId, 'member');
+    await conversationRepository.addMember(conversation.id, targetUserId, 'member');
 
     return conversation;
 };
 
-const getUserConversations = async (userId) => {
-    return conversationRepository.getUserConversations(userId);
+const getUserConversations = async (userId) =>
+    conversationRepository.getUserConversations(userId);
+
+const clearConversationMessagesForUser = async (conversationId, userId) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    return conversationRepository.clearConversationMessagesForUser(conversationId, userId);
+};
+
+const updateConversationSettings = async (conversationId, userId, action, value) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation) {
+        const error = new Error('Conversation không tồn tại');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const current = await conversationRepository.getConversationSettings(conversationId, userId);
+
+    switch (action) {
+        case 'pin':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: Boolean(value),
+                mutedUntil: current.muted_until,
+                markedUnread: current.marked_unread,
+                hidden: Boolean(current.hidden_at)
+            });
+        case 'mute':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: current.pinned,
+                mutedUntil: value ? new Date(value) : null,
+                markedUnread: current.marked_unread,
+                hidden: Boolean(current.hidden_at)
+            });
+        case 'unread':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: current.pinned,
+                mutedUntil: current.muted_until,
+                markedUnread: Boolean(value),
+                hidden: Boolean(current.hidden_at)
+            });
+        case 'hide':
+            return conversationRepository.updateConversationSettings(conversationId, userId, {
+                pinned: current.pinned,
+                mutedUntil: current.muted_until,
+                markedUnread: current.marked_unread,
+                hidden: Boolean(value)
+            });
+        default: {
+            const error = new Error('Action không hợp lệ');
+            error.statusCode = 400;
+            throw error;
+        }
+    }
+};
+
+const blockUser = async (conversationId, userId, targetUserId) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    if (!Number.isInteger(Number(targetUserId)) || Number(targetUserId) <= 0) {
+        const error = new Error('targetUserId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (Number(userId) === Number(targetUserId)) {
+        const error = new Error('Không thể chặn chính mình');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (await conversationRepository.getMemberRole(conversationId, targetUserId) === null) {
+        const error = new Error('Người dùng được chọn không thuộc conversation này');
+        error.statusCode = 404;
+        throw error;
+    }
+    return conversationRepository.setUserBlocked(userId, targetUserId);
+};
+
+const unblockUser = async (conversationId, userId, targetUserId) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    if (!Number.isInteger(Number(targetUserId)) || Number(targetUserId) <= 0) {
+        const error = new Error('targetUserId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (await conversationRepository.getMemberRole(conversationId, targetUserId) === null) {
+        const error = new Error('Người dùng được chọn không thuộc conversation này');
+        error.statusCode = 404;
+        throw error;
+    }
+    return conversationRepository.removeUserBlocked(userId, targetUserId);
+};
+
+const reportConversation = async (conversationId, userId, targetUserId, reason, details = null) => {
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+
+    if (!Number.isInteger(Number(targetUserId)) || Number(targetUserId) <= 0) {
+        const error = new Error('targetUserId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (Number(userId) === Number(targetUserId)) {
+        const error = new Error('Không thể tự báo cáo chính mình');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (await conversationRepository.getMemberRole(conversationId, targetUserId) === null) {
+        const error = new Error('Người dùng được báo cáo không thuộc conversation này');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const allowed = ['spam', 'harassment', 'scam', 'inappropriate', 'other'];
+    if (!allowed.includes(reason)) {
+        const error = new Error('Lý do báo cáo không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return conversationRepository.createConversationReport(
+        conversationId,
+        userId,
+        targetUserId,
+        reason,
+        typeof details === 'string' ? details.trim().slice(0, 1000) : null
+    );
 };
 
 const getConversationMembers = async (conversationId, userId) => {
-    const isMember = await conversationRepository.isConversationMember(conversationId, userId);
-    if (!isMember) throw new Error('Bạn không thuộc conversation này');
-
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        throw new Error('Bạn không thuộc conversation này');
+    }
     return conversationRepository.getConversationMembers(conversationId);
+};
+
+const createGroupConversation = async (ownerId, memberIds, name, avatarUrl = null) => {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName || normalizedName.length > 120) {
+        throw new Error('Tên nhóm không hợp lệ');
+    }
+
+    const ids = [...new Set(
+        (Array.isArray(memberIds) ? memberIds : [])
+            .map(Number)
+            .filter(id => Number.isInteger(id) && id > 0 && id !== Number(ownerId))
+    )];
+
+    if (ids.length < 1) {
+        throw new Error('Nhóm phải có ít nhất 2 thành viên');
+    }
+
+    const users = [];
+    for (const id of ids) {
+        const user = await userRepository.findActiveUserById(id);
+        if (!user) throw new Error('Một hoặc nhiều người dùng không tồn tại hoặc đã bị khóa');
+        users.push(user);
+    }
+
+    return conversationRepository.createGroupConversation(
+        ownerId,
+        ids,
+        normalizedName,
+        avatarUrl
+    );
+};
+
+const updateGroupConversation = async (conversationId, actorId, name, avatarUrl = null) => {
+    const normalizedName = typeof name === 'string' ? name.trim() : '';
+    if (!normalizedName || normalizedName.length > 120) {
+        throw new Error('Tên nhóm không hợp lệ');
+    }
+
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation || conversation.type !== 'group') {
+        throw new Error('Conversation không phải group');
+    }
+
+    const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
+    if (actorRole !== 'owner') {
+        throw new Error('Chỉ trưởng nhóm mới có quyền cập nhật thông tin nhóm');
+    }
+
+    const updated = await conversationRepository.updateGroupConversation(
+        conversationId,
+        normalizedName,
+        avatarUrl
+    );
+
+    if (!updated) throw new Error('Không thể cập nhật thông tin nhóm');
+    return updated;
+};
+
+const addGroupMember = async (conversationId, actorId, targetUserId) => {
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation || conversation.type !== 'group') {
+        throw new Error('Conversation không phải group');
+    }
+
+    const role = await conversationRepository.getMemberRole(conversationId, actorId);
+    if (!['owner', 'admin'].includes(role)) {
+        throw new Error('Bạn không có quyền thêm thành viên');
+    }
+
+    const target = await userRepository.findActiveUserById(targetUserId);
+    if (!target) throw new Error('Người dùng không tồn tại hoặc đã bị khóa');
+
+    const existingRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
+    if (existingRole !== null) {
+        throw new Error('Người dùng đã là thành viên của group');
+    }
+
+    return conversationRepository.addMember(conversationId, targetUserId, 'member');
+};
+
+const removeGroupMember = async (conversationId, actorId, targetUserId) => {
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation || conversation.type !== 'group') throw new Error('Conversation không phải group');
+
+    const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
+    const targetRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
+
+    if (targetRole === null) throw new Error('Thành viên không tồn tại');
+    if (targetRole === 'owner') throw new Error('Không thể xoá trưởng nhóm');
+
+    if (!canRemoveMember(actorRole, targetRole)) {
+        if (actorRole === 'admin' && targetRole !== 'member') {
+            throw new Error('Admin chỉ có thể xoá member');
+        }
+        throw new Error('Bạn không có quyền xoá thành viên');
+    }
+
+    return conversationRepository.removeMember(conversationId, targetUserId);
+};
+
+const leaveGroup = async (conversationId, userId) => {
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation || conversation.type !== 'group') throw new Error('Conversation không phải group');
+
+    const role = await conversationRepository.getMemberRole(conversationId, userId);
+    if (role === null) throw new Error('Bạn không thuộc group này');
+    if (role === 'owner') throw new Error('Trưởng nhóm phải chuyển quyền trước khi rời nhóm');
+
+    return conversationRepository.removeMember(conversationId, userId);
+};
+
+const updateGroupMemberRole = async (conversationId, actorId, targetUserId, nextRole) => {
+    if (!['owner', 'admin', 'member'].includes(nextRole)) {
+        throw new Error('Role không hợp lệ');
+    }
+
+    const conversation = await conversationRepository.getConversationInfo(conversationId);
+    if (!conversation || conversation.type !== 'group') throw new Error('Conversation không phải group');
+
+    const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
+    const targetRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
+
+    if (targetRole === null) throw new Error('Thành viên không tồn tại');
+    if (!canChangeMemberRole(actorRole, targetRole, actorId, targetUserId, nextRole)) {
+        if (actorRole !== 'owner') throw new Error('Chỉ trưởng nhóm mới có quyền thay đổi role');
+        if (Number(targetUserId) === Number(actorId) && nextRole !== 'owner') {
+            throw new Error('Không thể tự hạ quyền trưởng nhóm');
+        }
+        throw new Error('Không thể thay đổi role thành viên này');
+    }
+
+    if (nextRole === 'owner') {
+        return conversationRepository.transferGroupOwnership(
+            conversationId,
+            actorId,
+            targetUserId
+        );
+    }
+
+    return conversationRepository.updateMemberRole(conversationId, targetUserId, nextRole);
 };
 
 module.exports = {
     getOrCreateDirectConversation,
     getUserConversations,
-    getConversationMembers
+    getConversationMembers,
+    createGroupConversation,
+    updateGroupConversation,
+    addGroupMember,
+    removeGroupMember,
+    leaveGroup,
+    updateGroupMemberRole,
+    updateConversationSettings,
+    clearConversationMessagesForUser,
+    blockUser,
+    unblockUser,
+    reportConversation
 };

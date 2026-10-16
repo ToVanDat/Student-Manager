@@ -1,0 +1,385 @@
+const pool = require('../src/config/database');
+
+const createCall = async ({
+    callId,
+    callerId,
+    receiverId,
+    conversationId = null,
+    callType,
+    ringTimeoutMs = 30_000
+}) => {
+    const client = await pool.connect();
+    const participantIds = [Number(callerId), Number(receiverId)].sort((a, b) => a - b);
+
+    try {
+        await client.query('BEGIN');
+
+        // Serialize call creation for both participants in a stable lock order.
+        // This prevents two simultaneous requests from putting the same user
+        // into multiple active calls.
+        for (const participantId of participantIds) {
+            await client.query(
+                'SELECT pg_advisory_xact_lock($1, $2)',
+                [78231, participantId]
+            );
+        }
+
+        const { rows: activeCalls } = await client.query(
+            `
+            SELECT call_id
+            FROM call_history
+            WHERE (caller_id = ANY($1::BIGINT[]) OR receiver_id = ANY($1::BIGINT[]))
+              AND status IN ('ringing', 'connecting', 'connected')
+              AND ended_at IS NULL
+            LIMIT 1
+            FOR UPDATE
+            `,
+            [participantIds]
+        );
+
+        if (activeCalls.length > 0) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const { rows } = await client.query(
+            `
+            INSERT INTO call_history
+                (call_id, caller_id, receiver_id, conversation_id, call_type, status, expires_at)
+            VALUES ($1, $2, $3, $4, $5, 'ringing',
+                    NOW() + ($6::BIGINT * INTERVAL '1 millisecond'))
+            ON CONFLICT (call_id) DO NOTHING
+            RETURNING *;
+            `,
+            [callId, callerId, receiverId, conversationId, callType, ringTimeoutMs]
+        );
+
+        await client.query('COMMIT');
+        return rows[0] || null;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+const getCallByIdForParticipant = async (callId, userId, targetUserId = null) => {
+    const params = [callId, userId];
+    let targetClause = '';
+    if (targetUserId !== null) {
+        params.push(targetUserId);
+        targetClause = ' AND ((caller_id = $2 AND receiver_id = $3) OR (caller_id = $3 AND receiver_id = $2))';
+    } else {
+        targetClause = ' AND (caller_id = $2 OR receiver_id = $2)';
+    }
+
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM call_history
+        WHERE call_id = $1
+          ${targetClause}
+        LIMIT 1;
+        `,
+        params
+    );
+
+    return rows[0] || null;
+};
+
+
+const updateCallStatusIfCurrent = async (
+    callId,
+    status,
+    expectedStatus,
+    reason = null,
+    answered = false
+) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = $2::text,
+            end_reason = COALESCE($4::text, end_reason),
+            answered_at = CASE
+                WHEN $5 = TRUE AND answered_at IS NULL THEN NOW()
+                ELSE answered_at
+            END,
+            ended_at = CASE
+                WHEN $2::text IN ('rejected','missed','cancelled','failed','timeout','completed')
+                    THEN COALESCE(ended_at, NOW())
+                ELSE ended_at
+            END,
+            duration_seconds = CASE
+                WHEN $2::text = 'completed' AND answered_at IS NOT NULL
+                    THEN GREATEST(
+                        0,
+                        FLOOR(EXTRACT(EPOCH FROM (
+                            COALESCE(ended_at, NOW()) - answered_at
+                        )))::INT
+                    )
+                ELSE duration_seconds
+            END,
+            updated_at = NOW()
+        WHERE call_id = $1
+          AND status = $3::text
+          AND ended_at IS NULL
+        RETURNING *;
+        `,
+        [callId, status, expectedStatus, reason, Boolean(answered)]
+    );
+    return rows[0] || null;
+};
+
+const updateCallStatus = async (callId, status, reason = null, answered = false) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = $2::text,
+            end_reason = COALESCE($3::text, end_reason),
+            answered_at = CASE
+                WHEN $4 = TRUE AND answered_at IS NULL THEN NOW()
+                ELSE answered_at
+            END,
+            ended_at = CASE
+                WHEN $2::text IN ('rejected','missed','cancelled','failed','timeout')
+                    THEN COALESCE(ended_at, NOW())
+                WHEN $2::text = 'completed'
+                    THEN COALESCE(ended_at, NOW())
+                ELSE ended_at
+            END,
+            duration_seconds = CASE
+                WHEN $2::text = 'completed' AND answered_at IS NOT NULL
+                    THEN GREATEST(
+                        0,
+                        FLOOR(EXTRACT(EPOCH FROM (
+                            COALESCE(ended_at, NOW()) - answered_at
+                        )))::INT
+                    )
+                ELSE duration_seconds
+            END,
+            updated_at = NOW()
+        WHERE call_id = $1
+        RETURNING *;
+        `,
+        [callId, status, reason, Boolean(answered)]
+    );
+    return rows[0] || null;
+};
+
+// Move a call to connected only from the connecting state. This prevents
+// a late WebRTC event from resurrecting a call that has already ended.
+const markCallConnectedIfConnecting = async (callId) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = 'connected',
+            updated_at = NOW()
+        WHERE call_id = $1
+          AND status = 'connecting'
+          AND ended_at IS NULL
+        RETURNING *;
+        `,
+        [callId]
+    );
+    return rows[0] || null;
+};
+
+const getActiveCallsForParticipant = async (userId) => {
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM call_history
+        WHERE (caller_id = $1 OR receiver_id = $1)
+          AND status IN ('ringing', 'connecting', 'connected')
+          AND ended_at IS NULL
+        ORDER BY started_at DESC;
+        `,
+        [userId]
+    );
+    return rows;
+};
+
+// Atomic accept: PostgreSQL, not the browser timer, decides whether the
+// invitation was accepted before its persisted deadline.
+const acceptRingingCallBeforeDeadline = async (callId) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = 'connecting',
+            answered_at = COALESCE(answered_at, NOW()),
+            updated_at = NOW()
+        WHERE call_id = $1
+          AND status = 'ringing'
+          AND ended_at IS NULL
+          AND expires_at > NOW()
+        RETURNING *;
+        `,
+        [callId]
+    );
+    return rows[0] || null;
+};
+
+const expireDueRingingCalls = async () => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_history
+        SET status = 'missed',
+            end_reason = 'ring-timeout',
+            ended_at = COALESCE(ended_at, NOW()),
+            updated_at = NOW()
+        WHERE status = 'ringing'
+          AND ended_at IS NULL
+          AND expires_at IS NOT NULL
+          AND expires_at <= NOW()
+        RETURNING *;
+        `
+    );
+    return rows;
+};
+
+const getPendingIncomingCalls = async (receiverId) => {
+    const { rows } = await pool.query(
+        `
+        SELECT ch.*, caller.username AS caller_username, caller.avatar_url AS caller_avatar
+        FROM call_history ch
+        JOIN users caller ON caller.id = ch.caller_id
+        WHERE ch.receiver_id = $1
+          AND ch.status = 'ringing'
+          AND ch.ended_at IS NULL
+          AND ch.expires_at > NOW()
+        ORDER BY ch.started_at ASC;
+        `,
+        [receiverId]
+    );
+    return rows;
+};
+
+const getCallHistory = async (userId, limit = 50, offset = 0, conversationId = null) => {
+    const { rows } = await pool.query(
+        `
+        SELECT
+            ch.*,
+            caller.username AS caller_username,
+            receiver.username AS receiver_username
+        FROM call_history ch
+        JOIN users caller ON caller.id = ch.caller_id
+        JOIN users receiver ON receiver.id = ch.receiver_id
+        WHERE (ch.caller_id = $1 OR ch.receiver_id = $1)
+          AND ($4::BIGINT IS NULL OR ch.conversation_id = $4)
+          AND NOT EXISTS (
+              SELECT 1
+              FROM call_history_hidden hidden
+              WHERE hidden.call_history_id = ch.id
+                AND hidden.user_id = $1
+          )
+        ORDER BY ch.started_at DESC
+        LIMIT $2 OFFSET $3;
+        `,
+        [userId, limit, offset, conversationId]
+    );
+    return rows;
+};
+
+const hideConversationCallHistoryForUser = async (userId, conversationId) => {
+    const { rowCount } = await pool.query(
+        `
+            INSERT INTO call_history_hidden (user_id, call_history_id)
+            SELECT $1, ch.id
+            FROM call_history ch
+            WHERE ch.conversation_id = $2
+              AND (ch.caller_id = $1 OR ch.receiver_id = $1)
+            ON CONFLICT (user_id, call_history_id) DO NOTHING;
+        `,
+        [userId, conversationId]
+    );
+    return rowCount || 0;
+};
+
+const hideCallHistoryForUser = async (userId, callId) => {
+    const { rows } = await pool.query(
+        `
+        INSERT INTO call_history_hidden (user_id, call_history_id)
+        SELECT $1, ch.id
+        FROM call_history ch
+        WHERE ch.call_id = $2
+          AND (ch.caller_id = $1 OR ch.receiver_id = $1)
+        ON CONFLICT (user_id, call_history_id) DO NOTHING
+        RETURNING user_id;
+        `,
+        [userId, callId]
+    );
+    return rows.length > 0;
+};
+
+const createCallNotification = async (userId, callHistoryId, type, title, body = null) => {
+    const { rows } = await pool.query(
+        `
+        INSERT INTO call_notifications
+            (user_id, call_history_id, type, title, body)
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING *;
+        `,
+        [userId, callHistoryId, type, title, body]
+    );
+    return rows[0];
+};
+
+const getCallNotifications = async (userId, limit = 50) => {
+    const { rows } = await pool.query(
+        `
+        SELECT *
+        FROM call_notifications
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+        LIMIT $2;
+        `,
+        [userId, limit]
+    );
+    return rows;
+};
+
+const getUnreadCallNotificationCount = async (userId) => {
+    const { rows } = await pool.query(
+        `
+        SELECT COUNT(*)::INT AS count
+        FROM call_notifications
+        WHERE user_id = $1
+          AND is_read = FALSE;
+        `,
+        [userId]
+    );
+    return rows[0]?.count ?? 0;
+};
+
+const markCallNotificationRead = async (notificationId, userId) => {
+    const { rows } = await pool.query(
+        `
+        UPDATE call_notifications
+        SET is_read = TRUE
+        WHERE id = $1 AND user_id = $2
+        RETURNING *;
+        `,
+        [notificationId, userId]
+    );
+    return rows[0] || null;
+};
+
+module.exports = {
+    createCall,
+    updateCallStatus,
+    getCallHistory,
+    createCallNotification,
+    getCallNotifications,
+    getUnreadCallNotificationCount,
+    markCallNotificationRead,
+    getCallByIdForParticipant,
+    updateCallStatusIfCurrent,
+    markCallConnectedIfConnecting,
+    getActiveCallsForParticipant,
+    acceptRingingCallBeforeDeadline,
+    expireDueRingingCalls,
+    getPendingIncomingCalls,
+    hideCallHistoryForUser,
+    hideConversationCallHistoryForUser
+};

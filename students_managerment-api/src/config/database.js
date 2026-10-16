@@ -1,11 +1,6 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_PORT:', process.env.DB_PORT);
-console.log('DB_NAME:', process.env.DB_NAME);
-console.log('DB_USER:', process.env.DB_USER);
-
 const pool = new Pool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -14,14 +9,19 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD
 });
 
+pool.on('error', (error) => {
+    // A Pool can emit errors for idle clients; log a concise diagnostic without
+    // dumping connection configuration or other potentially sensitive details.
+    console.error('PostgreSQL pool error:', error.message);
+});
+
 pool.connect()
     .then(client => {
         console.log('Kết nối PostgreSQL thành công!');
         client.release();
     })
     .catch(error => {
-        console.error('Kết nối PostgreSQL thất bại!');
-        console.error(error.message);
+        console.error('Kết nối PostgreSQL thất bại:', error.message);
     });
 
 module.exports = pool;

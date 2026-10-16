@@ -51,7 +51,11 @@ const createMessage = async (conversationId, senderId, content, replyToMessageId
         await client.query(updateConversationQuery, [conversationId]);
 
         await client.query('COMMIT');
-        return savedMessage;
+
+        // Trả về cùng một shape với message history để realtime reply
+        // hiển thị ngay lập tức ở cả sender và recipient.
+        const enrichedMessage = await getMessageById(savedMessage.id);
+        return enrichedMessage || savedMessage;
 
     } catch (error) {
         await client.query('ROLLBACK');
@@ -76,6 +80,7 @@ const getMessagesByConversation = async (conversationId, userId, page = 1, limit
             conversation_id,
             sender_id,
             content,
+            message_type,
             is_read,
             read_at,
             is_recalled,
@@ -146,6 +151,44 @@ const getMessagesByConversation = async (conversationId, userId, page = 1, limit
 /**
  * Lấy một message theo ID
  */
+const searchMessages = async (conversationId, userId, query, limit = 30) => {
+    const safeLimit = Math.min(Math.max(Number(limit) || 30, 1), 50);
+    const { rows } = await pool.query(
+        `
+            SELECT
+                m.id,
+                m.conversation_id,
+                m.sender_id,
+                sender.username AS sender_username,
+                sender.avatar_url AS sender_avatar,
+                m.content,
+                m.message_type,
+                m.is_recalled,
+                m.deleted_at,
+                m.created_at,
+                m.updated_at
+            FROM messages m
+            JOIN users sender ON sender.id = m.sender_id
+            WHERE m.conversation_id = $1
+              AND m.deleted_at IS NULL
+              AND COALESCE(m.is_recalled, FALSE) = FALSE
+              AND m.content IS NOT NULL
+              AND BTRIM(m.content) <> ''
+              AND m.content ILIKE '%' || $2 || '%'
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM message_deletions md
+                  WHERE md.message_id = m.id
+                    AND md.user_id = $3
+              )
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT $4;
+        `,
+        [conversationId, query, userId, safeLimit]
+    );
+    return rows;
+};
+
 const getMessageById = async (messageId) => {
     const query = `
         SELECT
@@ -153,6 +196,7 @@ const getMessageById = async (messageId) => {
             conversation_id,
             sender_id,
             content,
+            message_type,
             is_read,
             read_at,
             is_recalled,
@@ -161,9 +205,20 @@ const getMessageById = async (messageId) => {
             edited_at,
             created_at,
             updated_at,
-            reply_to_message_id
-        FROM messages
-        WHERE id = $1
+            reply_to_message_id,
+            CASE WHEN m.reply_to_message_id IS NULL THEN NULL ELSE (
+                SELECT json_build_object(
+                    'id', rm.id,
+                    'sender_id', rm.sender_id,
+                    'content', rm.content,
+                    'is_recalled', rm.is_recalled,
+                    'deleted_at', rm.deleted_at
+                )
+                FROM messages rm
+                WHERE rm.id = m.reply_to_message_id
+            ) END AS reply_to
+        FROM messages m
+        WHERE m.id = $1
         LIMIT 1;
     `;
 
@@ -302,6 +357,32 @@ const deleteMessageForEveryone = async (messageId, userId) => {
     return rows[0] || null;
 };
 
+const createSystemMessage = async (conversationId, actorId, content) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const { rows } = await client.query(
+            `
+                INSERT INTO messages (conversation_id, sender_id, content, message_type)
+                VALUES ($1, $2, $3, 'system')
+                RETURNING id;
+            `,
+            [conversationId, actorId, content]
+        );
+        await client.query(
+            `UPDATE conversations SET updated_at = NOW() WHERE id = $1`,
+            [conversationId]
+        );
+        await client.query('COMMIT');
+        return getMessageById(rows[0].id);
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const markMessagesAsRead = async (conversationId, userId) => {
     const query = `
         UPDATE messages
@@ -319,20 +400,33 @@ const markMessagesAsRead = async (conversationId, userId) => {
 
 
 const addReaction = async (messageId, userId, emoji) => {
-    const query = `
-        INSERT INTO message_reactions (message_id, user_id, emoji)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (message_id, user_id, emoji) DO NOTHING
-        RETURNING id, message_id, user_id, emoji, created_at;
-    `;
-    const { rows } = await pool.query(query, [messageId, userId, emoji]);
-    if (rows[0]) return rows[0];
+    const client = await pool.connect();
 
-    const existing = await pool.query(
-        'SELECT id, message_id, user_id, emoji, created_at FROM message_reactions WHERE message_id = $1 AND user_id = $2 AND emoji = $3 LIMIT 1',
-        [messageId, userId, emoji]
-    );
-    return existing.rows[0] || null;
+    try {
+        await client.query('BEGIN');
+
+        // One reaction per user/message, same behaviour as Messenger/Zalo.
+        await client.query(
+            `DELETE FROM message_reactions
+             WHERE message_id = $1 AND user_id = $2`,
+            [messageId, userId]
+        );
+
+        const { rows } = await client.query(
+            `INSERT INTO message_reactions (message_id, user_id, emoji)
+             VALUES ($1, $2, $3)
+             RETURNING id, message_id, user_id, emoji, created_at`,
+            [messageId, userId, emoji]
+        );
+
+        await client.query('COMMIT');
+        return rows[0] || null;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 const removeReaction = async (messageId, userId, emoji) => {
@@ -348,6 +442,7 @@ const removeReaction = async (messageId, userId, emoji) => {
 module.exports = {
     createMessage,
     getMessagesByConversation,
+    searchMessages,
     getMessageById,
     updateMessageContent,
     recallMessage,
@@ -355,5 +450,6 @@ module.exports = {
     deleteMessageForEveryone,
     markMessagesAsRead,
     addReaction,
-    removeReaction
+    removeReaction,
+    createSystemMessage
 };

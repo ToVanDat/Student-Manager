@@ -11,9 +11,35 @@ export const chatApi = {
             userId: targetUserId
         }),
 
+    createGroupConversation: (name, memberIds, avatarUrl = null) =>
+        client.post('/api/conversations/group', { name, memberIds, avatarUrl }),
+
+    updateGroupConversation: (conversationId, name, avatarUrl = null) =>
+        client.patch(`/api/conversations/${conversationId}`, { name, avatarUrl }),
+
+    getConversationMembers: (conversationId) =>
+        client.get(`/api/conversations/${conversationId}/members`),
+
+    addGroupMember: (conversationId, userId) =>
+        client.post(`/api/conversations/${conversationId}/members`, { userId }),
+
+    removeGroupMember: (conversationId, userId) =>
+        client.delete(`/api/conversations/${conversationId}/members/${userId}`),
+
+    leaveGroup: (conversationId) =>
+        client.post(`/api/conversations/${conversationId}/leave`),
+
+    updateGroupMemberRole: (conversationId, userId, role) =>
+        client.patch(`/api/conversations/${conversationId}/members/${userId}/role`, { role }),
+
     // Lấy lịch sử message toàn bộ 
     getMessages: (conversationId, page = 1, limit = 50) =>
         client.get(`/api/messages/conversation/${conversationId}?page=${page}&limit=${limit}`),
+
+    searchMessages: (conversationId, query, limit = 30) =>
+        client.get(`/api/messages/conversation/${conversationId}/search`, {
+            params: { q: query, limit }
+        }),
 
     // Gửi message đến user
     sendMessage: (conversationId, content, replyToMessageId = null) =>
@@ -46,8 +72,9 @@ export const chatApi = {
         client.delete(`/api/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`),
 
     // Upload file cho một message
-    uploadFile: (messageId, file, onUploadProgress) => {
+    uploadFile: (messageId, file, onUploadProgress, quality = 'standard') => {
         const formData = new FormData();
+        formData.append('quality', quality);
         formData.append('file', file);
 
         return client.post(
@@ -76,4 +103,29 @@ export const chatApi = {
         client.patch(
             `/api/conversations/${conversationId}/read`
         ),
+
+    updateConversationSettings: (conversationId, action, value) =>
+        client.patch(`/api/conversations/${conversationId}/settings`, { action, value }),
+
+    clearConversationMessages: (conversationId) =>
+        client.delete(`/api/conversations/${conversationId}/messages`),
+
+    blockUser: (conversationId, targetUserId) =>
+        client.post(`/api/conversations/${conversationId}/block`, { targetUserId }),
+
+    unblockUser: (conversationId, targetUserId) =>
+        client.post(`/api/conversations/${conversationId}/unblock`, { targetUserId }),
+
+    reportConversation: (conversationId, targetUserId, reason, details = null) =>
+        client.post(`/api/conversations/${conversationId}/report`, {
+            targetUserId,
+            reason,
+            details
+        }),
 };
+
+export const getConversationChatTheme = (conversationId) =>
+    client.get(`/api/conversations/${conversationId}/theme`);
+
+export const updateConversationChatTheme = (conversationId, theme) =>
+    client.patch(`/api/conversations/${conversationId}/theme`, { theme });

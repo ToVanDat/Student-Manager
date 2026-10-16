@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
+import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 const formatFileSize = (size) => {
     const bytes = Number(size);
@@ -9,6 +12,342 @@ const formatFileSize = (size) => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+};
+
+const formatCallTime = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+};
+
+const formatCallDuration = seconds => {
+    const total = Math.max(Number(seconds) || 0, 0);
+    const minutes = Math.floor(total / 60);
+    const secs = total % 60;
+    if (total < 60) return `${total} giây`;
+    if (secs === 0) return `${minutes} phút`;
+    return `${minutes} phút ${secs.toString().padStart(2, '0')} giây`;
+};
+
+const formatCallDate = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+
+    const sameDay = (a, b) =>
+        a.getFullYear() === b.getFullYear() &&
+        a.getMonth() === b.getMonth() &&
+        a.getDate() === b.getDate();
+
+    if (sameDay(date, today)) return 'Hôm nay';
+    if (sameDay(date, yesterday)) return 'Hôm qua';
+
+    return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: date.getFullYear() === today.getFullYear() ? undefined : 'numeric'
+    });
+};
+
+export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
+    const containerRef = useRef(null);
+    const [previewUrl, setPreviewUrl] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [failed, setFailed] = useState(false);
+    const [expanded, setExpanded] = useState(false);
+    const isVideo = String(file.mime_type || '').startsWith('video/');
+    const fileId = file?.id;
+
+    useEffect(() => {
+        if (!fileId || !Number.isInteger(Number(fileId)) || !onPreviewFile) {
+            setLoading(false);
+            return undefined;
+        }
+
+        let active = true;
+        let createdUrl = '';
+        const loadPreview = async () => {
+            try {
+                setLoading(true);
+                setFailed(false);
+                const url = await onPreviewFile({ id: fileId });
+                if (!active) {
+                    if (url) URL.revokeObjectURL(url);
+                    return;
+                }
+                if (!url) throw new Error('Không nhận được URL xem trước');
+                createdUrl = url;
+                setPreviewUrl(url);
+            } catch {
+                if (active) setFailed(true);
+            } finally {
+                if (active) setLoading(false);
+            }
+        };
+
+        const target = containerRef.current;
+        if (target && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver(entries => {
+                if (entries.some(entry => entry.isIntersecting)) {
+                    observer.disconnect();
+                    void loadPreview();
+                }
+            }, { rootMargin: '160px' });
+            observer.observe(target);
+            return () => {
+                active = false;
+                observer.disconnect();
+                if (createdUrl) URL.revokeObjectURL(createdUrl);
+            };
+        }
+
+        void loadPreview();
+        return () => {
+            active = false;
+            if (createdUrl) URL.revokeObjectURL(createdUrl);
+        };
+    }, [fileId, onPreviewFile]);
+
+    return (
+        <>
+            <div ref={containerRef} className={`${compact ? 'size-12 shrink-0' : 'mt-2 w-[min(280px,70vw)]'} overflow-hidden rounded-xl bg-slate-100`}>
+                {compact ? (
+                    <button type="button" onClick={() => setExpanded(Boolean(previewUrl))} aria-label={`Xem ${isVideo ? 'video' : 'ảnh'} ${file.file_name}`} className="flex size-full items-center justify-center overflow-hidden text-blue-600">
+                        {previewUrl && !isVideo ? <img src={previewUrl} alt="" loading="lazy" className="size-full object-cover" /> : isVideo ? <Video size={18} /> : loading ? <span className="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" /> : <FileText size={18} />}
+                    </button>
+                ) : previewUrl ? (isVideo ? (
+                    <video src={previewUrl} controls playsInline preload="metadata" className="max-h-[260px] w-full bg-black object-contain" />
+                ) : (
+                    <button type="button" onClick={() => setExpanded(true)} className="block max-h-[280px] w-full cursor-zoom-in" aria-label={`Xem ảnh ${file.file_name}`}>
+                        <img src={previewUrl} alt={file.file_name || 'Ảnh trong tin nhắn'} loading="lazy" className="max-h-[280px] max-w-full object-contain" />
+                    </button>
+                )) : (
+                    <div className={`flex ${compact ? 'size-full' : 'h-28'} items-center justify-center text-[11px] text-slate-400`}>
+                        {loading ? 'Đang tải bản xem trước…' : failed ? 'Không tải được bản xem trước' : 'Bản xem trước không khả dụng'}
+                    </div>
+                )}
+            </div>
+            {expanded && previewUrl && createPortal(
+                <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/85 p-4" onClick={() => setExpanded(false)}>
+                    <button type="button" onClick={() => setExpanded(false)} aria-label="Đóng xem ảnh" className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"><X size={22} /></button>
+                    {isVideo ? <video src={previewUrl} controls autoPlay playsInline className="max-h-[90vh] max-w-[92vw] rounded-lg bg-black shadow-2xl" onClick={event => event.stopPropagation()} /> : <img src={previewUrl} alt={file.file_name || 'Ảnh đã chia sẻ'} className="max-h-[90vh] max-w-[92vw] rounded-lg object-contain shadow-2xl" onClick={event => event.stopPropagation()} />}
+                </div>,
+                document.body
+            )}
+        </>
+    );
+}
+
+const CallTimelineItem = ({
+    call,
+    currentUserId,
+    onRedial,
+    senderAvatar,
+    senderName,
+    onHideCall,
+    onViewProfile,
+    onFocusComposer
+}) => {
+    const [redialed, setRedialed] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuButtonRef = useRef(null);
+    const menuRef = useRef(null);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+
+    const isVideo = call.call_type === 'video';
+    const isMissed = call.status === 'missed' || call.status === 'timeout';
+    const isRejected = call.status === 'rejected';
+    const isCancelled = call.status === 'cancelled';
+    const isCompleted = call.status === 'completed';
+    const outgoing = Number(call.caller_id) === Number(currentUserId);
+    const callTypeLabel = isVideo ? 'Video' : 'Thoại';
+
+    const title = isMissed
+        ? 'Cuộc gọi nhỡ'
+        : isRejected
+            ? (outgoing ? 'Cuộc gọi đi bị từ chối' : 'Cuộc gọi đến bị từ chối')
+            : isCancelled
+                ? (outgoing ? 'Bạn đã hủy cuộc gọi' : 'Người gọi đã hủy cuộc gọi')
+                : isCompleted
+                    ? `Cuộc gọi ${isVideo ? 'video' : 'thoại'}`
+                    : outgoing
+                        ? `Cuộc gọi đi · ${callTypeLabel}`
+                        : `Cuộc gọi đến · ${callTypeLabel}`;
+
+    const Icon = isMissed ? PhoneMissed
+        : isRejected || isCancelled ? PhoneOff
+            : isVideo ? Video : Phone;
+    const statusClass = isMissed
+        ? 'text-red-600'
+        : isRejected || isCancelled
+            ? 'text-slate-600'
+            : 'text-slate-800';
+    const iconClass = isMissed
+        ? 'bg-red-50 text-red-600'
+        : 'bg-slate-100 text-slate-600';
+
+    const startedAt = call.started_at || call.created_at;
+    const otherUserId = outgoing ? call.receiver_id : call.caller_id;
+    const canRedial = Boolean(otherUserId);
+    const handleRedial = event => {
+        event?.preventDefault();
+        event?.stopPropagation();
+        if (!canRedial || redialed) return;
+        onRedial?.(otherUserId, isVideo ? 'video' : 'voice', {
+            name: senderName,
+            avatar: senderAvatar
+        });
+        setRedialed(true);
+    };
+
+    useEffect(() => {
+        if (!menuOpen) return undefined;
+
+        const updatePosition = () => {
+            const rect = menuButtonRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const menuWidth = 208;
+            const menuHeight = 150;
+            const gap = 8;
+            const left = Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12));
+            const below = rect.bottom + gap;
+            const top = below + menuHeight <= window.innerHeight - 12
+                ? below
+                : Math.max(12, rect.top - menuHeight - gap);
+            setMenuPosition({ top, left });
+        };
+
+        const onPointerDown = event => {
+            if (menuRef.current?.contains(event.target) || menuButtonRef.current?.contains(event.target)) return;
+            setMenuOpen(false);
+        };
+        const onKeyDown = event => {
+            if (event.key === 'Escape') {
+                setMenuOpen(false);
+                menuButtonRef.current?.focus();
+            }
+        };
+
+        updatePosition();
+        document.addEventListener('pointerdown', onPointerDown);
+        document.addEventListener('keydown', onKeyDown);
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown);
+            document.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [menuOpen]);
+
+    const handleHide = async () => {
+        setMenuOpen(false);
+        if (!window.confirm('Xóa cuộc gọi này khỏi lịch sử của bạn? Người kia vẫn giữ lịch sử cuộc gọi của họ.')) return;
+        await onHideCall?.(call.call_id);
+    };
+
+    return (
+        <div className={`flex w-full px-3 py-1.5 ${outgoing ? 'justify-end' : 'justify-start'}`}>
+            <div className="flex w-full max-w-[390px] items-center gap-3 rounded-2xl border px-3 py-3 shadow-sm" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
+                <div className="relative shrink-0">
+                    <AvatarFallback name={senderName || 'Người dùng'} src={senderAvatar} size="md" />
+                    <span className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-white ${iconClass}`}>
+                        <Icon size={11} strokeWidth={2.5} />
+                    </span>
+                </div>
+
+                <div className="min-w-0 flex-1">
+                    <div className={`truncate text-[13px] font-semibold ${statusClass}`}>{title}</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>{formatCallDate(startedAt)}</span>
+                        <span>·</span>
+                        <span>{formatCallTime(startedAt)}</span>
+                        <span>·</span>
+                        <span className="inline-flex items-center gap-0.5">
+                            {outgoing ? <ArrowUpRight size={12} /> : <ArrowDownLeft size={12} />}
+                            {outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'}
+                        </span>
+                        {isCompleted && call.duration_seconds != null && (
+                            <>
+                                <span>·</span>
+                                <span>{formatCallDuration(call.duration_seconds)}</span>
+                            </>
+                        )}
+                        {!isCompleted && !isMissed && !isRejected && !isCancelled && (
+                            <>
+                                <span>·</span>
+                                <span>{outgoing ? 'Cuộc gọi đi' : 'Cuộc gọi đến'}</span>
+                            </>
+                        )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={handleRedial}
+                            disabled={!canRedial || redialed}
+                            className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            title={`Gọi lại ${isVideo ? 'video' : 'thoại'}`}
+                        >
+                            {isVideo ? <Video size={14} /> : <Phone size={14} />}
+                            {redialed ? 'Đã gọi' : 'Gọi lại'}
+                        </button>
+
+                        <div className="relative">
+                            <button
+                                ref={menuButtonRef}
+                                type="button"
+                                aria-label="Tùy chọn cuộc gọi"
+                                aria-haspopup="menu"
+                                aria-expanded={menuOpen}
+                                onClick={() => setMenuOpen(value => !value)}
+                                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 hover:text-slate-800"
+                            >
+                                <MoreHorizontal size={17} />
+                            </button>
+                            {menuOpen && createPortal(
+                                <div
+                                    ref={menuRef}
+                                    role="menu"
+                                    aria-label="Tùy chọn cuộc gọi"
+                                    style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, width: 208, zIndex: 9999 }}
+                                    className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-2xl"
+                                >
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => { setMenuOpen(false); onFocusComposer?.(); }}
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
+                                    >
+                                        Nhắn tin
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => { setMenuOpen(false); onViewProfile?.(); }}
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500"
+                                    >
+                                        Xem hồ sơ
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={handleHide}
+                                        className="w-full rounded-lg px-3 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-500"
+                                    >
+                                        Xóa khỏi lịch sử của tôi
+                                    </button>
+                                </div>,
+                                document.body
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 export default function MessageBubble({
@@ -21,16 +360,44 @@ export default function MessageBubble({
     onDeleteForMe,
     onDeleteForEveryone,
     onDownloadFile,
+    onPreviewFile,
     onDeleteFile,
+    onHideCall,
+    onViewProfile,
+    onFocusComposer,
     onReply,
     onToggleReaction,
-    currentUserId
+    currentUserId,
+    onRedial
 }) {
+    const { t } = useLanguage();
     const { content, time, isRead } = message;
+    const status = message.status;
+    const uploadProgress = Number(message.uploadProgress ?? message.files?.[0]?.uploadProgress ?? 0);
     const [menuOpen, setMenuOpen] = useState(false);
     const [editing, setEditing] = useState(false);
     const [editContent, setEditContent] = useState(content || '');
-    const menuRef = useRef(null);
+    const [hovered, setHovered] = useState(false);
+    const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
+    const hoverCloseTimer = useRef(null);
+    const [audioUrl, setAudioUrl] = useState(null);
+
+    const keepHovered = () => {
+        if (hoverCloseTimer.current) {
+            clearTimeout(hoverCloseTimer.current);
+            hoverCloseTimer.current = null;
+        }
+        setHovered(true);
+    };
+
+    const scheduleHoverClose = () => {
+        if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+        hoverCloseTimer.current = setTimeout(() => {
+            if (!reactionPickerOpen && !menuOpen) {
+                setHovered(false);
+            }
+        }, 180);
+    };
 
     const isRecalled = Boolean(message.is_recalled ?? message.isRecalled);
     const isDeleted = Boolean(message.deleted_at ?? message.deletedAt);
@@ -39,13 +406,37 @@ export default function MessageBubble({
 
     useEffect(() => {
         const close = event => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
+            if (!event.target.closest?.('[data-message-menu]')) {
                 setMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', close);
-        return () => document.removeEventListener('mousedown', close);
+        return () => {
+            document.removeEventListener('mousedown', close);
+            if (hoverCloseTimer.current) clearTimeout(hoverCloseTimer.current);
+        };
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
+        };
+    }, [audioUrl]);
+
+    if (message._timelineType === 'call') {
+        return (
+            <CallTimelineItem
+                call={message}
+                currentUserId={currentUserId}
+                onRedial={onRedial}
+                senderAvatar={senderAvatar}
+                senderName={senderName}
+                onHideCall={onHideCall}
+                onViewProfile={onViewProfile}
+                onFocusComposer={onFocusComposer}
+            />
+        );
+    }
 
     const submitEdit = () => {
         const next = editContent.trim();
@@ -58,84 +449,94 @@ export default function MessageBubble({
         setEditing(false);
     };
 
+    const quickReactions = ['👍', '❤️', '😂', '😮', '😢', '😡', '🔥'];
+
+    const groupedReactions = Object.entries(
+        (Array.isArray(message.reactions) ? message.reactions : []).reduce((groups, reaction) => {
+            if (!groups[reaction.emoji]) groups[reaction.emoji] = [];
+            groups[reaction.emoji].push(reaction);
+            return groups;
+        }, {})
+    );
+
+    // System messages are lifecycle/status messages for a group.
+    // They must not behave like normal user messages (no hover actions/reactions).
+    if (message.message_type === 'system' || message.messageType === 'system') {
+        return (
+            <div className="flex justify-center px-4 py-1.5" role="status">
+                <div className="max-w-[85%] rounded-full px-3.5 py-1.5 text-center text-[11px] font-medium shadow-sm" style={{ backgroundColor: 'var(--chat-theme-surface)', color: 'var(--chat-theme-meta)', border: '1px solid var(--chat-theme-border)' }}>
+                    {message.content}
+                    {time && (
+                        <span className="ml-2 font-normal opacity-70">{time}</span>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     return (
-        <div className={`flex items-end gap-2 mb-4 ${isOwn ? 'justify-end' : 'justify-start'}`}>
+        <div
+            data-message-id={message.id}
+            className={`relative flex items-start gap-2 mb-5 ${isOwn ? 'justify-end' : 'justify-start'}`}
+        >
             {!isOwn && <AvatarFallback name={senderName} src={senderAvatar} size="sm" />}
 
-            <div className="relative max-w-[70%]">
-                <button
-                    type="button"
-                    onClick={() => setMenuOpen(prev => !prev)}
-                    className={`absolute -top-2 ${isOwn ? '-left-9' : '-right-9'} p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800`}
-                    title="Tuỳ chọn message"
+            <div
+                className={`relative max-w-[70%] flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
+                onMouseEnter={keepHovered}
+                onMouseLeave={scheduleHoverClose}
+            >
+                <div
+                    className={`relative rounded-[18px] px-4 py-2.5 text-sm shadow-sm transition-shadow ${
+                        isOwn ? 'rounded-br-[5px]' : 'rounded-bl-[5px] border'
+                    }`}
+                    style={{
+                        backgroundColor: isOwn ? 'var(--chat-theme-own-bubble)' : 'var(--chat-theme-other-bubble)',
+                        color: isOwn ? 'var(--chat-theme-own-text)' : 'var(--chat-theme-other-text)',
+                        borderColor: isOwn ? 'transparent' : 'var(--chat-theme-border)'
+                    }}
                 >
-                    <MoreHorizontal size={17} />
-                </button>
-
-                {menuOpen && (
-                    <div
-                        ref={menuRef}
-                        className={`absolute z-40 top-7 ${isOwn ? 'right-0' : 'left-0'} min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800`}
-                    >
-                        <button type="button" onClick={() => {
-                            setMenuOpen(false);
-                            onReply?.(message);
-                        }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                            <Reply size={15} /> Trả lời
+                    {hovered && !isDeleted && !isRecalled && (
+                        <button
+                            type="button"
+                            data-message-menu
+                            onMouseEnter={keepHovered}
+                            onClick={() => {
+                                keepHovered();
+                                setMenuOpen(prev => !prev);
+                                setReactionPickerOpen(false);
+                            }}
+                            className="absolute right-1.5 top-1.5 z-[60] flex h-6 w-6 items-center justify-center rounded-full text-slate-500 transition hover:bg-black/10 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                            title={t('messageOptions')}
+                            aria-label={t("messageOptions")}
+                        >
+                            <MoreHorizontal size={17} />
                         </button>
+                    )}
 
-                        {canEdit && (
-                            <button type="button" onClick={() => {
-                                setEditing(true);
-                                setMenuOpen(false);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                <Pencil size={15} /> Chỉnh sửa
-                            </button>
-                        )}
-
-                        {canRecall && (
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onRecall?.(message.id);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                                <RotateCcw size={15} /> Thu hồi
-                            </button>
-                        )}
-
-                        <button type="button" onClick={() => {
-                            setMenuOpen(false);
-                            onDeleteForMe?.(message.id);
-                        }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left hover:bg-slate-50 dark:hover:bg-slate-700">
-                            <Trash2 size={15} /> Xoá ở phía tôi
-                        </button>
-
-                        {isOwn && !isRecalled && !isDeleted && (
-                            <button type="button" onClick={() => {
-                                setMenuOpen(false);
-                                onDeleteForEveryone?.(message.id);
-                            }} className="w-full flex items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
-                                <Trash2 size={15} /> Xoá ở mọi người
-                            </button>
-                        )}
-                    </div>
-                )}
-
-                <div className={`rounded-2xl px-4 py-2.5 shadow-sm text-sm ${
-                    isOwn
-                        ? 'bg-blue-600 text-white rounded-br-xs'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-xs'
-                }`}>
                     {message.reply_to && !isDeleted && !isRecalled && (
-                        <div className="mb-2 rounded-lg border-l-2 border-white/50 bg-black/5 px-2.5 py-1.5 text-xs opacity-80">
-                            <p className="font-medium">Tin nhắn được trả lời</p>
-                            <p className="truncate">{message.reply_to.content || 'Tin nhắn có tệp'}</p>
+                        <div
+                            className="mb-2 w-full max-w-[280px] overflow-hidden rounded-r-lg border-l-[3px] px-2.5 py-1.5"
+                            style={{
+                                backgroundColor: isOwn ? 'var(--chat-theme-own-quote)' : 'var(--chat-theme-quote)',
+                                color: isOwn ? 'var(--chat-theme-own-text)' : 'var(--chat-theme-other-text)',
+                                borderLeftColor: 'var(--chat-theme-accent)'
+                            }}
+                            title={message.reply_to.content || t('messageWithFile')}
+                        >
+                            <p className="mb-0.5 truncate text-[10px] font-semibold leading-4" style={{ color: 'var(--chat-theme-accent)' }}>
+                                {message.reply_to.sender_name || message.reply_to.username || t('repliedMessage')}
+                            </p>
+                            <p className="truncate text-xs leading-4 opacity-90">
+                                {message.reply_to.content || (message.reply_to.files?.length ? `📎 ${message.reply_to.files[0].file_name || t('attachment')}` : '📎 Tin nhắn có tệp đính kèm')}
+                            </p>
                         </div>
                     )}
 
                     {isDeleted ? (
-                        <p className="leading-relaxed italic opacity-70">Tin nhắn đã bị xoá</p>
+                        <p className="leading-relaxed italic opacity-70">{t('messageDeleted')}</p>
                     ) : isRecalled ? (
-                        <p className="leading-relaxed italic opacity-70">Tin nhắn đã được thu hồi</p>
+                        <p className="leading-relaxed italic opacity-70">{t('messageRecalled')}</p>
                     ) : editing ? (
                         <div className="min-w-[220px]">
                             <textarea
@@ -152,11 +553,12 @@ export default function MessageBubble({
                                         submitEdit();
                                     }
                                 }}
-                                className="w-full min-h-20 resize-none rounded-lg border border-white/40 bg-white/10 px-2 py-1.5 outline-none"
+                                className="w-full min-h-20 resize-none rounded-lg border bg-transparent px-2 py-1.5 placeholder:opacity-60 outline-none"
+                                style={{ color: 'var(--chat-theme-own-text)', borderColor: 'var(--chat-theme-border)' }}
                             />
                             <div className="mt-2 flex justify-end gap-2 text-xs">
-                                <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10">Huỷ</button>
-                                <button type="button" onClick={submitEdit} className="px-2 py-1 rounded bg-white/20">Lưu</button>
+                                <button type="button" onClick={() => setEditing(false)} className="px-2 py-1 rounded hover:bg-white/10 dark:hover:bg-slate-700">{t('cancel')}</button>
+                                <button type="button" onClick={submitEdit} className="px-2 py-1 rounded bg-white/20">{t('save')}</button>
                             </div>
                         </div>
                     ) : (
@@ -171,56 +573,45 @@ export default function MessageBubble({
                                 <div className={content ? 'mt-2 space-y-2' : 'space-y-2'}>
                                     {message.files.map(file => {
                                         const isImage = file.mime_type?.startsWith('image/');
+                                        const isVideo = file.mime_type?.startsWith('video/');
 
                                         return (
-                                            <div
-                                                key={file.id}
-                                                className="rounded-xl border border-white/20 bg-black/5 dark:bg-white/5 overflow-hidden"
-                                            >
-                                                {isImage && file.previewUrl ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onDownloadFile?.(file)}
-                                                        className="block w-full text-left"
-                                                        title="Tải ảnh"
-                                                    >
-                                                        <img
-                                                            src={file.previewUrl}
-                                                            alt={file.file_name}
-                                                            className="max-w-[280px] max-h-[280px] object-cover"
-                                                        />
-                                                    </button>
+                                            <div key={file.id} className="rounded-xl bg-black/5 overflow-hidden">
+                                                {(isImage || isVideo) && <MessageMediaPreview file={file} onPreviewFile={onPreviewFile} />}
+
+                                                {file.mime_type?.startsWith('audio/') ? (
+                                                    <div className="px-3 pt-3">
+                                                        {audioUrl ? (
+                                                            <audio controls autoPlay preload="metadata" className="w-full max-w-[280px]" src={audioUrl} />
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        const url = await onPreviewFile?.(file);
+                                                                        if (url) setAudioUrl(url);
+                                                                    } catch (error) {
+                                                                        console.error('Không thể phát voice message:', error);
+                                                                    }
+                                                                }}
+                                                                className="rounded-lg bg-slate-900/10 px-3 py-2 text-xs font-medium hover:bg-slate-900/20"
+                                                            >
+                                                                ▶ Phát voice message
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 ) : null}
 
                                                 <div className="flex items-center gap-2 px-3 py-2">
-                                                    <FileText size={18} className="shrink-0" />
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-xs font-medium">
-                                                            {file.file_name}
-                                                        </p>
-                                                        <p className="text-[10px] opacity-70">
-                                                            {formatFileSize(file.file_size)}
-                                                        </p>
-                                                    </div>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onDownloadFile?.(file)}
-                                                        className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10"
-                                                        title="Tải xuống"
-                                                    >
+                                                    {!isImage && !isVideo && <FileText size={18} className="shrink-0" />}
+                                                    {!isImage && !isVideo && <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-xs font-medium">{file.file_name}</p>
+                                                        <p className="text-[10px] opacity-70">{formatFileSize(file.file_size)}</p>
+                                                    </div>}
+                                                    {(isImage || isVideo) && <span className="min-w-0 flex-1 text-[10px] opacity-70">{formatFileSize(file.file_size)}</span>}
+                                                    <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title={t("download")} aria-label={t("downloadFile")}>
                                                         <Download size={15} />
                                                     </button>
-                                                    {isOwn && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => onDeleteFile?.(file)}
-                                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
-                                                            title="Xoá file"
-                                                        >
-                                                            <Trash2 size={15} />
-                                                        </button>
-                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -230,55 +621,160 @@ export default function MessageBubble({
                         </>
                     )}
 
-                            {Array.isArray(message.reactions) && message.reactions.length > 0 && (
-                                <div className="mt-2 flex flex-wrap gap-1">
-                                    {Object.entries(
-                                        message.reactions.reduce((groups, reaction) => {
-                                            const key = reaction.emoji;
-                                            if (!groups[key]) groups[key] = [];
-                                            groups[key].push(reaction);
-                                            return groups;
-                                        }, {})
-                                    ).map(([emoji, reactions]) => {
-                                        const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
-                                        return (
-                                            <button
-                                                key={emoji}
-                                                type="button"
-                                                onClick={() => onToggleReaction?.(message.id, emoji)}
-                                                className={`rounded-full border px-2 py-0.5 text-xs ${mine ? 'border-blue-400 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-200 dark:border-slate-700'}`}
-                                                title={`${reactions.length} reaction`}
-                                            >
-                                                {emoji} {reactions.length}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[10px]" style={{ color: 'var(--chat-theme-meta)' }}>
+                        <span>{time}</span>
+                        {isOwn && (
+                            status === 'failed'
+                                ? <span className="text-red-400 font-medium">Gửi thất bại</span>
+                                : status === 'uploading' || status === 'processing'
+                                    ? <span style={{ color: 'var(--chat-theme-meta)' }}>{status === 'processing' ? t('processing') : t('uploadingPercent', { percent: uploadProgress })}</span>
+                                    : status === 'sending'
+                                        ? <span style={{ color: 'var(--chat-theme-meta)' }}>Đang gửi...</span>
+                                        : isRead
+                                            ? <CheckCheck size={14} style={{ color: 'var(--chat-theme-accent)' }} />
+                                            : <Check size={14} style={{ color: 'var(--chat-theme-accent)' }} />
+                        )}
+                    </div>
+                </div>
 
-                            <div className="mt-1 flex gap-1">
-                                {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                {menuOpen && (
+                    <div
+                        data-message-menu
+                        onMouseEnter={keepHovered}
+                        onMouseLeave={scheduleHoverClose}
+                        className={`absolute top-full z-[80] mt-1 min-w-[190px] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-700 shadow-2xl ${isOwn ? 'right-0' : 'left-0'}`}
+                    >
+                        <button type="button" onClick={() => {
+                            setMenuOpen(false);
+                            onReply?.(message);
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <Reply size={15} /> <span>Trả lời</span>
+                        </button>
+
+                        {canEdit && (
+                            <button type="button" onClick={() => {
+                                setEditing(true);
+                                setMenuOpen(false);
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <Pencil size={15} /> <span>Chỉnh sửa</span>
+                            </button>
+                        )}
+
+                        {canRecall && (
+                            <button type="button" onClick={() => {
+                                setMenuOpen(false);
+                                onRecall?.(message.id);
+                            }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <RotateCcw size={15} /> <span>Thu hồi</span>
+                            </button>
+                        )}
+
+                        <button type="button" onClick={() => {
+                            setMenuOpen(false);
+                            onDeleteForMe?.(message.id);
+                        }} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                            <Trash2 size={15} /> <span>Xoá ở phía tôi</span>
+                        </button>
+
+
+                    </div>
+                )}
+
+                {!isOwn && hovered && !isDeleted && !isRecalled && (
+                    <div
+                        className="relative z-50 mt-2 self-start"
+                        onMouseEnter={keepHovered}
+                        onMouseLeave={scheduleHoverClose}
+                    >
+                        <div className="relative">
+                            <div className="flex items-center gap-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-white/98 px-1.5 py-1 shadow-lg">
+                                {quickReactions.slice(0, 4).map(emoji => (
                                     <button
                                         key={emoji}
                                         type="button"
-                                        onClick={() => onToggleReaction?.(message.id, emoji)}
-                                        className="text-sm opacity-70 hover:opacity-100"
-                                        title={`React ${emoji}`}
+                                        onClick={() => {
+                                            onToggleReaction?.(message.id, emoji);
+                                            setReactionPickerOpen(false);
+                                            setHovered(false);
+                                        }}
+                                        className="flex h-7 w-7 items-center justify-center rounded-full text-[17px] leading-none transition-transform hover:scale-125 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        title={`Thả ${emoji}`}
                                     >
                                         {emoji}
                                     </button>
                                 ))}
+
+                                <button
+                                    type="button"
+                                    onMouseDown={event => event.preventDefault()}
+                                    onClick={() => {
+                                        setReactionPickerOpen(prev => !prev);
+                                        setMenuOpen(false);
+                                        keepHovered();
+                                    }}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full text-base font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:hover:bg-slate-800"
+                                    title="Thêm reaction"
+                                    aria-label="Thêm reaction"
+                                >
+                                    +
+                                </button>
                             </div>
 
-                    <div className={`flex items-center justify-end gap-1 mt-1 text-[10px] ${isOwn ? 'text-blue-200' : 'text-slate-400 dark:text-slate-500'}`}>
-                        <span>{time}</span>
-                        {isOwn && (
-                            isRead
-                                ? <CheckCheck size={14} className="text-blue-200" />
-                                : <Check size={14} className="text-blue-300" />
-                        )}
+                            {reactionPickerOpen && (
+                                <div
+                                    className="absolute left-0 top-full z-[70] pt-2"
+                                    onMouseEnter={keepHovered}
+                                    onMouseLeave={scheduleHoverClose}
+                                    onMouseDown={event => event.stopPropagation()}
+                                >
+                                    <div className="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl">
+                                        <EmojiPicker
+                                            onEmojiClick={(emojiData) => {
+                                                onToggleReaction?.(message.id, emojiData.emoji);
+                                                setReactionPickerOpen(false);
+                                                setHovered(false);
+                                            }}
+                                            width={330}
+                                            height={380}
+                                            lazyLoadEmojis
+                                            previewConfig={{ showPreview: false }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {groupedReactions.length > 0 && (
+                    <div
+                        className={`relative z-30 mt-1 flex items-center rounded-full border border-slate-200 bg-white/98 px-1 py-0.5 shadow-md ${isOwn ? 'self-end' : 'self-start'}`}
+                    >
+                        {groupedReactions.map(([emoji, reactions]) => {
+                            const mine = reactions.some(r => Number(r.user_id) === Number(currentUserId));
+                            return (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => onToggleReaction?.(message.id, emoji)}
+                                    className={`relative flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm transition hover:scale-110 ${
+                                        mine
+                                            ? 'bg-blue-50 ring-1 ring-blue-400'
+                                            : 'hover:bg-slate-100'
+                                    }`}
+                                    title={`${reactions.length} người thả ${emoji}`}
+                                >
+                                    <span>{emoji}</span>
+                                    {reactions.length > 1 && (
+                                        <span className="ml-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                                            {reactions.length}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     );

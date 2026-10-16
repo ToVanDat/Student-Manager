@@ -1,18 +1,79 @@
 const studentService = require('../service/studentService.js');
 
+const handleStudentError = (res, error, fallbackMessage) => {
+    // Log database details for operators, but never echo SQL/constraint details to clients.
+    console.error('[STUDENTS]', {
+        code: error?.code,
+        message: error?.message
+    });
+
+    if (error?.code === '23505') {
+        return res.status(409).json({
+            message: 'Mã sinh viên hoặc email đã tồn tại.'
+        });
+    }
+
+    if (error?.code === '23503') {
+        return res.status(409).json({
+            message: 'Không thể thực hiện thao tác vì lớp hoặc dữ liệu liên quan không hợp lệ hoặc đang được sử dụng.'
+        });
+    }
+
+    if (error?.code === '22P02' || error?.code === '22007' || error?.code === '22008') {
+        return res.status(400).json({
+            message: 'Dữ liệu không đúng định dạng.'
+        });
+    }
+
+    return res.status(500).json({ message: fallbackMessage });
+};
+
 const getAllStudents = async (req, res) => {
     try {
-        const students = await studentService.getAllStudents();
+        const queryKeys = ['page', 'pageSize', 'search', 'sortBy', 'sortOrder', 'classId', 'gender'];
+        const hasQueryMode = queryKeys.some(key => req.query?.[key] !== undefined);
+        if (!hasQueryMode) {
+            const students = await studentService.getAllStudents();
+            return res.json(students);
+        }
 
-        res.json(students);
+        const page = req.query.page === undefined ? 1 : Number(req.query.page);
+        const pageSize = req.query.pageSize === undefined ? 10 : Number(req.query.pageSize);
+        const search = req.query.search === undefined ? '' : req.query.search;
+        const allowedSortBy = new Set([
+            'id', 'student_code', 'name', 'email', 'date_of_birth', 'gender', 'class_code', 'class_name'
+        ]);
+        const sortBy = req.query.sortBy === undefined ? 'id' : req.query.sortBy;
+        const sortOrder = req.query.sortOrder === undefined ? 'asc' : String(req.query.sortOrder).toLowerCase();
+        const classId = req.query.classId === undefined || req.query.classId === '' ? null : Number(req.query.classId);
+        const gender = req.query.gender === undefined ? '' : req.query.gender;
 
+        if (!Number.isSafeInteger(page) || page < 1) {
+            return res.status(400).json({ message: 'page phải là số nguyên dương' });
+        }
+        if (![10, 25, 50].includes(pageSize)) {
+            return res.status(400).json({ message: 'pageSize chỉ chấp nhận 10, 25 hoặc 50' });
+        }
+        if (typeof search !== 'string' || search.length > 100) {
+            return res.status(400).json({ message: 'Từ khóa tìm kiếm không hợp lệ hoặc quá dài' });
+        }
+        if (!allowedSortBy.has(sortBy)) {
+            return res.status(400).json({ message: 'Trường sắp xếp không hợp lệ' });
+        }
+        if (!['asc', 'desc'].includes(sortOrder)) {
+            return res.status(400).json({ message: 'sortOrder chỉ chấp nhận asc hoặc desc' });
+        }
+        if (classId !== null && (!Number.isSafeInteger(classId) || classId <= 0)) {
+            return res.status(400).json({ message: 'classId phải là số nguyên dương' });
+        }
+        if (typeof gender !== 'string' || !['', 'Nam', 'Nữ'].includes(gender)) {
+            return res.status(400).json({ message: 'gender chỉ chấp nhận Nam hoặc Nữ' });
+        }
+
+        const result = await studentService.getStudentPage({ page, pageSize, search, sortBy, sortOrder, classId, gender });
+        return res.status(200).json(result);
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể tải danh sách sinh viên.');
     }
 };
 
@@ -31,12 +92,7 @@ const getStudentById = async (req, res) => {
         res.json(student);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể tải thông tin sinh viên.');
     }
 };
 
@@ -51,12 +107,7 @@ const createStudent = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm sinh viên',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể thêm sinh viên.');
     }
 };
 
@@ -78,12 +129,7 @@ const updateStudent = async (req, res) => {
         res.json(student);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật sinh viên',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể cập nhật sinh viên.');
     }
 };
 
@@ -105,12 +151,7 @@ const deleteStudent = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể xóa sinh viên',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể xóa sinh viên.');
     }
 };
 

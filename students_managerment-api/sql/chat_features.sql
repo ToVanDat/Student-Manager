@@ -19,8 +19,48 @@ CREATE TABLE IF NOT EXISTS message_reactions (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_message_reactions_user_emoji
-    ON message_reactions (message_id, user_id, emoji);
+-- The table may already exist from an older chat migration.
+-- Older versions used the column name "reaction"; the application uses "emoji".
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'reaction'
+    ) AND NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'emoji'
+    ) THEN
+        ALTER TABLE message_reactions RENAME COLUMN reaction TO emoji;
+    ELSIF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'emoji'
+    ) THEN
+        ALTER TABLE message_reactions ADD COLUMN emoji VARCHAR(32);
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'reaction'
+    ) AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'message_reactions' AND column_name = 'emoji'
+    ) THEN
+        EXECUTE 'UPDATE message_reactions SET emoji = reaction WHERE emoji IS NULL AND reaction IS NOT NULL';
+    END IF;
+END $$;
+
+-- Messenger/Zalo style: one reaction per user per message.
+-- If the migration is re-run after the old schema, keep the newest reaction.
+DELETE FROM message_reactions a
+USING message_reactions b
+WHERE a.message_id = b.message_id
+  AND a.user_id = b.user_id
+  AND a.id < b.id;
+
+DROP INDEX IF EXISTS uq_message_reactions_user_emoji;
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_message_reactions_message_user
+    ON message_reactions (message_id, user_id);
 
 CREATE INDEX IF NOT EXISTS idx_message_reactions_message
     ON message_reactions (message_id);
@@ -30,3 +70,22 @@ CREATE INDEX IF NOT EXISTS idx_message_reactions_user
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_message_deletions_message_user
     ON message_deletions (message_id, user_id);
+
+
+-- Persisted system messages for group lifecycle events.
+ALTER TABLE messages
+    ADD COLUMN IF NOT EXISTS message_type VARCHAR(20) NOT NULL DEFAULT 'user';
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'messages_message_type_check'
+    ) THEN
+        ALTER TABLE messages
+            ADD CONSTRAINT messages_message_type_check
+            CHECK (message_type IN ('user', 'system'));
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_type
+    ON messages (conversation_id, message_type, created_at, id);
