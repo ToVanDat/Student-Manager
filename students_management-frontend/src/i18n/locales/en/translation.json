@@ -503,5 +503,10 @@
   "studentDetailsAvailableFieldsNote": "This profile shows the fields currently available from the student record. Academic history, grades and documents can be added when their related modules are connected.",
   "sortBy": "Sort by",
   "sortAscending": "Sort ascending",
-  "sortDescending": "Sort descending"
+  "sortDescending": "Sort descending",
+  "filterByClass": "Filter by class",
+  "allClasses": "All classes",
+  "filterByGender": "Filter by gender",
+  "allGenders": "All genders",
+  "clearFilters": "Clear filters"
 }
