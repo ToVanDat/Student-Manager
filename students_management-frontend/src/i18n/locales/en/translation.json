@@ -488,5 +488,6 @@
   "chatThemeSaveFailed": "Could not save chat theme.",
   "userThemeSaveFailed": "Could not save account appearance. The previous choice was restored.",
   "chatThemeDescription": "This theme is only visible to you in this conversation.",
-  "recentConversations": "Recent conversations"
+  "recentConversations": "Recent conversations",
+  "navigation": "Navigation"
 }
