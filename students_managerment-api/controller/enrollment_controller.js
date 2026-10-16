@@ -1,6 +1,8 @@
 const enrollmentService = require('../service/enrollmentService.js');
 const { validateEnrollment } = require('../middleware/enrollmentValidation.js');
 
+const isValidId = (value) => /^\d+$/.test(String(value)) && Number(value) > 0 && Number.isSafeInteger(Number(value));
+
 
 // GET tất cả đăng ký môn học
 const getEnrollments = async (req, res) => {
@@ -28,6 +30,7 @@ const getEnrollmentById = async (req, res) => {
     try {
 
         const { id } = req.params;
+        if (!isValidId(id)) return res.status(400).json({ message: 'ID đăng ký môn học không hợp lệ' });
 
         const enrollment =
             await enrollmentService.getEnrollmentById(id);
@@ -111,6 +114,7 @@ const deleteEnrollment = async (req, res) => {
     try {
 
         const { id } = req.params;
+        if (!isValidId(id)) return res.status(400).json({ message: 'ID đăng ký môn học không hợp lệ' });
 
         const enrollment =
             await enrollmentService.deleteEnrollment(id);
