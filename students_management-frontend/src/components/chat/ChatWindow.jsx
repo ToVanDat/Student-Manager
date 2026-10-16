@@ -91,10 +91,34 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const [chatTheme, setChatTheme] = useState('default');
     const [showChatThemePicker, setShowChatThemePicker] = useState(false);
+    const chatThemeButtonRef = useRef(null);
+    const [chatThemePickerPosition, setChatThemePickerPosition] = useState({ top: 0, right: 16 });
     const [savingChatThemeIds, setSavingChatThemeIds] = useState(() => new Set());
     const activeConversationIdRef = useRef(activeConversation?.id);
     const chatThemeRequestVersionsRef = useRef(new Map());
     const pendingChatThemeIdsRef = useRef(new Set());
+
+    useEffect(() => {
+        if (!showChatThemePicker) return undefined;
+        const updatePosition = () => {
+            const button = chatThemeButtonRef.current;
+            if (!button) return;
+            const rect = button.getBoundingClientRect();
+            const panelWidth = 224;
+            const margin = 12;
+            const right = Math.max(margin, window.innerWidth - rect.right);
+            const top = Math.min(Math.max(margin, rect.bottom + 8), Math.max(margin, window.innerHeight - margin - 360));
+            setChatThemePickerPosition({ top, right: Math.min(right, Math.max(margin, window.innerWidth - panelWidth - margin)) });
+        };
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [showChatThemePicker, activeConversation?.id]);
+
     activeConversationIdRef.current = activeConversation?.id;
     const chatThemes = useMemo(() => [
         {
@@ -1066,11 +1090,11 @@ export default function ChatWindow({
 
                 <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
                     <div className="relative">
-                        <button type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
+                        <button ref={chatThemeButtonRef} type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
                             <Palette size={18} />
                         </button>
                         {showChatThemePicker && createPortal(
-                            <div className="fixed right-24 top-20 z-[10000] max-h-[calc(100dvh-6rem)] w-56 overflow-y-auto rounded-xl border p-3 shadow-2xl" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
+                            <div className="fixed z-[10000] max-h-[min(420px,calc(100dvh-24px))] w-56 overflow-y-auto overscroll-contain rounded-xl border p-3 shadow-2xl" style={{ top: chatThemePickerPosition.top, right: chatThemePickerPosition.right, backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
                                 <p className="mb-1 text-xs font-semibold" style={{ color: 'var(--chat-theme-other-text)' }}>{t('chatTheme')}</p>
                                 <p className="mb-3 text-[10px] leading-4" style={{ color: 'var(--chat-theme-meta)' }}>{t('chatThemeDescription')}</p>
                                 <div className="grid grid-cols-2 gap-2">
