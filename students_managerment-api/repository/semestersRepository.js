@@ -33,15 +33,26 @@ const createSemester = async (data) => {
 };
 
 const updateSemester = async (id, data) => {
-    const { semester_name, academic_year } = data;
+    const allowedColumns = new Set([
+        'semester_name',
+        'academic_year'
+    ]);
+    const entries = Object.entries(data || {}).filter(([key]) => allowedColumns.has(key));
+
+    if (entries.length === 0) return null;
+
+    const values = entries.map(([, value]) => value);
+    const assignments = entries.map(([key], index) => `${key} = $${index + 1}`);
+    values.push(id);
+
     const result = await pool.query(
         `UPDATE semesters
-         SET semester_name = $1,
-             academic_year = $2
-         WHERE id = $3
+         SET ${assignments.join(', ')}
+         WHERE id = $${values.length}
          RETURNING *`,
-        [semester_name, academic_year, id]
+        values
     );
+
     return result.rows[0];
 };
 
