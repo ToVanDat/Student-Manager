@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { apiClient } from '@/api/client.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 // form infomation student and validation 
@@ -14,6 +15,29 @@ function StudentForm({ student, onSubmit, onCancel }) {
     });
 
     const [errors, setErrors] = useState({});
+    const [classes, setClasses] = useState([]);
+    const [classesLoading, setClassesLoading] = useState(true);
+    const [classesError, setClassesError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const loadClasses = useCallback(async () => {
+        setClassesLoading(true);
+        setClassesError('');
+        try {
+            const response = await apiClient.get('/api/classes');
+            setClasses(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            console.error('[STUDENT FORM] Could not load classes:', error?.message);
+            setClassesError(t('classesLoadFailed'));
+            setClasses([]);
+        } finally {
+            setClassesLoading(false);
+        }
+    }, [t]);
+
+    useEffect(() => {
+        void loadClasses();
+    }, [loadClasses]);
 
     useEffect(() => {
         if (student) {
@@ -109,12 +133,15 @@ function StudentForm({ student, onSubmit, onCancel }) {
             newErrors.gender = t('invalidGender');
         }
 
-        // Class ID
+        // Class must be selected from the server-provided list.
         if (!formData.class_id) {
             newErrors.class_id = t('enterClassId');
-        } else if (Number(formData.class_id) <= 0) {
-            newErrors.class_id =
-                t('classIdPositive');
+        } else if (!Number.isSafeInteger(Number(formData.class_id)) || Number(formData.class_id) <= 0) {
+            newErrors.class_id = t('classIdPositive');
+        } else if (classes.length && !classes.some(item => String(item.id) === String(formData.class_id))) {
+            newErrors.class_id = t('selectClass');
+        } else if (!classes.length) {
+            newErrors.class_id = classesError || t('noClassesAvailable');
         }
 
         setErrors(newErrors);
@@ -122,21 +149,22 @@ function StudentForm({ student, onSubmit, onCancel }) {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
+        if (isSubmitting || !validateForm()) return;
 
-        // Kiểm tra dữ liệu trước khi gửi
-        if (!validateForm()) {
-            return;
+        setIsSubmitting(true);
+        try {
+            await onSubmit({
+                ...formData,
+                student_code: formData.student_code.trim(),
+                name: formData.name.trim(),
+                email: formData.email.trim(),
+                class_id: Number(formData.class_id)
+            });
+        } finally {
+            setIsSubmitting(false);
         }
-
-        onSubmit({
-            ...formData,
-            student_code: formData.student_code.trim(),
-            name: formData.name.trim(),
-            email: formData.email.trim(),
-            class_id: Number(formData.class_id)
-        });
     };
 
     return (
@@ -257,22 +285,34 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     )}
                 </div>
 
-                {/* ID lớp */}
+                {/* Class selection from the actual classes API */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('classId')}</label>
-
-                    <input
-                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                        type="number"
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300" htmlFor="student-class-id">{t('className')}</label>
+                    <select
+                        id="student-class-id"
+                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
                         name="class_id"
                         value={formData.class_id}
                         onChange={handleChange}
-                        min="1"
                         required
-                    />
-
+                        disabled={classesLoading || classes.length === 0}
+                    >
+                        <option value="">{classesLoading ? t('loadingClasses') : classes.length ? t('selectClass') : t('noClassesAvailable')}</option>
+                        {classes.map(classItem => (
+                            <option key={classItem.id} value={String(classItem.id)}>
+                                {classItem.class_code} — {classItem.class_name}
+                                {classItem.department_name ? ` · ${classItem.department_name}` : ''}
+                            </option>
+                        ))}
+                    </select>
+                    {classesError && (
+                        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                            <span>{classesError}</span>
+                            <button type="button" onClick={() => void loadClasses()} disabled={classesLoading} className="font-semibold underline disabled:opacity-50">{t('retry')}</button>
+                        </div>
+                    )}
                     {errors.class_id && (
-                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
                             {errors.class_id}
                         </p>
                     )}
@@ -282,7 +322,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                 <div className="col-span-full mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5 dark:border-slate-800">
                     <button
                         type="submit"
-                        className="rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+                        className="rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting || classesLoading || classes.length === 0}
                     >
                         {student
                             ? t('update')
