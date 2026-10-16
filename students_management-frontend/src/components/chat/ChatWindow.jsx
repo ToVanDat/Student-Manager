@@ -291,7 +291,7 @@ export default function ChatWindow({
         }
         notificationApi.getConversationPreference(activeConversation.id)
             .then(({ data }) => {
-                if (active) setConversationNotificationsEnabled(data?.data?.enabled !== false);
+                if (active) setConversationNotificationsEnabled(data?.data?.notifications_enabled !== false);
             })
             .catch(error => {
                 console.error('Không tải được cài đặt thông báo cuộc trò chuyện:', error);
