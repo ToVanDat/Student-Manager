@@ -123,3 +123,9 @@ export const chatApi = {
             details
         }),
 };
+
+export const getConversationChatTheme = (conversationId) =>
+    client.get(`/api/conversations/${conversationId}/theme`);
+
+export const updateConversationChatTheme = (conversationId, theme) =>
+    client.patch(`/api/conversations/${conversationId}/theme`, { theme });

@@ -476,5 +476,18 @@
   "modulePermissionsTitle": "Không gian phân quyền",
   "modulePermissionsDescription": "Thiết lập và kiểm tra vai trò, quyền truy cập các chức năng quản trị.",
   "universityPortal": "Cổng quản trị đại học",
-  "openingConversation": "Đang mở cuộc trò chuyện…"
+  "openingConversation": "Đang mở cuộc trò chuyện…",
+  "systemThemeDescription": "Tự động đổi giao diện theo chế độ sáng/tối của thiết bị.",
+  "chatTheme": "Giao diện cuộc trò chuyện",
+  "chatThemeDefault": "Mặc định",
+  "chatThemeOcean": "Đại dương",
+  "chatThemeLavender": "Oải hương",
+  "chatThemeMint": "Bạc hà",
+  "chatThemeRose": "Hồng",
+  "chatThemeAmber": "Hổ phách",
+  "chatThemeSaveFailed": "Không thể lưu giao diện cuộc trò chuyện.",
+  "userThemeSaveFailed": "Không thể lưu giao diện tài khoản. Đã khôi phục lựa chọn trước đó.",
+  "chatThemeDescription": "Chủ đề này chỉ áp dụng với tài khoản của bạn trong cuộc trò chuyện hiện tại.",
+  "recentConversations": "Tin nhắn gần đây",
+  "navigation": "Điều hướng"
 }

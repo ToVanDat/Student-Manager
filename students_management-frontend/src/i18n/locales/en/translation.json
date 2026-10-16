@@ -476,5 +476,18 @@
   "modulePermissionsTitle": "Permissions workspace",
   "modulePermissionsDescription": "Configure and review roles and access permissions for administrative features.",
   "universityPortal": "University Portal",
-  "openingConversation": "Opening conversation…"
+  "openingConversation": "Opening conversation…",
+  "systemThemeDescription": "Automatically follow your device's light or dark appearance.",
+  "chatTheme": "Chat theme",
+  "chatThemeDefault": "Default",
+  "chatThemeOcean": "Ocean",
+  "chatThemeLavender": "Lavender",
+  "chatThemeMint": "Mint",
+  "chatThemeRose": "Rose",
+  "chatThemeAmber": "Amber",
+  "chatThemeSaveFailed": "Could not save chat theme.",
+  "userThemeSaveFailed": "Could not save account appearance. The previous choice was restored.",
+  "chatThemeDescription": "This theme is only visible to you in this conversation.",
+  "recentConversations": "Recent conversations",
+  "navigation": "Navigation"
 }

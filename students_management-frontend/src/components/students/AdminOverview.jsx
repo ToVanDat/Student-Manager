@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import { ArrowRight, BookOpen, CalendarDays, GraduationCap, Users, UserRound, ChartNoAxesCombined, CirclePlus } from 'lucide-react';
 
@@ -6,7 +6,7 @@ const number = (value, language) => new Intl.NumberFormat(language === 'en' ? 'e
 
 export default function AdminOverview({ user, statistics, classStatistics = [], students = [], onOpenStudents }) {
     const { language, t } = useLanguage();
-    const [today] = useState(() => new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+    const today = useMemo(() => new Date().toLocaleDateString(language === 'en' ? 'en-US' : 'vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }), [language]);
     const recentStudents = [...students]
         .sort((a, b) => new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0))
         .slice(0, 5);
@@ -18,32 +18,31 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
         { label: t('female'), value: number(statistics.female, language), detail: t('studentProfile'), icon: GraduationCap, color: 'rose' },
     ];
     const cardColors = {
-        blue: 'bg-[#edf5ff] text-[#3478e5] dark:bg-blue-950/60 dark:text-blue-300',
-        emerald: 'bg-[#e9fbf4] text-[#059669] dark:bg-emerald-950/50 dark:text-emerald-300',
-        violet: 'bg-[#f3efff] text-[#7c3aed] dark:bg-violet-950/50 dark:text-violet-300',
-        rose: 'bg-[#fff0f3] text-[#e11d48] dark:bg-rose-950/50 dark:text-rose-300',
+        blue: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        emerald: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        violet: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        rose: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
     };
 
     return (
         <div className="admin-overview mx-auto max-w-[1500px] space-y-6 pb-6">
-            <header className="relative isolate overflow-hidden rounded-3xl bg-gradient-to-br from-[#102d4d] via-[#17466c] to-[#216f91] px-5 py-6 text-white shadow-xl shadow-blue-950/10 sm:px-8 sm:py-8"><div className="absolute -right-10 -top-16 -z-10 size-64 rounded-full border-[28px] border-white/5" /><div className="absolute right-24 -bottom-28 -z-10 size-64 rounded-full border border-white/10" /><div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
-                <div>
-                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.16em] text-sky-100"><GraduationCap size={14} />{t('administrator')}</div>
-                    <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('welcome')}, {user?.username || 'Admin'}!</h1>
-                    <p className="mt-2 max-w-xl text-sm leading-6 text-blue-100/85">{t('overview')}</p>
+            <header className="admin-overview__hero flex flex-col justify-between gap-5 rounded-xl border border-slate-900/10 bg-[#173b59] px-5 py-6 text-white sm:flex-row sm:items-end sm:px-7 sm:py-7">
+                <div className="min-w-0">
+                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[.12em] text-sky-200">{t('administrator')}</p>
+                    <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">{t('welcome')}, {user?.username || 'Admin'}!</h1>
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-slate-200">{t('overview')}</p>
                 </div>
-                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-xs text-white backdrop-blur-sm">
-                    <span className="flex size-10 items-center justify-center rounded-xl bg-white/10"><CalendarDays size={19} /></span><span className="hidden text-[10px] font-semibold uppercase tracking-wider text-blue-100/70 sm:block">{t('current')}</span>
-                    <span className="capitalize">{today}</span>
+                <div className="inline-flex max-w-full items-center gap-3 self-start rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-xs text-white sm:self-auto">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white/10"><CalendarDays size={18} /></span>
+                    <span className="min-w-0"><span className="block text-[10px] font-medium text-slate-300">{t('current')}</span><span className="mt-0.5 block capitalize">{today}</span></span>
                 </div>
-            </div></header>
+            </header>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
-                    <article key={label} className="app-card relative overflow-hidden p-4 sm:p-5">
+                    <article key={label} className="app-card min-w-0 p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-3">
-                            <div className={`flex size-10 items-center justify-center rounded-xl ${cardColors[color]}`}><Icon size={20} /></div>
-                            <span className="mt-1 size-2 rounded-full bg-emerald-500 ring-4 ring-emerald-50 dark:ring-emerald-950/60" aria-hidden="true" />
+                            <div className={`flex size-10 items-center justify-center rounded-lg ${cardColors[color]}`}><Icon size={19} /></div>
                         </div>
                         <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
                         <p className="mt-1.5 text-[30px] font-bold leading-9 tracking-[-.04em] text-slate-900 dark:text-white sm:text-[32px]">{value}</p>
@@ -60,7 +59,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                             <h2 className="text-base font-bold tracking-tight text-[#203754] dark:text-slate-100">{t('classDistribution')}</h2>
                             <p className="mt-1.5 text-xs leading-5 text-[#8190a7] dark:text-slate-400">{t('studentsCount')} · {number(classStatistics.reduce((sum, item) => sum + (Number(item.count) || 0), 0), language)}</p>
                         </div>
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-900"><ChartNoAxesCombined size={19} /></span>
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><ChartNoAxesCombined size={19} /></span>
                     </div>
                     {classStatistics.length ? (
                         <div className="space-y-5">
@@ -72,7 +71,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                                         <div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.name || item.code || t('className')}</p><p className="mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">{item.code || ''}</p></div>
                                         <div className="shrink-0 text-right"><p className="text-sm font-bold tabular-nums text-slate-900 dark:text-white">{number(count, language)}</p><p className="text-[10px] text-slate-500 dark:text-slate-400">{percent}%</p></div>
                                     </div>
-                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full transition-[width] duration-500 ${['bg-blue-500','bg-emerald-500','bg-violet-500','bg-amber-500','bg-cyan-500','bg-rose-500'][index]}`} style={{ width: `${Math.min(100, (count / maxClassSize) * 100)}%` }} /></div>
+                                    <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-[#4d78a8] transition-[width] duration-500" style={{ width: `${Math.min(100, (count / maxClassSize) * 100)}%` }} /></div>
                                 </div>;
                             })}
                         </div>
@@ -87,7 +86,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
                             <div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold text-[#293b55] dark:text-slate-200">{student.name || t('noData')}</p><p className="mt-0.5 truncate text-[10px] text-[#8190a7] dark:text-slate-400">{student.student_code || student.email || t('studentCode')} · {student.class_code || t('className')}</p></div>
                         </div>)}
                     </div> : <div className="flex min-h-44 flex-col items-center justify-center text-center"><Users className="mb-2 text-slate-300" size={28} /><p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('noStudentProfiles')}</p><p className="mt-1 text-xs text-[#8190a7] dark:text-slate-400">{t('createFirstProfile')}</p></div>}
-                    <button type="button" onClick={onOpenStudents} className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#174a7e] px-4 py-3 text-xs font-semibold text-white shadow-sm transition hover:bg-[#123b66] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900"><CirclePlus size={16} />{t('manageStudents')}</button>
+                    <button type="button" onClick={onOpenStudents} className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-[#174a7e] px-4 py-3 text-xs font-semibold text-white transition hover:bg-[#123b66] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-slate-900"><CirclePlus size={16} />{t('manageStudents')}</button>
                 </section>
             </div>
 

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     MoreVertical,
+    Palette,
     ArrowLeft,
     Search,
     Phone,
@@ -38,6 +39,8 @@ import MessageBubble, { MessageMediaPreview } from './MessageBubble';
 import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
 import { notificationApi } from '@/api/notificationApi';
+import { getConversationChatTheme, updateConversationChatTheme } from '@/api/chatApi.js';
+import { useTheme } from '@/context/ThemeContext.jsx';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function ChatWindow({
@@ -83,11 +86,174 @@ export default function ChatWindow({
     onOpenSearchResult
 }) {
     const { t, language } = useLanguage();
+    const { isDarkMode } = useTheme();
     const activeConversationAvatar = activeConversation?.avatar_url || activeConversation?.avatarUrl || activeConversation?.avatar || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
+    const [chatTheme, setChatTheme] = useState('default');
+    const [showChatThemePicker, setShowChatThemePicker] = useState(false);
+    const [savingChatThemeIds, setSavingChatThemeIds] = useState(() => new Set());
+    const activeConversationIdRef = useRef(activeConversation?.id);
+    const chatThemeRequestVersionsRef = useRef(new Map());
+    const pendingChatThemeIdsRef = useRef(new Set());
+    activeConversationIdRef.current = activeConversation?.id;
+    const chatThemes = useMemo(() => [
+        {
+            value: 'default', label: t('chatThemeDefault'),
+            color: '#f5f8ff', dark: '#0f172a',
+            surface: '#ffffff', surfaceDark: '#111827',
+            border: '#e2e8f0', borderDark: '#334155',
+            ownBubble: '#d8eaff', ownBubbleDark: '#1e3a5f',
+            ownText: '#172b4d', ownTextDark: '#eff6ff',
+            otherBubble: '#ffffff', otherBubbleDark: '#1e293b',
+            otherText: '#1e293b', otherTextDark: '#e2e8f0',
+            ownQuote: '#bfdbfe', ownQuoteDark: '#27476b',
+            quote: '#f8fafc', quoteDark: '#273449',
+            meta: '#64748b', metaDark: '#cbd5e1',
+            accent: '#2563eb', accentDark: '#93c5fd'
+        },
+        {
+            value: 'ocean', label: t('chatThemeOcean'),
+            color: '#e0f2fe', dark: '#082f49',
+            surface: '#f0f9ff', surfaceDark: '#0c344b',
+            border: '#bae6fd', borderDark: '#155e75',
+            ownBubble: '#bae6fd', ownBubbleDark: '#075985',
+            ownText: '#0c4a6e', ownTextDark: '#f0f9ff',
+            otherBubble: '#f0f9ff', otherBubbleDark: '#164e63',
+            otherText: '#164e63', otherTextDark: '#ecfeff',
+            ownQuote: '#7dd3fc', ownQuoteDark: '#0e7490',
+            quote: '#e0f2fe', quoteDark: '#164e63',
+            meta: '#0369a1', metaDark: '#bae6fd',
+            accent: '#0284c7', accentDark: '#7dd3fc'
+        },
+        {
+            value: 'lavender', label: t('chatThemeLavender'),
+            color: '#f3e8ff', dark: '#2e1065',
+            surface: '#faf5ff', surfaceDark: '#3b1a63',
+            border: '#e9d5ff', borderDark: '#6b21a8',
+            ownBubble: '#e9d5ff', ownBubbleDark: '#6d28d9',
+            ownText: '#3b0764', ownTextDark: '#faf5ff',
+            otherBubble: '#faf5ff', otherBubbleDark: '#4c1d95',
+            otherText: '#4c1d95', otherTextDark: '#f3e8ff',
+            ownQuote: '#d8b4fe', ownQuoteDark: '#7e22ce',
+            quote: '#f3e8ff', quoteDark: '#4c1d95',
+            meta: '#7e22ce', metaDark: '#e9d5ff',
+            accent: '#9333ea', accentDark: '#d8b4fe'
+        },
+        {
+            value: 'mint', label: t('chatThemeMint'),
+            color: '#dcfce7', dark: '#052e16',
+            surface: '#f0fdf4', surfaceDark: '#064e3b',
+            border: '#bbf7d0', borderDark: '#166534',
+            ownBubble: '#bbf7d0', ownBubbleDark: '#047857',
+            ownText: '#14532d', ownTextDark: '#ecfdf5',
+            otherBubble: '#f0fdf4', otherBubbleDark: '#065f46',
+            otherText: '#166534', otherTextDark: '#d1fae5',
+            ownQuote: '#86efac', ownQuoteDark: '#047857',
+            quote: '#dcfce7', quoteDark: '#065f46',
+            meta: '#15803d', metaDark: '#bbf7d0',
+            accent: '#16a34a', accentDark: '#86efac'
+        },
+        {
+            value: 'rose', label: t('chatThemeRose'),
+            color: '#ffe4e6', dark: '#4c0519',
+            surface: '#fff1f2', surfaceDark: '#500724',
+            border: '#fecdd3', borderDark: '#9f1239',
+            ownBubble: '#fecdd3', ownBubbleDark: '#9f1239',
+            ownText: '#881337', ownTextDark: '#fff1f2',
+            otherBubble: '#fff1f2', otherBubbleDark: '#701a35',
+            otherText: '#9f1239', otherTextDark: '#ffe4e6',
+            ownQuote: '#fda4af', ownQuoteDark: '#be123c',
+            quote: '#ffe4e6', quoteDark: '#701a35',
+            meta: '#be123c', metaDark: '#fecdd3',
+            accent: '#e11d48', accentDark: '#fda4af'
+        },
+        {
+            value: 'amber', label: t('chatThemeAmber'),
+            color: '#fef3c7', dark: '#451a03',
+            surface: '#fffbeb', surfaceDark: '#451a03',
+            border: '#fde68a', borderDark: '#92400e',
+            ownBubble: '#fde68a', ownBubbleDark: '#92400e',
+            ownText: '#78350f', ownTextDark: '#fffbeb',
+            otherBubble: '#fffbeb', otherBubbleDark: '#5a2e0b',
+            otherText: '#92400e', otherTextDark: '#fef3c7',
+            ownQuote: '#fcd34d', ownQuoteDark: '#a16207',
+            quote: '#fef3c7', quoteDark: '#5a2e0b',
+            meta: '#92400e', metaDark: '#fde68a',
+            accent: '#d97706', accentDark: '#fcd34d'
+        },
+    ], [t]);
     const [conversationNotificationsEnabled, setConversationNotificationsEnabled] = useState(true);
     const [savingConversationNotifications, setSavingConversationNotifications] = useState(false);
     const [replyTo, setReplyTo] = useState(null);
+
+    useEffect(() => {
+        let active = true;
+        setShowChatThemePicker(false);
+        if (!activeConversation?.id) {
+            setChatTheme('default');
+            return () => { active = false; };
+        }
+        const conversationId = activeConversation.id;
+        const conversationKey = String(conversationId);
+        const requestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
+        const storageKey = `chat-theme:${currentUserId}:${conversationId}`;
+        const cached = (() => {
+            try { return localStorage.getItem(storageKey); } catch { return null; }
+        })();
+        const cachedTheme = chatThemes.some(item => item.value === cached) ? cached : 'default';
+        setChatTheme(cachedTheme);
+        if (!pendingChatThemeIdsRef.current.has(conversationKey)) {
+            getConversationChatTheme(conversationId)
+                .then(({ data }) => {
+                    const savedTheme = data?.data?.theme;
+                    const latestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
+                    if (active && requestVersion === latestVersion && !pendingChatThemeIdsRef.current.has(conversationKey) && chatThemes.some(item => item.value === savedTheme)) {
+                    setChatTheme(savedTheme);
+                    try { localStorage.setItem(storageKey, savedTheme); } catch { /* optional cache */ }
+                    }
+                })
+                .catch(() => {
+                    // Cached theme remains available when the API or migration is unavailable.
+                });
+        }
+        return () => { active = false; };
+    }, [activeConversation?.id, currentUserId, chatThemes]);
+
+    const chooseChatTheme = async (nextTheme) => {
+        if (!activeConversation?.id || !chatThemes.some(item => item.value === nextTheme)) return;
+        const conversationId = activeConversation.id;
+        const conversationKey = String(conversationId);
+        if (pendingChatThemeIdsRef.current.has(conversationKey)) return;
+        const previousTheme = chatTheme;
+        const storageKey = `chat-theme:${currentUserId}:${conversationId}`;
+        const requestVersion = (chatThemeRequestVersionsRef.current.get(conversationKey) || 0) + 1;
+        chatThemeRequestVersionsRef.current.set(conversationKey, requestVersion);
+        pendingChatThemeIdsRef.current.add(conversationKey);
+        setChatTheme(nextTheme);
+        setShowChatThemePicker(false);
+        setSavingChatThemeIds(previous => new Set(previous).add(conversationKey));
+        try { localStorage.setItem(storageKey, nextTheme); } catch { /* optional cache */ }
+        try {
+            await updateConversationChatTheme(conversationId, nextTheme);
+        } catch (error) {
+            toast.error(error.response?.data?.message || t('chatThemeSaveFailed'));
+            // Roll back only if this request is still the newest choice for this conversation.
+            const latestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
+            if (latestVersion === requestVersion) {
+                try { localStorage.setItem(storageKey, previousTheme); } catch { /* optional cache */ }
+                if (String(activeConversationIdRef.current) === String(conversationId)) {
+                    setChatTheme(previousTheme);
+                }
+            }
+        } finally {
+            pendingChatThemeIdsRef.current.delete(conversationKey);
+            setSavingChatThemeIds(previous => {
+                const next = new Set(previous);
+                next.delete(conversationKey);
+                return next;
+            });
+        }
+    };
     useEffect(() => {
         let active = true;
         if (!activeConversation?.id) {
@@ -220,8 +386,22 @@ export default function ChatWindow({
         return true;
     });
 
-    // Chat UI is intentionally light-mode; keep embedded emoji picker in the same palette.
-    const isDarkMode = false;
+    const selectedChatTheme = chatThemes.find(item => item.value === chatTheme) || chatThemes[0];
+    const chatBackground = isDarkMode ? selectedChatTheme.dark : selectedChatTheme.color;
+    const chatThemeStyles = {
+        backgroundColor: chatBackground,
+        '--chat-theme-bg': chatBackground,
+        '--chat-theme-surface': isDarkMode ? selectedChatTheme.surfaceDark : selectedChatTheme.surface,
+        '--chat-theme-border': isDarkMode ? selectedChatTheme.borderDark : selectedChatTheme.border,
+        '--chat-theme-own-bubble': isDarkMode ? selectedChatTheme.ownBubbleDark : selectedChatTheme.ownBubble,
+        '--chat-theme-own-text': isDarkMode ? selectedChatTheme.ownTextDark : selectedChatTheme.ownText,
+        '--chat-theme-other-bubble': isDarkMode ? selectedChatTheme.otherBubbleDark : selectedChatTheme.otherBubble,
+        '--chat-theme-other-text': isDarkMode ? selectedChatTheme.otherTextDark : selectedChatTheme.otherText,
+        '--chat-theme-own-quote': isDarkMode ? selectedChatTheme.ownQuoteDark : selectedChatTheme.ownQuote,
+        '--chat-theme-quote': isDarkMode ? selectedChatTheme.quoteDark : selectedChatTheme.quote,
+        '--chat-theme-meta': isDarkMode ? selectedChatTheme.metaDark : selectedChatTheme.meta,
+        '--chat-theme-accent': isDarkMode ? selectedChatTheme.accentDark : selectedChatTheme.accent
+    };
 
     useEffect(() => {
         const container = messagesContainerRef.current;
@@ -712,8 +892,8 @@ export default function ChatWindow({
     }, []);
 
     return (
-    <section className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950">
-        <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900">
+    <section data-chat-theme={chatTheme} className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950" style={chatThemeStyles}>
+        <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900" style={{ backgroundColor: 'var(--chat-theme-surface)' }}>
 
             {pendingAttachment && (
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6">
@@ -842,7 +1022,7 @@ export default function ChatWindow({
 
             {/* ================= HEADER ================= */}
 
-            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur">
+            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
 
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                     <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
@@ -880,6 +1060,25 @@ export default function ChatWindow({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
+                    <div className="relative">
+                        <button type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
+                            <Palette size={18} />
+                        </button>
+                        {showChatThemePicker && (
+                            <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border p-3 shadow-xl" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
+                                <p className="mb-1 text-xs font-semibold" style={{ color: 'var(--chat-theme-other-text)' }}>{t('chatTheme')}</p>
+                                <p className="mb-3 text-[10px] leading-4" style={{ color: 'var(--chat-theme-meta)' }}>{t('chatThemeDescription')}</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {chatThemes.map(item => (
+                                        <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatThemeIds.has(String(activeConversation?.id))} aria-pressed={chatTheme === item.value} className={`flex items-center gap-2 rounded-lg border p-2 text-left text-[11px] transition ${chatTheme === item.value ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-slate-200 dark:border-slate-700'} disabled:opacity-50`}>
+                                            <span className="size-4 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: isDarkMode ? item.dark : item.color }} />
+                                            <span className="truncate text-slate-700 dark:text-slate-200">{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <button
                         type="button"
                         ref={searchTriggerRef}
@@ -1222,7 +1421,7 @@ export default function ChatWindow({
                         onLoadOlder?.();
                     }
                 }}
-                className="h-full overflow-y-auto bg-[#f5f8ff] px-5 py-6">
+                className="h-full overflow-y-auto px-5 py-6" style={{ backgroundColor: 'var(--chat-theme-bg)' }}>
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
@@ -1247,7 +1446,7 @@ export default function ChatWindow({
                     if (msg._timelineType === 'date') {
                         return (
                             <div key={msg.id} className="flex justify-center py-3">
-                                <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-400 shadow-sm">
+                                <span className="rounded-full px-3 py-1 text-[11px] font-medium shadow-sm" style={{ backgroundColor: 'var(--chat-theme-surface)', color: 'var(--chat-theme-meta)', border: '1px solid var(--chat-theme-border)' }}>
                                     {msg.dateLabel}
                                 </span>
                             </div>
@@ -1304,7 +1503,7 @@ export default function ChatWindow({
 
                 {isTyping && (
                     <div role="status" aria-live="polite" className="mb-3 ml-1 flex items-center gap-2">
-                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 py-2.5 shadow-sm">
+                        <div className="flex items-center gap-1 rounded-2xl rounded-bl-md border px-3.5 py-2.5 shadow-sm" style={{ backgroundColor: 'var(--chat-theme-other-bubble)', borderColor: 'var(--chat-theme-border)' }}>
                             <span className="sr-only">{activeConversation.name} đang nhập</span>
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.24s]" />
                             <span className="size-1.5 animate-bounce rounded-full bg-blue-600 [animation-delay:-0.12s]" />
@@ -1322,7 +1521,7 @@ export default function ChatWindow({
             {/* ================= INPUT AREA ================= */}
 
             {replyTo && (
-                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2">
+                <div className="mx-4 mb-2 flex items-center gap-2 rounded-xl border px-3 py-2" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
                     <div className="min-w-0 flex-1 border-l-[3px] border-blue-500 pl-2.5">
                         <p className="text-[11px] font-semibold leading-4 text-blue-700">Đang trả lời {replyTo.sender_name || replyTo.username || 'tin nhắn'}</p>
                         <p className="truncate text-xs leading-5 text-slate-600 dark:text-slate-300">
@@ -1351,6 +1550,7 @@ export default function ChatWindow({
             <form
                 onSubmit={handleSend}
                 className="min-h-[78px] border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
+                style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}
             >
 
                 {/* ================= ATTACHMENT ================= */}
@@ -1457,7 +1657,8 @@ export default function ChatWindow({
                         event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 160)}px`;
                     }}
                     aria-label="Soạn tin nhắn"
-                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3 text-sm leading-5 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-50"
+                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border px-4 py-3 text-sm leading-5 placeholder:text-slate-400 outline-none transition focus:ring-4 focus:ring-blue-50"
+                    style={{ backgroundColor: 'var(--chat-theme-bg)', color: 'var(--chat-theme-other-text)', borderColor: 'var(--chat-theme-border)' }}
                 />
 
                 {/* ================= SEND ================= */}

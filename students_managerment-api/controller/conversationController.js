@@ -118,6 +118,46 @@ const clearConversationMessagesForUser = async (req, res, next) => {
     }
 };
 
+const getConversationChatTheme = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        const userId = Number(req.user.id);
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+        const repository = require('../repository/conversationRepository');
+        if (!await repository.isConversationMember(conversationId, userId)) {
+            return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
+        }
+        return res.status(200).json({ data: { theme: await repository.getConversationChatTheme(conversationId, userId) } });
+    } catch (error) {
+        next(error);
+    }
+};
+
+const updateConversationChatTheme = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        const userId = Number(req.user.id);
+        const { theme } = req.body || {};
+        const allowedThemes = ['default', 'ocean', 'lavender', 'mint', 'rose', 'amber'];
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+        if (!allowedThemes.includes(theme)) {
+            return res.status(400).json({ message: 'Chủ đề cuộc trò chuyện không hợp lệ' });
+        }
+        const repository = require('../repository/conversationRepository');
+        if (!await repository.isConversationMember(conversationId, userId)) {
+            return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
+        }
+        const data = await repository.setConversationChatTheme(conversationId, userId, theme);
+        return res.status(200).json({ message: 'Đã lưu giao diện cuộc trò chuyện', data: { theme: data.chat_theme } });
+    } catch (error) {
+        next(error);
+    }
+};
+
 const updateConversationSettings = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
@@ -474,6 +514,8 @@ module.exports = {
     leaveGroup,
     updateGroupMemberRole,
     updateConversationSettings,
+    getConversationChatTheme,
+    updateConversationChatTheme,
     clearConversationMessagesForUser,
     blockUser,
     unblockUser,

@@ -106,12 +106,12 @@ export default function ChatSidebar({
     return (
         <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e5eaf2] bg-[#f7f9fc] p-3 text-slate-800 sm:p-4 dark:border-slate-800 dark:bg-[#0b1220] dark:text-slate-100 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
             <div className="mb-4 flex items-center justify-between gap-3 px-1">
-                <div className="min-w-0"><h2 className="text-[22px] font-bold tracking-[-.035em] text-[#172b4d] dark:text-slate-100">{t('chat')}</h2><p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">{t('chat')}</p></div>
+                <div className="min-w-0"><h2 className="text-xl font-semibold tracking-tight text-[#172b4d] dark:text-slate-100">{t('chat')}</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('recentConversations')}</p></div>
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
                         onClick={() => { setShowNewChat(true); setMode('group'); }}
-                        className="flex size-9 items-center justify-center rounded-xl bg-white text-[#60708a] ring-1 ring-[#e3eaf4] transition hover:bg-blue-50 hover:text-blue-600 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                        className="flex size-9 items-center justify-center rounded-lg border border-[#e3eaf4] bg-white text-[#60708a] transition hover:bg-slate-50 hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                         title={t("createGroup")}
                         aria-label={t("createGroup")}
                         type="button"
@@ -121,7 +121,7 @@ export default function ChatSidebar({
                     <button
                         data-new-chat
                         onClick={() => { setShowNewChat(true); setMode('direct'); }}
-                        className="flex size-9 items-center justify-center rounded-xl bg-[#2563eb] text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
+                        className="flex size-9 items-center justify-center rounded-lg bg-[#174a7e] text-white transition hover:bg-[#123b66]"
                         title={t("searchUsers")}
                         aria-label={t("searchUsers")}
                         type="button"
@@ -136,7 +136,7 @@ export default function ChatSidebar({
                     className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[3px]"
                     onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
                 >
-                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-3xl border border-white/70 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
+                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
                     <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-6">
                         <div className="min-w-0">
                             <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -226,16 +226,16 @@ export default function ChatSidebar({
                     placeholder={t("searchConversations")}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 rounded-xl border border-[#e3eaf4] bg-white dark:border-slate-700 dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-50/80 dark:focus:border-blue-700 dark:focus:ring-blue-950/50"
+                    className="w-full h-10 rounded-lg border border-[#dce4ef] bg-white dark:border-slate-700 dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:border-blue-700 dark:focus:ring-blue-950/50"
                 />
             </div>
 
-            <div className="mb-3 mt-1 flex rounded-xl bg-slate-100/90 p-1 dark:bg-slate-800">
+            <div className="mb-3 mt-1 flex gap-1 border-b border-slate-200 dark:border-slate-800">
                 <button
                     type="button"
                     aria-pressed={filter === 'all'}
                     onClick={() => setFilter('all')}
-                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100'}`}
+                    className={`flex-1 h-10 border-b-2 text-sm font-medium transition-colors ${filter === 'all' ? 'border-[#174a7e] text-[#174a7e] dark:border-blue-400 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
                     {t('allConversations')} <span className="ml-1">{conversations.length}</span>
                 </button>
@@ -243,7 +243,7 @@ export default function ChatSidebar({
                     type="button"
                     aria-pressed={filter === 'unread'}
                     onClick={() => setFilter('unread')}
-                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'unread' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100'}`}
+                    className={`flex-1 h-10 border-b-2 text-sm font-medium transition-colors ${filter === 'unread' ? 'border-[#174a7e] text-[#174a7e] dark:border-blue-400 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
                     {t('unreadOnly')} {unreadTotal > 0 && <span className="ml-1">{unreadTotal}</span>}
                 </button>
