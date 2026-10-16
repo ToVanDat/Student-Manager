@@ -99,7 +99,7 @@ export default function NotificationSettings() {
                                 </span>
                             </span>
                             <div className="min-w-0 flex-1 break-words">
-                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{option.title}</p>
+                                <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{t(option.titleKey)}</p>
                                 <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t(option.descriptionKey)}</p>
                             </div>
                             <span className="group/switch relative ml-auto shrink-0 pt-1 sm:ml-0 sm:pt-0">
