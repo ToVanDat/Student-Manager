@@ -6,7 +6,10 @@ const repository = require('../repository/permissionRepository');
 test('permission service rejects unsupported roles and malformed payloads', async () => {
     assert.deepEqual(await service.listForRole('owner'), { kind: 'invalid_role' });
     assert.deepEqual(await service.updateForRole('owner', { permissions: [] }, 1), { kind: 'invalid_role' });
-    for (const payload of [null, [], 'admin', {}, { permissions: 'all' }, { permissions: [{ permission_key: 'classes.view', allowed: 1 }] }, { permissions: [{ permission_key: 'classes.view', allowed: true, extra: true }] }, { permissions: [{ permission_key: 'classes.view', allowed: true }, { permission_key: 'classes.view', allowed: false }] }]) {
+    for (const payload of [null, [], 'admin']) {
+        assert.deepEqual(await service.updateForRole('user', payload, 1), { kind: 'invalid_body' });
+    }
+    for (const payload of [{}, { permissions: 'all' }, { permissions: [{ permission_key: 'classes.view', allowed: 1 }] }, { permissions: [{ permission_key: 'classes.view', allowed: true, extra: true }] }, { permissions: [{ permission_key: 'classes.view', allowed: true }, { permission_key: 'classes.view', allowed: false }] }]) {
         assert.deepEqual(await service.updateForRole('user', payload, 1), { kind: 'invalid_fields' });
     }
 });
