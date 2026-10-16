@@ -14,10 +14,11 @@ const requireRole =
 const validateStudent = require('../middleware/studentValidation.js');
 
 
-// User + Admin
+// Admin only: list responses include personal student data.
 router.get(
     '/',
     authMiddleware,
+    requireRole('admin'),
     studentController.getAllStudents
 );
 
@@ -47,10 +48,11 @@ router.delete(
 );
 
 
-// User + Admin
+// Admin only: student records are not yet linked to user accounts for self-service access.
 router.get(
     '/:id',
     authMiddleware,
+    requireRole('admin'),
     studentController.getStudentById
 );
 
