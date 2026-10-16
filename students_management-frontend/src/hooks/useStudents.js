@@ -54,12 +54,16 @@ export function useStudents(search) {
         return {
             totalStudents: students.length,
             totalClasses: classes.size,
-            male: students.filter(
-                (student) => String(student.gender).toLowerCase() === 'male',
-            ).length,
-            female: students.filter(
-                (student) => String(student.gender).toLowerCase() === 'female',
-            ).length,
+            // The current API validator stores Vietnamese gender labels ("Nam"/"Nữ").
+            // Also recognize legacy English values so older records remain countable.
+            male: students.filter((student) => {
+                const gender = String(student.gender || '').trim().toLowerCase();
+                return gender === 'nam' || gender === 'male';
+            }).length,
+            female: students.filter((student) => {
+                const gender = String(student.gender || '').trim().toLowerCase();
+                return gender === 'nữ' || gender === 'nu' || gender === 'female';
+            }).length,
         };
     }, [students]);
 
