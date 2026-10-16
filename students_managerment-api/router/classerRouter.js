@@ -11,6 +11,7 @@ const {
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware.js');
 const requireRole = require('../middleware/roleMiddleware.js');
+const { validateResourceId, validateObjectBody } = require('../middleware/catalogRequestValidation.js');
 
 router.use(authMiddleware);
 
@@ -19,15 +20,15 @@ router.use(authMiddleware);
 router.get('/', getClasses);
 
 // GET /api/classes/:id
-router.get('/:id', getClassById);
+router.get('/:id', validateResourceId, getClassById);
 
 // POST /api/classes
-router.post('/', requireRole('admin'), createClass);
+router.post('/', requireRole('admin'), validateObjectBody(), createClass);
 
 // PATCH /api/classes/:id
-router.patch('/:id', requireRole('admin'), updateClass);
+router.patch('/:id', requireRole('admin'), validateResourceId, validateObjectBody({ partial: true }), updateClass);
 
 // DELETE /api/classes/:id
-router.delete('/:id', requireRole('admin'), deleteClass);
+router.delete('/:id', requireRole('admin'), validateResourceId, deleteClass);
 
 module.exports = router;
