@@ -151,6 +151,7 @@ function Students() {
 
   const {
     students,
+    recentStudents,
     loading,
     error,
     loadStudents,
@@ -670,7 +671,7 @@ function Students() {
               user={user}
               statistics={statistics}
               classStatistics={classStatistics}
-              students={students}
+              students={recentStudents}
               onOpenStudents={() => {
                 setActivePage("students");
                 const params = new URLSearchParams(searchParams);
