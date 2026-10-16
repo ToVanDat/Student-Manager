@@ -581,5 +581,9 @@
   "enrollmentDeleted": "Enrollment deleted.",
   "enrollmentSaveFailed": "Could not save the enrollment.",
   "enrollmentDeleteFailed": "Could not delete the enrollment.",
-  "confirmDeleteEnrollment": "Delete the enrollment for {{name}} in {{subject}}?"
+  "confirmDeleteEnrollment": "Delete the enrollment for {{name}} in {{subject}}?",
+  "modulePendingTitle": "Feature not implemented yet",
+  "moduleUsersPending": "The current API only supports user search for chat. It does not provide admin endpoints to list, create, edit, disable, or assign roles to accounts. This page remains an explicit status notice instead of showing non-functional CRUD controls.",
+  "modulePermissionsPending": "The backend does not provide a separate permissions-management API. The current admin/user roles are enforced by middleware; this UI cannot safely edit permissions without a corresponding backend workflow.",
+  "resultsManagementDescription": "View and update grades for existing subject-enrollment records using the current enrollment and score APIs."
 }
