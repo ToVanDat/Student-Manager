@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const userService = require('../service/userService');
+const userRepository = require('../repository/userRepository');
 
 test('account access validation rejects invalid IDs before database access', async () => {
     for (const id of ['0', '-1', '1.5', 'not-an-id', '9007199254740992']) {
@@ -31,11 +32,20 @@ test('account access validation requires a supported role and boolean active sta
     }
 });
 
-test('account access validation accepts only the two supported roles with boolean status', async () => {
-    // Validation of the complete shape is exercised before repository access.
-    // This test uses invalid IDs intentionally to stop before touching PostgreSQL.
-    for (const role of ['admin', 'user']) {
-        const result = await userService.updateUserAccess(0, { role, is_active: false }, 1);
-        assert.deepEqual(result, { kind: 'invalid_id' });
+test('account access validation forwards supported payloads to the repository', async () => {
+    const original = userRepository.updateUserAccess;
+    const calls = [];
+    userRepository.updateUserAccess = async (...args) => {
+        calls.push(args);
+        return { kind: 'ok', user: { id: args[0], role: args[1], is_active: args[2] } };
+    };
+    try {
+        for (const role of ['admin', 'user']) {
+            const result = await userService.updateUserAccess('2', { role, is_active: false }, 1);
+            assert.deepEqual(result, { kind: 'ok', user: { id: 2, role, is_active: false } });
+        }
+        assert.deepEqual(calls, [[2, 'admin', false, 1], [2, 'user', false, 1]]);
+    } finally {
+        userRepository.updateUserAccess = original;
     }
 });
