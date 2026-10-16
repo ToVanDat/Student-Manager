@@ -45,7 +45,7 @@ const validateStudent = ({ partial = false } = {}) => (req, res, next) => {
             errors.email = 'Vui lòng nhập email';
         } else {
             const normalizedEmail = email.trim();
-            const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
             if (!emailRegex.test(normalizedEmail)) {
                 errors.email = 'Email không hợp lệ';
@@ -57,7 +57,7 @@ const validateStudent = ({ partial = false } = {}) => (req, res, next) => {
 
     if (shouldValidate('date_of_birth') &&
         date_of_birth !== undefined && date_of_birth !== null && date_of_birth !== '') {
-        if (typeof date_of_birth !== 'string' || !/^\\d{4}-\\d{2}-\\d{2}$/.test(date_of_birth)) {
+        if (typeof date_of_birth !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)) {
             errors.date_of_birth = 'Ngày sinh không hợp lệ';
         } else {
             const birthDate = new Date(date_of_birth);
