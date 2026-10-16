@@ -486,5 +486,6 @@
   "chatThemeRose": "Hồng",
   "chatThemeAmber": "Hổ phách",
   "chatThemeSaveFailed": "Không thể lưu giao diện cuộc trò chuyện.",
-  "userThemeSaveFailed": "Không thể lưu giao diện tài khoản. Đã khôi phục lựa chọn trước đó."
+  "userThemeSaveFailed": "Không thể lưu giao diện tài khoản. Đã khôi phục lựa chọn trước đó.",
+  "chatThemeDescription": "Chủ đề này chỉ áp dụng với tài khoản của bạn trong cuộc trò chuyện hiện tại."
 }
