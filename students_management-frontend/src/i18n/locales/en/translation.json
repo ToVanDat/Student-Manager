@@ -493,5 +493,15 @@
   "loadingClasses": "Loading classes...",
   "classesLoadFailed": "Could not load classes. Please try again.",
   "selectClass": "Select a class",
-  "noClassesAvailable": "No classes are available."
+  "noClassesAvailable": "No classes are available.",
+  "viewDetails": "View profile",
+  "studentDetailsTitle": "Student profile",
+  "studentPersonalInformation": "Personal information",
+  "studentAcademicInformation": "Academic information",
+  "studentDetailsUnavailable": "The selected student could not be identified.",
+  "studentDetailsLoadFailed": "Could not load the student profile.",
+  "studentDetailsAvailableFieldsNote": "This profile shows the fields currently available from the student record. Academic history, grades and documents can be added when their related modules are connected.",
+  "sortBy": "Sort by",
+  "sortAscending": "Sort ascending",
+  "sortDescending": "Sort descending"
 }
