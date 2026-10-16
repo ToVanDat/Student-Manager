@@ -1066,7 +1066,8 @@ export default function ChatWindow({
                         </button>
                         {showChatThemePicker && (
                             <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border p-3 shadow-xl" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
-                                <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{t('chatTheme')}</p>
+                                <p className="mb-1 text-xs font-semibold" style={{ color: 'var(--chat-theme-other-text)' }}>{t('chatTheme')}</p>
+                                <p className="mb-3 text-[10px] leading-4" style={{ color: 'var(--chat-theme-meta)' }}>{t('chatThemeDescription')}</p>
                                 <div className="grid grid-cols-2 gap-2">
                                     {chatThemes.map(item => (
                                         <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatThemeIds.has(String(activeConversation?.id))} aria-pressed={chatTheme === item.value} className={`flex items-center gap-2 rounded-lg border p-2 text-left text-[11px] transition ${chatTheme === item.value ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-slate-200 dark:border-slate-700'} disabled:opacity-50`}>
