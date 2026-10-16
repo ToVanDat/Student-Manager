@@ -1069,8 +1069,8 @@ export default function ChatWindow({
                         <button type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
                             <Palette size={18} />
                         </button>
-                        {showChatThemePicker && (
-                            <div className="absolute right-0 top-11 z-50 w-56 rounded-xl border p-3 shadow-xl" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
+                        {showChatThemePicker && createPortal(
+                            <div className="fixed right-24 top-20 z-[10000] max-h-[calc(100dvh-6rem)] w-56 overflow-y-auto rounded-xl border p-3 shadow-2xl" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
                                 <p className="mb-1 text-xs font-semibold" style={{ color: 'var(--chat-theme-other-text)' }}>{t('chatTheme')}</p>
                                 <p className="mb-3 text-[10px] leading-4" style={{ color: 'var(--chat-theme-meta)' }}>{t('chatThemeDescription')}</p>
                                 <div className="grid grid-cols-2 gap-2">
@@ -1081,7 +1081,8 @@ export default function ChatWindow({
                                         </button>
                                     ))}
                                 </div>
-                            </div>
+                            </div>,
+                            document.body
                         )}
                     </div>
                     <button
