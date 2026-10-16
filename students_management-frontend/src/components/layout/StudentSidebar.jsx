@@ -86,7 +86,7 @@ function StudentSidebar({
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" title={label} aria-label={label}
                                     onClick={() => onNavigate(key)}
-                                    className={`flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}>
+                                    className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
                             ))}
