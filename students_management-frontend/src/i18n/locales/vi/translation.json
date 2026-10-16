@@ -488,5 +488,6 @@
   "chatThemeSaveFailed": "Không thể lưu giao diện cuộc trò chuyện.",
   "userThemeSaveFailed": "Không thể lưu giao diện tài khoản. Đã khôi phục lựa chọn trước đó.",
   "chatThemeDescription": "Chủ đề này chỉ áp dụng với tài khoản của bạn trong cuộc trò chuyện hiện tại.",
-  "recentConversations": "Tin nhắn gần đây"
+  "recentConversations": "Tin nhắn gần đây",
+  "navigation": "Điều hướng"
 }
