@@ -58,8 +58,66 @@ const updateLastSeenAt = async (userId) => {
     return rows[0] || null;
 };
 
+const listUsersForAdmin = async (search = '') => {
+    const term = String(search || '').trim();
+    const { rows } = await pool.query(
+        `SELECT id, username, email, role, is_active, created_at, updated_at
+         FROM users
+         WHERE ($1 = '' OR username ILIKE '%' || $1 || '%' OR email ILIKE '%' || $1 || '%')
+         ORDER BY created_at DESC, id DESC
+         LIMIT 200`,
+        [term]
+    );
+    return rows;
+};
+
+const updateUserAccess = async (userId, role, isActive, actorId) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const target = await client.query(
+            'SELECT id, role, is_active FROM users WHERE id = $1 FOR UPDATE',
+            [userId]
+        );
+        if (!target.rowCount) {
+            await client.query('ROLLBACK');
+            return { kind: 'not_found' };
+        }
+        const current = target.rows[0];
+        if (Number(userId) === Number(actorId) && (role !== current.role || isActive !== current.is_active)) {
+            await client.query('ROLLBACK');
+            return { kind: 'self_change' };
+        }
+        if (current.role === 'admin' && (role !== 'admin' || isActive === false) && current.is_active) {
+            const admins = await client.query(
+                "SELECT COUNT(*)::int AS count FROM users WHERE role = 'admin' AND is_active = TRUE"
+            );
+            if (admins.rows[0].count <= 1) {
+                await client.query('ROLLBACK');
+                return { kind: 'last_admin' };
+            }
+        }
+        const updated = await client.query(
+            `UPDATE users
+             SET role = $1, is_active = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3
+             RETURNING id, username, email, role, is_active, created_at, updated_at`,
+            [role, isActive, userId]
+        );
+        await client.query('COMMIT');
+        return { kind: 'ok', user: updated.rows[0] };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     searchUsersForChat,
+    listUsersForAdmin,
+    updateUserAccess,
     findActiveUserById,
     updateLastSeenAt
 };
