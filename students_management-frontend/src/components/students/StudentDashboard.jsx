@@ -142,9 +142,8 @@ function StudentDashboard({
                     <StudentActivity />
                     <StudentClassStatistics classStatistics={classStatistics} />
                     <div className="flex min-h-[100px] min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-slate-800 sm:p-5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
-                        <div className="flex size-[43px] shrink-0 items-center justify-center rounded-[11px] bg-white/15"><GraduationCap size={25} /></div>
-                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">{t("academicManagement")}</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">{t('studentOverviewCard')}</p></div>
-                        <ChevronRight className="shrink-0" size={18} />
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><GraduationCap size={25} /></div>
+                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-semibold">{t("academicManagement")}</h3><p className="mt-1 mb-0 text-[11px] leading-4 text-slate-500 dark:text-slate-400">{t('studentOverviewCard')}</p></div>
                     </div>
                 </div>
             </div>
