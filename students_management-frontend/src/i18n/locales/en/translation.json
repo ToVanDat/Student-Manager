@@ -489,5 +489,9 @@
   "userThemeSaveFailed": "Could not save account appearance. The previous choice was restored.",
   "chatThemeDescription": "This theme is only visible to you in this conversation.",
   "recentConversations": "Recent conversations",
-  "navigation": "Navigation"
+  "navigation": "Navigation",
+  "loadingClasses": "Loading classes...",
+  "classesLoadFailed": "Could not load classes. Please try again.",
+  "selectClass": "Select a class",
+  "noClassesAvailable": "No classes are available."
 }
