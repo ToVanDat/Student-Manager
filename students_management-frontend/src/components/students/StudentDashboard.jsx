@@ -17,6 +17,14 @@ function StudentDashboard({
     sortBy = 'id',
     sortOrder = 'asc',
     onSortChange,
+    classFilter = '',
+    genderFilter = '',
+    classes = [],
+    classesLoading = false,
+    classesError = '',
+    onClassFilterChange,
+    onGenderFilterChange,
+    onClearRosterFilters,
     students,
     filteredStudents,
     paginatedStudents,
@@ -73,6 +81,46 @@ function StudentDashboard({
                     </div>
                     <div className="px-4 pt-4 sm:px-6">
                         <StudentSearch value={search} onChange={onSearchChange} />
+                        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                            <label className="flex min-w-0 flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                <span>{t('filterByClass')}</span>
+                                <select
+                                    value={classFilter}
+                                    onChange={event => onClassFilterChange?.(event.target.value)}
+                                    disabled={classesLoading}
+                                    className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-brand-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                >
+                                    <option value="">{classesLoading ? t('loadingClasses') : t('allClasses')}</option>
+                                    {classes.map(item => (
+                                        <option key={item.id} value={String(item.id)}>
+                                            {[item.class_code, item.class_name].filter(Boolean).join(' — ') || String(item.id)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex min-w-0 flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                <span>{t('filterByGender')}</span>
+                                <select
+                                    value={genderFilter}
+                                    onChange={event => onGenderFilterChange?.(event.target.value)}
+                                    className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                >
+                                    <option value="">{t('allGenders')}</option>
+                                    <option value="Nam">{t('male')}</option>
+                                    <option value="Nữ">{t('female')}</option>
+                                </select>
+                            </label>
+                            {(classFilter || genderFilter) && (
+                                <button
+                                    type="button"
+                                    onClick={onClearRosterFilters}
+                                    className="self-end rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                >
+                                    {t('clearFilters')}
+                                </button>
+                            )}
+                        </div>
+                        {classesError && <p role="status" className="mt-2 text-xs text-rose-600 dark:text-rose-300">{classesError}</p>}
                     </div>
                     {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">{t('retry')}</button></div>}
                     {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />{t('loadingStudentsData')}</div>}
