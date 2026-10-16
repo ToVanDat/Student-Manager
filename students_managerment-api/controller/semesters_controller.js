@@ -1,4 +1,5 @@
 const semestersService = require('../service/semestersService.js');
+const { respondWithDatabaseError } = require('../utils/databaseErrorResponse.js');
 
 
 // GET tất cả học kỳ
@@ -12,12 +13,7 @@ const getSemesters = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -41,12 +37,7 @@ const getSemesterById = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -62,12 +53,7 @@ const createSemester = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm học kỳ',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể thêm học kỳ');
     }
 };
 
@@ -94,12 +80,7 @@ const updateSemester = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật học kỳ',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể cập nhật học kỳ');
     }
 };
 
@@ -126,12 +107,7 @@ const deleteSemester = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể xóa học kỳ',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể xóa học kỳ');
     }
 };
 
