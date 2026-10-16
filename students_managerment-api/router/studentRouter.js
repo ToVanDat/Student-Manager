@@ -10,6 +10,7 @@ const authMiddleware =
 
 const requireRole =
     require('../middleware/roleMiddleware.js');
+const requirePermission = require('../middleware/permissionMiddleware.js');
 
 const validateStudent = require('../middleware/studentValidation.js');
 
@@ -19,6 +20,7 @@ router.get(
     '/',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.view'),
     studentController.getAllStudents
 );
 
@@ -28,6 +30,7 @@ router.post(
     '/',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.manage'),
     validateStudent,
     studentController.createStudent
 );
@@ -44,6 +47,7 @@ router.delete(
     '/:id',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.manage'),
     studentController.deleteStudent
 );
 
@@ -53,6 +57,7 @@ router.get(
     '/:id',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.view'),
     studentController.getStudentById
 );
 
