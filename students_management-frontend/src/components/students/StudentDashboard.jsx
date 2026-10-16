@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ChevronLeft, ChevronRight, GraduationCap, Plus } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import StudentForm from '@/components/students/StudentForm.jsx';
@@ -6,6 +7,7 @@ import StudentStats from '@/components/students/StudentStats.jsx';
 import StudentSearch from '@/components/students/StudentSearch.jsx';
 import StudentActivity from '@/components/students/StudentActivity.jsx';
 import StudentClassStatistics from '@/components/students/StudentClassStatistics.jsx';
+import StudentDetailsDialog from '@/components/students/StudentDetailsDialog.jsx';
 
 function StudentDashboard({
     user,
@@ -59,6 +61,7 @@ function StudentDashboard({
     });
 
     const { t } = useLanguage();
+    const [viewingStudent, setViewingStudent] = useState(null);
     return (
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
@@ -78,6 +81,7 @@ function StudentDashboard({
                             students={paginatedStudents}
                             firstRowNumber={firstStudentIndex}
                             onEdit={onEdit}
+                            onView={setViewingStudent}
                             onDelete={onDelete}
                             canManage={isAdmin}
                             loading={loading}
@@ -153,6 +157,16 @@ function StudentDashboard({
                     </div>
                 </div>
             </div>
+            {viewingStudent && (
+                <StudentDetailsDialog
+                    student={viewingStudent}
+                    onClose={() => setViewingStudent(null)}
+                    onEdit={student => {
+                        setViewingStudent(null);
+                        onEdit(student);
+                    }}
+                />
+            )}
             {isAdmin && showForm && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
                     <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
