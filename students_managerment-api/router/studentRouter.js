@@ -35,7 +35,7 @@ router.patch(
     '/:id',
     authMiddleware,
     requireRole('admin'),
-    validateStudent,
+    validateStudent.partial,
     studentController.updateStudent
 );
 
