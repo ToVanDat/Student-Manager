@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getStudents } from '@/api/studentApi.js';
 
-export function useStudents(search) {
+export function useStudents(search, enabled = true) {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -25,8 +25,16 @@ export function useStudents(search) {
     }, []);
 
     useEffect(() => {
+        if (!enabled) {
+            setStudents([]);
+            setError('');
+            setLoading(false);
+            return undefined;
+        }
+
         loadStudents();
-    }, [loadStudents]);
+        return undefined;
+    }, [enabled, loadStudents]);
 
     const filteredStudents = useMemo(() => {
         const keyword = search.trim().toLowerCase();
