@@ -202,12 +202,6 @@ textarea:focus-visible {
 [data-chat-theme] :is(.border-slate-100, .border-slate-200, .border-slate-300) {
   border-color: var(--chat-theme-border);
 }
-[data-chat-theme] :is(.text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600) {
-  color: var(--chat-theme-other-text);
-}
-[data-chat-theme] :is(.text-slate-500, .text-slate-400) {
-  color: var(--chat-theme-meta);
-}
 [data-chat-theme] :is(.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-white:hover) {
   background-color: var(--chat-theme-quote);
 }
