@@ -10,7 +10,7 @@ Phạm vi: nhánh `feature/chat-1to1-complete`. Audit dựa trên cây repositor
 |---|---|---|
 | Authentication, session, profile | Đã có | Có login/register/refresh/logout, reset password, profile/avatar, change password và session endpoints. Cần tiếp tục kiểm thử integration và quyền từng API. |
 | Quản lý sinh viên | CRUD backend đã có | Có list, get-by-id, create, update, delete; mutation yêu cầu admin và có validation. |
-| Tìm kiếm/phân trang/sắp xếp sinh viên | Backend có; frontend từng nối sai | Đã sửa ở lượt này để frontend dùng page/pageSize và totalCount từ API; bổ sung điều khiển sắp xếp. |
+| Tìm kiếm/phân trang/sắp xếp/lọc sinh viên | Đã nối lại và mở rộng | Frontend dùng page/pageSize/totalCount từ API, bổ sung sắp xếp và filter theo lớp/giới tính trên server. |
 | Hồ sơ sinh viên chi tiết | API có, UI trước đó thiếu | Đã thêm dialog lấy dữ liệu thật qua endpoint hiện có. Phạm vi hiện chỉ gồm trường mà API trả về. |
 | Khoa/lớp/môn học/học kỳ/đăng ký học phần | API CRUD đã có | Các mục điều hướng quản trị trên frontend hiện hiển thị nội dung giới thiệu module, chưa phải giao diện CRUD đầy đủ. |
 | Dashboard quản trị | Có thống kê | API tính tổng sinh viên, lớp và giới tính; thống kê theo lớp lấy từ database. Cần xác minh nghiệp vụ thống kê và tải thực tế. |
@@ -43,7 +43,16 @@ Backend đã cho phép sắp xếp theo các trường nằm trong allowlist. Fr
 
 API `GET /api/students/:id` và hàm `getStudentById` đã tồn tại. Đã bổ sung dialog tải dữ liệu qua API, có loading/error/retry, hỗ trợ đóng bằng Escape và nút chuyển sang chỉnh sửa. Dialog chỉ hiển thị các trường hiện có: mã, họ tên, email, ngày sinh, giới tính và lớp; không giả lập bảng điểm/tài liệu chưa có API.
 
-### 2.4 Theme
+### 2.4 Bộ lọc lớp và giới tính
+
+Đã bổ sung filter theo `classId` và `gender` vào query server-side:
+- Backend kiểm tra `classId` là số nguyên dương và giới tính thuộc tập giá trị đang được form/backend chấp nhận (`Nam`, `Nữ`).
+- Repository kết hợp điều kiện tìm kiếm, lớp và giới tính bằng parameterized query.
+- Frontend thêm bộ lọc có trạng thái URL, tự quay về trang 1 khi đổi filter và có nút xoá filter; nhãn được dịch tiếng Việt/tiếng Anh.
+
+Chưa bổ sung lọc khoa hoặc trạng thái, vì danh sách hiện chưa có quy tắc/trường trạng thái sinh viên được xác minh trong schema.
+
+### 2.5 Theme
 
 Đã có `user_preferences.sql`, `conversation_management.sql` và `theme_preferences_migration.sql`. Migration theme yêu cầu các bảng nền đã tồn tại:
 1. `user_preferences.sql` tạo bảng tuỳ chọn tài khoản.
@@ -57,7 +66,7 @@ Không thể chạy migration hộ người dùng vì phiên audit không kết 
 ### Ưu tiên cao
 
 1. **Giao diện quản lý đào tạo:** `Students.jsx` hiện dùng màn giới thiệu cho các mục lớp, khoa, môn học, học kỳ, đăng ký học phần, kết quả, tài khoản và phân quyền. Backend có CRUD cho một số module nhưng frontend chưa cung cấp danh sách/form/thao tác quản trị tương ứng.
-2. **Bộ lọc danh sách sinh viên:** hiện API tìm kiếm theo mã, họ tên, email, mã lớp và tên lớp; chưa thấy filter server-side riêng theo lớp/khoa/giới tính. Không thấy workflow trạng thái sinh viên trong code truy vấn/validation.
+2. **Bộ lọc danh sách sinh viên:** đã bổ sung lọc lớp và giới tính. Filter theo khoa/trạng thái chưa triển khai vì cần xác minh quan hệ và quy tắc dữ liệu; workflow trạng thái sinh viên cũng chưa thấy trong truy vấn/validation.
 3. **Cổng sinh viên:** lịch học và điểm đang hiển thị placeholder; chưa tìm thấy API/service chuyên cho thời khóa biểu hoặc bảng điểm. Không nên hiển thị nội dung này như dữ liệu thực.
 4. **Import/export và thao tác hàng loạt:** chưa thấy API, UI hoặc kiểm thử tương ứng.
 5. **Lịch sử hoạt động/audit log:** `StudentActivity` hiện có trạng thái không có dữ liệu; chưa thấy schema/service để ghi lại ai đã tạo/sửa/xóa/chuyển lớp.
@@ -85,12 +94,12 @@ Workflow `.github/workflows/api-tests.yml` hiện chạy:
 
 Các test backend hiện là unit tests cho validation, upload policy, file optimization, notification policy, call validation và group authorization. Chưa thấy frontend component tests hoặc integration tests dùng database. Workflow chưa chạy script `npm run lint` của frontend.
 
-Trong lượt này, GitHub Actions cho commit sửa bảng sinh viên đã báo **API unit tests: success; frontend build: success**. Điều này xác nhận test/build tự động, không thay thế kiểm thử thực tế với PostgreSQL local và trình duyệt.
+Trong lượt này, GitHub Actions cho commit mới nhất đã báo **API unit tests: success; frontend build: success**. Điều này xác nhận test/build tự động, không thay thế kiểm thử thực tế với PostgreSQL local và trình duyệt.
 
 ## 5. Thứ tự triển khai đề xuất
 
 1. Đối chiếu database local với migrations và xác nhận Theme hoạt động end-to-end.
-2. Hoàn thiện bộ lọc sinh viên phía server (lớp/khoa/giới tính trong phạm vi schema hiện có) và bổ sung test.
+2. Bổ sung filter theo khoa nếu quan hệ đã có trong schema; thêm test cho filter lớp/giới tính và kiểm thử integration với PostgreSQL.
 3. Xây giao diện CRUD thực cho các module học vụ dựa trên API đang tồn tại; không tạo API/bảng trùng.
 4. Thực hiện import/export và thao tác hàng loạt sau khi xác nhận định dạng dữ liệu, quyền và giới hạn upload.
 5. Thiết kế trạng thái sinh viên, lịch sử thay đổi, tài liệu và ghi chú sau khi xác nhận schema/nghiệp vụ.
