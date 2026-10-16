@@ -82,7 +82,7 @@ const updateEnrollment = async (req, res) => {
     try {
 
         const { id } = req.params;
-        if (!/^\d+$/.test(String(id)) || Number(id) <= 0 || !Number.isSafeInteger(Number(id))) {
+        if (!isValidId(id)) {
             return res.status(400).json({ message: 'ID đăng ký môn học không hợp lệ' });
         }
         const validation = validateEnrollment(req.body, { partial: true });
