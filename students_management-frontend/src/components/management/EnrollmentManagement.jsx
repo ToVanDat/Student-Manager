@@ -7,7 +7,7 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 const EMPTY = { student_id: '', subject_id: '', semester_id: '', midterm_score: '', final_score: '', total_score: '' };
 const SCORE_FIELDS = ['midterm_score', 'final_score', 'total_score'];
 
-export default function EnrollmentManagement() {
+export default function EnrollmentManagement({ view = 'enrollments' }) {
     const { t } = useLanguage();
     const [items, setItems] = useState([]);
     const [students, setStudents] = useState([]);
@@ -131,7 +131,7 @@ export default function EnrollmentManagement() {
     return (
         <section className="mx-auto max-w-7xl space-y-5">
             <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div><h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('enrollments')}</h1><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('enrollmentManagementDescription')}</p></div>
+                <div><h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t(view === 'results' ? 'results' : 'enrollments')}</h1><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t(view === 'results' ? 'resultsManagementDescription' : 'enrollmentManagementDescription')}</p></div>
                 <button type="button" onClick={() => startForm(null)} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"><Plus size={16} />{t('addEnrollment')}</button>
             </header>
             <div className="app-card overflow-hidden">
