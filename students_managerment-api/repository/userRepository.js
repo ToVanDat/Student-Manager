@@ -75,6 +75,8 @@ const updateUserAccess = async (userId, role, isActive, actorId) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        // Serialize role/status changes so two concurrent requests cannot both demote the last admins.
+        await client.query('SELECT pg_advisory_xact_lock($1)', [784221]);
         const target = await client.query(
             'SELECT id, role, is_active FROM users WHERE id = $1 FOR UPDATE',
             [userId]
