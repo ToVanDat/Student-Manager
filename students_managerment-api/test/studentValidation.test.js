@@ -31,6 +31,19 @@ const runValidation = (body) => {
     return { statusCode, responseBody, passed };
 };
 
+runValidation.partial = (body) => {
+    let statusCode = 200;
+    let responseBody = null;
+    let passed = false;
+    const req = { body };
+    const res = {
+        status(code) { statusCode = code; return this; },
+        json(payload) { responseBody = payload; return this; }
+    };
+    validateStudent.partial(req, res, () => { passed = true; });
+    return { statusCode, responseBody, passed };
+};
+
 test('accepts a valid student create/update payload', () => {
     const result = runValidation(basePayload());
     assert.equal(result.passed, true);
@@ -73,5 +86,32 @@ test('rejects future birth dates', () => {
     });
 
     assert.equal(result.statusCode, 400);
+    assert.ok(result.responseBody.errors.date_of_birth);
+});
+
+
+test('accepts a partial update with only one supplied field', () => {
+    const result = runValidation.partial({ name: 'Nguyen Van An' });
+    assert.equal(result.passed, true);
+    assert.equal(result.statusCode, 200);
+});
+
+test('validates supplied fields in a partial update without requiring omitted fields', () => {
+    const result = runValidation.partial({ email: 'not-an-email' });
+    assert.equal(result.passed, false);
+    assert.equal(result.statusCode, 400);
+    assert.ok(result.responseBody.errors.email);
+    assert.equal(result.responseBody.errors.name, undefined);
+});
+
+test('rejects an empty partial update', () => {
+    const result = runValidation.partial({});
+    assert.equal(result.passed, false);
+    assert.equal(result.statusCode, 400);
+});
+
+test('rejects impossible calendar dates', () => {
+    const result = runValidation({ ...basePayload(), date_of_birth: '2004-02-31' });
+    assert.equal(result.passed, false);
     assert.ok(result.responseBody.errors.date_of_birth);
 });
