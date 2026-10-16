@@ -41,3 +41,9 @@ test('allows explicitly clearing a score with null', () => {
     assert.equal(result.valid, true);
     assert.deepEqual(result.data, { midterm_score: null });
 });
+
+test('rejects boolean identifiers rather than coercing true to ID 1', () => {
+    const result = validateEnrollment({ student_id: true, subject_id: 2, semester_id: 3 });
+    assert.equal(result.valid, false);
+    assert.ok(result.errors.student_id);
+});
