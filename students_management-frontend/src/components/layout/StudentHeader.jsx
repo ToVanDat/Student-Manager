@@ -175,7 +175,7 @@ function StudentHeader({
                                 {notificationsLoading && notificationItems.length === 0 ? (
                                     <p className="px-4 py-8 text-center text-xs text-slate-400">{t('loadingNotifications')}</p>
                                 ) : notificationItems.length ? notificationItems.map(item => (
-                                    <button key={item.id} type="button" onClick={() => handleNotificationClick(item)} className={`block w-full border-b border-slate-50 px-4 py-3 text-left transition hover:bg-blue-50 ${item.is_read ? 'bg-white' : 'bg-blue-50/60'}`}>
+                                    <button key={item.id} type="button" onClick={() => handleNotificationClick(item)} className={`block w-full border-b border-slate-100 dark:border-slate-800 px-4 py-3 text-left transition hover:bg-blue-50 dark:hover:bg-slate-800 ${item.is_read ? 'bg-white dark:bg-slate-900' : 'bg-blue-50/60 dark:bg-blue-950/40'}`}>
                                         <span className="flex items-start gap-2">
                                             {!item.is_read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-600" />}
                                             <span className="min-w-0 flex-1">
