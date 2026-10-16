@@ -34,9 +34,8 @@ function StudentSidebar({
 
             <aside className={`fixed inset-y-0 left-0 z-50 flex w-[250px] -translate-x-full flex-col bg-[#f8faff] dark:bg-slate-950 px-[15px] py-[22px] text-[#263852] dark:text-slate-100 shadow-[8px_0_28px_rgba(38,56,82,0.06)] transition-[width,transform,padding] duration-200 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className={`mb-8 flex items-center gap-3 border-b border-slate-200/80 px-2 pb-6 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
-                    <div aria-label="Student Manager" className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-gradient-to-br from-[#0c2340] via-[#174a7e] to-[#247c91] shadow-[0_7px_18px_rgba(23,74,126,.24)] ring-1 ring-white/50">
-                        <span aria-hidden="true" className="absolute inset-[4px] rounded-[12px] border border-white/20" />
-                        <GraduationCap size={27} strokeWidth={1.9} className="relative z-10 text-white drop-shadow-sm" aria-hidden="true" />
+                    <div aria-label="Student Manager" className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-white/10 bg-[#174a7e]">
+                        <GraduationCap size={27} strokeWidth={1.9} className="relative z-10 text-white" aria-hidden="true" />
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
                         <strong className="text-[14px] font-extrabold leading-tight tracking-[-.025em] text-[#183653] dark:text-white">Student Manager</strong>
@@ -48,7 +47,7 @@ function StudentSidebar({
                     <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('overviewGroup')}</div>
                     <button
                         title={t("home")}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#dcecff] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('dashboard')}
                     >
                         <Home size={19} />
@@ -56,7 +55,7 @@ function StudentSidebar({
                     </button>
                     <button
                         title={user?.role === 'admin' ? t('manageStudents') : t('students')}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('students')}
                     >
                         <Users size={19} />
@@ -98,7 +97,7 @@ function StudentSidebar({
                     <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('chat')}</div>
                     <button
                         title={t("chat")}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#dbeafe] dark:bg-blue-950 text-[#1d4ed8] dark:text-blue-200 font-semibold shadow-sm shadow-blue-100 dark:shadow-none' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         onClick={() => onNavigate('chat')}
                     >
                         <MessageSquare size={19} />
