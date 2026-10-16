@@ -209,36 +209,33 @@ const createStudent = async (data) => {
 
 
 const updateStudent = async (id, data) => {
-    const {
-        student_code,
-        name,
-        email,
-        date_of_birth,
-        gender,
-        class_id
-    } = data;
-
-    const result = await pool.query(`
-        UPDATE students
-        SET
-            student_code = $1,
-            name = $2,
-            email = $3,
-            date_of_birth = $4,
-            gender = $5,
-            class_id = $6,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = $7
-        RETURNING *
-    `, [
-        student_code,
-        name,
-        email,
-        date_of_birth,
-        gender,
-        class_id,
-        id
+    // PATCH must update only fields explicitly supplied by the client.
+    // Keep this allowlist in sync with studentValidation.js.
+    const allowedColumns = new Set([
+        'student_code',
+        'name',
+        'email',
+        'date_of_birth',
+        'gender',
+        'class_id'
     ]);
+    const entries = Object.entries(data || {}).filter(([key]) => allowedColumns.has(key));
+
+    if (entries.length === 0) {
+        return null;
+    }
+
+    const values = entries.map(([, value]) => value);
+    const assignments = entries.map(([key], index) => `${key} = $${index + 1}`);
+    values.push(id);
+
+    const result = await pool.query(
+        `UPDATE students
+         SET ${assignments.join(', ')}, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $${values.length}
+         RETURNING *`,
+        values
+    );
 
     return result.rows[0];
 };
