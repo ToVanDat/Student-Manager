@@ -503,5 +503,10 @@
   "studentDetailsAvailableFieldsNote": "Đây là các thông tin hiện có từ hồ sơ sinh viên. Lịch sử học tập, bảng điểm và tài liệu sẽ hiển thị khi các module tương ứng được kết nối.",
   "sortBy": "Sắp xếp theo",
   "sortAscending": "Sắp xếp tăng dần",
-  "sortDescending": "Sắp xếp giảm dần"
+  "sortDescending": "Sắp xếp giảm dần",
+  "filterByClass": "Lọc theo lớp",
+  "allClasses": "Tất cả lớp",
+  "filterByGender": "Lọc theo giới tính",
+  "allGenders": "Tất cả giới tính",
+  "clearFilters": "Xóa bộ lọc"
 }
