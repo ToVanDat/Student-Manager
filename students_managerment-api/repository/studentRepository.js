@@ -22,10 +22,14 @@ const getAllStudents = async () => {
 };
 
 
-const getStudentPage = async ({ page = 1, pageSize = 10, search = '', sortBy = 'id', sortOrder = 'asc' } = {}) => {
+const getStudentPage = async ({ page = 1, pageSize = 10, search = '', sortBy = 'id', sortOrder = 'asc', classId = null, gender = '' } = {}) => {
     const safePage = Number.isSafeInteger(Number(page)) && Number(page) > 0 ? Number(page) : 1;
     const safePageSize = [10, 25, 50].includes(Number(pageSize)) ? Number(pageSize) : 10;
     const keyword = String(search || '').trim();
+    const safeClassId = classId !== null && classId !== '' && Number.isSafeInteger(Number(classId)) && Number(classId) > 0
+        ? Number(classId)
+        : null;
+    const safeGender = ['Nam', 'Nữ'].includes(gender) ? gender : '';
     const offset = (safePage - 1) * safePageSize;
 
     // SQL identifiers can only come from this allowlist; user input never enters SQL syntax.
@@ -41,22 +45,36 @@ const getStudentPage = async ({ page = 1, pageSize = 10, search = '', sortBy = '
     };
     const orderColumn = sortColumns[sortBy] || sortColumns.id;
     const orderDirection = String(sortOrder).toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-    const whereSql = keyword
-        ? `WHERE (
-            s.student_code ILIKE $1
-            OR s.name ILIKE $1
-            OR s.email ILIKE $1
-            OR c.class_code ILIKE $1
-            OR c.class_name ILIKE $1
-        )`
-        : '';
-    const searchValue = `%${keyword}%`;
-    const countValues = keyword ? [searchValue] : [];
-    const listValues = keyword
-        ? [searchValue, safePageSize, offset]
-        : [safePageSize, offset];
-    const limitPosition = keyword ? '$2' : '$1';
-    const offsetPosition = keyword ? '$3' : '$2';
+    const filterValues = [];
+    const conditions = [];
+
+    if (keyword) {
+        filterValues.push(`%${keyword}%`);
+        const searchPlaceholder = `${filterValues.length}`;
+        conditions.push(`(
+            s.student_code ILIKE ${searchPlaceholder}
+            OR s.name ILIKE ${searchPlaceholder}
+            OR s.email ILIKE ${searchPlaceholder}
+            OR c.class_code ILIKE ${searchPlaceholder}
+            OR c.class_name ILIKE ${searchPlaceholder}
+        )`);
+    }
+
+    if (safeClassId !== null) {
+        filterValues.push(safeClassId);
+        conditions.push(`s.class_id = ${filterValues.length}`);
+    }
+
+    if (safeGender) {
+        filterValues.push(safeGender);
+        conditions.push(`LOWER(BTRIM(COALESCE(s.gender, ''))) = LOWER(${filterValues.length})`);
+    }
+
+    const whereSql = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const countValues = [...filterValues];
+    const listValues = [...filterValues, safePageSize, offset];
+    const limitPosition = `${filterValues.length + 1}`;
+    const offsetPosition = `${filterValues.length + 2}`;
 
     const [listResult, countResult, statsResult, classesResult, recentResult] = await Promise.all([
         pool.query(
