@@ -493,5 +493,15 @@
   "loadingClasses": "Đang tải danh sách lớp...",
   "classesLoadFailed": "Không thể tải danh sách lớp. Vui lòng thử lại.",
   "selectClass": "Chọn lớp",
-  "noClassesAvailable": "Chưa có lớp khả dụng."
+  "noClassesAvailable": "Chưa có lớp khả dụng.",
+  "viewDetails": "Xem hồ sơ",
+  "studentDetailsTitle": "Hồ sơ sinh viên",
+  "studentPersonalInformation": "Thông tin cá nhân",
+  "studentAcademicInformation": "Thông tin học tập",
+  "studentDetailsUnavailable": "Không xác định được sinh viên cần xem.",
+  "studentDetailsLoadFailed": "Không thể tải hồ sơ sinh viên.",
+  "studentDetailsAvailableFieldsNote": "Đây là các thông tin hiện có từ hồ sơ sinh viên. Lịch sử học tập, bảng điểm và tài liệu sẽ hiển thị khi các module tương ứng được kết nối.",
+  "sortBy": "Sắp xếp theo",
+  "sortAscending": "Sắp xếp tăng dần",
+  "sortDescending": "Sắp xếp giảm dần"
 }
