@@ -12,7 +12,7 @@ export default function AppearanceSettings() {
     ];
 
     return (
-        <section className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+        <section className="min-w-0 rounded-lg border border-line bg-white p-5 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-5 border-b border-slate-100 pb-5 dark:border-slate-800">
                 <h2 className="m-0 text-base font-bold text-ink dark:text-white">{t('appearance')}</h2>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('chooseAppearanceDescription')}</p>
@@ -24,9 +24,9 @@ export default function AppearanceSettings() {
                         type="button"
                         onClick={() => setTheme(value)}
                         aria-pressed={theme === value}
-                        className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${theme === value ? 'border-brand-500 bg-brand-50 dark:border-blue-500 dark:bg-blue-950/40' : 'border-line bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'} `}
+                        className={`flex items-center gap-3 rounded-lg border p-4 text-left transition ${theme === value ? 'border-brand-500 bg-brand-50 dark:border-blue-500 dark:bg-blue-950/40' : 'border-line bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800'} `}
                     >
-                        <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><Icon size={19} /></span>
+                        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-200"><Icon size={19} /></span>
                         <span className="min-w-0 flex-1">
                             <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{title}</span>
                             <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{description}</span>
