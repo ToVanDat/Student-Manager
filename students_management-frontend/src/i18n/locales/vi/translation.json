@@ -581,5 +581,9 @@
   "enrollmentDeleted": "Đã xóa đăng ký.",
   "enrollmentSaveFailed": "Không thể lưu đăng ký.",
   "enrollmentDeleteFailed": "Không thể xóa đăng ký.",
-  "confirmDeleteEnrollment": "Bạn có chắc muốn xóa đăng ký của {{name}} cho môn {{subject}} không?"
+  "confirmDeleteEnrollment": "Bạn có chắc muốn xóa đăng ký của {{name}} cho môn {{subject}} không?",
+  "modulePendingTitle": "Chức năng chưa được triển khai",
+  "moduleUsersPending": "API hiện tại chỉ hỗ trợ tìm người dùng cho chat, chưa có API quản trị để liệt kê, tạo, sửa, khóa hoặc phân quyền tài khoản. Trang này được giữ ở trạng thái thông báo thay vì hiển thị giao diện CRUD chưa hoạt động.",
+  "modulePermissionsPending": "Backend chưa có API quản lý quyền riêng biệt. Vai trò admin/user hiện được kiểm tra qua middleware; không thể chỉnh sửa quyền an toàn từ giao diện này khi chưa có quy trình backend tương ứng.",
+  "resultsManagementDescription": "Xem và cập nhật điểm theo từng bản ghi đăng ký môn học. Dữ liệu sử dụng API đăng ký và điểm hiện có."
 }
