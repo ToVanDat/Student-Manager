@@ -30,7 +30,7 @@ const handleStudentError = (res, error, fallbackMessage) => {
 
 const getAllStudents = async (req, res) => {
     try {
-        const queryKeys = ['page', 'pageSize', 'search', 'sortBy', 'sortOrder'];
+        const queryKeys = ['page', 'pageSize', 'search', 'sortBy', 'sortOrder', 'classId', 'gender'];
         const hasQueryMode = queryKeys.some(key => req.query?.[key] !== undefined);
         if (!hasQueryMode) {
             const students = await studentService.getAllStudents();
@@ -45,6 +45,8 @@ const getAllStudents = async (req, res) => {
         ]);
         const sortBy = req.query.sortBy === undefined ? 'id' : req.query.sortBy;
         const sortOrder = req.query.sortOrder === undefined ? 'asc' : String(req.query.sortOrder).toLowerCase();
+        const classId = req.query.classId === undefined || req.query.classId === '' ? null : Number(req.query.classId);
+        const gender = req.query.gender === undefined ? '' : req.query.gender;
 
         if (!Number.isSafeInteger(page) || page < 1) {
             return res.status(400).json({ message: 'page phải là số nguyên dương' });
@@ -61,8 +63,14 @@ const getAllStudents = async (req, res) => {
         if (!['asc', 'desc'].includes(sortOrder)) {
             return res.status(400).json({ message: 'sortOrder chỉ chấp nhận asc hoặc desc' });
         }
+        if (classId !== null && (!Number.isSafeInteger(classId) || classId <= 0)) {
+            return res.status(400).json({ message: 'classId phải là số nguyên dương' });
+        }
+        if (typeof gender !== 'string' || !['', 'Nam', 'Nữ'].includes(gender)) {
+            return res.status(400).json({ message: 'gender chỉ chấp nhận Nam hoặc Nữ' });
+        }
 
-        const result = await studentService.getStudentPage({ page, pageSize, search, sortBy, sortOrder });
+        const result = await studentService.getStudentPage({ page, pageSize, search, sortBy, sortOrder, classId, gender });
         return res.status(200).json(result);
     } catch (error) {
         return handleStudentError(res, error, 'Không thể tải danh sách sinh viên.');
