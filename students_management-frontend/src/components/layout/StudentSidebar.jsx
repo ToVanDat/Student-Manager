@@ -39,7 +39,6 @@ function StudentSidebar({
                     </div>
                     <div className={collapsed ? 'min-[801px]:hidden flex flex-col' : 'flex flex-col'}>
                         <strong className="text-[14px] font-extrabold leading-tight tracking-[-.025em] text-[#183653] dark:text-white">Student Manager</strong>
-                        <span className="mt-1 text-[9px] font-semibold uppercase tracking-[.12em] text-[#71849b] dark:text-slate-400">{user?.role === 'admin' ? t('administrator') : t('user')}</span>
                     </div>
                 </div>
 
