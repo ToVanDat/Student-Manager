@@ -1,5 +1,33 @@
 const studentService = require('../service/studentService.js');
 
+const handleStudentError = (res, error, fallbackMessage) => {
+    // Log database details for operators, but never echo SQL/constraint details to clients.
+    console.error('[STUDENTS]', {
+        code: error?.code,
+        message: error?.message
+    });
+
+    if (error?.code === '23505') {
+        return res.status(409).json({
+            message: 'Mã sinh viên hoặc email đã tồn tại.'
+        });
+    }
+
+    if (error?.code === '23503') {
+        return res.status(409).json({
+            message: 'Không thể thực hiện thao tác vì lớp hoặc dữ liệu liên quan không hợp lệ hoặc đang được sử dụng.'
+        });
+    }
+
+    if (error?.code === '22P02' || error?.code === '22007' || error?.code === '22008') {
+        return res.status(400).json({
+            message: 'Dữ liệu không đúng định dạng.'
+        });
+    }
+
+    return res.status(500).json({ message: fallbackMessage });
+};
+
 const getAllStudents = async (req, res) => {
     try {
         const students = await studentService.getAllStudents();
@@ -7,12 +35,7 @@ const getAllStudents = async (req, res) => {
         res.json(students);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể tải danh sách sinh viên.');
     }
 };
 
@@ -31,12 +54,7 @@ const getStudentById = async (req, res) => {
         res.json(student);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể tải thông tin sinh viên.');
     }
 };
 
@@ -51,12 +69,7 @@ const createStudent = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm sinh viên',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể thêm sinh viên.');
     }
 };
 
@@ -78,12 +91,7 @@ const updateStudent = async (req, res) => {
         res.json(student);
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật sinh viên',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể cập nhật sinh viên.');
     }
 };
 
@@ -105,12 +113,7 @@ const deleteStudent = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể xóa sinh viên',
-            error: error.message
-        });
+        return handleStudentError(res, error, 'Không thể xóa sinh viên.');
     }
 };
 
