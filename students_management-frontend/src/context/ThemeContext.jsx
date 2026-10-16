@@ -84,9 +84,13 @@ export function ThemeProvider({ children }) {
         const accountId = userId == null ? null : String(userId);
 
         if (!isAuthenticated || accountId === null) {
+            const wasAuthenticatedAccount = persistedThemeUserIdRef.current !== null;
             persistedThemeUserIdRef.current = null;
-            if (persistedThemeUserIdRef.current !== accountId) {
-                persistedThemeUserIdRef.current = accountId;
+            if (wasAuthenticatedAccount) {
+                const guestTheme = getInitialTheme(null);
+                persistedThemeRef.current = guestTheme;
+                themeRef.current = guestTheme;
+                setThemeState(guestTheme);
             }
             return () => {
                 active = false;
