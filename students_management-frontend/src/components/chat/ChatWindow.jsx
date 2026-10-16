@@ -91,8 +91,10 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const [chatTheme, setChatTheme] = useState('default');
     const [showChatThemePicker, setShowChatThemePicker] = useState(false);
-    const [savingChatTheme, setSavingChatTheme] = useState(false);
+    const [savingChatThemeIds, setSavingChatThemeIds] = useState(() => new Set());
     const activeConversationIdRef = useRef(activeConversation?.id);
+    const chatThemeRequestVersionsRef = useRef(new Map());
+    const pendingChatThemeIdsRef = useRef(new Set());
     activeConversationIdRef.current = activeConversation?.id;
     const chatThemes = useMemo(() => [
         {
@@ -186,52 +188,70 @@ export default function ChatWindow({
 
     useEffect(() => {
         let active = true;
+        setShowChatThemePicker(false);
         if (!activeConversation?.id) {
             setChatTheme('default');
             return () => { active = false; };
         }
         const conversationId = activeConversation.id;
+        const conversationKey = String(conversationId);
+        const requestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
         const storageKey = `chat-theme:${currentUserId}:${conversationId}`;
         const cached = (() => {
             try { return localStorage.getItem(storageKey); } catch { return null; }
         })();
         const cachedTheme = chatThemes.some(item => item.value === cached) ? cached : 'default';
         setChatTheme(cachedTheme);
-        getConversationChatTheme(conversationId)
-            .then(({ data }) => {
-                const savedTheme = data?.data?.theme;
-                if (active && chatThemes.some(item => item.value === savedTheme)) {
+        if (!pendingChatThemeIdsRef.current.has(conversationKey)) {
+            getConversationChatTheme(conversationId)
+                .then(({ data }) => {
+                    const savedTheme = data?.data?.theme;
+                    const latestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
+                    if (active && requestVersion === latestVersion && !pendingChatThemeIdsRef.current.has(conversationKey) && chatThemes.some(item => item.value === savedTheme)) {
                     setChatTheme(savedTheme);
                     try { localStorage.setItem(storageKey, savedTheme); } catch { /* optional cache */ }
-                }
-            })
-            .catch(() => {
-                // Cached theme remains available if the migration has not been applied yet.
-            });
+                    }
+                })
+                .catch(() => {
+                    // Cached theme remains available when the API or migration is unavailable.
+                });
+        }
         return () => { active = false; };
     }, [activeConversation?.id, currentUserId, chatThemes]);
 
     const chooseChatTheme = async (nextTheme) => {
-        if (!activeConversation?.id || savingChatTheme || !chatThemes.some(item => item.value === nextTheme)) return;
+        if (!activeConversation?.id || !chatThemes.some(item => item.value === nextTheme)) return;
         const conversationId = activeConversation.id;
+        const conversationKey = String(conversationId);
+        if (pendingChatThemeIdsRef.current.has(conversationKey)) return;
         const previousTheme = chatTheme;
         const storageKey = `chat-theme:${currentUserId}:${conversationId}`;
+        const requestVersion = (chatThemeRequestVersionsRef.current.get(conversationKey) || 0) + 1;
+        chatThemeRequestVersionsRef.current.set(conversationKey, requestVersion);
+        pendingChatThemeIdsRef.current.add(conversationKey);
         setChatTheme(nextTheme);
         setShowChatThemePicker(false);
-        setSavingChatTheme(true);
+        setSavingChatThemeIds(previous => new Set(previous).add(conversationKey));
         try { localStorage.setItem(storageKey, nextTheme); } catch { /* optional cache */ }
         try {
             await updateConversationChatTheme(conversationId, nextTheme);
         } catch (error) {
             toast.error(error.response?.data?.message || t('chatThemeSaveFailed'));
-            // Keep the cache consistent with the server when the save is rejected.
-            try { localStorage.setItem(storageKey, previousTheme); } catch { /* optional cache */ }
-            // Do not roll back the new conversation's UI if the user switched chats mid-request.
-            if (String(activeConversationIdRef.current) === String(conversationId)) {
-                setChatTheme(previousTheme);
+            // Roll back only if this request is still the newest choice for this conversation.
+            const latestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
+            if (latestVersion === requestVersion) {
+                try { localStorage.setItem(storageKey, previousTheme); } catch { /* optional cache */ }
+                if (String(activeConversationIdRef.current) === String(conversationId)) {
+                    setChatTheme(previousTheme);
+                }
             }
         } finally {
-            setSavingChatTheme(false);
+            pendingChatThemeIdsRef.current.delete(conversationKey);
+            setSavingChatThemeIds(previous => {
+                const next = new Set(previous);
+                next.delete(conversationKey);
+                return next;
+            });
         }
     };
     useEffect(() => {
@@ -1049,7 +1069,7 @@ export default function ChatWindow({
                                 <p className="mb-2 text-xs font-semibold text-slate-700 dark:text-slate-200">{t('chatTheme')}</p>
                                 <div className="grid grid-cols-2 gap-2">
                                     {chatThemes.map(item => (
-                                        <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatTheme} aria-pressed={chatTheme === item.value} className={`flex items-center gap-2 rounded-lg border p-2 text-left text-[11px] transition ${chatTheme === item.value ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-slate-200 dark:border-slate-700'} disabled:opacity-50`}>
+                                        <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatThemeIds.has(String(activeConversation?.id))} aria-pressed={chatTheme === item.value} className={`flex items-center gap-2 rounded-lg border p-2 text-left text-[11px] transition ${chatTheme === item.value ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-slate-200 dark:border-slate-700'} disabled:opacity-50`}>
                                             <span className="size-4 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: isDarkMode ? item.dark : item.color }} />
                                             <span className="truncate text-slate-700 dark:text-slate-200">{item.label}</span>
                                         </button>
