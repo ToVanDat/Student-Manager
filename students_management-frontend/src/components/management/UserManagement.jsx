@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { apiClient } from '@/api/client.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
-const initialsFor = (value = '') => value.trim().split(/[\\s._-]+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?';
+const initialsFor = (value = '') => value.trim().split(/[\s._-]+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?';
 
 export default function UserManagement() {
   const { language } = useLanguage();
@@ -37,6 +37,15 @@ export default function UserManagement() {
     const timer = setTimeout(() => { void load(); }, 250);
     return () => clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    if (!pendingDisable) return undefined;
+    const handleKeyDown = event => {
+      if (event.key === 'Escape') setPendingDisable(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingDisable]);
 
   const update = async (user, patch) => {
     if (savingId === user.id) return;
