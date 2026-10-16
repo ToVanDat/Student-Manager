@@ -9,6 +9,10 @@ const {
 } = require('../controller/classer_controller.js');
 
 const router = express.Router();
+const authMiddleware = require('../middleware/authMiddleware.js');
+const requireRole = require('../middleware/roleMiddleware.js');
+
+router.use(authMiddleware);
 
 
 // GET /api/classes
@@ -18,12 +22,12 @@ router.get('/', getClasses);
 router.get('/:id', getClassById);
 
 // POST /api/classes
-router.post('/', createClass);
+router.post('/', requireRole('admin'), createClass);
 
 // PATCH /api/classes/:id
-router.patch('/:id', updateClass);
+router.patch('/:id', requireRole('admin'), updateClass);
 
 // DELETE /api/classes/:id
-router.delete('/:id', deleteClass);
+router.delete('/:id', requireRole('admin'), deleteClass);
 
 module.exports = router;
