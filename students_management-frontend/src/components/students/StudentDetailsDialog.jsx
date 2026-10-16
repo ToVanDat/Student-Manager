@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CalendarDays, GraduationCap, Mail, RefreshCw, UserRound, X } from 'lucide-react';
 import { getStudentById } from '@/api/studentApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -20,59 +20,46 @@ export default function StudentDetailsDialog({ student, onClose, onEdit }) {
     const [details, setDetails] = useState(student || null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const requestSequenceRef = useRef(0);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
 
     const loadDetails = useCallback(async () => {
+        const requestSequence = ++requestSequenceRef.current;
         if (!student?.id) {
             setError(t('studentDetailsUnavailable'));
             setLoading(false);
             return;
         }
 
+        setDetails(student);
         setLoading(true);
         setError('');
         try {
             const result = await getStudentById(student.id);
-            setDetails(result?.data || result);
+            if (requestSequence === requestSequenceRef.current) {
+                setDetails(result?.data || result);
+            }
         } catch (requestError) {
-            setError(requestError.response?.data?.message || t('studentDetailsLoadFailed'));
+            if (requestSequence === requestSequenceRef.current) {
+                setError(requestError.response?.data?.message || t('studentDetailsLoadFailed'));
+            }
         } finally {
-            setLoading(false);
+            if (requestSequence === requestSequenceRef.current) setLoading(false);
         }
-    }, [student?.id, t]);
+    }, [student, t]);
 
     useEffect(() => {
-        let active = true;
-        const load = async () => {
-            if (!student?.id) {
-                if (active) {
-                    setError(t('studentDetailsUnavailable'));
-                    setLoading(false);
-                }
-                return;
-            }
-
-            setLoading(true);
-            setError('');
-            try {
-                const result = await getStudentById(student.id);
-                if (active) setDetails(result?.data || result);
-            } catch (requestError) {
-                if (active) setError(requestError.response?.data?.message || t('studentDetailsLoadFailed'));
-            } finally {
-                if (active) setLoading(false);
-            }
-        };
-
-        void load();
+        void loadDetails();
         const handleKeyDown = event => {
-            if (event.key === 'Escape') onClose?.();
+            if (event.key === 'Escape') onCloseRef.current?.();
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => {
-            active = false;
+            ++requestSequenceRef.current;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [student?.id, onClose, t]);
+    }, [loadDetails]);
 
     const display = details || student || {};
     const fullName = display.name || t('noData');
