@@ -61,9 +61,9 @@ function StudentDashboard({
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
             <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
                 <div className="app-card min-w-0 overflow-hidden">
-                    <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900">
-                        <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-800 ring-1 ring-blue-100 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
-                        {isAdmin && <button className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#174a7e] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#123b66]" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
+                    <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 py-5 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-800 dark:bg-blue-950/60 dark:text-blue-200"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
+                        {isAdmin && <button className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#174a7e] px-4 text-xs font-semibold text-white transition hover:bg-[#123b66]" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
                     </div>
                     <div className="px-4 pt-4 sm:px-6">
                         <StudentSearch value={search} onChange={onSearchChange} />
@@ -141,7 +141,7 @@ function StudentDashboard({
                 <div className="grid gap-4">
                     <StudentActivity />
                     <StudentClassStatistics classStatistics={classStatistics} />
-                    <div className="flex min-h-[100px] min-w-0 items-center gap-3 rounded-2xl border border-indigo-400/20 bg-linear-to-br from-[#5269e9] to-[#6256d9] p-4 text-white shadow-sm sm:p-5">
+                    <div className="flex min-h-[100px] min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-slate-800 sm:p-5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
                         <div className="flex size-[43px] shrink-0 items-center justify-center rounded-[11px] bg-white/15"><GraduationCap size={25} /></div>
                         <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">{t("academicManagement")}</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">{t('studentOverviewCard')}</p></div>
                         <ChevronRight className="shrink-0" size={18} />
@@ -150,7 +150,7 @@ function StudentDashboard({
             </div>
             {isAdmin && showForm && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                    <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-[18px] bg-white shadow-2xl dark:border dark:border-slate-700 dark:bg-slate-900">
+                    <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
                             <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
                             <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
