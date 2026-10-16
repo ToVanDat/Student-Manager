@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { apiClient } from "@/api/client.js";
+import { useLanguage } from "@/context/LanguageContext.jsx";
 
 import { useAuth } from "@/hooks/useAuth.js";
 import { useTheme } from "@/context/ThemeContext.jsx";
@@ -38,7 +40,39 @@ function Students() {
 
   const { user, logoutUser, updateUser } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const isAdmin = user?.role === "admin";
+  const [classes, setClasses] = useState([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!isAdmin) {
+      setClasses([]);
+      setClassesLoading(false);
+      setClassesError("");
+      return () => { active = false; };
+    }
+
+    setClassesLoading(true);
+    setClassesError("");
+    apiClient.get("/api/classes")
+      .then(({ data }) => {
+        if (active) setClasses(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[STUDENTS] Could not load class filter options:", error?.message);
+        setClasses([]);
+        setClassesError(error?.response?.data?.message || t("classesLoadFailed"));
+      })
+      .finally(() => {
+        if (active) setClassesLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [isAdmin, t]);
 
   // =====================================================
   // READ PAGINATION FROM URL
@@ -70,6 +104,12 @@ function Students() {
   const requestedSortBy = searchParams.get("sortBy") || "id";
   const sortBy = sortableColumns.includes(requestedSortBy) ? requestedSortBy : "id";
   const sortOrder = searchParams.get("sortOrder") === "desc" ? "desc" : "asc";
+  const rawClassFilter = searchParams.get("classId") || "";
+  const classFilter = Number.isSafeInteger(Number(rawClassFilter)) && Number(rawClassFilter) > 0
+    ? rawClassFilter
+    : "";
+  const rawGenderFilter = searchParams.get("gender") || "";
+  const genderFilter = ["Nam", "Nữ"].includes(rawGenderFilter) ? rawGenderFilter : "";
 
   // =====================================================
   // STUDENT STATE
@@ -115,7 +155,7 @@ function Students() {
     totalCount,
     statistics,
     classStatistics,
-  } = useStudents(search, isAdmin, currentPage, pageSize, sortBy, sortOrder);
+  } = useStudents(search, isAdmin, currentPage, pageSize, sortBy, sortOrder, classFilter, genderFilter);
 
   // =====================================================
   // PAGINATION
@@ -253,6 +293,29 @@ function Students() {
       params.delete("search");
     }
 
+    setSearchParams(params);
+  };
+
+  // =====================================================
+  // SERVER-SIDE FILTERS
+  // =====================================================
+
+  const handleRosterFilterChange = (key, value) => {
+    if (!["classId", "gender"].includes(key)) return;
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set(key, value);
+    else params.delete(key);
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
+    setSearchParams(params);
+  };
+
+  const handleClearRosterFilters = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("classId");
+    params.delete("gender");
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
     setSearchParams(params);
   };
 
@@ -654,6 +717,14 @@ function Students() {
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSortChange={handleSortChange}
+              classFilter={classFilter}
+              genderFilter={genderFilter}
+              classes={classes}
+              classesLoading={classesLoading}
+              classesError={classesError}
+              onClassFilterChange={value => handleRosterFilterChange("classId", value)}
+              onGenderFilterChange={value => handleRosterFilterChange("gender", value)}
+              onClearRosterFilters={handleClearRosterFilters}
 
               students={students}
 
