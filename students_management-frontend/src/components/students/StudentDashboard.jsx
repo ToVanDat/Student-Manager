@@ -12,6 +12,9 @@ function StudentDashboard({
     isAdmin = false,
     statistics,
     filteredCount,
+    sortBy = 'id',
+    sortOrder = 'asc',
+    onSortChange,
     students,
     filteredStudents,
     paginatedStudents,
@@ -78,13 +81,16 @@ function StudentDashboard({
                             onDelete={onDelete}
                             canManage={isAdmin}
                             loading={loading}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSortChange={onSortChange}
                         />
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-[11px] text-muted sm:px-6 dark:border-slate-800 dark:bg-slate-950/40">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span>
-                                {t('showing')} {firstStudentIndex}-{lastStudentIndex} {t('to')} {filteredStudents.length} {t('resultsCount')}
-                                {filteredStudents.length !== students.length && ` (${t('total')}: ${students.length} ${t('totalStudentsSuffix')})`}
+                                {t('showing')} {firstStudentIndex}-{lastStudentIndex} {t('to')} {filteredCount} {t('resultsCount')}
+                                {filteredCount !== statistics.totalStudents && ` (${t('total')}: ${statistics.totalStudents} ${t('totalStudentsSuffix')})`}
                             </span>
                             <label className="flex items-center gap-1.5">
                                 <span>{t('rows')}</span>
