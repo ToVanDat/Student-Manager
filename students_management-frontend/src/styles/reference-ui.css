@@ -208,10 +208,10 @@ textarea:focus-visible {
 [data-chat-theme] :is(.text-slate-500, .text-slate-400) {
   color: var(--chat-theme-meta);
 }
-[data-chat-theme] :is(.hover\\:bg-slate-50:hover, .hover\\:bg-slate-100:hover, .hover\\:bg-white:hover) {
+[data-chat-theme] :is(.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-white:hover) {
   background-color: var(--chat-theme-quote);
 }
-[data-chat-theme] .focus\\:ring-blue-50:focus {
+[data-chat-theme] .focus\:ring-blue-50:focus {
   --tw-ring-color: color-mix(in srgb, var(--chat-theme-accent) 20%, transparent);
 }
 
