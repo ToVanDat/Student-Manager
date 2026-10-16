@@ -103,12 +103,12 @@ function StudentTable({
                             {renderSortHeader('date_of_birth', t('dateOfBirthShort'), 'w-32')}
                             {renderSortHeader('gender', t('gender'), 'w-20')}
                             {renderSortHeader('class_code', t('className'), 'w-40')}
-                            {canManage && <th className="w-32 px-3 py-3.5">{t('actions')}</th>}
+                            {(canManage || onView) && <th className={`${canManage ? 'w-32' : 'w-12'} px-3 py-3.5`}>{canManage ? t('actions') : t('viewDetails')}</th>}
                         </tr>
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={canManage ? 8 : 7} className="px-4 py-10 text-center text-slate-400">{t('loadingStudents')}</td></tr>
+                            <tr><td colSpan={(canManage || onView) ? 8 : 7} className="px-4 py-10 text-center text-slate-400">{t('loadingStudents')}</td></tr>
                         ) : students.length === 0 ? (
                             <tr><td colSpan={canManage ? 8 : 7} className="px-4 py-10 text-center text-slate-400">{t('noStudentsShort')}</td></tr>
                         ) : students.map((student, index) => (
@@ -120,13 +120,13 @@ function StudentTable({
                                 <td className="truncate px-3 py-3.5 text-slate-500">{student.date_of_birth || '-'}</td>
                                 <td className="truncate px-3 py-3.5 text-slate-500">{student.gender || '-'}</td>
                                 <td className="truncate px-3 py-3.5 text-slate-500" title={student.class_code ? student.class_code + ' - ' + student.class_name : String(student.class_id)}>{student.class_code ? student.class_code + ' - ' + student.class_name : student.class_id}</td>
-                                <td className="px-3 py-3">
+                                {(canManage || onView) && <td className="px-3 py-3">
                                     <div className="flex items-center gap-1.5">
                                         {onView && <button type="button" title={t('viewDetails')} aria-label={t('viewDetails') + ' ' + (student.name || '')} className="inline-flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => onView(student)}><Eye size={14} /></button>}
-                                        <button type="button" title={t('edit')} aria-label={t('edit') + ' ' + (student.name || '')} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50" onClick={() => onEdit(student)}><Pencil size={12} />{t('edit')}</button>
-                                        <button type="button" title={t('delete')} aria-label={t('delete') + ' ' + (student.name || '')} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50" onClick={() => onDelete(student.id)}><Trash2 size={12} />{t('delete')}</button>
+                                        {canManage && <button type="button" title={t('edit')} aria-label={t('edit') + ' ' + (student.name || '')} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50" onClick={() => onEdit(student)}><Pencil size={12} />{t('edit')}</button>}
+                                        {canManage && <button type="button" title={t('delete')} aria-label={t('delete') + ' ' + (student.name || '')} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50" onClick={() => onDelete(student.id)}><Trash2 size={12} />{t('delete')}</button>}
                                     </div>
-                                </td>
+                                </td>}
                             </tr>
                         ))}
                     </tbody>
