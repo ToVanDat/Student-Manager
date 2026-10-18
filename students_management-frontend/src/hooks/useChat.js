@@ -100,6 +100,7 @@ export const useChat = () => {
             _e2ee: true
         };
         await saveE2EEHistoryMessage(currentUserId, receivedMessage);
+        if (Number(activeId) !== conversationId) toast.info('Bạn có tin nhắn E2EE mới.');
         setMessages(previous => previous.some(item => String(item.id) === messageId)
             ? previous
             : Number(activeId) === conversationId ? [...previous, receivedMessage] : previous);
@@ -1118,7 +1119,8 @@ export const useChat = () => {
         if (!activeId || !file) return;
         const e2eeStatusResponse = await e2eeRelayApi.getConversationStatus(activeId);
         if (e2eeStatusResponse.data?.data?.enabled) {
-            throw new Error('Tệp đính kèm E2EE chưa được tích hợp; không gửi tệp qua đường truyền không mã hóa.');
+            toast.error('Tệp đính kèm E2EE chưa được tích hợp; tệp chưa được gửi.');
+            return;
         }
 
         const tempId = `temp-file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
