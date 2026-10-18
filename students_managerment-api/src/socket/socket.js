@@ -8,6 +8,7 @@ const messageRepository = require('../../repository/messageRepository.js');
 const messageService = require('../../service/messageService.js');
 const notificationDeliveryService = require('../../service/notificationDeliveryService.js');
 const userRepository = require('../../repository/userRepository.js');
+const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
 
@@ -327,6 +328,15 @@ const initSocket = (server) => {
                 const isMember = await conversationRepository.isConversationMember(id, userId);
                 if (!isMember) {
                     return socket.emit('message:error', { message: 'Bạn không thuộc conversation này' });
+                }
+
+                // Fail closed: an E2EE conversation must not accept plaintext via
+                // the legacy Socket.IO event.
+                if (await e2eeRepository.isConversationE2EEEnabled(id)) {
+                    return socket.emit('message:error', {
+                        code: 'E2EE_REQUIRED',
+                        message: 'Cuộc trò chuyện đã bật E2EE; cần gửi ciphertext qua luồng mã hóa.'
+                    });
                 }
 
                 let replyTo = null;
