@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
+import { CheckCheck, Check, MoreHorizontal, Pencil, RotateCcw, Trash2, FileText, Download, Reply, Phone, Video, PhoneMissed, PhoneOff, ArrowDownLeft, ArrowUpRight, X, ShieldCheck } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import AvatarFallback from './AvatarFallback';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -563,6 +563,11 @@ export default function MessageBubble({
                         </div>
                     ) : (
                         <>
+                            {message._e2ee && (
+                                <span className="mb-1 inline-flex items-center gap-1 text-[10px] font-medium opacity-75" title="Tin nhắn mã hóa đầu cuối">
+                                    <ShieldCheck size={12} /> E2EE
+                                </span>
+                            )}
                             {content && (
                                 <p className="leading-relaxed whitespace-pre-wrap">
                                     {content}
