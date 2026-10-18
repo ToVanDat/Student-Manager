@@ -4,6 +4,8 @@ import { webSqliteStore } from '@open-e2ee/signal-protocol-sdk/local/store/web-s
 const listeners = new Set();
 let activeContext = null;
 let initialization = null;
+let initializingUserId = null;
+let generation = 0;
 
 const initialState = {
     status: 'idle',
@@ -26,6 +28,19 @@ const publish = (patch) => {
     }
 };
 
+const closeResources = async (client, storage) => {
+    try {
+        if (client && typeof client.stop === 'function') await client.stop();
+    } catch {
+        // Best-effort cleanup; preserve the original error.
+    }
+    try {
+        if (storage && typeof storage.close === 'function') await storage.close();
+    } catch {
+        // Best-effort cleanup; preserve the original error.
+    }
+};
+
 export const getE2EEClientState = () => ({ ...state });
 
 export const subscribeE2EEClientState = (listener) => {
@@ -36,8 +51,8 @@ export const subscribeE2EEClientState = (listener) => {
 };
 
 /**
- * Opens the SDK-managed, encrypted browser store for one account and creates
- * a local Signal Protocol client. No relay is attached in this foundation step:
+ * Opens the SDK-managed encrypted browser store for one account and creates a
+ * local Signal Protocol client. No relay is attached in this foundation step:
  * this function intentionally does not enable messaging or upload key material.
  *
  * OPFS is used to give each signed-in account a separate local store. We do not
@@ -56,47 +71,70 @@ export const initializeE2EEClient = async (userId) => {
         return activeContext.client;
     }
 
+    let token;
     if (initialization) {
         const pending = initialization;
-        try {
-            const existing = await pending;
-            if (activeContext?.userId === normalizedUserId) return existing;
-        } catch {
-            // The next account gets its own initialization attempt below.
+        if (initializingUserId === normalizedUserId) {
+            return pending;
         }
+
+        // A different account supersedes the in-flight initialization.
+        token = ++generation;
+        try {
+            await pending;
+        } catch {
+            // The previous attempt may have been superseded or failed.
+        }
+        if (token !== generation) {
+            const error = new Error('E2EE initialization was superseded by a newer account state.');
+            error.code = 'E2EE_INITIALIZATION_SUPERSEDED';
+            throw error;
+        }
+    } else {
+        token = ++generation;
     }
 
-    initialization = (async () => {
-        publish({
-            status: 'initializing',
-            userId: normalizedUserId,
-            deviceId: null,
-            relayState: 'not-configured',
-            errorCode: null
-        });
+    initializingUserId = normalizedUserId;
+    publish({
+        status: 'initializing',
+        userId: normalizedUserId,
+        deviceId: null,
+        relayState: 'not-configured',
+        errorCode: null
+    });
 
-        if (activeContext) {
-            await shutdownE2EEClient();
-        }
-
+    const pendingInitialization = (async () => {
         let storage;
         let client;
         try {
+            if (activeContext) {
+                const previous = activeContext;
+                activeContext = null;
+                await closeResources(previous.client, previous.storage);
+            }
+
             storage = await webSqliteStore({
                 name: `student-manager-e2ee-user-${normalizedUserId}.db`
             });
+            if (token !== generation) {
+                await closeResources(null, storage);
+                const error = new Error('E2EE initialization was superseded by a newer account state.');
+                error.code = 'E2EE_INITIALIZATION_SUPERSEDED';
+                throw error;
+            }
 
             client = await createSignalProtocolClient({
                 identity: { userId: normalizedUserId },
                 adapters: { storage }
             });
+            if (token !== generation) {
+                await closeResources(client, storage);
+                const error = new Error('E2EE initialization was superseded by a newer account state.');
+                error.code = 'E2EE_INITIALIZATION_SUPERSEDED';
+                throw error;
+            }
 
-            activeContext = {
-                userId: normalizedUserId,
-                storage,
-                client
-            };
-
+            activeContext = { userId: normalizedUserId, storage, client };
             publish({
                 status: 'local-ready',
                 userId: normalizedUserId,
@@ -104,51 +142,44 @@ export const initializeE2EEClient = async (userId) => {
                 relayState: 'not-configured',
                 errorCode: null
             });
-
             return client;
         } catch (error) {
-            try {
-                if (client && typeof client.stop === 'function') await client.stop();
-            } catch {
-                // Preserve the initialization error.
+            await closeResources(client, storage);
+            if (token === generation) {
+                const code = typeof error?.code === 'string' ? error.code : 'E2EE_LOCAL_STORE_FAILED';
+                publish({
+                    status: 'error',
+                    userId: normalizedUserId,
+                    deviceId: null,
+                    relayState: 'not-configured',
+                    errorCode: code
+                });
+                // Do not log SDK errors wholesale: some may contain protocol context.
+                console.error('[E2EE] Local client initialization failed', { code });
             }
-            try {
-                if (storage && typeof storage.close === 'function') await storage.close();
-            } catch {
-                // Preserve the initialization error.
-            }
-
-            const code = typeof error?.code === 'string' ? error.code : 'E2EE_LOCAL_STORE_FAILED';
-            publish({
-                status: 'error',
-                userId: normalizedUserId,
-                deviceId: null,
-                relayState: 'not-configured',
-                errorCode: code
-            });
-            // Do not log SDK errors wholesale: some may contain protocol context.
-            console.error('[E2EE] Local client initialization failed', { code });
             throw error;
         } finally {
-            initialization = null;
+            if (token === generation) {
+                initialization = null;
+                initializingUserId = null;
+            }
         }
     })();
 
-    return initialization;
+    initialization = pendingInitialization;
+    return pendingInitialization;
 };
 
 export const getE2EEClient = () => activeContext?.client ?? null;
 
 export const shutdownE2EEClient = async () => {
+    // Invalidate any pending async initialization before closing the active store.
+    generation += 1;
+    initialization = null;
+    initializingUserId = null;
+
     const context = activeContext;
     activeContext = null;
-
-    if (context?.client && typeof context.client.stop === 'function') {
-        await context.client.stop();
-    }
-    if (context?.storage && typeof context.storage.close === 'function') {
-        await context.storage.close();
-    }
-
+    await closeResources(context?.client, context?.storage);
     publish({ ...initialState });
 };
