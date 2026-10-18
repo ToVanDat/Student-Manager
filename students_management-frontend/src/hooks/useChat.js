@@ -915,6 +915,31 @@ export const useChat = () => {
     const editMessage = useCallback(async (messageId, content) => {
         const text = typeof content === 'string' ? content.trim() : '';
         if (!messageId || !text) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            if (Number(existing.sender_id) !== currentUserId) {
+                toast.error('Chỉ người gửi mới có thể chỉnh sửa tin nhắn E2EE.');
+                return;
+            }
+            const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
+            if (!conversation?.userId) throw new Error('Không xác định được người nhận E2EE.');
+            const targetMessageId = String(messageId).replace(/^e2ee:/, '');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'edit',
+                    targetMessageId,
+                    body: text,
+                    conversationId: String(existing.conversation_id),
+                    timestamp: Date.now()
+                });
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId)
+                    ? { ...item, content: text, is_edited: true } : item));
+            } catch (error) {
+                toast.error('Không thể gửi thay đổi E2EE tới thiết bị người nhận.');
+                console.warn('[E2EE] edit control send failed', { code: error?.code || 'E2EE_EDIT_FAILED' });
+            }
+            return;
+        }
 
         try {
             const res = await chatApi.editMessage(messageId, text);
@@ -930,7 +955,7 @@ export const useChat = () => {
         } catch (error) {
             console.error('Không thể chỉnh sửa message:', error);
         }
-    }, []);
+    }, [messages, conversations, currentUserId]);
 
     const recallMessage = useCallback(async (messageId) => {
         if (!messageId) return;
