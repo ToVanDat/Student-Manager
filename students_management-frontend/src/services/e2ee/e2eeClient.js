@@ -11,6 +11,12 @@ let initialization = null;
 let initializingUserId = null;
 let generation = 0;
 const decryptedMessageListeners = new Set();
+let activeAttachmentConversationId = null;
+
+export const setE2EEAttachmentConversationId = (conversationId) => {
+    const value = Number(conversationId);
+    activeAttachmentConversationId = Number.isSafeInteger(value) && value > 0 ? value : null;
+};
 
 const initialState = {
     status: 'idle',
@@ -154,7 +160,7 @@ export const initializeE2EEClient = async (userId) => {
             await relay.registerDevice(normalizedUserId, { deviceId, deviceType: 'web' });
             client = await createSignalProtocolClient({
                 identity: { userId: normalizedUserId, deviceId },
-                adapters: { storage, relay, remoteObjectStore: createE2EER2ObjectStore({ getConversationId: () => null }) }
+                adapters: { storage, relay, remoteObjectStore: createE2EER2ObjectStore({ getConversationId: () => activeAttachmentConversationId }) }
             });
             if (typeof client.registerHook !== 'function' || typeof client.startRelaySubscription !== 'function') {
                 throw new Error('Installed Signal Protocol SDK does not expose the expected receive lifecycle API.');
