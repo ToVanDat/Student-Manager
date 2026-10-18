@@ -134,7 +134,8 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
 
         async getPreKeyCount(requestedUserId, deviceId, type, identityType = 'aci') {
             assertOwnUser(requestedUserId);
-            return Number(unwrap(await e2eeRelayApi.getPreKeyCount(deviceId, type, identityType))?.count ?? unwrap(await e2eeRelayApi.getPreKeyCount(deviceId, type, identityType)) ?? 0);
+            const count = unwrap(await e2eeRelayApi.getPreKeyCount(deviceId, type, identityType));
+            return Number(count?.count ?? count ?? 0);
         },
 
         async getPreKeyInventory(requestedUserId, deviceId, identityType = 'aci') {
