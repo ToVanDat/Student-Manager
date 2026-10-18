@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const relayRepository = require('../repository/e2eeRelayRepository');
+const conversationRepository = require('../repository/conversationRepository');
 
 const fail = (statusCode, message, code) => {
     const error = new Error(message);
@@ -120,6 +121,14 @@ const sendEnvelope = async (senderUserId, conversationId, body = {}) => {
     });
 };
 
+const sendDirectEnvelope = async (senderUserId, targetUserId, body = {}) => {
+    const target = integer(targetUserId, 'targetUserId');
+    if (Number(body.targetUserId) !== target) throw fail(400, 'targetUserId trong URL và body không khớp');
+    const conversation = await conversationRepository.findDirectConversation(senderUserId, target);
+    if (!conversation) throw fail(404, 'Không tìm thấy conversation 1-1 với người nhận');
+    return sendEnvelope(senderUserId, conversation.id, body);
+};
+
 const pullEnvelopes = async (userId, deviceId, limit) =>
     relayRepository.pullEnvelopes(userId, integer(deviceId, 'deviceId', 1, 5), limit);
 
@@ -130,6 +139,6 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 
 module.exports = {
     registerDevice, getDevices, removeDevice, provisionIdentity, uploadPreKeys,
-    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, sendEnvelope,
+    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, sendEnvelope, sendDirectEnvelope,
     pullEnvelopes, markDelivered
 };
