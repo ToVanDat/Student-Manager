@@ -46,11 +46,27 @@ const completeAttachmentUpload = run(req => e2eeAttachmentService.completeUpload
 const createAttachmentDownloadTicket = run(req => e2eeAttachmentService.createDownloadTicket(
     Number(req.user.id), req.params.attachmentId, req.body?.readCapability
 ));
+const reconcileAttachmentUpload = run(req => e2eeAttachmentService.reconcileUpload(
+    Number(req.user.id), req.params.attachmentId
+));
+const deleteAttachmentObject = run(req => e2eeAttachmentService.deleteObject(
+    Number(req.user.id), req.params.attachmentId
+));
+const abandonAttachmentUpload = run(req => e2eeAttachmentService.abandonUpload(
+    Number(req.user.id), req.body
+));
+const resolveAttachmentUploadConversation = run(req => e2eeAttachmentService.resolveUploadConversation(
+    Number(req.user.id), req.body
+));
 
 module.exports = {
     createAttachmentUploadTicket,
     completeAttachmentUpload,
     createAttachmentDownloadTicket,
+    reconcileAttachmentUpload,
+    deleteAttachmentObject,
+    abandonAttachmentUpload,
+    resolveAttachmentUploadConversation,
     registerDevice: run(req => e2eeRelayService.registerDevice(Number(req.user.id), req.body)),
     getDevices: run(req => e2eeRelayService.getDevices(Number(req.user.id), Number(req.params.userId))),
     getIdentityKey: run(async req => {
