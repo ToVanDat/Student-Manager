@@ -30,7 +30,7 @@ This branch now contains a first end-to-end integration slice for **direct text 
 - Decrypted messages are labeled `E2EE` and merged with legacy server history. Existing legacy messages are not migrated or rewritten.
 - Encrypted edits, recalls, and reactions are sent as encrypted control messages and saved to the local encrypted history store.
 - Search for an activated E2EE conversation is local-only; search text is not sent to the server.
-- E2EE relay sends generic notification-center and Web Push alerts using the existing notification preferences; no decrypted body, filename, or attachment metadata is passed to notification services. The relay deduplicates notification decisions across recipient devices for one logical message.
+- E2EE relay requests generic notification-center and Web Push alerts through the existing notification service and preferences; it passes an empty message body and generic sender label, never decrypted body, filename, or attachment metadata. The relay deduplicates notification decisions across recipient devices for one logical message. Delivery is best-effort; notification-service failures do not fail a durable ciphertext send.
 - Attachments are deliberately blocked in E2EE conversations. They must not fall back to the legacy plaintext upload path.
 
 ## Important limitations still open
@@ -59,7 +59,9 @@ Still required before merge/production:
 - Confirm all latest workflow jobs passed; do not infer success from an earlier commit. The latest validated run passed API tests, frontend lint/build, the Signal Protocol round-trip, and the migration smoke test.
 - Execute migration tests against a disposable PostgreSQL schema matching the deployed schema.
 - Manual browser test across two separate profiles: link device, send text, reconnect/offline delivery, edit/recall/reaction, search, revoke device, missing local key, and failed provisioning rollback.
-- Add integration tests for real Express relay auth, concurrent prekey claims, retries/idempotency, socket subscription authorization, and the migration's constraints.
+- API unit tests now cover relay request validation, direct-recipient mismatch, missing direct conversation, mailbox device-slot validation, and acknowledgement ID validation. These mock the repository boundary and are **not** database/HTTP integration tests.
+- Still add integration tests for real Express relay auth, concurrent PostgreSQL prekey claims, durable mailbox pull/ack/retry/idempotency, notification deduplication under concurrent sends, socket subscription authorization, device revocation, and migration constraints.
+- The SDK provides a supported `adapters.remoteObjectStore` boundary and S3 adapter, but enabling it requires a broker with authenticated per-account object reservations, opaque server-generated object IDs, short-lived upload/download URLs, content-size/type enforcement, deletion propagation, and configured storage credentials. Do not ship cloud credentials to the browser. No storage provider/broker is configured in this branch, so E2EE attachments remain blocked.
 
 ## Key files
 
