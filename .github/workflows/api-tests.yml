@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - feature/chat-1to1-complete
+      - feature/e2ee-foundation
   pull_request:
     branches:
       - main
       - feature/chat-1to1-complete
+      - feature/e2ee-foundation
   workflow_dispatch:
 
 jobs:
