@@ -285,6 +285,9 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
                         pendingWake = false;
                         const token = await deviceTokenPromise;
                         const envelopes = unwrap(await e2eeRelayApi.pullMailbox(deviceId, 100, token)) || [];
+                        // Drain full mailbox pages even if no additional Socket.IO
+                        // wake-up arrives while the current batch is being handled.
+                        if (envelopes.length >= 100) pendingWake = true;
                         for (const envelope of envelopes) {
                             if (stopped) break;
                             try {
