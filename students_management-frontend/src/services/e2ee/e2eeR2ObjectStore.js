@@ -77,6 +77,7 @@ const saveConversationBinding = async (requestId, preparedAt, conversationId, ob
                 requestId,
                 preparedAt,
                 conversationId,
+                objectId,
                 createdAt: Date.now()
             });
             transaction.oncomplete = resolve;
@@ -159,8 +160,10 @@ export const createE2EER2ObjectStore = ({ getConversationId }) => ({
         if (!data?.attachmentId || !data?.uploadUrl || !data?.uploadToken || !data?.expiresAt) {
             throw new Error('E2EE attachment broker returned an incomplete upload reservation');
         }
+        const objectId = data.objectId || data.attachmentId;
+        await saveConversationBinding(input.requestId, input.preparedAt, conversationId, objectId);
         return {
-            objectId: data.objectId || data.attachmentId,
+            objectId,
             uploadUrl: data.uploadUrl,
             expiresAt: new Date(data.expiresAt).getTime(),
             headers: data.headers || {
@@ -176,7 +179,12 @@ export const createE2EER2ObjectStore = ({ getConversationId }) => ({
         const data = unwrap(await client.post(
             `${root}/attachments/${encodeURIComponent(objectId)}/complete`
         ));
-        if (data?.status !== 'uploaded') throw new Error('Broker did not confirm attachment upload completion');\n        if (data.requestId && Number.isSafeInteger(Number(data.preparedAt))) {\n            await removeConversationBinding(data.requestId, Number(data.preparedAt));\n        } else {\n            await removeBindingByObjectId(objectId);\n        }
+        if (data?.status !== 'uploaded') throw new Error('Broker did not confirm attachment upload completion');
+        if (data.requestId && Number.isSafeInteger(Number(data.preparedAt))) {
+            await removeConversationBinding(data.requestId, Number(data.preparedAt));
+        } else {
+            await removeBindingByObjectId(objectId);
+        }
     },
 
     async reconcileUpload({ objectId }) {
@@ -189,7 +197,8 @@ export const createE2EER2ObjectStore = ({ getConversationId }) => ({
             Number(data.contentLength) < 1 || typeof data.digest !== 'string') {
             throw new Error('Broker returned an invalid upload receipt');
         }
-        await removeBindingByObjectId(objectId);\n        return { objectId, contentLength: Number(data.contentLength), digest: fromBase64(data.digest) };
+        await removeBindingByObjectId(objectId);
+        return { objectId, contentLength: Number(data.contentLength), digest: fromBase64(data.digest) };
     },
 
     async abandonUpload({ requestId, preparedAt }) {
