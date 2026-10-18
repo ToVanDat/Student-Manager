@@ -234,8 +234,12 @@ export const sendE2EEMessage = async (recipientUserId, plaintext) => {
         error.code = 'E2EE_CLIENT_NOT_READY';
         throw error;
     }
-    if (typeof plaintext !== 'string' || !plaintext.trim()) {
-        const error = new Error('E2EE message content must be a non-empty string');
+    const validText = typeof plaintext === 'string' && plaintext.trim().length > 0;
+    const validControl = plaintext && typeof plaintext === 'object' && !Array.isArray(plaintext) &&
+        ['message', 'edit', 'recall', 'reaction'].includes(plaintext.type) &&
+        (plaintext.type !== 'message' || (typeof plaintext.body === 'string' && plaintext.body.trim().length > 0));
+    if (!validText && !validControl) {
+        const error = new Error('E2EE message payload is empty or has an unsupported control type');
         error.code = 'E2EE_EMPTY_MESSAGE';
         throw error;
     }
