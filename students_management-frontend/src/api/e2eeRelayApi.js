@@ -17,6 +17,8 @@ export const e2eeRelayApi = {
         client.get(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys/inventory`, { params: { identityType } }),
     fetchPreKeyBundle: (userId, deviceId, identityType = 'aci') =>
         client.get(`${root}/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}/prekey-bundle`, { params: { identityType } }),
+    getConversationStatus: (conversationId) => client.get(`${root}/conversations/${encodeURIComponent(conversationId)}/status`),
+    enableConversation: (conversationId) => client.post(`${root}/conversations/${encodeURIComponent(conversationId)}/enable`),
     sendDirectEnvelope: (userId, envelope) => client.post(`${root}/users/${encodeURIComponent(userId)}/envelopes`, envelope),
     sendEnvelope: (conversationId, envelope) =>
         client.post(`${root}/conversations/${encodeURIComponent(conversationId)}/envelopes`, envelope),
