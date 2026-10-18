@@ -173,6 +173,20 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             return unwrap(await e2eeRelayApi.getPreKeyInventory(deviceId, identityType, token));
         },
 
+        async getEcSignedPreKeyMetadata(requestedUserId, deviceId, identityType = 'aci') {
+            assertOwnUser(requestedUserId);
+            const token = await requireCredential(deviceId);
+            const inventory = unwrap(await e2eeRelayApi.getPreKeyInventory(deviceId, identityType, token));
+            return inventory?.ecSignedPreKey || null;
+        },
+
+        async getKemLastResortPreKeyMetadata(requestedUserId, deviceId, identityType = 'aci') {
+            assertOwnUser(requestedUserId);
+            const token = await requireCredential(deviceId);
+            const inventory = unwrap(await e2eeRelayApi.getPreKeyInventory(deviceId, identityType, token));
+            return inventory?.kemLastResortPreKey || null;
+        },
+
         async clearStaleKemPreKeys(requestedUserId, deviceId, identityType = 'aci') {
             assertOwnUser(requestedUserId);
             const token = await requireCredential(deviceId);
