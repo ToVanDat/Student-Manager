@@ -6,7 +6,11 @@ import { inMemoryStore } from '@open-e2ee/signal-protocol-sdk/local/store/memory
 const memoryStore = () => {
     const store = inMemoryStore();
     const getMetadata = store.getMetadata.bind(store);
-    store.getMetadata = async key => (await getMetadata(key)) ?? null;
+    store.getMetadata = async key => {
+        const value = (await getMetadata(key)) ?? null;
+        console.log('TEST_RELAY_META', key, value === null ? 'null' : typeof value);
+        return value;
+    };
     return store;
 };
 
