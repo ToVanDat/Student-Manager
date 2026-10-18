@@ -5,6 +5,9 @@ import { callApi } from '@/api/callApi';
 import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
 import { toast } from 'sonner';
+import { e2eeRelayApi } from '@/api/e2eeRelayApi';
+import { sendE2EEMessage, subscribeDecryptedE2EEMessages } from '@/services/e2ee/e2eeClient';
+import { loadE2EEHistory, saveE2EEHistoryMessage, deleteE2EEHistoryMessage } from '@/services/e2ee/e2eeHistoryStore';
 
 export const useChat = () => {
     const { user } = useAuth();
@@ -12,6 +15,7 @@ export const useChat = () => {
     const [conversations, setConversations] = useState([]);
     const [activeId, setActiveId] = useState(null);
     const [messages, setMessages] = useState([]);
+    const [e2eeHistoryIssue, setE2EEHistoryIssue] = useState(null);
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -25,6 +29,112 @@ export const useChat = () => {
     const messageSearchRequestRef = useRef(0);
     const seenMessageEventIdsRef = useRef(new Set());
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
+
+    useEffect(() => subscribeDecryptedE2EEMessages(async decrypted => {
+        const parseObject = value => {
+            if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+            if (typeof value !== 'string') return null;
+            try {
+                const parsed = JSON.parse(value);
+                return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+            } catch {
+                return null;
+            }
+        };
+
+        // SDK v11 delivers protocol content as JSON text. App-specific fields
+        // must be carried inside DataMessageInput.body because the SDK drops
+        // unknown top-level DataMessageInput properties.
+        const protocolContent = parseObject(decrypted?.content);
+        let payload = protocolContent || { type: 'message', body: String(decrypted?.content ?? '') };
+        if (protocolContent?.dataMessage && typeof protocolContent.dataMessage === 'object') {
+            const body = protocolContent.dataMessage.body;
+            const applicationPayload = parseObject(body);
+            payload = applicationPayload || { type: 'message', body: String(body ?? '') };
+        }
+        if (payload.dataMessage && typeof payload.dataMessage === 'object') {
+            const dataMessage = payload.dataMessage;
+            payload = parseObject(dataMessage.body) || {
+                type: 'message',
+                body: String(dataMessage.body ?? '')
+            };
+        } else if (!payload.type && typeof payload.body === 'string') {
+            payload = parseObject(payload.body) || { type: 'message', body: payload.body };
+        }
+        const senderId = Number(decrypted?.senderId ?? decrypted?.senderUserId);
+        const explicitConversationId = payload.conversationId ?? decrypted?.conversationId;
+        const targetConversation = explicitConversationId != null
+            ? conversations.find(item => String(item.id) === String(explicitConversationId))
+            : conversations.find(item => item.type === 'direct' && Number(item.userId) === senderId);
+        const conversationId = Number(explicitConversationId ?? targetConversation?.id);
+        if (!Number.isSafeInteger(conversationId) || conversationId <= 0) return;
+        if (payload.type === 'edit' && payload.targetMessageId) {
+            const targetId = `e2ee:${String(payload.targetMessageId)}`;
+            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId)
+                || (await loadE2EEHistory(currentUserId, conversationId)).find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
+            if (target) {
+                const updated = { ...target, content: String(payload.body || ''), is_edited: true };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === targetId ? updated : item));
+            }
+            return;
+        }
+        if (payload.type === 'recall' && payload.targetMessageId) {
+            const targetId = `e2ee:${String(payload.targetMessageId)}`;
+            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId)
+                || (await loadE2EEHistory(currentUserId, conversationId)).find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
+            if (target) {
+                const updated = { ...target, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === targetId ? updated : item));
+            }
+            return;
+        }
+        if (payload.type === 'reaction' && payload.targetMessageId && payload.emoji) {
+            const targetId = `e2ee:${String(payload.targetMessageId)}`;
+            const target = messages.find(item => String(item.id) === targetId)
+                || (await loadE2EEHistory(currentUserId, conversationId)).find(item => String(item.id) === targetId);
+            if (target) {
+                const existingReactions = target.reactions || [];
+                const alreadyReacted = existingReactions.some(reaction =>
+                    Number(reaction.user_id) === senderId && reaction.emoji === payload.emoji
+                );
+                const reactions = payload.action === 'remove'
+                    ? existingReactions.filter(reaction =>
+                        !(Number(reaction.user_id) === senderId && reaction.emoji === payload.emoji)
+                    )
+                    : alreadyReacted
+                        ? existingReactions
+                        : [...existingReactions, { user_id: senderId, emoji: payload.emoji }];
+                const updated = { ...target, reactions };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === targetId ? updated : item));
+            }
+            return;
+        }
+        if (payload.type !== 'message') return;
+
+        const messageId = `e2ee:${String(payload.appMessageId ?? decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
+        const createdAt = new Date(decrypted?.timestamp ?? decrypted?.receivedAt ?? payload.timestamp ?? Date.now()).toISOString();
+        const receivedMessage = {
+            id: messageId,
+            conversation_id: conversationId,
+            sender_id: Number.isFinite(senderId) ? senderId : 0,
+            content: String(payload.body ?? ''),
+            reply_to_message_id: payload.replyToMessageId ?? null,
+            created_at: createdAt,
+            status: 'sent',
+            is_read: false,
+            _e2ee: true
+        };
+        await saveE2EEHistoryMessage(currentUserId, receivedMessage);
+        if (Number(activeId) !== conversationId) toast.info('Bạn có tin nhắn E2EE mới.');
+        setMessages(previous => previous.some(item => String(item.id) === messageId)
+            ? previous
+            : Number(activeId) === conversationId ? [...previous, receivedMessage] : previous);
+        setConversations(previous => previous.map(item => Number(item.id) === conversationId
+            ? { ...item, lastMessage: receivedMessage.content, lastMessageAt: createdAt } : item));
+    }), [activeId, conversations, messages, currentUserId]);
 
     const fetchConversations = useCallback(async () => {
         try {
@@ -59,6 +169,7 @@ export const useChat = () => {
         }
 
         let cancelled = false;
+        setE2EEHistoryIssue(null);
 
         const loadMessages = async () => {
             setLoading(true);
@@ -67,7 +178,26 @@ export const useChat = () => {
                 if (cancelled) return;
 
                 const loadedMessages = res.data?.data || [];
+                let localE2EEMessages = [];
+                try {
+                    localE2EEMessages = await loadE2EEHistory(currentUserId, activeId);
+                    setE2EEHistoryIssue(null);
+                } catch (historyError) {
+                    setE2EEHistoryIssue({ conversationId: Number(activeId), code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE' });
+                    toast.error('Không thể mở lịch sử E2EE trên thiết bị này. Có thể kho khóa cục bộ đã mất.');
+                    console.warn('[E2EE] local history unavailable', {
+                        code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE'
+                    });
+                }
                 if (cancelled) return;
+                const seenMessageIds = new Set(loadedMessages.map(item => String(item.id)));
+                const mergedMessages = [
+                    ...loadedMessages,
+                    ...localE2EEMessages.filter(item => !seenMessageIds.has(String(item.id)))
+                ].sort((a, b) =>
+                    (Date.parse(a.created_at || a.createdAt || '') || 0) -
+                    (Date.parse(b.created_at || b.createdAt || '') || 0)
+                );
 
                 const callsResponse = await callApi.getHistory(100, 0, activeId);
                 if (cancelled) return;
@@ -77,7 +207,7 @@ export const useChat = () => {
                     _timelineType: 'call'
                 }));
                 setCallHistory(loadedCalls);
-                setMessages(loadedMessages);
+                setMessages(mergedMessages);
 
                 const membersResponse = await chatApi.getConversationMembers(activeId);
                 if (cancelled) return;
@@ -124,7 +254,7 @@ export const useChat = () => {
             }
             setIsTyping(false);
         };
-    }, [activeId]);
+    }, [activeId, currentUserId]);
 
     const refreshConversationMembers = useCallback(async (conversationId = activeId) => {
         if (!conversationId) return [];
@@ -725,6 +855,14 @@ export const useChat = () => {
 
         const requestId = ++messageSearchRequestRef.current;
         const conversationId = Number(activeId);
+        const statusResponse = await e2eeRelayApi.getConversationStatus(conversationId);
+        if (statusResponse.data?.data?.enabled) {
+            // Never send a search term for E2EE content to the server.
+            return messages.filter(item =>
+                Number(item.conversation_id) === conversationId &&
+                String(item.content || '').toLocaleLowerCase().includes(normalizedQuery.toLocaleLowerCase())
+            );
+        }
         const res = await chatApi.searchMessages(conversationId, normalizedQuery);
         if (requestId !== messageSearchRequestRef.current) return [];
 
@@ -733,7 +871,7 @@ export const useChat = () => {
             throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
         }
         return results;
-    }, [activeId]);
+    }, [activeId, messages]);
 
     const openSearchResult = useCallback((result) => {
         if (!result?.id) return;
@@ -854,6 +992,33 @@ export const useChat = () => {
     const editMessage = useCallback(async (messageId, content) => {
         const text = typeof content === 'string' ? content.trim() : '';
         if (!messageId || !text) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            if (Number(existing.sender_id) !== currentUserId) {
+                toast.error('Chỉ người gửi mới có thể chỉnh sửa tin nhắn E2EE.');
+                return;
+            }
+            const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
+            if (!conversation?.userId) throw new Error('Không xác định được người nhận E2EE.');
+            const targetMessageId = String(messageId).replace(/^e2ee:/, '');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'edit',
+                    targetMessageId,
+                    body: text,
+                    conversationId: String(existing.conversation_id),
+                    timestamp: Date.now()
+                });
+                const updatedLocal = { ...existing, content: text, is_edited: true };
+                await saveE2EEHistoryMessage(currentUserId, updatedLocal);
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId)
+                    ? updatedLocal : item));
+            } catch (error) {
+                toast.error('Không thể gửi thay đổi E2EE tới thiết bị người nhận.');
+                console.warn('[E2EE] edit control send failed', { code: error?.code || 'E2EE_EDIT_FAILED' });
+            }
+            return;
+        }
 
         try {
             const res = await chatApi.editMessage(messageId, text);
@@ -869,10 +1034,35 @@ export const useChat = () => {
         } catch (error) {
             console.error('Không thể chỉnh sửa message:', error);
         }
-    }, []);
+    }, [messages, conversations, currentUserId]);
 
     const recallMessage = useCallback(async (messageId) => {
         if (!messageId) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            if (Number(existing.sender_id) !== currentUserId) {
+                toast.error('Chỉ người gửi mới có thể thu hồi tin nhắn E2EE.');
+                return;
+            }
+            const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
+            if (!conversation?.userId) throw new Error('Không xác định được người nhận E2EE.');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'recall',
+                    targetMessageId: String(messageId).replace(/^e2ee:/, ''),
+                    conversationId: String(existing.conversation_id),
+                    timestamp: Date.now()
+                });
+                const recalledLocal = { ...existing, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
+                await saveE2EEHistoryMessage(currentUserId, recalledLocal);
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId)
+                    ? recalledLocal : item));
+            } catch (error) {
+                toast.error('Không thể gửi yêu cầu thu hồi E2EE tới thiết bị người nhận.');
+                console.warn('[E2EE] recall control send failed', { code: error?.code || 'E2EE_RECALL_FAILED' });
+            }
+            return;
+        }
 
         try {
             const res = await chatApi.recallMessage(messageId);
@@ -889,10 +1079,16 @@ export const useChat = () => {
             console.error('Không thể thu hồi message:', error);
             toast.error(error?.response?.data?.message || 'Không thể thu hồi tin nhắn');
         }
-    }, []);
+    }, [messages, conversations, currentUserId]);
 
     const deleteMessageForMe = useCallback(async (messageId) => {
         if (!messageId) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            await deleteE2EEHistoryMessage(currentUserId, messageId);
+            setMessages(previous => previous.filter(item => String(item.id) !== String(messageId)));
+            return;
+        }
 
         try {
             await chatApi.deleteMessageForMe(messageId);
@@ -903,10 +1099,35 @@ export const useChat = () => {
             console.error('Không thể xoá message cho tôi:', error);
             toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn');
         }
-    }, []);
+    }, [messages, currentUserId]);
 
     const deleteMessageForEveryone = useCallback(async (messageId) => {
         if (!messageId) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            if (Number(existing.sender_id) !== currentUserId) {
+                toast.error('Chỉ người gửi mới có thể xóa tin nhắn E2EE cho mọi người.');
+                return;
+            }
+            const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
+            if (!conversation?.userId) throw new Error('Không xác định được người nhận E2EE.');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'recall',
+                    targetMessageId: String(messageId).replace(/^e2ee:/, ''),
+                    conversationId: String(existing.conversation_id),
+                    timestamp: Date.now()
+                });
+                const recalledLocal = { ...existing, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
+                await saveE2EEHistoryMessage(currentUserId, recalledLocal);
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId)
+                    ? recalledLocal : item));
+            } catch (error) {
+                toast.error('Không thể gửi yêu cầu xóa E2EE tới thiết bị người nhận.');
+                console.warn('[E2EE] delete-for-everyone send failed', { code: error?.code || 'E2EE_DELETE_FAILED' });
+            }
+            return;
+        }
 
         try {
             const res = await chatApi.deleteMessageForEveryone(messageId);
@@ -923,10 +1144,15 @@ export const useChat = () => {
             console.error('Không thể xoá message cho tất cả:', error);
             toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn cho mọi người');
         }
-    }, []);
+    }, [messages, conversations, currentUserId]);
 
     const sendAttachment = useCallback(async (file, quality = 'standard', onUploadProgress) => {
         if (!activeId || !file) return;
+        const e2eeStatusResponse = await e2eeRelayApi.getConversationStatus(activeId);
+        if (e2eeStatusResponse.data?.data?.enabled) {
+            toast.error('Tệp đính kèm E2EE chưa được tích hợp; tệp chưa được gửi.');
+            return;
+        }
 
         const tempId = `temp-file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const placeholder = `📎 ${file.name}`;
@@ -1039,17 +1265,49 @@ export const useChat = () => {
         setMessages(prev => [...prev, optimisticMessage]);
 
         try {
-            // REST là nguồn xác nhận message chính; Socket.IO vẫn dùng để realtime
-            // cho người nhận. Khi socket event quay lại, duplicate sẽ bị bỏ qua.
+            const statusResponse = await e2eeRelayApi.getConversationStatus(activeId);
+            const e2eeStatus = statusResponse.data?.data;
+            if (e2eeStatus?.enabled) {
+                const conversation = conversations.find(item => Number(item.id) === Number(activeId));
+                if (conversation?.type !== 'direct' || !conversation?.userId) {
+                    throw new Error('E2EE hiện chỉ hỗ trợ tin nhắn văn bản trong chat 1-1.');
+                }
+                const appMessageId = crypto.randomUUID();
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'message',
+                    appMessageId,
+                    body: text,
+                    conversationId: String(activeId),
+                    timestamp: Date.now(),
+                    replyToMessageId
+                });
+                const finalMessage = {
+                    ...optimisticMessage,
+                    id: `e2ee:${appMessageId}`,
+                    status: 'sent',
+                    _e2ee: true
+                };
+                try {
+                    await saveE2EEHistoryMessage(currentUserId, finalMessage);
+                } catch (historyError) {
+                    toast.error('Tin nhắn đã gửi nhưng không thể lưu lịch sử E2EE cục bộ.');
+                    console.warn('[E2EE] sent message history save failed', {
+                        code: historyError?.code || 'E2EE_HISTORY_SAVE_FAILED'
+                    });
+                }
+                setMessages(prev => prev.map(item => item.tempId === tempId
+                    ? finalMessage
+                    : item));
+                return;
+            }
+
+            // A missing migration returns available=false, preserving legacy chat.
+            // If the status request itself fails, the catch path prevents plaintext fallback.
             const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
             const saved = res.data?.data;
-
             if (!saved?.id) throw new Error('Server không trả về message');
-
             setMessages(prev => prev.map(item =>
-                item.tempId === tempId
-                    ? { ...saved, status: 'sent' }
-                    : item
+                item.tempId === tempId ? { ...saved, status: 'sent' } : item
             ));
         } catch (error) {
             setMessages(prev => prev.map(item =>
@@ -1059,7 +1317,7 @@ export const useChat = () => {
             ));
             console.error('Không thể gửi message:', error);
         }
-    }, [activeId, currentUserId]);
+    }, [activeId, currentUserId, conversations]);
 
     const loadOlderMessages = useCallback(async () => {
         if (!activeId || loadingOlder || !hasMoreMessages) return;
@@ -1086,18 +1344,40 @@ export const useChat = () => {
     }, [activeId, loadingOlder, hasMoreMessages, messagePage]);
 
     const toggleReaction = useCallback(async (messageId, emoji) => {
-        if (!messageId || !emoji || !socket.connected) return;
-
-        const message = messages.find(item => Number(item.id) === Number(messageId));
+        if (!messageId || !emoji) return;
+        const message = messages.find(item => String(item.id) === String(messageId) ||
+            Number(item.id) === Number(messageId));
         const mine = (message?.reactions || []).some(
             reaction => Number(reaction.user_id) === currentUserId && reaction.emoji === emoji
         );
 
-        socket.emit(mine ? 'message:reaction:remove' : 'message:reaction:add', {
-            messageId,
-            emoji
-        });
-    }, [messages, currentUserId]);
+        if (message?._e2ee) {
+            const conversation = conversations.find(item => Number(item.id) === Number(message.conversation_id));
+            if (!conversation?.userId) return;
+            const targetMessageId = String(messageId).replace(/^e2ee:/, '');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'reaction',
+                    action: mine ? 'remove' : 'add',
+                    targetMessageId,
+                    emoji,
+                    conversationId: String(message.conversation_id),
+                    timestamp: Date.now()
+                });
+                const reactions = mine
+                    ? (message.reactions || []).filter(reaction => !(Number(reaction.user_id) === currentUserId && reaction.emoji === emoji))
+                    : [...(message.reactions || []), { user_id: currentUserId, emoji }];
+                const updated = { ...message, reactions };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId) ? updated : item));
+            } catch (error) {
+                toast.error('Không thể gửi phản ứng E2EE.');
+            }
+            return;
+        }
+        if (!socket.connected) return;
+        socket.emit(mine ? 'message:reaction:remove' : 'message:reaction:add', { messageId, emoji });
+    }, [messages, currentUserId, conversations]);
 
     const deleteFile = useCallback(async (file) => {
         if (!file?.id) return;
@@ -1254,6 +1534,7 @@ export const useChat = () => {
     return {
         conversations,
         activeId,
+        e2eeHistoryIssue,
         conversationMembers,
         setActiveId,
         addGroupMember,

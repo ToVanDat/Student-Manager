@@ -1,7 +1,11 @@
 const studentRepository = require('../repository/studentRepository');
 
 const getAllStudents = async () => {
-    return await studentRepository.getAllStudents();
+    return studentRepository.getAllStudents();
+};
+
+const getStudentPage = async (query) => {
+    return studentRepository.getStudentPage(query);
 };
 
 
@@ -26,6 +30,7 @@ const deleteStudent = async (id) => {
 
 module.exports = {
     getAllStudents,
+    getStudentPage,
     getStudentById,
     createStudent,
     updateStudent,

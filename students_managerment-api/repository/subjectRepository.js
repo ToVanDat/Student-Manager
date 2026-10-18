@@ -65,27 +65,26 @@ const createSubject = async (data) => {
 
 // Cập nhật môn học
 const updateSubject = async (id, data) => {
-
-    const {
-        subject_code,
-        subject_name,
-        credits
-    } = data;
-
-    const result = await pool.query(`
-        UPDATE subjects
-        SET
-            subject_code = $1,
-            subject_name = $2,
-            credits = $3
-        WHERE id = $4
-        RETURNING *
-    `, [
-        subject_code,
-        subject_name,
-        credits,
-        id
+    const allowedColumns = new Set([
+        'subject_code',
+        'subject_name',
+        'credits'
     ]);
+    const entries = Object.entries(data || {}).filter(([key]) => allowedColumns.has(key));
+
+    if (entries.length === 0) return null;
+
+    const values = entries.map(([, value]) => value);
+    const assignments = entries.map(([key], index) => `${key} = $${index + 1}`);
+    values.push(id);
+
+    const result = await pool.query(
+        `UPDATE subjects
+         SET ${assignments.join(', ')}
+         WHERE id = $${values.length}
+         RETURNING *`,
+        values
+    );
 
     return result.rows[0];
 };

@@ -131,6 +131,18 @@ const getConversationChatTheme = async (req, res, next) => {
         }
         return res.status(200).json({ data: { theme: await repository.getConversationChatTheme(conversationId, userId) } });
     } catch (error) {
+        if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
+            return res.status(503).json({
+                code: 'THEME_MIGRATION_REQUIRED',
+                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+            });
+        }
+        if (error?.code === '42P01' && /conversation_user_settings/i.test(error.message || '')) {
+            return res.status(503).json({
+                code: 'CHAT_SETTINGS_SCHEMA_NOT_INITIALIZED',
+                message: 'Chưa có bảng cài đặt cuộc trò chuyện. Hãy kiểm tra migration tạo conversation_user_settings trước khi chạy theme_preferences_migration.sql.'
+            });
+        }
         next(error);
     }
 };
@@ -154,6 +166,18 @@ const updateConversationChatTheme = async (req, res, next) => {
         const data = await repository.setConversationChatTheme(conversationId, userId, theme);
         return res.status(200).json({ message: 'Đã lưu giao diện cuộc trò chuyện', data: { theme: data.chat_theme } });
     } catch (error) {
+        if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
+            return res.status(503).json({
+                code: 'THEME_MIGRATION_REQUIRED',
+                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+            });
+        }
+        if (error?.code === '42P01' && /conversation_user_settings/i.test(error.message || '')) {
+            return res.status(503).json({
+                code: 'CHAT_SETTINGS_SCHEMA_NOT_INITIALIZED',
+                message: 'Chưa có bảng cài đặt cuộc trò chuyện. Hãy kiểm tra migration tạo conversation_user_settings trước khi chạy theme_preferences_migration.sql.'
+            });
+        }
         next(error);
     }
 };

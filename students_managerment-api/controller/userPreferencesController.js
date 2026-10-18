@@ -1,5 +1,23 @@
 const repository = require('../repository/userPreferencesRepository.js');
 
+const respondToPreferenceSchemaError = (res, error) => {
+    // PostgreSQL 42P01 = missing relation; 42703 = missing column.
+    // Return actionable setup guidance without exposing SQL or database internals.
+    if (error?.code === '42P01' && /user_preferences/i.test(error.message || '')) {
+        return res.status(503).json({
+            code: 'PREFERENCES_SCHEMA_NOT_INITIALIZED',
+            message: 'Chưa có bảng cài đặt tài khoản. Hãy chạy students_managerment-api/sql/user_preferences.sql trước.'
+        });
+    }
+    if (error?.code === '42703' && /theme/i.test(error.message || '')) {
+        return res.status(503).json({
+            code: 'THEME_MIGRATION_REQUIRED',
+            message: 'Database chưa có cột User Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+        });
+    }
+    return null;
+};
+
 const getPreferences = async (req, res) => {
     try {
         const preferences = await repository.getByUserId(req.user.sub);
@@ -11,6 +29,8 @@ const getPreferences = async (req, res) => {
             }
         });
     } catch (error) {
+        const schemaResponse = respondToPreferenceSchemaError(res, error);
+        if (schemaResponse) return schemaResponse;
         console.error('[USER PREFERENCES][GET]', error);
         return res.status(500).json({ message: 'Không thể tải cài đặt tài khoản' });
     }
@@ -39,6 +59,8 @@ const updatePreferences = async (req, res) => {
             }
         });
     } catch (error) {
+        const schemaResponse = respondToPreferenceSchemaError(res, error);
+        if (schemaResponse) return schemaResponse;
         console.error('[USER PREFERENCES][PATCH]', error);
         return res.status(500).json({ message: 'Không thể lưu cài đặt tài khoản' });
     }

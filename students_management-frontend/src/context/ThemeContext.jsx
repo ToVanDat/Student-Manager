@@ -184,7 +184,7 @@ export function ThemeProvider({ children }) {
                         themeRef.current = rollbackTheme;
                         setThemeState(rollbackTheme);
                         saveCachedTheme(requestUserId, rollbackTheme);
-                        toast.error(t('userThemeSaveFailed'));
+                        toast.error(error?.response?.data?.message || t('userThemeSaveFailed'));
                     }
                     console.error(
                         '[PREFERENCES] Could not save account theme:',

@@ -1,4 +1,5 @@
 const classerService = require('../service/classerService.js');
+const { respondWithDatabaseError } = require('../utils/databaseErrorResponse.js');
 
 const getClasses = async (req, res) => {
     try {
@@ -9,12 +10,7 @@ const getClasses = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -36,12 +32,7 @@ const getClassById = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -54,12 +45,7 @@ const createClass = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm lớp',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể thêm lớp');
     }
 };
 
@@ -83,12 +69,7 @@ const updateClass = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật lớp',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể cập nhật lớp');
     }
 };
 
@@ -112,12 +93,7 @@ const deleteClass = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể xóa lớp',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể xóa lớp');
     }
 };
 

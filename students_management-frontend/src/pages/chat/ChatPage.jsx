@@ -10,6 +10,10 @@ import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
 import { callApi } from '@/api/callApi.js';
 import socket from '@/socket/socket.js';
 import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
+import { toast } from 'sonner';
+import { e2eeRelayApi } from '@/api/e2eeRelayApi';
+import { useE2EEClient } from '@/hooks/useE2EEClient';
+import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -19,6 +23,9 @@ export default function ChatPage() {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { user, logoutUser, webRTCCall } = useAuth();
+    const e2eeClient = useE2EEClient();
+    const [e2eeStatus, setE2eeStatus] = useState(null);
+    const [enablingE2EE, setEnablingE2EE] = useState(false);
     const [callCenterOpen, setCallCenterOpen] = useState(() => new URLSearchParams(window.location.search).get('calls') === '1');
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const [chatNavCollapsed, setChatNavCollapsed] = useState(false);
@@ -116,6 +123,7 @@ export default function ChatPage() {
     const {
         conversations,
         activeId,
+        e2eeHistoryIssue,
         setActiveId,
         messages,
         callHistory,
@@ -250,14 +258,61 @@ export default function ChatPage() {
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
     );
+    useEffect(() => {
+        if (!activeId || !user?.id) {
+            setE2eeStatus(null);
+            return undefined;
+        }
+        let cancelled = false;
+        e2eeRelayApi.getConversationStatus(activeId)
+            .then(response => {
+                if (!cancelled) setE2eeStatus(response.data?.data || null);
+            })
+            .catch(error => {
+                if (!cancelled) {
+                    setE2eeStatus(null);
+                    console.warn('[E2EE] conversation status unavailable', {
+                        code: error?.response?.data?.code || 'E2EE_STATUS_UNAVAILABLE'
+                    });
+                }
+            });
+        return () => { cancelled = true; };
+    }, [activeId, user?.id, e2eeClient.status, e2eeClient.relayState]);
+
+    const enableActiveConversationE2EE = async () => {
+        if (!activeId || enablingE2EE) return;
+        if (!e2eeClient.isLocalStoreReady || e2eeClient.relayState !== 'connected') {
+            toast.error('Thiết bị này chưa sẵn sàng cho E2EE. Hãy kiểm tra kho khóa và kết nối relay.');
+            return;
+        }
+        if (!e2eeStatus?.canEnable) {
+            toast.error('Cần đăng ký khóa cho tất cả thiết bị của cả hai người trước khi bật E2EE.');
+            return;
+        }
+        const confirmed = window.confirm(
+            'Bật E2EE cho cuộc trò chuyện này? Tin nhắn cũ sẽ giữ nguyên; tin nhắn văn bản mới sẽ được mã hóa trên thiết bị. Tệp đính kèm E2EE chưa được hỗ trợ.'
+        );
+        if (!confirmed) return;
+        setEnablingE2EE(true);
+        try {
+            const response = await e2eeRelayApi.enableConversation(activeId);
+            setE2eeStatus(response.data?.data || { ...e2eeStatus, enabled: true });
+            toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.');
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Không thể bật E2EE.');
+        } finally {
+            setEnablingE2EE(false);
+        }
+    };
+
     const totalUnreadMessages = conversations.reduce(
         (total, conversation) => total + Math.max(0, Number(conversation.unreadCount) || 0),
         0
     );
 
     return (
-        <div className="min-h-screen bg-[#f6f8fb] dark:bg-slate-950 font-sans text-[#203754] dark:text-slate-100">
-            <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 backdrop-blur sm:px-6">
+        <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#f6f8fb] font-sans text-[#203754] dark:bg-slate-950 dark:text-slate-100">
+            <header className="relative z-30 flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 dark:border-slate-700 dark:bg-slate-900 sm:px-6">
                 <button
                     type="button"
                     onClick={() => setChatNavCollapsed(value => !value)}
@@ -280,6 +335,7 @@ export default function ChatPage() {
                             <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{unreadCallNotificationCount > 99 ? '99+' : unreadCallNotificationCount}</span>
                         )}
                     </button>
+                    <E2EEDeviceLinkPanel user={user} clientState={e2eeClient} />
                     <div className="relative" ref={accountMenuRef}>
                         <button
                             type="button"
@@ -321,13 +377,13 @@ export default function ChatPage() {
                 onMarkNotificationRead={markCallNotificationRead}
             />
 
-            <main className="chat-workspace h-[calc(100dvh-4rem)] min-h-0 p-0 sm:p-3 lg:p-4">
+            <main className="chat-workspace min-h-0 flex-1 overflow-hidden p-0 sm:p-3 lg:p-4">
                 <div className="chat-shell h-full min-h-0 overflow-hidden rounded-none border-0 bg-white shadow-panel dark:bg-slate-900 sm:rounded-xl sm:border sm:border-slate-200 dark:sm:border-slate-700">
                     <div className="flex h-full min-h-0 min-w-0">
                         <aside className={`hidden shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] py-5 text-[#263852] transition-[width,padding] duration-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 lg:flex ${chatNavCollapsed ? "w-[68px] px-2" : "w-[200px] px-3"}`}>
                             <div className={`mb-5 flex items-center gap-2 px-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`}>
                                 <span className="relative flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-[#174a7e] text-white"><GraduationCap size={21} /></span>
-                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs font-extrabold tracking-tight text-[#203754] dark:text-slate-100">Student Manager</strong><small className="mt-0.5 block text-[8px] font-semibold uppercase tracking-[.1em] text-[#2b6684] dark:text-sky-300">{t("universityPortal")}</small></span>}
+                                {!chatNavCollapsed && <span className="min-w-0"><strong className="block truncate text-xs font-extrabold tracking-tight text-[#203754] dark:text-slate-100">Student Manager</strong></span>}
                             </div>
                             <div className={`mb-2 px-2 ${chatNavCollapsed ? "text-center" : ""}`}>{!chatNavCollapsed && <p className="text-[9px] font-bold tracking-[.14em] text-slate-500 dark:text-slate-400">{t("navigation")}</p>}</div>
                             <nav className="space-y-1">
@@ -353,6 +409,11 @@ export default function ChatPage() {
                         {activeId && activeConversation ? (
                             <ChatWindow
                                 activeConversation={activeConversation}
+                                e2eeStatus={e2eeStatus}
+                                e2eeHistoryIssue={e2eeHistoryIssue?.conversationId === Number(activeId) ? e2eeHistoryIssue : null}
+                                e2eeClientReady={e2eeClient.isLocalStoreReady && e2eeClient.relayState === 'connected'}
+                                onEnableE2EE={enableActiveConversationE2EE}
+                                enablingE2EE={enablingE2EE}
                                 onBackToList={() => setActiveId(null)}
                                 messages={timelineMessages}
                                 currentUserId={Number(user?.id)}

@@ -749,21 +749,12 @@ const login = async (
 
 
     // =================================================
-    // SINGLE ACTIVE SESSION PER USER
+    // MULTIPLE ACTIVE SESSIONS PER USER
     // =================================================
-    // A new successful login revokes older sessions so an old browser cannot
-    // continue using an access token or refresh token from the previous login.
-    const existingSessions = await authRepository.findSessionsByUserId(user.id);
-    const activeSessions = existingSessions.filter(item => !item.revoked_at);
-
-    for (const oldSession of activeSessions) {
-        emitSessionRevoked(oldSession.id, 'NEW_LOGIN');
-        await authRepository.revokeRefreshTokensBySessionId(oldSession.id);
-    }
-
-    if (activeSessions.length > 0) {
-        await authRepository.revokeAllSessions(user.id);
-    }
+    // Keep existing sessions active when the same account signs in on another
+    // browser or device. Each login receives its own session ID and refresh
+    // token; explicit session revocation and credential changes still revoke
+    // sessions through the dedicated session/security flows.
 
     // =================================================
     // CREATE SESSION

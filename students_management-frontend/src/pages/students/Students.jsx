@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { apiClient } from "@/api/client.js";
+import { useLanguage } from "@/context/LanguageContext.jsx";
 
 import { useAuth } from "@/hooks/useAuth.js";
 import { useTheme } from "@/context/ThemeContext.jsx";
@@ -12,6 +14,11 @@ import StudentSidebar from "@/components/layout/StudentSidebar.jsx";
 import StudentDashboard from "@/components/students/StudentDashboard.jsx";
 import AdminOverview from "@/components/students/AdminOverview.jsx";
 import StudentPortalOverview from "@/components/students/StudentPortalOverview.jsx";
+import ClassManagement from "@/components/management/ClassManagement.jsx";
+import CatalogManagement from "@/components/management/CatalogManagement.jsx";
+import UserManagement from "@/components/management/UserManagement.jsx";
+import PermissionsOverview from "@/components/management/PermissionsOverview.jsx";
+import EnrollmentManagement from "@/components/management/EnrollmentManagement.jsx";
 import SettingsPage from "@/components/settings/SettingsPage.jsx";
 import AccountSettings from "@/components/settings/AccountSettings.jsx";
 import SecuritySettings from "@/components/settings/SecuritySettings.jsx";
@@ -38,7 +45,39 @@ function Students() {
 
   const { user, logoutUser, updateUser } = useAuth();
   const { isDarkMode, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const isAdmin = user?.role === "admin";
+  const [classes, setClasses] = useState([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!isAdmin) {
+      setClasses([]);
+      setClassesLoading(false);
+      setClassesError("");
+      return () => { active = false; };
+    }
+
+    setClassesLoading(true);
+    setClassesError("");
+    apiClient.get("/api/classes")
+      .then(({ data }) => {
+        if (active) setClasses(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[STUDENTS] Could not load class filter options:", error?.message);
+        setClasses([]);
+        setClassesError(error?.response?.data?.message || t("classesLoadFailed"));
+      })
+      .finally(() => {
+        if (active) setClassesLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [isAdmin, t]);
 
   // =====================================================
   // READ PAGINATION FROM URL
@@ -57,6 +96,25 @@ function Students() {
     : 10;
 
   const search = searchParams.get("search") || "";
+  const sortableColumns = [
+    "id",
+    "student_code",
+    "name",
+    "email",
+    "date_of_birth",
+    "gender",
+    "class_code",
+    "class_name",
+  ];
+  const requestedSortBy = searchParams.get("sortBy") || "id";
+  const sortBy = sortableColumns.includes(requestedSortBy) ? requestedSortBy : "id";
+  const sortOrder = searchParams.get("sortOrder") === "desc" ? "desc" : "asc";
+  const rawClassFilter = searchParams.get("classId") || "";
+  const classFilter = Number.isSafeInteger(Number(rawClassFilter)) && Number(rawClassFilter) > 0
+    ? rawClassFilter
+    : "";
+  const rawGenderFilter = searchParams.get("gender") || "";
+  const genderFilter = ["Nam", "Nữ"].includes(rawGenderFilter) ? rawGenderFilter : "";
 
   // =====================================================
   // STUDENT STATE
@@ -95,13 +153,15 @@ function Students() {
 
   const {
     students,
+    recentStudents,
     loading,
     error,
     loadStudents,
     filteredStudents,
+    totalCount,
     statistics,
     classStatistics,
-  } = useStudents(search, isAdmin);
+  } = useStudents(search, isAdmin, currentPage, pageSize, sortBy, sortOrder, classFilter, genderFilter);
 
   // =====================================================
   // PAGINATION
@@ -109,7 +169,7 @@ function Students() {
 
   const pageCount = Math.max(
     1,
-    Math.ceil(filteredStudents.length / pageSize)
+    Math.ceil(totalCount / pageSize)
   );
 
   /*
@@ -127,19 +187,17 @@ function Students() {
     Math.min(currentPage, pageCount)
   );
 
-  const firstStudentIndex = filteredStudents.length
+  const firstStudentIndex = totalCount
     ? (visiblePage - 1) * pageSize + 1
     : 0;
 
   const lastStudentIndex = Math.min(
     visiblePage * pageSize,
-    filteredStudents.length
+    totalCount
   );
 
-  const paginatedStudents = filteredStudents.slice(
-    firstStudentIndex - 1,
-    lastStudentIndex
-  );
+  // The API already returns exactly the requested page. Do not paginate the page again.
+  const paginatedStudents = filteredStudents;
 
   // =====================================================
   // FIX INVALID PAGE IN URL
@@ -241,6 +299,45 @@ function Students() {
       params.delete("search");
     }
 
+    setSearchParams(params);
+  };
+
+  // =====================================================
+  // SERVER-SIDE FILTERS
+  // =====================================================
+
+  const handleRosterFilterChange = (key, value) => {
+    if (!["classId", "gender"].includes(key)) return;
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set(key, value);
+    else params.delete(key);
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
+    setSearchParams(params);
+  };
+
+  const handleClearRosterFilters = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("classId");
+    params.delete("gender");
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
+    setSearchParams(params);
+  };
+
+  // =====================================================
+  // SORT
+  // =====================================================
+
+  const handleSortChange = (column) => {
+    if (!sortableColumns.includes(column)) return;
+
+    const nextSortOrder = sortBy === column && sortOrder === "asc" ? "desc" : "asc";
+    const params = new URLSearchParams(searchParams);
+    params.set("sortBy", column);
+    params.set("sortOrder", nextSortOrder);
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
     setSearchParams(params);
   };
 
@@ -576,7 +673,7 @@ function Students() {
               user={user}
               statistics={statistics}
               classStatistics={classStatistics}
-              students={students}
+              students={recentStudents}
               onOpenStudents={() => {
                 setActivePage("students");
                 const params = new URLSearchParams(searchParams);
@@ -595,36 +692,36 @@ function Students() {
             />
           )}
 
-          {isAdmin && ["classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"].includes(activePage) && (
-            <div className="mx-auto max-w-6xl">
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <div className="border-b border-slate-200 bg-gradient-to-r from-[#102d4f] via-[#174a7e] to-[#246b9d] px-6 py-7 text-white sm:px-8">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-200">{t("trainingGroup")}</p>
-                  <h1 className="mt-2 text-2xl font-bold tracking-tight">{({ classes: t("classes"), departments: t("departments"), subjects: t("subjects"), enrollments: t("enrollments"), semesters: t("semesters"), results: t("results"), users: t("user"), permissions: t("security") })[activePage]}</h1>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-100">{t(({ classes: "moduleClassesDescription", departments: "moduleDepartmentsDescription", subjects: "moduleSubjectsDescription", enrollments: "moduleEnrollmentsDescription", semesters: "moduleSemestersDescription", results: "moduleResultsDescription", users: "moduleUsersDescription", permissions: "modulePermissionsDescription" })[activePage])}</p>
-                </div>
-                <div className="p-6 sm:p-8">
-                  <div className="flex items-start gap-4 rounded-xl border border-blue-100 bg-blue-50/70 p-5 dark:border-blue-900/70 dark:bg-blue-950/30">
-                    <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm dark:bg-slate-800 dark:text-blue-300"><Building2 size={22} /></div>
-                    <div><h2 className="font-semibold text-slate-900 dark:text-white">{t(({ classes: "moduleClassesTitle", departments: "moduleDepartmentsTitle", subjects: "moduleSubjectsTitle", enrollments: "moduleEnrollmentsTitle", semesters: "moduleSemestersTitle", results: "moduleResultsTitle", users: "moduleUsersTitle", permissions: "modulePermissionsTitle" })[activePage])}</h2><p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{t(({ classes: "moduleClassesDescription", departments: "moduleDepartmentsDescription", subjects: "moduleSubjectsDescription", enrollments: "moduleEnrollmentsDescription", semesters: "moduleSemestersDescription", results: "moduleResultsDescription", users: "moduleUsersDescription", permissions: "modulePermissionsDescription" })[activePage])}</p></div>
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <button type="button" onClick={() => { setActivePage("dashboard"); const params = new URLSearchParams(searchParams); params.set("view", "dashboard"); params.delete("tab"); setSearchParams(params, { replace: true }); }} className="rounded-xl bg-[#163d66] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#205582]">{t("backToDashboard")}</button>
-                    <button type="button" onClick={() => { setActivePage("students"); const params = new URLSearchParams(searchParams); params.set("view", "students"); params.delete("tab"); setSearchParams(params, { replace: true }); }} className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">{t("manageStudents")}</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {isAdmin && activePage === "classes" && <ClassManagement />}
+
+          {isAdmin && ["departments", "subjects", "semesters"].includes(activePage) && <CatalogManagement resource={activePage} />}
+
+          {isAdmin && activePage === "enrollments" && <EnrollmentManagement />}
+
+          {isAdmin && activePage === "results" && <EnrollmentManagement view="results" />}
+
+          {isAdmin && activePage === "users" && <UserManagement />}
+
+          {isAdmin && activePage === "permissions" && <PermissionsOverview />}
+
           {activePage === "students" && isAdmin && (
             <StudentDashboard
               user={user}
               isAdmin={isAdmin}
               statistics={statistics}
 
-              filteredCount={
-                filteredStudents.length
-              }
+              filteredCount={totalCount}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
+              classFilter={classFilter}
+              genderFilter={genderFilter}
+              classes={classes}
+              classesLoading={classesLoading}
+              classesError={classesError}
+              onClassFilterChange={value => handleRosterFilterChange("classId", value)}
+              onGenderFilterChange={value => handleRosterFilterChange("gender", value)}
+              onClearRosterFilters={handleClearRosterFilters}
 
               students={students}
 

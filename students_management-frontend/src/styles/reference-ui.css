@@ -186,3 +186,26 @@ textarea:focus-visible {
     transition: none;
   }
 }
+
+/* Theme-aware surfaces inside the chat window.
+   ChatWindow already provides these semantic variables; map remaining utility-only
+   surfaces to them so the selected Chat Theme covers headers, menus and side panels too. */
+[data-chat-theme] .bg-white {
+  background-color: var(--chat-theme-surface);
+}
+[data-chat-theme] .bg-slate-50 {
+  background-color: var(--chat-theme-quote);
+}
+[data-chat-theme] .bg-slate-100 {
+  background-color: var(--chat-theme-bg);
+}
+[data-chat-theme] :is(.border-slate-100, .border-slate-200, .border-slate-300) {
+  border-color: var(--chat-theme-border);
+}
+[data-chat-theme] :is(.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-white:hover) {
+  background-color: var(--chat-theme-quote);
+}
+[data-chat-theme] .focus\:ring-blue-50:focus {
+  --tw-ring-color: color-mix(in srgb, var(--chat-theme-accent) 20%, transparent);
+}
+
