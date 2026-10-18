@@ -1,7 +1,7 @@
 -- Additive retry identity for SDK-compatible E2EE media upload reservations.
 -- Existing metadata rows remain readable; do not apply to production without backup/review.
 ALTER TABLE e2ee_attachment_objects
-    ADD COLUMN IF NOT EXISTS request_id UUID,
+    ADD COLUMN IF NOT EXISTS request_id TEXT,
     ADD COLUMN IF NOT EXISTS prepared_at BIGINT,
     ADD COLUMN IF NOT EXISTS ciphertext_sha256 BYTEA;
 
