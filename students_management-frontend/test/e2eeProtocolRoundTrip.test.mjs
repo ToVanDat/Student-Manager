@@ -228,17 +228,22 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
         assert.ok(result.messageId);
         assert.equal(receivedPrimary.length, 1);
         assert.equal(receivedLinked.length, 1);
-        // SDK v11 intentionally returns decrypted plaintext as a string.
-        const primaryContent = typeof receivedPrimary[0].content === 'string'
-            ? JSON.parse(receivedPrimary[0].content)
-            : receivedPrimary[0].content;
-        const linkedContent = typeof receivedLinked[0].content === 'string'
-            ? JSON.parse(receivedLinked[0].content)
-            : receivedLinked[0].content;
-        assert.equal(primaryContent.dataMessage.body, 'e2ee multi-device round-trip');
-        assert.equal(linkedContent.dataMessage.body, 'e2ee multi-device round-trip');
-        assert.equal(primaryContent.dataMessage.appMessageId, 'test-message-multi-device');
-        assert.equal(linkedContent.dataMessage.appMessageId, 'test-message-multi-device');
+        // SDK v11 exposes the decrypted protocol content as a string. Custom
+        // application fields are deliberately carried as JSON inside body.
+        const getApplicationContent = received => {
+            let content = typeof received.content === 'string'
+                ? JSON.parse(received.content)
+                : received.content;
+            if (content?.dataMessage) content = content.dataMessage.body;
+            if (typeof content === 'string') content = JSON.parse(content);
+            return content;
+        };
+        const primaryContent = getApplicationContent(receivedPrimary[0]);
+        const linkedContent = getApplicationContent(receivedLinked[0]);
+        assert.equal(primaryContent.body, 'e2ee multi-device round-trip');
+        assert.equal(linkedContent.body, 'e2ee multi-device round-trip');
+        assert.equal(primaryContent.appMessageId, 'test-message-multi-device');
+        assert.equal(linkedContent.appMessageId, 'test-message-multi-device');
     } finally {
         await alice.stop?.();
         await bobPrimary.stop?.();
