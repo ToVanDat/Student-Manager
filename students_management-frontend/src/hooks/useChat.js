@@ -1073,17 +1073,33 @@ export const useChat = () => {
         setMessages(prev => [...prev, optimisticMessage]);
 
         try {
-            // REST là nguồn xác nhận message chính; Socket.IO vẫn dùng để realtime
-            // cho người nhận. Khi socket event quay lại, duplicate sẽ bị bỏ qua.
+            const statusResponse = await e2eeRelayApi.getConversationStatus(activeId);
+            const e2eeStatus = statusResponse.data?.data;
+            if (e2eeStatus?.enabled) {
+                const conversation = conversations.find(item => Number(item.id) === Number(activeId));
+                if (conversation?.type !== 'direct' || !conversation?.userId) {
+                    throw new Error('E2EE hiện chỉ hỗ trợ tin nhắn văn bản trong chat 1-1.');
+                }
+                const sent = await sendE2EEMessage(conversation.userId, {
+                    type: 'message',
+                    body: text,
+                    conversationId: String(activeId),
+                    timestamp: Date.now(),
+                    replyToMessageId
+                });
+                setMessages(prev => prev.map(item => item.tempId === tempId
+                    ? { ...item, id: `e2ee:${sent?.messageId || tempId}`, status: 'sent', _e2ee: true }
+                    : item));
+                return;
+            }
+
+            // A missing migration returns available=false, preserving legacy chat.
+            // If the status request itself fails, the catch path prevents plaintext fallback.
             const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
             const saved = res.data?.data;
-
             if (!saved?.id) throw new Error('Server không trả về message');
-
             setMessages(prev => prev.map(item =>
-                item.tempId === tempId
-                    ? { ...saved, status: 'sent' }
-                    : item
+                item.tempId === tempId ? { ...saved, status: 'sent' } : item
             ));
         } catch (error) {
             setMessages(prev => prev.map(item =>
@@ -1093,7 +1109,7 @@ export const useChat = () => {
             ));
             console.error('Không thể gửi message:', error);
         }
-    }, [activeId, currentUserId]);
+    }, [activeId, currentUserId, conversations]);
 
     const loadOlderMessages = useCallback(async () => {
         if (!activeId || loadingOlder || !hasMoreMessages) return;
