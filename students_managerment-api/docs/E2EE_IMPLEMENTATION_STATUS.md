@@ -39,7 +39,7 @@ This branch now contains a first end-to-end integration slice for **direct text 
 2. The QR provisioning flow and server endpoints have been added, but must be exercised manually across two separate browser profiles and audited for interrupted/expired provisioning, rollback, token loss, and linked-device re-registration.
 3. E2EE local history is per device. It is not a server-side decrypted transcript and is not synchronized to a newly linked device. Legacy history remains available from the existing server APIs.
 4. E2EE attachments are not implemented because there is no configured encrypted remote-object-store adapter. The UI blocks uploads rather than leaking plaintext.
-5. E2EE notifications are generic in-app notifications only. Push delivery and durable notification-center records for encrypted messages are not yet wired.
+5. E2EE notifications are generic and best-effort. The relay calls the existing notification-center/Web Push delivery service with a generic sender label and an empty message body. Delivery failure does not fail an already durable ciphertext send; validate behavior against the configured push provider and recipient preferences.
 6. Group-chat E2EE is not implemented. The activation endpoint intentionally rejects group conversations.
 7. Device revocation/rotation invalidates relay credentials and prekeys, but full UX for account recovery after loss of the primary device's identity/private key is not implemented. Do not silently generate a replacement identity for an existing account.
 8. The PostgreSQL migration passed a smoke test twice against a disposable PostgreSQL 16 database with minimal `users`, `conversations`, and `messages` base tables, including idempotency. It has **not** been applied or validated against the user's actual database. Check existing constraints/types and test against a disposable schema matching the deployed schema first.
@@ -57,7 +57,7 @@ CI workflow `.github/workflows/quality-checks.yml` now includes:
 Still required before merge/production:
 
 - Confirm all latest workflow jobs passed for the final commit; do not infer success from an earlier commit. The API workflow now runs the migration twice and the live relay integration test against the same disposable PostgreSQL service, plus the API unit suite and frontend lint/build. The separate quality workflow runs the SDK round-trip, backend tests, frontend lint, and production build.
-- Execute migration tests against a disposable PostgreSQL schema matching the deployed schema.
+- Execute migration tests against a disposable PostgreSQL schema matching the deployed schema. The current live integration job uses a purpose-built minimal schema, not a copy of the deployed schema.
 - Manual browser test across two separate profiles: link device, send text, reconnect/offline delivery, edit/recall/reaction, search, revoke device, missing local key, and failed provisioning rollback.
 - API unit tests cover relay request validation, direct-recipient mismatch, missing direct conversation, mailbox device-slot validation, acknowledgement ID validation, and repository query paths. Those mocked tests remain useful but are not a substitute for the new live PostgreSQL integration test.
 - Added an Express HTTP integration test for JWT/session middleware and per-device credential middleware around the mailbox route. Redis, session/user lookups, and repository calls are stubbed; it verifies the HTTP/auth chain, not live database integration.
