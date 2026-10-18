@@ -38,8 +38,8 @@ export const useChat = () => {
         const targetConversation = explicitConversationId != null
             ? conversations.find(item => String(item.id) === String(explicitConversationId))
             : conversations.find(item => item.type === 'direct' && Number(item.userId) === senderId);
-        if (!targetConversation?.id) return;
-        const conversationId = Number(targetConversation.id);
+        const conversationId = Number(explicitConversationId ?? targetConversation?.id);
+        if (!Number.isSafeInteger(conversationId) || conversationId <= 0) return;
         if (payload.type === 'edit' && payload.targetMessageId) {
             const targetId = `e2ee:${String(payload.targetMessageId)}`;
             const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
