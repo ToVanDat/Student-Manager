@@ -37,7 +37,7 @@ This branch now contains a first end-to-end integration slice for **direct text 
 
 1. **Protocol round-trip CI passes on the latest validated commit.** The test validates SDK encryption/decryption and fan-out to two recipient devices through an in-memory relay. It does not validate the deployed Express/PostgreSQL relay or real-browser storage.
 2. The QR provisioning flow and server endpoints have been added, but must be exercised manually across two separate browser profiles and audited for interrupted/expired provisioning, rollback, token loss, and linked-device re-registration.
-3. E2EE local history is per device. It is not a server-side decrypted transcript and is not synchronized to a newly linked device. Legacy history remains available from the existing server APIs.
+3. E2EE local history is per device. It is not a server-side decrypted transcript and is not synchronized to a newly linked device. Legacy history remains available from the existing server APIs. If the local history key is missing or history decryption fails, the chat now shows a warning and does not auto-generate a replacement key.
 4. E2EE attachments are not implemented because there is no configured encrypted remote-object-store adapter. The UI blocks uploads rather than leaking plaintext.
 5. E2EE notifications are generic and best-effort. The relay calls the existing notification-center/Web Push delivery service with a generic sender label and an empty message body. Delivery failure does not fail an already durable ciphertext send; validate behavior against the configured push provider and recipient preferences.
 6. Group-chat E2EE is not implemented. The activation endpoint intentionally rejects group conversations.
