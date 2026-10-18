@@ -99,15 +99,15 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
     let expiresAt;
     if (requestId) {
         const existing = await pool.query(
-            `SELECT id, object_key, ciphertext_size, ciphertext_sha256, read_capability_digest, status, expires_at
+            `SELECT id, conversation_id, object_key, ciphertext_size, ciphertext_sha256, read_capability_digest, status, expires_at
                FROM e2ee_attachment_objects
-              WHERE uploaded_by = $1 AND conversation_id = $2 AND request_id = $3 AND prepared_at = $4
+              WHERE uploaded_by = $1 AND request_id = $2 AND prepared_at = $3
               LIMIT 1`,
-            [userId, id, requestId, preparedAt]
+            [userId, requestId, preparedAt]
         );
         const row = existing.rows[0];
         if (row) {
-            if (Number(row.ciphertext_size) !== size ||
+            if (Number(row.conversation_id) !== id || Number(row.ciphertext_size) !== size ||
                 !row.ciphertext_sha256 ||
                 !Buffer.from(row.ciphertext_sha256).equals(digest) ||
                 !row.read_capability_digest || !Buffer.from(row.read_capability_digest).equals(readCapabilityDigest)) {
