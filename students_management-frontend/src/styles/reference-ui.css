@@ -209,3 +209,109 @@ textarea:focus-visible {
   --tw-ring-color: color-mix(in srgb, var(--chat-theme-accent) 20%, transparent);
 }
 
+
+
+/* -------------------------------------------------------------------------
+   Student Manager UI refresh — shared polish across management and chat.
+   Intentionally presentation-only: no routing, API, permissions, or data logic.
+   ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --ui-canvas: #f5f7fb;
+  --ui-surface: #ffffff;
+  --ui-line: #e5eaf2;
+  --ui-ink: #18243a;
+  --ui-muted: #68778e;
+  --ui-accent: #4263d8;
+  --ui-accent-soft: #edf2ff;
+  --ui-radius: 14px;
+  --ui-shadow: 0 4px 18px rgba(23, 35, 60, .045);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  color: var(--ui-ink);
+  background: var(--ui-canvas);
+  font-feature-settings: "ss01" on, "cv11" on;
+  text-rendering: optimizeLegibility;
+}
+.dark {
+  color-scheme: dark;
+  --ui-canvas: #0b1120;
+  --ui-surface: #111a2b;
+  --ui-line: #27344a;
+  --ui-ink: #e6edf8;
+  --ui-muted: #9aa9bf;
+  --ui-accent: #8ba5ff;
+  --ui-accent-soft: #1c2a4a;
+  --ui-shadow: 0 6px 22px rgba(0, 0, 0, .16);
+}
+.dark body { background: var(--ui-canvas); color: var(--ui-ink); }
+
+/* Keep content readable on long admin pages and avoid horizontal overflow. */
+#root { min-height: 100vh; min-width: 320px; }
+main, section, article, aside { min-width: 0; }
+img, video, canvas, svg { max-width: 100%; }
+table { width: 100%; }
+thead th {
+  background: #f8faff;
+  color: #596981;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .045em;
+  white-space: nowrap;
+}
+.dark thead th { background: #172237; color: #b5c2d6; }
+tbody tr { transition: background-color .14s ease; }
+tbody tr:hover { background-color: #f7f9fd; }
+.dark tbody tr:hover { background-color: #172237; }
+td, th { vertical-align: middle; }
+
+/* Shared form controls: calm borders, visible focus, and consistent heights. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select, textarea {
+  border-color: #d9e1ed;
+  background-color: #fff;
+  color: #1e293b;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):hover,
+select:hover, textarea:hover { border-color: #b8c7df; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus, textarea:focus {
+  border-color: #6381ed;
+  box-shadow: 0 0 0 3px rgba(83, 118, 232, .12);
+  outline: none;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark select, .dark textarea {
+  border-color: #35445c;
+  background-color: #111a2b;
+  color: #e6edf8;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+.dark select:focus, .dark textarea:focus {
+  border-color: #718df1;
+  box-shadow: 0 0 0 3px rgba(113, 141, 241, .16);
+}
+
+/* Reusable surfaces already used by pages become more consistent without
+   changing their markup or component behavior. */
+.app-card, .dashboard-surface, .feature-surface {
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
+}
+a { text-underline-offset: 3px; }
+button:disabled { opacity: .58; }
+::placeholder { opacity: 1; color: #95a2b6; }
+.dark ::placeholder { color: #8292aa; }
+
+/* Toasts and dialogs should sit above page chrome and remain usable on mobile. */
+[role="dialog"], dialog { max-width: min(96vw, 52rem); }
+@media (max-width: 640px) {
+  [role="dialog"], dialog { max-height: 88dvh; overflow-y: auto; }
+  table { font-size: .875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
