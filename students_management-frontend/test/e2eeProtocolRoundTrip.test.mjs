@@ -201,11 +201,13 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
     const relay = new InMemoryRelay();
     const receivedPrimary = [];
     const receivedLinked = [];
+    await relay.registerDevice('alice', { deviceId: 1 });
     const alice = await createSignalProtocolClient({
         identity: { userId: 'alice', deviceId: 1 },
         adapters: { storage: memoryStore(), relay }
     });
 
+    await relay.registerDevice('bob', { deviceId: 1 });
     const bobPrimaryStorage = memoryStore();
     const bobPrimary = await createSignalProtocolClient({
         identity: { userId: 'bob', deviceId: 1 },
@@ -217,6 +219,7 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
 
     // Simulate the SDK identity material transferred by the encrypted device
     // provisioning flow. Device 2 still generates its own signed and one-time keys.
+    await relay.registerDevice('bob', { deviceId: 2 });
     const bobLinkedStorage = memoryStore();
     await bobLinkedStorage.storeIdentityKey(await bobPrimaryStorage.getIdentityKey());
     await bobLinkedStorage.setLocalRegistrationId(await bobPrimaryStorage.getLocalRegistrationId());
