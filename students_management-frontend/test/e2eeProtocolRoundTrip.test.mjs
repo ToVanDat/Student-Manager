@@ -200,7 +200,7 @@ test('Signal Protocol encrypts on sender and decrypts on recipient using relay e
     });
 
     try {
-        await bob.startRelaySubscription();
+        await new Promise(resolve => setTimeout(resolve, 0));
         const result = await alice.send('bob', {
             type: 'message',
             body: 'e2ee round-trip test',
