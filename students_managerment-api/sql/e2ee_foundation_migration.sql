@@ -132,11 +132,14 @@ CREATE TABLE IF NOT EXISTS e2ee_sdk_identities (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     identity_type TEXT NOT NULL DEFAULT 'aci' CHECK (identity_type IN ('aci', 'pni')),
     identity_public JSONB NOT NULL,
+    identity_commitment TEXT,
     revision BIGINT NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, identity_type)
 );
+
+ALTER TABLE e2ee_sdk_identities ADD COLUMN IF NOT EXISTS identity_commitment TEXT;
 
 CREATE TABLE IF NOT EXISTS e2ee_sdk_prekeys (
     id BIGSERIAL PRIMARY KEY,
