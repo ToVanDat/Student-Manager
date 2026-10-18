@@ -93,8 +93,8 @@ const sendEnvelope = async (senderUserId, conversationId, body = {}) => {
     const targetUserId = integer(body.targetUserId, 'targetUserId');
     const targetDeviceId = integer(body.targetDeviceId, 'targetDeviceId', 1, 5);
     const senderDeviceId = integer(body.senderDeviceId, 'senderDeviceId', 1, 5);
-    if (typeof body.ciphertext !== 'string' || !body.ciphertext || body.ciphertext.length > 2_000_000) {
-        throw fail(400, 'ciphertext phải là chuỗi base64 không rỗng, tối đa 2 MB');
+    if (typeof body.ciphertext !== 'string' || !body.ciphertext || body.ciphertext.length > 700_000) {
+        throw fail(400, 'ciphertext phải là chuỗi base64 không rỗng, tối đa 700 KB');
     }
     if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(body.ciphertext)) {
         throw fail(400, 'ciphertext không phải base64 hợp lệ');
