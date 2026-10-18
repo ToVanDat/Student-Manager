@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS e2ee_devices (
     signed_prekey_signature TEXT NOT NULL,
     signed_prekey_id BIGINT NOT NULL,
     registration_id INTEGER NOT NULL,
-    device_token_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     revoked_at TIMESTAMPTZ,
@@ -109,6 +108,7 @@ CREATE TABLE IF NOT EXISTS e2ee_sdk_devices (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     device_id SMALLINT NOT NULL CHECK (device_id BETWEEN 1 AND 5),
     registration_id INTEGER NOT NULL,
+    device_token_hash TEXT,
     device_type TEXT NOT NULL DEFAULT 'web'
         CHECK (device_type IN ('web', 'desktop', 'mobile', 'tablet')),
     encrypted_device_name TEXT,
@@ -123,6 +123,8 @@ CREATE TABLE IF NOT EXISTS e2ee_sdk_devices (
     UNIQUE (user_id, device_id),
     UNIQUE (user_id, device_id, identity_type)
 );
+
+ALTER TABLE e2ee_sdk_devices ADD COLUMN IF NOT EXISTS device_token_hash TEXT;
 
 -- Device slots are unique only while active. Revoked slots can be reused without
 -- deleting the historical device row or allowing the old credential to work.
