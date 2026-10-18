@@ -9,5 +9,6 @@ router.post('/devices', e2eeController.registerDevice);
 router.get('/devices', e2eeController.listMyDevices);
 router.delete('/devices/:deviceId', e2eeController.revokeMyDevice);
 router.get('/conversations/:conversationId/device-bundles', e2eeController.getConversationDeviceBundles);
+router.post('/conversations/:conversationId/devices/:deviceId/claim-prekey', e2eeController.claimConversationDevicePrekey);
 
 module.exports = router;
