@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS e2ee_devices (
     signed_prekey_signature TEXT NOT NULL,
     signed_prekey_id BIGINT NOT NULL,
     registration_id INTEGER NOT NULL,
+    device_token_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     revoked_at TIMESTAMPTZ,
