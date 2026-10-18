@@ -34,6 +34,8 @@ router.get('/devices/:deviceId/prekeys/inventory', controller.getPreKeyInventory
 router.delete('/devices/:deviceId/prekeys/kem-stale', keyMutationLimiter, controller.clearStaleKemPreKeys);
 router.get('/users/:userId/devices/:deviceId/prekey-bundle', keyMutationLimiter, controller.fetchPreKeyBundle);
 
+router.get('/conversations/:conversationId/status', controller.getConversationStatus);
+router.post('/conversations/:conversationId/enable', keyMutationLimiter, controller.enableConversation);
 router.post('/conversations/:conversationId/envelopes', relaySendLimiter, controller.sendEnvelope);
 router.post('/users/:userId/envelopes', relaySendLimiter, controller.sendDirectEnvelope);
 router.get('/devices/:deviceId/mailbox', controller.pullEnvelopes);
