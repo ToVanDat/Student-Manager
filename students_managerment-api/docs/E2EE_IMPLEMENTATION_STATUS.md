@@ -6,7 +6,7 @@ This branch is an incremental backend foundation. It is **not yet a complete or 
 
 ### Added
 
-- Additive PostgreSQL migration for per-device public identity/prekey material, one-time prekeys, per-recipient message envelopes, and conversation E2EE settings.
+- Additive PostgreSQL migration for per-device public identity/prekey material, one-time prekeys, conversation E2EE settings, and a new ciphertext-only per-device relay mailbox (`e2ee_relay_envelopes`) that is independent of the legacy `messages` table.
 - Authenticated API routes under `/api/e2ee`:
   - `POST /devices` — register/update the current user's public device bundle and upload one-time public prekeys.
   - `GET /devices` — list the current user's active devices.
@@ -57,12 +57,13 @@ The existing REST message-create controller and Socket.IO `message:send` event n
 - Pinned `@open-e2ee/signal-protocol-sdk` to `11.0.0` and added its `idb` peer dependency to the frontend package manifest. The frontend workflow installs with `npm install`; this repository does not currently contain a frontend lockfile.
 - Added `students_management-frontend/src/services/e2ee/e2eeClient.js`. It opens the SDK's encrypted browser SQLite store in a per-account OPFS database and creates a local `SignalProtocolClient`. It exposes initialization, client access, lifecycle state subscription, and shutdown. Private keys/session state are not sent to the API.
 - Added `students_management-frontend/src/hooks/useE2EEClient.js` for React-side lifecycle/status management.
+- Added `e2ee_relay_envelopes` as an additive mailbox schema for ciphertext-only per-device delivery, delivery timestamps, acknowledgement, expiry, and content-kind metadata. The existing `message_e2ee_envelopes` table was not removed or rewritten; the new relay mailbox does not depend on legacy `messages.content`.
 - This is deliberately **local-only** at this stage. `local-ready` means only that the local store/client initialized; it does not mean a conversation is E2EE-enabled, that a relay is connected, or that messages are being encrypted. There is no plaintext fallback policy change from these files.
 - The browser store currently requires OPFS/Web SQLite. It fails closed rather than silently switching to the SDK's fixed-name IndexedDB store, which could mix account identities in a shared browser profile. A separate account-scoped fallback needs a store adapter designed and tested for that purpose.
 
 ## Required next implementation stage
 
-1. Implement the SDK-compatible relay contract against the exact pinned SDK `11.0.0` declarations: server-owned device slots, identity provisioning/rotation, signed/KEM/one-time prekeys, envelope mailbox, subscription state, durable acknowledgements, retries, linked-device sync, and rate limits.
+1. Implement the SDK-compatible relay contract against the exact pinned SDK `11.0.0` declarations: server-owned numeric device slots, identity provisioning/rotation, signed/KEM/one-time prekeys, envelope mailbox, subscription state, durable acknowledgements, retries, linked-device sync, and rate limits. The existing UUID device API is not yet the SDK's numeric device-slot contract and must be reconciled before the client is attached to a custom relay.
 2. Add a separate ciphertext-only message/envelope persistence model. Do not make `messages.content` contain plaintext or a fabricated ciphertext placeholder for E2EE messages.
 3. Wire the SDK client to the authenticated relay, register the decrypt hook before starting subscriptions, and encrypt before any REST/Socket.IO network send. Decryption must happen only on recipient devices.
 4. Adapt history, unread/delivery/read receipts, edit/recall/delete, attachments, notifications, and search so server-side features never need E2EE plaintext. Search of E2EE messages must be local-only unless a separately designed privacy-preserving search is adopted.
