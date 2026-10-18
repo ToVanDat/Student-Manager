@@ -67,7 +67,7 @@ const uploadPreKeys = async (userId, deviceId, body = {}) => {
             (key.signature != null && (typeof key.signature !== 'string' || key.signature.length > 16384)) ||
             ids.has(identity)) throw fail(400, 'Prekey không hợp lệ hoặc trùng ID/type');
         const decodedPublicKey = Buffer.from(key.publicKey, 'base64');
-        const expectedPublicLength = key.type.startsWith('ec') ? 32 : 1569;
+        const expectedPublicLength = key.type.startsWith('ec') ? 32 : 1568;
         if (decodedPublicKey.length !== expectedPublicLength || decodedPublicKey.toString('base64') !== key.publicKey) {
             throw fail(400, 'Độ dài hoặc encoding public prekey không hợp lệ');
         }
