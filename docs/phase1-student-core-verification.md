@@ -42,7 +42,7 @@ Relevant files:
 
 Before marking Phase 1 fully complete:
 1. Run backend tests and frontend build/lint in the project's actual checkout.
-2. Verify `updated_at` and the students/classes constraints against the live schema without modifying it.
+2. Verify the students/classes constraints and any desired audit timestamp behavior against the live schema without modifying it.
 3. Add integration tests for list/search/filter/pagination and create/update/delete against a disposable test database.
 4. Confirm expected behavior for empty results, page beyond last page, class deletion while referenced, duplicate student code/email, and invalid class IDs.
 5. Only then continue to transfer-class, student status, bulk actions and audit history.
