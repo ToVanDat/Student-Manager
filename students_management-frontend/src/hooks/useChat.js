@@ -38,7 +38,11 @@ export const useChat = () => {
         } else if (typeof decrypted?.content === 'string') {
             try {
                 const parsed = JSON.parse(decrypted.content);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) payload = parsed;
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    payload = parsed.dataMessage && typeof parsed.dataMessage === 'object' && !Array.isArray(parsed.dataMessage)
+                        ? parsed.dataMessage
+                        : parsed;
+                }
             } catch {
                 // Preserve compatibility with non-JSON plaintext from older clients.
             }
