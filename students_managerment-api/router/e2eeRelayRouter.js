@@ -23,6 +23,14 @@ router.use(authMiddleware);
 
 // SDK numeric device slots are a separate contract from the legacy UUID registry.
 router.post('/devices', keyMutationLimiter, controller.registerDevice);
+router.post('/provisioning', keyMutationLimiter, controller.createProvisioningSession);
+router.post('/provisioning/:sessionId/connect', keyMutationLimiter, controller.connectNewDevice);
+router.post('/provisioning/:sessionId/message', keyMutationLimiter, controller.sendProvisioningMessage);
+router.get('/provisioning/:sessionId/message', controller.getProvisioningMessage);
+router.post('/provisioning/:sessionId/complete', keyMutationLimiter, controller.completeProvisioning);
+router.post('/provisioning/:sessionId/ack', keyMutationLimiter, controller.acknowledgeProvisioning);
+router.post('/provisioning/:sessionId/rollback', keyMutationLimiter, controller.rollbackProvisioning);
+router.delete('/provisioning/:sessionId', keyMutationLimiter, controller.deleteProvisioningSession);
 router.get('/users/:userId/devices', controller.getDevices);
 router.get('/users/:userId/identity', controller.getIdentityKey);
 router.get('/users/:userId/active-devices', controller.getActiveDevices);
