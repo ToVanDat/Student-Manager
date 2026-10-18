@@ -23,7 +23,13 @@
 | Mailbox pagination | Queue more than 100 envelopes for one device and reconnect once | Client drains subsequent pages without requiring another envelope-available event |
 | Edit / recall / reaction | Perform each supported operation in the direct E2EE conversation | Operation is delivered as an encrypted control payload and updates local decrypted history |
 | Legacy fail-closed | In an E2EE-enabled conversation, attempt the legacy plaintext REST and Socket.IO send paths | Both reject the plaintext message; no fallback sends it |
-| Attachment | Attempt image, document, audio, or video attachment in E2EE chat | UI blocks the operation with a clear explanation; no legacy upload request occurs |
+| Attachment UI fail-closed | Attempt image, document, audio, or video attachment in E2EE chat before SDK adapter integration is complete | UI blocks the operation with a clear explanation; no legacy upload request occurs |
+| R2 broker config missing | Remove E2EE_R2_WORKER_URL or ticket secret in a disposable API environment | Ticket endpoint returns 503 and creates no usable upload ticket |
+| R2 oversized/undersized body | Use a valid test ticket and upload more/fewer bytes than declared | Worker rejects the upload and no attachment can be finalized |
+| R2 ticket expiry/replay | Reuse an expired ticket; attempt to PUT again after a successful PUT | Expired tickets are rejected; a successful object cannot be overwritten with the same ticket |
+| R2 membership gate | Request upload/download ticket as a non-member or from a conversation without E2EE enabled | API rejects; no R2 access ticket is returned |
+| R2 download authorization | Upload and finalize ciphertext as one member; request download as another current member and then as a non-member | Current member gets short-lived ticket; non-member is rejected; response is application/octet-stream |
+| R2 deployment | Deploy Worker to a private test bucket and test browser CORS with the exact frontend origin | Only configured origin can use browser endpoints; bucket has no public access |
 | Local history key missing | In a disposable test profile only, simulate a missing history key while encrypted history rows remain | UI shows the local-history warning; it does not silently generate a replacement key or delete local rows |
 | Provisioning interrupted | Start linking a device, close/cancel before completion, then retry after expiry | Expired/cancelled session cannot be completed; no ghost active device remains |
 | Device revocation | Revoke a linked secondary device, then attempt its mailbox pull and Socket.IO subscription | Relay rejects the revoked credential; pending envelopes/prekeys for that device are cleaned up |
@@ -46,4 +52,4 @@
 
 ## Not covered by this checklist
 
-- Group E2EE, encrypted attachments, live production schema migration, independent protocol audit, XSS resistance, and provider-specific Web Push behavior require separate validation.
+- Group E2EE, SDK client-side attachment encryption/decryption, live production schema migration, independent protocol audit, XSS resistance, and provider-specific Web Push behavior require separate validation.
