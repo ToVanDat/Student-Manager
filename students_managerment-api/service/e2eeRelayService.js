@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const relayRepository = require('../repository/e2eeRelayRepository');
 
 const fail = (statusCode, message, code) => {
@@ -14,7 +15,9 @@ const integer = (value, name, min = 1, max = Number.MAX_SAFE_INTEGER) => {
 };
 
 const registerDevice = async (userId, input = {}) => {
-    const registrationId = integer(input.registrationId, 'registrationId', 1, 2147483647);
+    const registrationId = input.registrationId == null
+        ? crypto.randomInt(1, 65536)
+        : integer(input.registrationId, 'registrationId', 1, 65535);
     const deviceId = input.deviceId == null ? undefined : integer(input.deviceId, 'deviceId', 1, 5);
     const deviceType = input.deviceType || 'web';
     if (!['web', 'desktop', 'mobile', 'tablet'].includes(deviceType)) throw fail(400, 'deviceType không hợp lệ');
