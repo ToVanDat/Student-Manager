@@ -5,6 +5,8 @@ import { callApi } from '@/api/callApi';
 import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
 import { toast } from 'sonner';
+import { e2eeRelayApi } from '@/api/e2eeRelayApi';
+import { sendE2EEMessage, subscribeDecryptedE2EEMessages } from '@/services/e2ee/e2eeClient';
 
 export const useChat = () => {
     const { user } = useAuth();
