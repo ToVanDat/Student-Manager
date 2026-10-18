@@ -1289,18 +1289,40 @@ export const useChat = () => {
     }, [activeId, loadingOlder, hasMoreMessages, messagePage]);
 
     const toggleReaction = useCallback(async (messageId, emoji) => {
-        if (!messageId || !emoji || !socket.connected) return;
-
-        const message = messages.find(item => Number(item.id) === Number(messageId));
+        if (!messageId || !emoji) return;
+        const message = messages.find(item => String(item.id) === String(messageId) ||
+            Number(item.id) === Number(messageId));
         const mine = (message?.reactions || []).some(
             reaction => Number(reaction.user_id) === currentUserId && reaction.emoji === emoji
         );
 
-        socket.emit(mine ? 'message:reaction:remove' : 'message:reaction:add', {
-            messageId,
-            emoji
-        });
-    }, [messages, currentUserId]);
+        if (message?._e2ee) {
+            const conversation = conversations.find(item => Number(item.id) === Number(message.conversation_id));
+            if (!conversation?.userId) return;
+            const targetMessageId = String(messageId).replace(/^e2ee:/, '');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'reaction',
+                    action: mine ? 'remove' : 'add',
+                    targetMessageId,
+                    emoji,
+                    conversationId: String(message.conversation_id),
+                    timestamp: Date.now()
+                });
+                const reactions = mine
+                    ? (message.reactions || []).filter(reaction => !(Number(reaction.user_id) === currentUserId && reaction.emoji === emoji))
+                    : [...(message.reactions || []), { user_id: currentUserId, emoji }];
+                const updated = { ...message, reactions };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId) ? updated : item));
+            } catch (error) {
+                toast.error('Không thể gửi phản ứng E2EE.');
+            }
+            return;
+        }
+        if (!socket.connected) return;
+        socket.emit(mine ? 'message:reaction:remove' : 'message:reaction:add', { messageId, emoji });
+    }, [messages, currentUserId, conversations]);
 
     const deleteFile = useCallback(async (file) => {
         if (!file?.id) return;
