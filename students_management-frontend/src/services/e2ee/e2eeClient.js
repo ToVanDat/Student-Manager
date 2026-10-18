@@ -1,11 +1,13 @@
 import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { webSqliteStore } from '@open-e2ee/signal-protocol-sdk/local/store/web-sqlite';
+import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 
 const listeners = new Set();
 let activeContext = null;
 let initialization = null;
 let initializingUserId = null;
 let generation = 0;
+const decryptedMessageListeners = new Set();
 
 const initialState = {
     status: 'idle',
@@ -28,7 +30,8 @@ const publish = (patch) => {
     }
 };
 
-const closeResources = async (client, storage) => {
+const closeResources = async (client, storage, unsubscribeRelayState) => {
+    try { unsubscribeRelayState?.(); } catch { /* best-effort cleanup */ }
     try {
         if (client && typeof client.stop === 'function') await client.stop();
     } catch {
@@ -106,6 +109,8 @@ export const initializeE2EEClient = async (userId) => {
     const pendingInitialization = (async () => {
         let storage;
         let client;
+        let relay;
+        let unsubscribeRelayState;
         try {
             if (activeContext) {
                 const previous = activeContext;
@@ -123,23 +128,35 @@ export const initializeE2EEClient = async (userId) => {
                 throw error;
             }
 
+            relay = createE2EERelayAdapter(normalizedUserId);
             client = await createSignalProtocolClient({
                 identity: { userId: normalizedUserId },
-                adapters: { storage }
+                adapters: { storage, relay }
             });
+            if (typeof client.registerHook !== 'function' || typeof client.startRelaySubscription !== 'function') {
+                throw new Error('Installed Signal Protocol SDK does not expose the expected receive lifecycle API.');
+            }
+            client.registerHook('onMessageDecrypted', async message => {
+                for (const listener of [...decryptedMessageListeners]) await listener(message);
+            });
+            unsubscribeRelayState = relay.subscribeRelayConnectionState(next => {
+                if (activeContext?.userId !== normalizedUserId) return;
+                publish({ relayState: next.state });
+            });
+            activeContext = { userId: normalizedUserId, storage, client, relay, unsubscribeRelayState };
+            await client.startRelaySubscription();
             if (token !== generation) {
-                await closeResources(client, storage);
+                await closeResources(client, storage, unsubscribeRelayState);
                 const error = new Error('E2EE initialization was superseded by a newer account state.');
                 error.code = 'E2EE_INITIALIZATION_SUPERSEDED';
                 throw error;
             }
 
-            activeContext = { userId: normalizedUserId, storage, client };
             publish({
                 status: 'local-ready',
                 userId: normalizedUserId,
-                deviceId: client.deviceId ?? 1,
-                relayState: 'not-configured',
+                deviceId: client.deviceId ?? relay.getCurrentDeviceId() ?? null,
+                relayState: relay.relayConnectionState.state,
                 errorCode: null
             });
             return client;
@@ -180,6 +197,27 @@ export const shutdownE2EEClient = async () => {
 
     const context = activeContext;
     activeContext = null;
-    await closeResources(context?.client, context?.storage);
+    await closeResources(context?.client, context?.storage, context?.unsubscribeRelayState);
     publish({ ...initialState });
+};
+
+export const subscribeDecryptedE2EEMessages = (listener) => {
+    if (typeof listener !== 'function') return () => {};
+    decryptedMessageListeners.add(listener);
+    return () => decryptedMessageListeners.delete(listener);
+};
+
+export const sendE2EEMessage = async (recipientUserId, plaintext) => {
+    const client = getE2EEClient();
+    if (!client || typeof client.send !== 'function') {
+        const error = new Error('E2EE client is not ready to send messages');
+        error.code = 'E2EE_CLIENT_NOT_READY';
+        throw error;
+    }
+    if (typeof plaintext !== 'string' || !plaintext.trim()) {
+        const error = new Error('E2EE message content must be a non-empty string');
+        error.code = 'E2EE_EMPTY_MESSAGE';
+        throw error;
+    }
+    return client.send(String(recipientUserId), plaintext);
 };
