@@ -182,37 +182,54 @@ class InMemoryRelay {
     async deleteProvisioningSession() { throw new Error('Not used in round-trip test'); }
 }
 
-test('Signal Protocol encrypts on sender and decrypts on recipient using relay envelopes', async () => {
+test('Signal Protocol encrypts for two accounts and fans out to multiple recipient devices', async () => {
     const relay = new InMemoryRelay();
-    const received = [];
+    const receivedPrimary = [];
+    const receivedLinked = [];
     const alice = await createSignalProtocolClient({
         identity: { userId: 'alice', deviceId: 1 },
         adapters: { storage: inMemoryStore(), relay }
     });
-    const bob = await createSignalProtocolClient({
+
+    const bobPrimaryStorage = inMemoryStore();
+    const bobPrimary = await createSignalProtocolClient({
         identity: { userId: 'bob', deviceId: 1 },
-        adapters: { storage: inMemoryStore(), relay },
+        adapters: { storage: bobPrimaryStorage, relay },
         hooks: {
-            onMessageDecrypted: async message => {
-                received.push(message);
-            }
+            onMessageDecrypted: async message => { receivedPrimary.push(message); }
+        }
+    });
+
+    // Simulate the SDK identity material transferred by the encrypted device
+    // provisioning flow. Device 2 still generates its own signed and one-time keys.
+    const bobLinkedStorage = inMemoryStore();
+    await bobLinkedStorage.storeIdentityKey(await bobPrimaryStorage.getIdentityKey());
+    await bobLinkedStorage.setLocalRegistrationId(await bobPrimaryStorage.getLocalRegistrationId());
+    const bobLinked = await createSignalProtocolClient({
+        identity: { userId: 'bob', deviceId: 2 },
+        adapters: { storage: bobLinkedStorage, relay },
+        hooks: {
+            onMessageDecrypted: async message => { receivedLinked.push(message); }
         }
     });
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 0));
         const result = await alice.send('bob', {
             type: 'message',
-            body: 'e2ee round-trip test',
+            body: 'e2ee multi-device round-trip',
             timestamp: Date.now(),
-            appMessageId: 'test-message-1'
+            appMessageId: 'test-message-multi-device'
         });
         assert.ok(result.messageId);
-        assert.equal(received.length, 1);
-        assert.equal(received[0].content.body, 'e2ee round-trip test');
-        assert.equal(received[0].content.appMessageId, 'test-message-1');
+        assert.equal(receivedPrimary.length, 1);
+        assert.equal(receivedLinked.length, 1);
+        assert.equal(receivedPrimary[0].content.body, 'e2ee multi-device round-trip');
+        assert.equal(receivedLinked[0].content.body, 'e2ee multi-device round-trip');
+        assert.equal(receivedPrimary[0].content.appMessageId, 'test-message-multi-device');
+        assert.equal(receivedLinked[0].content.appMessageId, 'test-message-multi-device');
     } finally {
         await alice.stop?.();
-        await bob.stop?.();
+        await bobPrimary.stop?.();
+        await bobLinked.stop?.();
     }
 });
