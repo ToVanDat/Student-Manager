@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const controller = require('../controller/e2eeRelayController');
+const deviceAuth = require('../middleware/e2eeDeviceAuth');
 
 const relaySendLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -35,18 +36,18 @@ router.get('/users/:userId/devices', controller.getDevices);
 router.get('/users/:userId/identity', controller.getIdentityKey);
 router.get('/users/:userId/active-devices', controller.getActiveDevices);
 router.delete('/devices/:deviceId', keyMutationLimiter, controller.removeDevice);
-router.put('/devices/:deviceId/identity', keyMutationLimiter, controller.provisionIdentity);
-router.put('/devices/:deviceId/prekeys', keyMutationLimiter, controller.uploadPreKeys);
-router.get('/devices/:deviceId/prekeys/count/:type', controller.getPreKeyCount);
-router.get('/devices/:deviceId/prekeys/inventory', controller.getPreKeyInventory);
-router.delete('/devices/:deviceId/prekeys/kem-stale', keyMutationLimiter, controller.clearStaleKemPreKeys);
+router.put('/devices/:deviceId/identity', deviceAuth, keyMutationLimiter, controller.provisionIdentity);
+router.put('/devices/:deviceId/prekeys', deviceAuth, keyMutationLimiter, controller.uploadPreKeys);
+router.get('/devices/:deviceId/prekeys/count/:type', deviceAuth, controller.getPreKeyCount);
+router.get('/devices/:deviceId/prekeys/inventory', deviceAuth, controller.getPreKeyInventory);
+router.delete('/devices/:deviceId/prekeys/kem-stale', deviceAuth, keyMutationLimiter, controller.clearStaleKemPreKeys);
 router.get('/users/:userId/devices/:deviceId/prekey-bundle', keyMutationLimiter, controller.fetchPreKeyBundle);
 
 router.get('/conversations/:conversationId/status', controller.getConversationStatus);
 router.post('/conversations/:conversationId/enable', keyMutationLimiter, controller.enableConversation);
-router.post('/conversations/:conversationId/envelopes', relaySendLimiter, controller.sendEnvelope);
-router.post('/users/:userId/envelopes', relaySendLimiter, controller.sendDirectEnvelope);
-router.get('/devices/:deviceId/mailbox', controller.pullEnvelopes);
-router.post('/devices/:deviceId/envelopes/:envelopeId/ack', controller.markDelivered);
+router.post('/conversations/:conversationId/envelopes', deviceAuth, relaySendLimiter, controller.sendEnvelope);
+router.post('/users/:userId/envelopes', deviceAuth, relaySendLimiter, controller.sendDirectEnvelope);
+router.get('/devices/:deviceId/mailbox', deviceAuth, controller.pullEnvelopes);
+router.post('/devices/:deviceId/envelopes/:envelopeId/ack', deviceAuth, controller.markDelivered);
 
 module.exports = router;
