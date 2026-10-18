@@ -61,6 +61,34 @@ module.exports = {
     markDelivered: run(req => e2eeRelayService.markDelivered(
         Number(req.user.id), req.params.deviceId, req.params.envelopeId
     )),
+    sendDirectEnvelope: async (req, res, next) => {
+        try {
+            const data = await e2eeRelayService.sendDirectEnvelope(
+                Number(req.user.id), Number(req.params.userId), req.body
+            );
+            if (!data.duplicate) {
+                try {
+                    getIO().to(`e2ee-device:${data.recipientUserId}:${data.recipientDeviceId}`)
+                        .emit('e2ee:envelope:available', {
+                            envelopeId: data.id,
+                            deviceId: data.recipientDeviceId,
+                            serverTimestamp: data.serverTimestamp
+                        });
+                } catch (deliveryError) {
+                    console.warn('[E2EE][relay] wake-up signal unavailable', {
+                        code: deliveryError.code || 'SOCKET_UNAVAILABLE'
+                    });
+                }
+            }
+            return res.status(data.duplicate ? 200 : 201).json({ data });
+        } catch (error) {
+            if (error.statusCode) return res.status(error.statusCode).json({
+                message: error.message,
+                ...(error.code ? { code: error.code } : {})
+            });
+            return next(error);
+        }
+    },
     sendEnvelope: async (req, res, next) => {
         try {
             const data = await e2eeRelayService.sendEnvelope(
