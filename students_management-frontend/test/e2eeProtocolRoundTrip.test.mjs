@@ -244,6 +244,22 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
         assert.equal(linkedContent.body, 'e2ee multi-device round-trip');
         assert.equal(primaryContent.appMessageId, 'test-message-multi-device');
         assert.equal(linkedContent.appMessageId, 'test-message-multi-device');
+
+        const controls = [
+            { type: 'edit', targetMessageId: 'test-message-multi-device', body: 'edited text', conversationId: '42', timestamp: Date.now() },
+            { type: 'reaction', targetMessageId: 'test-message-multi-device', emoji: '👍', action: 'add', conversationId: '42', timestamp: Date.now() },
+            { type: 'recall', targetMessageId: 'test-message-multi-device', conversationId: '42', timestamp: Date.now() }
+        ];
+        for (const control of controls) {
+            await alice.send('bob', { body: JSON.stringify(control) });
+        }
+
+        assert.equal(receivedPrimary.length, 4);
+        assert.equal(receivedLinked.length, 4);
+        for (let index = 0; index < controls.length; index += 1) {
+            assert.deepEqual(getApplicationContent(receivedPrimary[index + 1]), controls[index]);
+            assert.deepEqual(getApplicationContent(receivedLinked[index + 1]), controls[index]);
+        }
     } finally {
         await alice.stop?.();
         await bobPrimary.stop?.();
