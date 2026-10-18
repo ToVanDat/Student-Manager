@@ -259,7 +259,7 @@ export default function E2EEDeviceLinkPanel({ user, clientState }) {
                                     {busy && <LoaderCircle size={16} className="animate-spin" />}
                                     Tạo mã liên kết
                                 </button>
-                                {['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED'].includes(clientState?.errorCode) && (
+                                {['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) && (
                                     <button type="button" onClick={() => setMode('link-this-device')} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm dark:border-slate-700">
                                         Liên kết trình duyệt này từ thiết bị chính
                                     </button>
