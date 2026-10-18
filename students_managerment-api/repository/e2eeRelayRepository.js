@@ -384,6 +384,77 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
     return { id: rows[0].id, acknowledged: true };
 };
 
+const getConversationE2EEStatus = async (requesterId, conversationId) => {
+    const member = await pool.query(
+        'SELECT 1 FROM conversation_members WHERE conversation_id = $1 AND user_id = $2 AND left_at IS NULL LIMIT 1',
+        [conversationId, requesterId]
+    );
+    if (!member.rowCount) throw httpError(403, 'Bạn không thuộc conversation này');
+    const { rows } = await pool.query(
+        `SELECT c.type,
+            EXISTS (SELECT 1 FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id) AS enabled,
+            (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
+            (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
+            (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE
+               AND d.identity_public IS NOT NULL
+               AND EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'ecSignedPreKey')
+               AND (EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'kemLastResortPreKey')
+                    OR EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'kemOneTimePreKey' AND p.claimed_at IS NULL))) AS ready_device_count
+         FROM conversations c WHERE c.id = $1 LIMIT 1`,
+        [conversationId]
+    );
+    if (!rows[0]) throw httpError(404, 'Không tìm thấy conversation');
+    return {
+        conversationId: Number(conversationId),
+        type: rows[0].type,
+        enabled: Boolean(rows[0].enabled),
+        memberCount: Number(rows[0].member_count),
+        activeDeviceCount: Number(rows[0].active_device_count),
+        readyDeviceCount: Number(rows[0].ready_device_count),
+        canEnable: rows[0].type === 'direct' && Number(rows[0].member_count) === 2 &&
+            Number(rows[0].active_device_count) > 0 && Number(rows[0].active_device_count) === Number(rows[0].ready_device_count)
+    };
+};
+
+const enableConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
+    await assertConversationMember(client, conversationId, requesterId);
+    const statusResult = await client.query(
+        `SELECT c.type,
+            (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
+            (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
+            (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE
+               AND d.identity_public IS NOT NULL
+               AND EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'ecSignedPreKey')
+               AND (EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'kemLastResortPreKey')
+                    OR EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'kemOneTimePreKey' AND p.claimed_at IS NULL))) AS ready_device_count
+         FROM conversations c WHERE c.id = $1 FOR UPDATE`,
+        [conversationId]
+    );
+    const status = statusResult.rows[0];
+    if (!status) throw httpError(404, 'Không tìm thấy conversation');
+    if (status.type !== 'direct' || Number(status.member_count) !== 2) {
+        throw httpError(409, 'Giai đoạn này chỉ hỗ trợ kích hoạt E2EE cho chat 1-1');
+    }
+    if (Number(status.active_device_count) < 2 || Number(status.active_device_count) !== Number(status.ready_device_count)) {
+        throw httpError(409, 'Mọi thiết bị đang hoạt động của cả hai người cần đăng ký identity và prekey trước khi bật E2EE', 'E2EE_DEVICE_NOT_READY');
+    }
+    const { rows } = await client.query(
+        `INSERT INTO conversation_e2ee_settings (conversation_id, protocol, enabled_by, mode)
+         VALUES ($1, 'open-e2ee-signal-v11', $2, 'direct')
+         ON CONFLICT (conversation_id) DO NOTHING
+         RETURNING conversation_id, protocol, enabled_at, enabled_by, mode`,
+        [conversationId, requesterId]
+    );
+    const current = rows[0] || (await client.query(
+        'SELECT conversation_id, protocol, enabled_at, enabled_by, mode FROM conversation_e2ee_settings WHERE conversation_id = $1',
+        [conversationId]
+    )).rows[0];
+    return { ...current, enabled: true };
+});
 const getDeviceBySlot = async (userId, deviceId) => {
     const { rows } = await pool.query(
         'SELECT id, device_id, registration_id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL AND enabled = TRUE AND registered = TRUE',
@@ -395,5 +466,5 @@ const getDeviceBySlot = async (userId, deviceId) => {
 module.exports = {
     registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
-    sendEnvelope, pullEnvelopes, markDelivered, getDeviceBySlot
+    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE, getDeviceBySlot
 };
