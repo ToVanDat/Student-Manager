@@ -15,7 +15,7 @@ export default function GlobalMoreMenu({ user, e2eeUser, e2eeClientState, onSele
         { id: 'language', label: t('language'), Icon: Monitor },
     ];
     return (
-        <div role="menu" aria-label={t("globalMenu")} className="absolute right-0 top-full z-[190] mt-2 w-64 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-xl">
+        <div role="menu" aria-label={t("globalMenu")} className="absolute right-0 top-full z-[190] mt-2 w-64 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-xl">
             <div className="flex items-center gap-3 px-3 py-3">
                 {user?.avatar_url || user?.avatarUrl || user?.avatar ? (
                     <img src={resolveMediaUrl(user.avatar_url || user.avatarUrl || user.avatar)} alt="" className="size-10 shrink-0 rounded-full object-cover" />
