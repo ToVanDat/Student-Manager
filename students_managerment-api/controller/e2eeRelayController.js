@@ -17,6 +17,28 @@ const run = (handler) => async (req, res, next) => {
 module.exports = {
     registerDevice: run(req => e2eeRelayService.registerDevice(Number(req.user.id), req.body)),
     getDevices: run(req => e2eeRelayService.getDevices(Number(req.user.id), Number(req.params.userId))),
+    getIdentityKey: run(async req => {
+        const userId = Number(req.params.userId);
+        const identityType = req.query.identityType || 'aci';
+        if (!Number.isSafeInteger(userId) || userId <= 0 || !['aci', 'pni'].includes(identityType)) {
+            const error = new Error('userId hoặc identityType không hợp lệ');
+            error.statusCode = 400;
+            throw error;
+        }
+        return require('../repository/e2eeRelayRepository').getIdentityKey(userId, identityType);
+    }),
+    getActiveDevices: run(async req => {
+        const userId = Number(req.params.userId);
+        if (!Number.isSafeInteger(userId) || userId <= 0) {
+            const error = new Error('userId không hợp lệ');
+            error.statusCode = 400;
+            throw error;
+        }
+        return require('../repository/e2eeRelayRepository').getActiveDevices(userId);
+    }),
+    clearStaleKemPreKeys: run(req => e2eeRelayService.clearStaleKemPreKeys(
+        Number(req.user.id), req.params.deviceId, req.query.identityType || 'aci'
+    )),
     removeDevice: run(req => e2eeRelayService.removeDevice(Number(req.user.id), req.params.deviceId)),
     provisionIdentity: run(req => e2eeRelayService.provisionIdentity(
         Number(req.user.id), req.params.deviceId, req.body
