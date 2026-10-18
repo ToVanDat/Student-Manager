@@ -76,7 +76,7 @@ jobs:
       - name: Run API unit tests
         run: npm test
       - name: Run Cloudflare R2 Worker tests
-        run: node --test students_managerment-api/cloudflare/e2ee-r2-worker/test/worker.test.js
+        run: node --test cloudflare/e2ee-r2-worker/test/worker.test.js
 
   build-frontend:
     runs-on: ubuntu-latest
