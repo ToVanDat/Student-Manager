@@ -173,7 +173,24 @@ const getConversationDeviceBundles = async (conversationId, requesterId) => with
     return bundles;
 });
 
+// Fail closed for legacy plaintext sends after a conversation is explicitly marked E2EE.
+ // The to_regclass check keeps the existing application usable before the additive
+ // migration is applied; it does not create or modify schema.
+const isConversationE2EEEnabled = async (conversationId) => {
+    const tableCheck = await pool.query(
+        "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS exists"
+    );
+    if (!tableCheck.rows[0]?.exists) return false;
+
+    const { rows } = await pool.query(
+        'SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1',
+        [conversationId]
+    );
+    return rows.length > 0;
+};
+
 module.exports = {
+    isConversationE2EEEnabled,
     registerDevice,
     listDevicesForUser,
     revokeDevice,
