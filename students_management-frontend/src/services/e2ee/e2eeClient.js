@@ -149,6 +149,8 @@ export const initializeE2EEClient = async (userId) => {
             }
 
             relay = createE2EERelayAdapter(normalizedUserId);
+            // Provision the numeric relay slot before publishing identity/prekeys.
+            await relay.registerDevice(normalizedUserId, { deviceId, deviceType: 'web' });
             client = await createSignalProtocolClient({
                 identity: { userId: normalizedUserId, deviceId },
                 adapters: { storage, relay }
