@@ -42,7 +42,8 @@ export const useChat = () => {
         if (!Number.isSafeInteger(conversationId) || conversationId <= 0) return;
         if (payload.type === 'edit' && payload.targetMessageId) {
             const targetId = `e2ee:${String(payload.targetMessageId)}`;
-            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
+            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId)
+                || (await loadE2EEHistory(currentUserId, conversationId)).find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
             if (target) {
                 const updated = { ...target, content: String(payload.body || ''), is_edited: true };
                 await saveE2EEHistoryMessage(currentUserId, updated);
@@ -52,7 +53,8 @@ export const useChat = () => {
         }
         if (payload.type === 'recall' && payload.targetMessageId) {
             const targetId = `e2ee:${String(payload.targetMessageId)}`;
-            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
+            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId)
+                || (await loadE2EEHistory(currentUserId, conversationId)).find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
             if (target) {
                 const updated = { ...target, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
                 await saveE2EEHistoryMessage(currentUserId, updated);
