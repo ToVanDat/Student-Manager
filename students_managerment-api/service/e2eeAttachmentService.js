@@ -162,7 +162,7 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
     const ttl = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
     const ticket = makeTicket(config, {
         method: 'PUT', attachmentId, objectKey, conversationId: id,
-        userId: Number(userId), expectedSize: size, ttl
+        userId: Number(userId), expectedSize: size, expectedDigest: digest.toString('base64url'), ttl
     });
     return {
         attachmentId,
