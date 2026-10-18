@@ -32,6 +32,7 @@ import {
     Download,
     FileText,
     Shield,
+    ShieldAlert,
     ShieldCheck,
     LoaderCircle
 } from 'lucide-react';
