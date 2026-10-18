@@ -50,6 +50,8 @@ jobs:
           node-version: 22
       - name: Install frontend dependencies
         run: npm install --no-audit --no-fund
+      - name: Run Signal Protocol encryption/decryption round-trip
+        run: npm run test:e2ee
       - name: Run lint
         run: npm run lint
       - name: Build production bundle
