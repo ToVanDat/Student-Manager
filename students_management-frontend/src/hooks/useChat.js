@@ -42,20 +42,22 @@ export const useChat = () => {
         const conversationId = Number(targetConversation.id);
         if (payload.type === 'edit' && payload.targetMessageId) {
             const targetId = `e2ee:${String(payload.targetMessageId)}`;
-            setMessages(previous => previous.map(item =>
-                String(item.id) === targetId && Number(item.sender_id) === senderId
-                    ? { ...item, content: String(payload.body || ''), is_edited: true }
-                    : item
-            ));
+            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
+            if (target) {
+                const updated = { ...target, content: String(payload.body || ''), is_edited: true };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === targetId ? updated : item));
+            }
             return;
         }
         if (payload.type === 'recall' && payload.targetMessageId) {
             const targetId = `e2ee:${String(payload.targetMessageId)}`;
-            setMessages(previous => previous.map(item =>
-                String(item.id) === targetId && Number(item.sender_id) === senderId
-                    ? { ...item, content: 'Tin nhắn đã được thu hồi', is_recalled: true }
-                    : item
-            ));
+            const target = messages.find(item => String(item.id) === targetId && Number(item.sender_id) === senderId);
+            if (target) {
+                const updated = { ...target, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === targetId ? updated : item));
+            }
             return;
         }
         if (payload.type !== 'message') return;
@@ -79,7 +81,7 @@ export const useChat = () => {
             : Number(activeId) === conversationId ? [...previous, receivedMessage] : previous);
         setConversations(previous => previous.map(item => Number(item.id) === conversationId
             ? { ...item, lastMessage: receivedMessage.content, lastMessageAt: createdAt } : item));
-    }), [activeId, conversations]);
+    }), [activeId, conversations, messages, currentUserId]);
 
     const fetchConversations = useCallback(async () => {
         try {
