@@ -345,7 +345,13 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         },
 
         async rollbackProvisioning(sessionId) {
-            return unwrap(await e2eeRelayApi.rollbackProvisioning(sessionId));
+            const result = unwrap(await e2eeRelayApi.rollbackProvisioning(sessionId));
+            if (currentDeviceId && currentDeviceId > 1) {
+                await deleteE2EEDeviceCredential(userId, currentDeviceId);
+                await clearStoredE2EEDeviceId(userId);
+                currentDeviceId = null;
+            }
+            return result;
         },
 
         async deleteProvisioningSession(sessionId, requestedUserId) {
