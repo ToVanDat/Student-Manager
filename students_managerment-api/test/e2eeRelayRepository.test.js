@@ -98,3 +98,72 @@ test('mailbox acknowledgement is idempotent and bound to the requested user/devi
         pool.query = oldQuery;
     }
 });
+
+
+test('notification decision is deduplicated across recipient devices and retries', async () => {
+    const oldConnect = pool.connect;
+    const records = new Map();
+    const calls = [];
+    const messageId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const keyFor = (senderId, clientId, recipientDevicePk) => `${senderId}:${clientId}:${recipientDevicePk}`;
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT 1 FROM conversation_members')) return { rows: [{}], rowCount: 1 };
+            if (statement.includes('AS ready')) return { rows: [{ ready: true }], rowCount: 1 };
+            if (statement.startsWith('SELECT 1 FROM conversation_e2ee_settings')) return { rows: [{}], rowCount: 1 };
+            if (statement.startsWith('SELECT * FROM e2ee_sdk_devices')) {
+                const [userId, deviceId] = params;
+                return { rows: [{ id: Number(userId) * 10 + Number(deviceId), user_id: userId, device_id: deviceId, registration_id: 7 }], rowCount: 1 };
+            }
+            if (statement.startsWith('SELECT id, server_timestamp_ms FROM e2ee_sdk_envelopes')) {
+                const record = records.get(keyFor(params[0], params[1], params[2]));
+                return { rows: record ? [{ id: record.id, server_timestamp_ms: record.serverTimestamp }] : [], rowCount: record ? 1 : 0 };
+            }
+            if (statement.startsWith('SELECT pg_advisory_xact_lock')) return { rows: [{}], rowCount: 1 };
+            if (statement.startsWith('SELECT 1 FROM e2ee_sdk_envelopes')) {
+                const found = [...records.values()].some(record =>
+                    String(record.senderId) === String(params[0]) &&
+                    record.clientMessageId === params[1] &&
+                    String(record.recipientUserId) === String(params[2]));
+                return { rows: found ? [{}] : [], rowCount: found ? 1 : 0 };
+            }
+            if (statement.startsWith('INSERT INTO e2ee_sdk_envelopes')) {
+                const [id, conversationId, senderId, senderDevicePk, recipientUserId, recipientDevicePk, clientMessageId, , , deliveryClass, contentKind, , , , serverTimestamp] = params;
+                const record = { id, conversationId, senderId, senderDevicePk, recipientUserId, recipientDevicePk, clientMessageId, deliveryClass, contentKind, serverTimestamp };
+                records.set(keyFor(senderId, clientMessageId, recipientDevicePk), record);
+                return { rows: [{ id, server_timestamp_ms: serverTimestamp, expires_at: null }], rowCount: 1 };
+            }
+            throw new Error(`Unexpected SQL in test: ${statement}`);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    const payload = targetDeviceId => ({
+        targetUserId: 22,
+        targetDeviceId,
+        senderDeviceId: 1,
+        ciphertext: 'Y2lwaGVydGV4dA==',
+        messageType: 'ciphertext',
+        deliveryClass: 'user-visible',
+        contentKind: 'message',
+        timestamp: Date.now(),
+        clientMessageId: messageId
+    });
+    try {
+        const firstDevice = await repository.sendEnvelope(11, 99, payload(1));
+        const secondDevice = await repository.sendEnvelope(11, 99, payload(2));
+        const retry = await repository.sendEnvelope(11, 99, payload(1));
+
+        assert.equal(firstDevice.notifyRecipient, true);
+        assert.equal(secondDevice.notifyRecipient, false);
+        assert.equal(retry.duplicate, true);
+        assert.equal(retry.notifyRecipient, false);
+        assert.equal(records.size, 2);
+        assert.equal(calls.filter(call => call.statement.startsWith('SELECT pg_advisory_xact_lock')).length, 2);
+    } finally {
+        pool.connect = oldConnect;
+    }
+});
