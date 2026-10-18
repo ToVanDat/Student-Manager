@@ -55,6 +55,14 @@ module.exports = {
     fetchPreKeyBundle: run(req => e2eeRelayService.fetchPreKeyBundle(
         Number(req.user.id), Number(req.params.userId), req.params.deviceId, req.query.identityType || 'aci'
     )),
+    createProvisioningSession: run(req => e2eeRelayService.createProvisioningSession(Number(req.user.id), req.body)),
+    connectNewDevice: run(req => e2eeRelayService.connectNewDevice(Number(req.user.id), req.params.sessionId, req.body)),
+    sendProvisioningMessage: run(req => e2eeRelayService.sendProvisioningMessage(Number(req.user.id), req.params.sessionId, req.body)),
+    getProvisioningMessage: run(req => e2eeRelayService.getProvisioningMessage(Number(req.user.id), req.params.sessionId)),
+    completeProvisioning: run(req => e2eeRelayService.completeProvisioning(Number(req.user.id), req.params.sessionId, req.body)),
+    acknowledgeProvisioning: run(req => e2eeRelayService.acknowledgeProvisioning(Number(req.user.id), req.params.sessionId)),
+    rollbackProvisioning: run(req => e2eeRelayService.rollbackProvisioning(Number(req.user.id), req.params.sessionId)),
+    deleteProvisioningSession: run(req => e2eeRelayService.deleteProvisioningSession(Number(req.user.id), req.params.sessionId)),
     getConversationStatus: run(req => e2eeRelayService.getConversationE2EEStatus(
         Number(req.user.id), req.params.conversationId
     )),
