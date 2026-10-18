@@ -250,14 +250,35 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             let stopped = false;
             let processing = false;
             let pendingWake = false;
+            let retryTimer = null;
+            let retryAttempt = 0;
+            let pullAndProcess;
 
-            const pullAndProcess = async () => {
+            // Durable mailbox rows are intentionally left unacknowledged when
+            // decryption/handling fails. Retry with capped exponential backoff
+            // instead of waiting indefinitely for a future Socket.IO event.
+            const scheduleRetry = () => {
+                if (stopped || retryTimer) return;
+                const delay = Math.min(30_000, 1_000 * (2 ** Math.min(retryAttempt, 5)));
+                retryAttempt += 1;
+                retryTimer = setTimeout(() => {
+                    retryTimer = null;
+                    void pullAndProcess();
+                }, delay);
+            };
+
+            pullAndProcess = async () => {
                 if (stopped) return;
                 if (processing) {
                     pendingWake = true;
                     return;
                 }
+                if (retryTimer) {
+                    clearTimeout(retryTimer);
+                    retryTimer = null;
+                }
                 processing = true;
+                let shouldRetry = false;
                 try {
                     options.onBatchStart?.();
                     do {
@@ -275,21 +296,25 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
                                 });
                                 await e2eeRelayApi.acknowledgeEnvelope(deviceId, envelope.id, token);
                             } catch (error) {
-                                // Do not acknowledge: reconnect/mailbox recovery retries it.
+                                // Do not acknowledge: a later retry can process the same durable envelope.
                                 console.warn('[E2EE] envelope processing deferred', {
                                     envelopeId: envelope.id,
                                     code: error?.code || 'ENVELOPE_HANDLER_FAILED'
                                 });
+                                shouldRetry = true;
                                 break;
                             }
                         }
-                    } while (pendingWake && !stopped);
+                        if (!shouldRetry) retryAttempt = 0;
+                    } while (pendingWake && !stopped && !shouldRetry);
                 } catch (error) {
+                    shouldRetry = true;
                     updateConnectionState({ state: 'reconnecting', reason: 'error' });
                     console.warn('[E2EE] mailbox pull failed', { code: error?.code || 'MAILBOX_PULL_FAILED' });
                 } finally {
                     processing = false;
                     options.onBatchEnd?.();
+                    if (shouldRetry) scheduleRetry();
                 }
             };
 
@@ -320,6 +345,10 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
 
             return () => {
                 stopped = true;
+                if (retryTimer) {
+                    clearTimeout(retryTimer);
+                    retryTimer = null;
+                }
                 socket.off('e2ee:envelope:available', onAvailable);
                 socket.off('connect', onConnect);
                 if (socket.connected) socket.emit('e2ee:unsubscribe', { deviceId: Number(deviceId) });
