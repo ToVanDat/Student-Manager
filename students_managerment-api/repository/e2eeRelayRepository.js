@@ -408,8 +408,30 @@ const sendEnvelope = async (senderUserId, conversationId, input) => withTransact
         [senderUserId, input.clientMessageId, recipient.id]
     );
     if (existing.rows[0]) {
-        return { id: existing.rows[0].id, serverTimestamp: Number(existing.rows[0].server_timestamp_ms), duplicate: true, recipientUserId: Number(input.targetUserId), recipientDeviceId: Number(input.targetDeviceId) };
+        return {
+            id: existing.rows[0].id,
+            serverTimestamp: Number(existing.rows[0].server_timestamp_ms),
+            duplicate: true,
+            notifyRecipient: false,
+            conversationId: Number(conversationId),
+            recipientUserId: Number(input.targetUserId),
+            recipientDeviceId: Number(input.targetDeviceId)
+        };
     }
+
+    // A logical message is fanned out to every recipient device. Serialize
+    // first-delivery notification decisions per sender/message/recipient user
+    // so each device does not create a duplicate notification.
+    const notificationLockKey = `${senderUserId}:${input.clientMessageId}:${input.targetUserId}`;
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [notificationLockKey]);
+    const priorRecipientEnvelope = await client.query(
+        `SELECT 1 FROM e2ee_sdk_envelopes
+         WHERE sender_user_id = $1 AND client_message_id = $2 AND recipient_user_id = $3
+         LIMIT 1`,
+        [senderUserId, input.clientMessageId, input.targetUserId]
+    );
+    const notifyRecipient = !priorRecipientEnvelope.rowCount &&
+        input.deliveryClass === 'user-visible' && (input.contentKind || 'message') === 'message';
 
     const id = crypto.randomUUID();
     const serverTimestamp = Date.now();
@@ -432,6 +454,8 @@ const sendEnvelope = async (senderUserId, conversationId, input) => withTransact
         serverTimestamp: Number(rows[0].server_timestamp_ms),
         expiresAt: rows[0].expires_at ? new Date(rows[0].expires_at).getTime() : undefined,
         duplicate: false,
+        notifyRecipient,
+        conversationId: Number(conversationId),
         recipientUserId: Number(input.targetUserId),
         recipientDeviceId: Number(input.targetDeviceId)
     };
