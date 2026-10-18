@@ -89,6 +89,11 @@ const getPreKeyInventory = async (userId, deviceId, identityType = 'aci') => {
     return relayRepository.getPreKeyInventory(userId, slot, identityType);
 };
 
+const getConversationE2EEStatus = async (requesterId, conversationId) =>
+    relayRepository.getConversationE2EEStatus(requesterId, integer(conversationId, 'conversationId'));
+
+const enableConversationE2EE = async (requesterId, conversationId) =>
+    relayRepository.enableConversationE2EE(requesterId, integer(conversationId, 'conversationId'));
 const sendEnvelope = async (senderUserId, conversationId, body = {}) => {
     const conversation = integer(conversationId, 'conversationId');
     const targetUserId = integer(body.targetUserId, 'targetUserId');
@@ -139,6 +144,6 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 
 module.exports = {
     registerDevice, getDevices, removeDevice, provisionIdentity, uploadPreKeys,
-    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, sendEnvelope, sendDirectEnvelope,
+    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
     pullEnvelopes, markDelivered
 };
