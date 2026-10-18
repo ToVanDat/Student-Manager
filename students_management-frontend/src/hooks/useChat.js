@@ -73,6 +73,7 @@ export const useChat = () => {
             is_read: false,
             _e2ee: true
         };
+        await saveE2EEHistoryMessage(currentUserId, receivedMessage);
         setMessages(previous => previous.some(item => String(item.id) === messageId)
             ? previous
             : Number(activeId) === conversationId ? [...previous, receivedMessage] : previous);
@@ -1214,8 +1215,22 @@ export const useChat = () => {
                     timestamp: Date.now(),
                     replyToMessageId
                 });
+                const finalMessage = {
+                    ...optimisticMessage,
+                    id: `e2ee:${appMessageId}`,
+                    status: 'sent',
+                    _e2ee: true
+                };
+                try {
+                    await saveE2EEHistoryMessage(currentUserId, finalMessage);
+                } catch (historyError) {
+                    toast.error('Tin nhắn đã gửi nhưng không thể lưu lịch sử E2EE cục bộ.');
+                    console.warn('[E2EE] sent message history save failed', {
+                        code: historyError?.code || 'E2EE_HISTORY_SAVE_FAILED'
+                    });
+                }
                 setMessages(prev => prev.map(item => item.tempId === tempId
-                    ? { ...item, id: `e2ee:${appMessageId}`, status: 'sent', _e2ee: true }
+                    ? finalMessage
                     : item));
                 return;
             }
