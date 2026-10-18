@@ -32,7 +32,8 @@ const publish = (patch) => {
     }
 };
 
-const closeResources = async (client, storage, unsubscribeRelayState) => {
+const closeResources = async (client, storage, unsubscribeRelayState, relay) => {
+    try { relay?.dispose?.(); } catch { /* best-effort cleanup */ }
     try { unsubscribeRelayState?.(); } catch { /* best-effort cleanup */ }
     try {
         if (client && typeof client.stop === 'function') await client.stop();
@@ -117,7 +118,7 @@ export const initializeE2EEClient = async (userId) => {
             if (activeContext) {
                 const previous = activeContext;
                 activeContext = null;
-                await closeResources(previous.client, previous.storage, previous.unsubscribeRelayState);
+                await closeResources(previous.client, previous.storage, previous.unsubscribeRelayState, previous.relay);
             }
 
             let deviceId = await getStoredE2EEDeviceId(normalizedUserId);
@@ -141,7 +142,7 @@ export const initializeE2EEClient = async (userId) => {
                 name: `student-manager-e2ee-user-${normalizedUserId}.db`
             });
             if (token !== generation) {
-                await closeResources(null, storage);
+                await closeResources(null, storage, null, relay);
                 const error = new Error('E2EE initialization was superseded by a newer account state.');
                 error.code = 'E2EE_INITIALIZATION_SUPERSEDED';
                 throw error;
@@ -165,7 +166,7 @@ export const initializeE2EEClient = async (userId) => {
             activeContext = { userId: normalizedUserId, storage, client, relay, unsubscribeRelayState };
             await client.startRelaySubscription();
             if (token !== generation) {
-                await closeResources(client, storage, unsubscribeRelayState);
+                await closeResources(client, storage, unsubscribeRelayState, relay);
                 const error = new Error('E2EE initialization was superseded by a newer account state.');
                 error.code = 'E2EE_INITIALIZATION_SUPERSEDED';
                 throw error;
@@ -216,7 +217,7 @@ export const shutdownE2EEClient = async () => {
 
     const context = activeContext;
     activeContext = null;
-    await closeResources(context?.client, context?.storage, context?.unsubscribeRelayState);
+    await closeResources(context?.client, context?.storage, context?.unsubscribeRelayState, context?.relay);
     publish({ ...initialState });
 };
 
