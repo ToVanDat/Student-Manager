@@ -18,15 +18,15 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
         { label: t('female'), value: number(statistics.female, language), detail: t('studentProfile'), icon: GraduationCap, color: 'rose' },
     ];
     const cardColors = {
-        blue: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
-        emerald: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
-        violet: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
-        rose: 'bg-[#edf4fb] text-[#2f5f8f] dark:bg-slate-800 dark:text-blue-300',
+        blue: 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-100 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-900',
+        emerald: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300 dark:ring-emerald-900',
+        violet: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-100 dark:bg-violet-950/50 dark:text-violet-300 dark:ring-violet-900',
+        rose: 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-100 dark:bg-rose-950/50 dark:text-rose-300 dark:ring-rose-900',
     };
 
     return (
-        <div className="admin-overview mx-auto max-w-[1500px] space-y-6 pb-6">
-            <header className="admin-overview__hero flex flex-col justify-between gap-5 rounded-xl border border-slate-900/10 bg-[#173b59] px-5 py-6 text-white sm:flex-row sm:items-end sm:px-7 sm:py-7">
+        <div className="admin-overview mx-auto max-w-[1500px] space-y-6 pb-8">
+            <header className="admin-overview__hero relative isolate flex flex-col justify-between gap-5 overflow-hidden rounded-2xl border border-blue-950/10 bg-gradient-to-br from-[#142f50] via-[#1d4b70] to-[#276b78] px-5 py-6 text-white shadow-[0_16px_40px_rgba(23,59,89,0.14)] sm:flex-row sm:items-end sm:px-8 sm:py-8 before:pointer-events-none before:absolute before:-right-12 before:-top-24 before:-z-10 before:size-72 before:rounded-full before:border-[36px] before:border-white/5 after:pointer-events-none after:absolute after:-bottom-32 after:right-1/4 after:-z-10 after:size-64 after:rounded-full after:bg-cyan-300/10 after:blur-2xl">
                 <div className="min-w-0">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[.12em] text-sky-200">{t('administrator')}</p>
                     <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">{t('welcome')}, {user?.username || 'Admin'}!</h1>
@@ -40,12 +40,12 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map(({ label, value, detail, icon: Icon, color }) => (
-                    <article key={label} className="app-card min-w-0 p-4 sm:p-5">
+                    <article key={label} className="app-card group min-w-0 p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_12px_28px_rgba(30,64,175,0.08)] dark:hover:border-slate-600 sm:p-6">
                         <div className="flex items-start justify-between gap-3">
                             <div className={`flex size-10 items-center justify-center rounded-lg ${cardColors[color]}`}><Icon size={19} /></div>
                         </div>
-                        <p className="mt-4 text-xs font-medium text-[#71829b] dark:text-slate-400">{label}</p>
-                        <p className="mt-1.5 text-[30px] font-bold leading-9 tracking-[-.04em] text-slate-900 dark:text-white sm:text-[32px]">{value}</p>
+                        <p className="mt-4 text-xs font-semibold tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
+                        <p className="mt-1.5 text-[30px] font-bold leading-9 tracking-[-.045em] text-slate-900 dark:text-white sm:text-[34px]">{value}</p>
                         <p className="mt-2 text-[11px] text-[#8190a7] dark:text-slate-400">{detail}</p>
                     </article>
                 ))}
