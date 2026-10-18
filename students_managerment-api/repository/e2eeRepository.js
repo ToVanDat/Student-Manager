@@ -101,8 +101,8 @@ const revokeDevice = async (userId, deviceId) => {
     return rows[0] || null;
 };
 
-const getConversationDeviceBundles = async (conversationId, requesterId) => withTransaction(async (client) => {
-    const membership = await client.query(
+const getConversationDeviceBundles = async (conversationId, requesterId) => {
+    const membership = await pool.query(
         `SELECT 1 FROM conversation_members
          WHERE conversation_id = $1 AND user_id = $2 AND left_at IS NULL LIMIT 1`,
         [conversationId, requesterId]
@@ -113,8 +113,10 @@ const getConversationDeviceBundles = async (conversationId, requesterId) => with
         throw error;
     }
 
-    const { rows: devices } = await client.query(
-        `SELECT d.id, d.user_id, d.device_id, d.device_name,
+    // Listing device identities must not consume one-time prekeys. Claim a
+    // prekey only for the specific recipient device when starting a session.
+    const { rows } = await pool.query(
+        `SELECT d.user_id, d.device_id, d.device_name,
                 d.identity_key_public, d.signed_prekey_public,
                 d.signed_prekey_signature, d.signed_prekey_id,
                 d.registration_id
@@ -127,50 +129,74 @@ const getConversationDeviceBundles = async (conversationId, requesterId) => with
         [conversationId]
     );
 
-    const bundles = [];
-    for (const device of devices) {
-        const { rows: prekeys } = await client.query(
-            `SELECT id, prekey_id, public_key
-             FROM e2ee_one_time_prekeys
-             WHERE device_pk = $1 AND claimed_at IS NULL
-             ORDER BY prekey_id
-             LIMIT 1
-             FOR UPDATE SKIP LOCKED`,
-            [device.id]
-        );
+    return rows.map((device) => ({
+        userId: device.user_id,
+        deviceId: device.device_id,
+        deviceName: device.device_name,
+        identityKeyPublic: device.identity_key_public,
+        signedPrekey: {
+            id: device.signed_prekey_id,
+            publicKey: device.signed_prekey_public,
+            signature: device.signed_prekey_signature
+        },
+        registrationId: device.registration_id
+    }));
+};
 
-        let oneTimePrekey = null;
-        if (prekeys[0]) {
-            const claimed = await client.query(
-                `UPDATE e2ee_one_time_prekeys
-                 SET claimed_at = NOW()
-                 WHERE id = $1 AND claimed_at IS NULL
-                 RETURNING prekey_id, public_key`,
-                [prekeys[0].id]
-            );
-            if (claimed.rows[0]) {
-                oneTimePrekey = {
-                    id: claimed.rows[0].prekey_id,
-                    publicKey: claimed.rows[0].public_key
-                };
-            }
-        }
-
-        bundles.push({
-            userId: device.user_id,
-            deviceId: device.device_id,
-            deviceName: device.device_name,
-            identityKeyPublic: device.identity_key_public,
-            signedPrekey: {
-                id: device.signed_prekey_id,
-                publicKey: device.signed_prekey_public,
-                signature: device.signed_prekey_signature
-            },
-            registrationId: device.registration_id,
-            oneTimePrekey
-        });
+const claimConversationDevicePrekey = async (conversationId, requesterId, targetDeviceId) => withTransaction(async (client) => {
+    const membership = await client.query(
+        `SELECT 1 FROM conversation_members
+         WHERE conversation_id = $1 AND user_id = $2 AND left_at IS NULL LIMIT 1`,
+        [conversationId, requesterId]
+    );
+    if (!membership.rowCount) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
     }
-    return bundles;
+
+    const deviceResult = await client.query(
+        `SELECT d.id
+         FROM e2ee_devices d
+         JOIN conversation_members cm ON cm.user_id = d.user_id
+         WHERE cm.conversation_id = $1
+           AND cm.left_at IS NULL
+           AND d.device_id = $2
+           AND d.revoked_at IS NULL
+         LIMIT 1
+         FOR UPDATE OF d`,
+        [conversationId, targetDeviceId]
+    );
+    if (!deviceResult.rows[0]) {
+        const error = new Error('Không tìm thấy thiết bị E2EE đang hoạt động trong conversation');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    const prekeyResult = await client.query(
+        `SELECT id, prekey_id, public_key
+         FROM e2ee_one_time_prekeys
+         WHERE device_pk = $1 AND claimed_at IS NULL
+         ORDER BY prekey_id
+         LIMIT 1
+         FOR UPDATE SKIP LOCKED`,
+        [deviceResult.rows[0].id]
+    );
+    if (!prekeyResult.rows[0]) return null;
+
+    const claimed = await client.query(
+        `UPDATE e2ee_one_time_prekeys
+         SET claimed_at = NOW()
+         WHERE id = $1 AND claimed_at IS NULL
+         RETURNING prekey_id, public_key`,
+        [prekeyResult.rows[0].id]
+    );
+    if (!claimed.rows[0]) return null;
+
+    return {
+        id: claimed.rows[0].prekey_id,
+        publicKey: claimed.rows[0].public_key
+    };
 });
 
 // Fail closed for legacy plaintext sends after a conversation is explicitly marked E2EE.
@@ -194,5 +220,6 @@ module.exports = {
     registerDevice,
     listDevicesForUser,
     revokeDevice,
-    getConversationDeviceBundles
+    getConversationDeviceBundles,
+    claimConversationDevicePrekey
 };
