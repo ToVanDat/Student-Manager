@@ -18,6 +18,7 @@ const messageFileRouter = require('../router/messageFileRouter');
 const callRouter = require('../router/callRouter');
 const webPushRouter = require('../router/webPushRouter');
 const e2eeRouter = require('../router/e2eeRouter');
+const e2eeRelayRouter = require('../router/e2eeRelayRouter');
 
 const app = express();
 app.disable('x-powered-by');
@@ -62,6 +63,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/auth/sessions', sessionRouter);
 app.use('/api/notifications', webPushRouter);
 app.use('/api/e2ee', e2eeRouter);
+app.use('/api/e2ee/relay', e2eeRelayRouter);
 app.use('/api/users', userRouter);
 app.use('/api/permissions', permissionRouter);
 app.use('/api/conversations', conversationRouter);
