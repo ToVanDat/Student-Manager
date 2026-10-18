@@ -287,13 +287,39 @@ export const uploadE2EEAttachment = async (file, { onProgress } = {}) => {
         throw error;
     }
 
-    const mimeType = typeof file.type === 'string' && file.type ? file.type : 'application/octet-stream';
+    const mimeType = typeof file.type === 'string' && file.type ? file.type.toLowerCase() : 'application/octet-stream';
+    const isImage = mimeType.startsWith('image/');
+    const isVideo = mimeType.startsWith('video/');
+    const isAudio = mimeType.startsWith('audio/');
+    const isDocument = mimeType === 'application/pdf'
+        || mimeType.startsWith('text/')
+        || mimeType.includes('officedocument')
+        || mimeType === 'application/msword'
+        || mimeType === 'application/zip'
+        || mimeType === 'application/octet-stream';
+    const maxBytes = isImage ? 20 * 1024 * 1024
+        : isVideo ? 500 * 1024 * 1024
+            : (isAudio || isDocument) ? 100 * 1024 * 1024
+                : 0;
+    if (!maxBytes) {
+        const error = new Error('Loại tệp này chưa được cho phép gửi qua E2EE.');
+        error.code = 'E2EE_ATTACHMENT_TYPE_NOT_ALLOWED';
+        throw error;
+    }
+    if (file.size > maxBytes) {
+        const error = new Error('Tệp vượt quá giới hạn kích thước cho loại tệp này.');
+        error.code = 'E2EE_ATTACHMENT_TOO_LARGE';
+        throw error;
+    }
+    const allowedContentTypes = ['image/*', 'video/*', 'audio/*', 'application/pdf', 'text/*',
+        'application/msword', 'application/zip', 'application/octet-stream',
+        'application/vnd.openxmlformats-officedocument.*'];
     return client.uploadAttachment(file, {
         mimeType,
         attachment: {
             policy: {
-                maxPlaintextSizeBytes: 500 * 1024 * 1024,
-                allowedContentTypes: ['*/*']
+                maxPlaintextSizeBytes: maxBytes,
+                allowedContentTypes
             },
             ...(typeof onProgress === 'function' ? { onProgress } : {})
         }
