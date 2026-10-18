@@ -14,6 +14,7 @@ Fix:
 - Extracted filter construction into `repository/studentPageQuery.js`.
 - All filter values remain parameterized; SQL placeholders are now generated as `$1`, `$2`, etc.
 - Pagination LIMIT/OFFSET placeholders are also generated with the required prefix.
+- Removed the unverified `updated_at = CURRENT_TIMESTAMP` assignment from the PATCH query so the update path does not depend on a column that was not confirmed in the tracked schema. No migration was added.
 - Added `test/studentPageQuery.test.js` to cover search, combined filters, placeholder numbering and no-filter behavior.
 
 Relevant files:
@@ -29,7 +30,7 @@ Relevant files:
 - The repository returns dashboard statistics and recent records alongside the filtered page. These statistics are global rather than narrowed to the current filter; this should be intentional in the UI.
 - Student form class options are loaded from the API; submission is disabled when the class list is unavailable or empty.
 - No separate, auditable transfer-class workflow, bulk operation, status lifecycle, or record-change history was found in this phase. These should not be added without confirming the actual schema and academic rules.
-- The repository update statement references `updated_at`. The local database schema was not available to verify that column exists; confirm before relying on PATCH in the target environment.
+- The PATCH query now updates only the explicitly supplied, allowlisted student fields and does not assume an `updated_at` column. A timestamp should only be reintroduced after confirming the real schema and migration history.
 
 ## Verification status
 
