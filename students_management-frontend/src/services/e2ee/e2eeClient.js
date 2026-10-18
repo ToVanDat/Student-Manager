@@ -2,6 +2,7 @@ import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { webSqliteStore } from '@open-e2ee/signal-protocol-sdk/local/store/web-sqlite';
 import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
+import { createE2EER2ObjectStore } from './e2eeR2ObjectStore';
 import { getStoredE2EEDeviceId, setStoredE2EEDeviceId } from './e2eeDeviceStateStore';
 
 const listeners = new Set();
@@ -153,7 +154,7 @@ export const initializeE2EEClient = async (userId) => {
             await relay.registerDevice(normalizedUserId, { deviceId, deviceType: 'web' });
             client = await createSignalProtocolClient({
                 identity: { userId: normalizedUserId, deviceId },
-                adapters: { storage, relay }
+                adapters: { storage, relay, remoteObjectStore: createE2EER2ObjectStore({ getConversationId: () => null }) }
             });
             if (typeof client.registerHook !== 'function' || typeof client.startRelaySubscription !== 'function') {
                 throw new Error('Installed Signal Protocol SDK does not expose the expected receive lifecycle API.');
