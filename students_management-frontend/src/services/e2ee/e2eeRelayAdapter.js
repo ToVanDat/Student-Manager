@@ -266,16 +266,52 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             };
         },
 
-        // Device linking and identity rotation need their dedicated cryptographic
-        // provisioning/compare-and-swap flows; fail closed instead of approximating.
-        createProvisioningSession: async () => { throw unsupported('createProvisioningSession'); },
-        connectNewDevice: async () => { throw unsupported('connectNewDevice'); },
-        sendProvisioningMessage: async () => { throw unsupported('sendProvisioningMessage'); },
-        getProvisioningMessage: async () => { throw unsupported('getProvisioningMessage'); },
-        completeProvisioning: async () => { throw unsupported('completeProvisioning'); },
-        acknowledgeProvisioning: async () => { throw unsupported('acknowledgeProvisioning'); },
-        rollbackProvisioning: async () => { throw unsupported('rollbackProvisioning'); },
-        deleteProvisioningSession: async () => { throw unsupported('deleteProvisioningSession'); },
+        async createProvisioningSession(requestedUserId, ephemeralPublicKey) {
+            assertOwnUser(requestedUserId);
+            return unwrap(await e2eeRelayApi.createProvisioningSession(requestedUserId, bytesToBase64(ephemeralPublicKey)));
+        },
+
+        async connectNewDevice(sessionId, ephemeralPublicKey, deviceMetadata) {
+            return unwrap(await e2eeRelayApi.connectNewDevice(sessionId, bytesToBase64(ephemeralPublicKey), deviceMetadata));
+        },
+
+        async sendProvisioningMessage(sessionId, encryptedMessage, requestedUserId) {
+            if (requestedUserId != null) assertOwnUser(requestedUserId);
+            return unwrap(await e2eeRelayApi.sendProvisioningMessage(sessionId, encryptedMessage));
+        },
+
+        async getProvisioningMessage(sessionId) {
+            return unwrap(await e2eeRelayApi.getProvisioningMessage(sessionId));
+        },
+
+        async completeProvisioning(sessionId, deviceMetadata = {}) {
+            const payload = {
+                ...deviceMetadata,
+                ...(deviceMetadata.encryptedDeviceName
+                    ? { encryptedDeviceName: bytesToBase64(new Uint8Array(deviceMetadata.encryptedDeviceName)) }
+                    : {})
+            };
+            delete payload.platform;
+            delete payload.appVersion;
+            delete payload.osVersion;
+            return unwrap(await e2eeRelayApi.completeProvisioning(sessionId, payload));
+        },
+
+        async acknowledgeProvisioning(sessionId) {
+            return unwrap(await e2eeRelayApi.acknowledgeProvisioning(sessionId));
+        },
+
+        async rollbackProvisioning(sessionId) {
+            return unwrap(await e2eeRelayApi.rollbackProvisioning(sessionId));
+        },
+
+        async deleteProvisioningSession(sessionId, requestedUserId) {
+            if (requestedUserId != null) assertOwnUser(requestedUserId);
+            return unwrap(await e2eeRelayApi.deleteProvisioningSession(sessionId));
+        },
+
+        // Identity rotation requires compare-and-swap against the SDK commitment.
+        // It remains fail-closed until the backend stores and verifies that commitment.
         rotateIdentityKey: async () => { throw unsupported('rotateIdentityKey'); }
     };
 
