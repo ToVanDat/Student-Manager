@@ -396,6 +396,9 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
             (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
+            (SELECT COUNT(*)::int FROM conversation_members cm
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL
+               AND NOT EXISTS (SELECT 1 FROM e2ee_sdk_devices d WHERE d.user_id = cm.user_id AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE)) AS members_without_devices,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE
                AND d.identity_public IS NOT NULL
@@ -413,7 +416,9 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
         memberCount: Number(rows[0].member_count),
         activeDeviceCount: Number(rows[0].active_device_count),
         readyDeviceCount: Number(rows[0].ready_device_count),
+        membersWithoutDevices: Number(rows[0].members_without_devices),
         canEnable: rows[0].type === 'direct' && Number(rows[0].member_count) === 2 &&
+            Number(rows[0].members_without_devices) === 0 &&
             Number(rows[0].active_device_count) > 0 && Number(rows[0].active_device_count) === Number(rows[0].ready_device_count)
     };
 };
@@ -425,6 +430,9 @@ const enableConversationE2EE = async (requesterId, conversationId) => withTransa
             (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
+            (SELECT COUNT(*)::int FROM conversation_members cm
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL
+               AND NOT EXISTS (SELECT 1 FROM e2ee_sdk_devices d WHERE d.user_id = cm.user_id AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE)) AS members_without_devices,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE
                AND d.identity_public IS NOT NULL
@@ -439,7 +447,7 @@ const enableConversationE2EE = async (requesterId, conversationId) => withTransa
     if (status.type !== 'direct' || Number(status.member_count) !== 2) {
         throw httpError(409, 'Giai đoạn này chỉ hỗ trợ kích hoạt E2EE cho chat 1-1');
     }
-    if (Number(status.active_device_count) < 2 || Number(status.active_device_count) !== Number(status.ready_device_count)) {
+    if (Number(status.members_without_devices) > 0 || Number(status.active_device_count) < 2 || Number(status.active_device_count) !== Number(status.ready_device_count)) {
         throw httpError(409, 'Mọi thiết bị đang hoạt động của cả hai người cần đăng ký identity và prekey trước khi bật E2EE', 'E2EE_DEVICE_NOT_READY');
     }
     const { rows } = await client.query(
