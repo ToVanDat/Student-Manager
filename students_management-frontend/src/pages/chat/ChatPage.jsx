@@ -13,6 +13,7 @@ import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
 import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { useE2EEClient } from '@/hooks/useE2EEClient';
+import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -333,6 +334,7 @@ export default function ChatPage() {
                             <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{unreadCallNotificationCount > 99 ? '99+' : unreadCallNotificationCount}</span>
                         )}
                     </button>
+                    <E2EEDeviceLinkPanel user={user} clientState={e2eeClient} />
                     <div className="relative" ref={accountMenuRef}>
                         <button
                             type="button"
