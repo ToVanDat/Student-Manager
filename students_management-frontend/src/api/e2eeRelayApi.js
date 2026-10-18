@@ -17,6 +17,7 @@ export const e2eeRelayApi = {
         client.get(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys/inventory`, { params: { identityType } }),
     fetchPreKeyBundle: (userId, deviceId, identityType = 'aci') =>
         client.get(`${root}/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}/prekey-bundle`, { params: { identityType } }),
+    sendDirectEnvelope: (userId, envelope) => client.post(`${root}/users/${encodeURIComponent(userId)}/envelopes`, envelope),
     sendEnvelope: (conversationId, envelope) =>
         client.post(`${root}/conversations/${encodeURIComponent(conversationId)}/envelopes`, envelope),
     pullMailbox: (deviceId, limit = 100) =>
