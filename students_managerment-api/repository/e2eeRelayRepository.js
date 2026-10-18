@@ -378,6 +378,15 @@ const fetchPreKeyBundle = async (targetUserId, targetDeviceId, identityType = 'a
 
 const sendEnvelope = async (senderUserId, conversationId, input) => withTransaction(async client => {
     await assertConversationMember(client, conversationId, senderUserId);
+    const schema = await client.query(
+        "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS ready"
+    );
+    if (!schema.rows[0]?.ready) throw httpError(503, 'Cần chạy migration E2EE trước khi gửi envelope', 'E2EE_SCHEMA_NOT_READY');
+    const enabled = await client.query(
+        'SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1',
+        [conversationId]
+    );
+    if (!enabled.rowCount) throw httpError(409, 'Cuộc trò chuyện chưa bật E2EE', 'E2EE_NOT_ENABLED');
     await assertE2EEEnabled(client, conversationId);
     const sender = await getDeviceRow(client, senderUserId, input.senderDeviceId, 'aci', true);
     if (!sender) throw httpError(403, 'Thiết bị gửi chưa đăng ký hoặc đã bị thu hồi');
