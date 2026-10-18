@@ -515,7 +515,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL
                AND NOT EXISTS (SELECT 1 FROM e2ee_sdk_devices d WHERE d.user_id = cm.user_id AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE)) AS members_without_devices,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
-             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE AND d.device_token_hash IS NOT NULL
                AND d.identity_public IS NOT NULL
                AND EXISTS (SELECT 1 FROM e2ee_sdk_identities i WHERE i.user_id = d.user_id AND i.identity_type = d.identity_type AND i.identity_public = d.identity_public)
                AND EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'ecSignedPreKey' AND p.signature IS NOT NULL)
@@ -557,7 +557,7 @@ const enableConversationE2EE = async (requesterId, conversationId) => withTransa
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL
                AND NOT EXISTS (SELECT 1 FROM e2ee_sdk_devices d WHERE d.user_id = cm.user_id AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE)) AS members_without_devices,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
-             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE
+             WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE AND d.device_token_hash IS NOT NULL
                AND d.identity_public IS NOT NULL
                AND EXISTS (SELECT 1 FROM e2ee_sdk_identities i WHERE i.user_id = d.user_id AND i.identity_type = d.identity_type AND i.identity_public = d.identity_public)
                AND EXISTS (SELECT 1 FROM e2ee_sdk_prekeys p WHERE p.device_pk = d.id AND p.key_type = 'ecSignedPreKey' AND p.signature IS NOT NULL)
