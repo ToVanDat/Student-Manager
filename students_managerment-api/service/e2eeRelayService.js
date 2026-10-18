@@ -76,6 +76,12 @@ const getPreKeyCount = async (userId, deviceId, type, identityType = 'aci') => {
     return relayRepository.getPreKeyCount(userId, slot, type, identityType);
 };
 
+const clearStaleKemPreKeys = async (userId, deviceId, identityType = 'aci') => {
+    const slot = integer(deviceId, 'deviceId', 1, 5);
+    if (!['aci', 'pni'].includes(identityType)) throw fail(400, 'identityType không hợp lệ');
+    return relayRepository.clearStaleKemPreKeys(userId, slot, identityType);
+};
+
 const getPreKeyInventory = async (userId, deviceId, identityType = 'aci') => {
     const slot = integer(deviceId, 'deviceId', 1, 5);
     if (!['aci', 'pni'].includes(identityType)) throw fail(400, 'identityType không hợp lệ');
@@ -124,6 +130,6 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 
 module.exports = {
     registerDevice, getDevices, removeDevice, provisionIdentity, uploadPreKeys,
-    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, sendEnvelope,
+    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, sendEnvelope,
     pullEnvelopes, markDelivered
 };
