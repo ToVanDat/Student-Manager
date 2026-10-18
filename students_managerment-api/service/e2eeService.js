@@ -99,9 +99,30 @@ const getConversationDeviceBundles = async (requesterId, conversationId) => {
     return e2eeRepository.getConversationDeviceBundles(conversationId, requesterId);
 };
 
+const claimConversationDevicePrekey = async (requesterId, conversationId, targetDeviceId) => {
+    if (!Number.isSafeInteger(conversationId) || conversationId <= 0) {
+        const error = new Error('conversationId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (typeof targetDeviceId !== 'string' ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetDeviceId)) {
+        const error = new Error('deviceId không hợp lệ');
+        error.statusCode = 400;
+        throw error;
+    }
+    if (!await conversationRepository.isConversationMember(conversationId, requesterId)) {
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
+    }
+    return e2eeRepository.claimConversationDevicePrekey(conversationId, requesterId, targetDeviceId);
+};
+
 module.exports = {
     registerDevice,
     listDevices,
     revokeDevice,
-    getConversationDeviceBundles
+    getConversationDeviceBundles,
+    claimConversationDevicePrekey
 };
