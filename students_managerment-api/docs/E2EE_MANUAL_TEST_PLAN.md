@@ -19,6 +19,8 @@
 | Multi-device | Link a second device to B and send another message from A | Both B devices receive/decrypt the message; no duplicate generic notification is generated for the same logical message |
 | Offline delivery | Close Profile B, send from A, then reopen/reconnect B | B pulls the durable envelope and decrypts it; envelope is acknowledged after processing |
 | Retry | Simulate a transient network failure and retry the same client message ID | Server returns the same envelope for the same sender/message/recipient device; no duplicate notification |
+| Mailbox backoff | Make a mailbox pull or decrypt handler fail temporarily, then restore it without sending another Socket.IO event | Client retries with capped backoff, leaves failed envelope unacknowledged, then processes and acknowledges it once recovered |
+| Mailbox pagination | Queue more than 100 envelopes for one device and reconnect once | Client drains subsequent pages without requiring another envelope-available event |
 | Edit / recall / reaction | Perform each supported operation in the direct E2EE conversation | Operation is delivered as an encrypted control payload and updates local decrypted history |
 | Legacy fail-closed | In an E2EE-enabled conversation, attempt the legacy plaintext REST and Socket.IO send paths | Both reject the plaintext message; no fallback sends it |
 | Attachment | Attempt image, document, audio, or video attachment in E2EE chat | UI blocks the operation with a clear explanation; no legacy upload request occurs |
