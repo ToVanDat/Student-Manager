@@ -219,12 +219,12 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
     });
 
     try {
-        const result = await alice.send('bob', {
+        const result = await alice.send('bob', JSON.stringify({
             type: 'message',
             body: 'e2ee multi-device round-trip',
             timestamp: Date.now(),
             appMessageId: 'test-message-multi-device'
-        });
+        }));
         assert.ok(result.messageId);
         assert.equal(receivedPrimary.length, 1);
         assert.equal(receivedLinked.length, 1);
