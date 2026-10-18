@@ -43,6 +43,7 @@ module.exports = {
     provisionIdentity: run(req => e2eeRelayService.provisionIdentity(
         Number(req.user.id), req.params.deviceId, req.body
     )),
+    rotateIdentityKey: run(req => e2eeRelayService.rotateIdentityKey(Number(req.user.id), req.params.deviceId, req.body)),
     uploadPreKeys: run(req => e2eeRelayService.uploadPreKeys(
         Number(req.user.id), req.params.deviceId, req.body
     )),
