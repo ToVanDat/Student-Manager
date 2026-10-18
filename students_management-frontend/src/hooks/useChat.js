@@ -759,6 +759,14 @@ export const useChat = () => {
 
         const requestId = ++messageSearchRequestRef.current;
         const conversationId = Number(activeId);
+        const statusResponse = await e2eeRelayApi.getConversationStatus(conversationId);
+        if (statusResponse.data?.data?.enabled) {
+            // Never send a search term for E2EE content to the server.
+            return messages.filter(item =>
+                Number(item.conversation_id) === conversationId &&
+                String(item.content || '').toLocaleLowerCase().includes(normalizedQuery.toLocaleLowerCase())
+            );
+        }
         const res = await chatApi.searchMessages(conversationId, normalizedQuery);
         if (requestId !== messageSearchRequestRef.current) return [];
 
@@ -767,7 +775,7 @@ export const useChat = () => {
             throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
         }
         return results;
-    }, [activeId]);
+    }, [activeId, messages]);
 
     const openSearchResult = useCallback((result) => {
         if (!result?.id) return;
