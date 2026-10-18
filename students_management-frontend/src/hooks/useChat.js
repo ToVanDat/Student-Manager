@@ -30,9 +30,22 @@ export const useChat = () => {
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
     useEffect(() => subscribeDecryptedE2EEMessages(async decrypted => {
-        const payload = decrypted?.content && typeof decrypted.content === 'object'
-            ? decrypted.content
-            : { type: 'message', body: String(decrypted?.content ?? '') };
+        // SDK v11 exposes the decrypted plaintext as a string (usually JSON),
+        // not as an already-parsed application object.
+        let payload = null;
+        if (decrypted?.content && typeof decrypted.content === 'object' && !Array.isArray(decrypted.content)) {
+            payload = decrypted.content;
+        } else if (typeof decrypted?.content === 'string') {
+            try {
+                const parsed = JSON.parse(decrypted.content);
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) payload = parsed;
+            } catch {
+                // Preserve compatibility with non-JSON plaintext from older clients.
+            }
+            if (!payload) payload = { type: 'message', body: decrypted.content };
+        } else {
+            payload = { type: 'message', body: String(decrypted?.content ?? '') };
+        }
         const senderId = Number(decrypted?.senderId ?? decrypted?.senderUserId);
         const explicitConversationId = payload.conversationId ?? decrypted?.conversationId;
         const targetConversation = explicitConversationId != null
