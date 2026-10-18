@@ -203,7 +203,7 @@ export default function E2EEDeviceLinkPanel({ user, clientState }) {
             <button
                 type="button"
                 onClick={() => {
-                    setMode(clientState?.errorCode === 'E2EE_DEVICE_LINK_REQUIRED' ? 'link-this-device' : 'primary');
+                    setMode(['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED'].includes(clientState?.errorCode) ? 'link-this-device' : 'primary');
                     setOpen(true);
                 }}
                 className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -259,7 +259,7 @@ export default function E2EEDeviceLinkPanel({ user, clientState }) {
                                     {busy && <LoaderCircle size={16} className="animate-spin" />}
                                     Tạo mã liên kết
                                 </button>
-                                {clientState?.errorCode === 'E2EE_DEVICE_LINK_REQUIRED' && (
+                                {['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED'].includes(clientState?.errorCode) && (
                                     <button type="button" onClick={() => setMode('link-this-device')} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm dark:border-slate-700">
                                         Liên kết trình duyệt này từ thiết bị chính
                                     </button>
