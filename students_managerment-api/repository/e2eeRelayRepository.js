@@ -80,15 +80,17 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
             created_at: existing.created_at
         };
     }
+    const deviceToken = crypto.randomBytes(32).toString('base64url');
+    const deviceTokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     const { rows } = await client.query(
         `INSERT INTO e2ee_sdk_devices
-          (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type)
-         VALUES ($1,$2,$3,$4,$5,$6,'aci')
+          (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash)
+         VALUES ($1,$2,$3,$4,$5,$6,'aci',$7)
          RETURNING device_id, registration_id, device_type, registered, linked, enabled, created_at`,
         [userId, deviceId, input.registrationId, input.deviceType || 'web',
-            input.encryptedDeviceName || null, deviceId !== 1]
+            input.encryptedDeviceName || null, deviceId !== 1, deviceTokenHash]
     );
-    return rows[0];
+    return { ...rows[0], device_token: deviceToken };
 });
 
 const getDevices = async (userId) => {
