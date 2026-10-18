@@ -6,7 +6,7 @@ import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
 import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
-import { sendE2EEMessage, subscribeDecryptedE2EEMessages } from '@/services/e2ee/e2eeClient';
+import { sendE2EEMessage, subscribeDecryptedE2EEMessages, setE2EEAttachmentConversationId } from '@/services/e2ee/e2eeClient';
 import { loadE2EEHistory, saveE2EEHistoryMessage, deleteE2EEHistoryMessage } from '@/services/e2ee/e2eeHistoryStore';
 
 export const useChat = () => {
@@ -29,6 +29,13 @@ export const useChat = () => {
     const messageSearchRequestRef = useRef(0);
     const seenMessageEventIdsRef = useRef(new Set());
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
+
+    // Bind SDK object-storage requests to the currently selected conversation.
+    // The relay/API still independently verifies membership and E2EE status.
+    useEffect(() => {
+        setE2EEAttachmentConversationId(activeId);
+        return () => setE2EEAttachmentConversationId(null);
+    }, [activeId]);
 
     useEffect(() => subscribeDecryptedE2EEMessages(async decrypted => {
         const parseObject = value => {
