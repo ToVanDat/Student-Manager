@@ -200,7 +200,7 @@ export const useChat = () => {
             }
             setIsTyping(false);
         };
-    }, [activeId]);
+    }, [activeId, currentUserId]);
 
     const refreshConversationMembers = useCallback(async (conversationId = activeId) => {
         if (!conversationId) return [];
@@ -1045,7 +1045,7 @@ export const useChat = () => {
             console.error('Không thể xoá message cho tôi:', error);
             toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn');
         }
-    }, [messages]);
+    }, [messages, currentUserId]);
 
     const deleteMessageForEveryone = useCallback(async (messageId) => {
         if (!messageId) return;
@@ -1064,8 +1064,10 @@ export const useChat = () => {
                     conversationId: String(existing.conversation_id),
                     timestamp: Date.now()
                 });
+                const recalledLocal = { ...existing, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
+                await saveE2EEHistoryMessage(currentUserId, recalledLocal);
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId)
-                    ? { ...item, content: 'Tin nhắn đã được thu hồi', is_recalled: true } : item));
+                    ? recalledLocal : item));
             } catch (error) {
                 toast.error('Không thể gửi yêu cầu xóa E2EE tới thiết bị người nhận.');
                 console.warn('[E2EE] delete-for-everyone send failed', { code: error?.code || 'E2EE_DELETE_FAILED' });
