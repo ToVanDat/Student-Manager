@@ -951,8 +951,10 @@ export const useChat = () => {
                     conversationId: String(existing.conversation_id),
                     timestamp: Date.now()
                 });
+                const updatedLocal = { ...existing, content: text, is_edited: true };
+                await saveE2EEHistoryMessage(currentUserId, updatedLocal);
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId)
-                    ? { ...item, content: text, is_edited: true } : item));
+                    ? updatedLocal : item));
             } catch (error) {
                 toast.error('Không thể gửi thay đổi E2EE tới thiết bị người nhận.');
                 console.warn('[E2EE] edit control send failed', { code: error?.code || 'E2EE_EDIT_FAILED' });
@@ -993,8 +995,10 @@ export const useChat = () => {
                     conversationId: String(existing.conversation_id),
                     timestamp: Date.now()
                 });
+                const recalledLocal = { ...existing, content: 'Tin nhắn đã được thu hồi', is_recalled: true };
+                await saveE2EEHistoryMessage(currentUserId, recalledLocal);
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId)
-                    ? { ...item, content: 'Tin nhắn đã được thu hồi', is_recalled: true } : item));
+                    ? recalledLocal : item));
             } catch (error) {
                 toast.error('Không thể gửi yêu cầu thu hồi E2EE tới thiết bị người nhận.');
                 console.warn('[E2EE] recall control send failed', { code: error?.code || 'E2EE_RECALL_FAILED' });
@@ -1023,6 +1027,7 @@ export const useChat = () => {
         if (!messageId) return;
         const existing = messages.find(item => String(item.id) === String(messageId));
         if (existing?._e2ee) {
+            await deleteE2EEHistoryMessage(currentUserId, messageId);
             setMessages(previous => previous.filter(item => String(item.id) !== String(messageId)));
             return;
         }
