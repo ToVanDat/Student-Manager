@@ -15,21 +15,42 @@ const withTransaction = async (callback) => {
     }
 };
 
+const conflictError = (message) => {
+    const error = new Error(message);
+    error.statusCode = 409;
+    return error;
+};
+
 const registerDevice = async (userId, device, prekeys) => withTransaction(async (client) => {
+    const existingResult = await client.query(
+        `SELECT id, identity_key_public, revoked_at
+         FROM e2ee_devices
+         WHERE user_id = $1 AND device_id = $2
+         FOR UPDATE`,
+        [userId, device.deviceId]
+    );
+    const existing = existingResult.rows[0];
+
+    // A device ID is bound to its first identity key. Never silently replace
+    // that identity or reactivate a revoked device during normal registration.
+    if (existing && existing.identity_key_public !== device.identityKeyPublic) {
+        throw conflictError('Identity key của thiết bị đã thay đổi; cần quy trình xác minh/khôi phục riêng.');
+    }
+    if (existing?.revoked_at) {
+        throw conflictError('Thiết bị đã bị thu hồi. Hãy đăng ký bằng deviceId mới.');
+    }
+
     const { rows } = await client.query(
         `INSERT INTO e2ee_devices (
             user_id, device_id, device_name, identity_key_public,
             signed_prekey_public, signed_prekey_signature,
-            signed_prekey_id, registration_id, revoked_at, last_seen_at
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NULL,NOW())
+            signed_prekey_id, registration_id, last_seen_at
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
         ON CONFLICT (user_id, device_id) DO UPDATE SET
             device_name = EXCLUDED.device_name,
-            identity_key_public = EXCLUDED.identity_key_public,
             signed_prekey_public = EXCLUDED.signed_prekey_public,
             signed_prekey_signature = EXCLUDED.signed_prekey_signature,
             signed_prekey_id = EXCLUDED.signed_prekey_id,
-            registration_id = EXCLUDED.registration_id,
-            revoked_at = NULL,
             last_seen_at = NOW()
         RETURNING id, user_id, device_id, device_name, signed_prekey_id,
             registration_id, created_at, last_seen_at, revoked_at`,
@@ -43,11 +64,12 @@ const registerDevice = async (userId, device, prekeys) => withTransaction(async 
     const saved = rows[0];
 
     for (const key of prekeys) {
+        // Re-uploading a device bundle must not make an already claimed
+        // one-time prekey available a second time.
         await client.query(
             `INSERT INTO e2ee_one_time_prekeys (device_pk, prekey_id, public_key)
              VALUES ($1, $2, $3)
-             ON CONFLICT (device_pk, prekey_id) DO UPDATE
-             SET public_key = EXCLUDED.public_key, claimed_at = NULL`,
+             ON CONFLICT (device_pk, prekey_id) DO NOTHING`,
             [saved.id, key.id, key.publicKey]
         );
     }
@@ -55,16 +77,15 @@ const registerDevice = async (userId, device, prekeys) => withTransaction(async 
     return saved;
 });
 
-const listDevicesForUser = async (userId, requesterId) => {
+const listDevicesForUser = async (userId) => {
     const { rows } = await pool.query(
         `SELECT id, user_id, device_id, device_name, identity_key_public,
                 signed_prekey_public, signed_prekey_signature, signed_prekey_id,
                 registration_id, created_at, last_seen_at
          FROM e2ee_devices
          WHERE user_id = $1 AND revoked_at IS NULL
-           AND ($1 = $2 OR $2 IS NOT NULL)
          ORDER BY last_seen_at DESC, id`,
-        [userId, requesterId]
+        [userId]
     );
     return rows;
 };
