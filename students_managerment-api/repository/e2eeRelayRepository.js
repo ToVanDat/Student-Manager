@@ -80,10 +80,7 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
     return rows[0];
 });
 
-const getDevices = async (userId, requesterId) => {
-    if (Number(userId) !== Number(requesterId)) {
-        throw httpError(403, 'Chỉ được xem thiết bị của chính tài khoản');
-    }
+const getDevices = async (userId) => {
     const { rows } = await pool.query(
         `SELECT device_id, device_type, registered, linked, enabled, last_seen_at, created_at
          FROM e2ee_sdk_devices
