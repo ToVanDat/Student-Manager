@@ -102,6 +102,7 @@ class InMemoryRelay {
     }
 
     async getPreKeyCount(userId, deviceId, type) {
+        console.log('TEST_RELAY_COUNT', userId, deviceId, type);
         const inventory = await this.getPreKeyInventory(userId, deviceId);
         return type === 'ec' ? inventory.ecOneTimePreKeyCount : inventory.kemOneTimePreKeyCount;
     }
