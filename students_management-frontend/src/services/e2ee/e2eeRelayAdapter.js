@@ -61,6 +61,8 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
     socket.on('connect_error', () => updateConnectionState({ state: 'reconnecting', reason: 'error' }));
 
     const adapter = {
+        getCurrentDeviceId() { return currentDeviceId; },
+
         get relayConnectionState() {
             return { ...connectionState };
         },
