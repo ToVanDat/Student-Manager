@@ -71,19 +71,24 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
     const requestId = body.requestId;
     const preparedAt = body.preparedAt;
     let digest = null;
-    if (requestId != null || preparedAt != null || body.digest != null) {
+    let readCapabilityDigest = null;
+    if (requestId != null || preparedAt != null || body.digest != null || body.readCapabilityDigest != null) {
         if (typeof requestId !== 'string' || !UUID_RE.test(requestId) ||
             !Number.isSafeInteger(preparedAt) || preparedAt <= 0 ||
-            typeof body.digest !== 'string') {
-            throw fail(400, 'requestId, preparedAt và digest phải được gửi cùng nhau');
+            typeof body.digest !== 'string' || typeof body.readCapabilityDigest !== 'string') {
+            throw fail(400, 'requestId, preparedAt, digest và readCapabilityDigest phải được gửi cùng nhau');
         }
         try {
             digest = Buffer.from(body.digest, 'base64');
         } catch {
             throw fail(400, 'digest không hợp lệ');
         }
-        if (digest.length !== 32 || digest.toString('base64') !== body.digest) {
-            throw fail(400, 'digest phải là SHA-256 Base64 chuẩn');
+        try { readCapabilityDigest = Buffer.from(body.readCapabilityDigest, 'base64'); } catch {
+            throw fail(400, 'readCapabilityDigest không hợp lệ');
+        }
+        if (digest.length !== 32 || digest.toString('base64') !== body.digest ||
+            readCapabilityDigest.length !== 32 || readCapabilityDigest.toString('base64') !== body.readCapabilityDigest) {
+            throw fail(400, 'digest và readCapabilityDigest phải là SHA-256 Base64 chuẩn');
         }
     }
 
@@ -93,7 +98,7 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
     let expiresAt;
     if (requestId) {
         const existing = await pool.query(
-            `SELECT id, object_key, ciphertext_size, ciphertext_sha256, status, expires_at
+            `SELECT id, object_key, ciphertext_size, ciphertext_sha256, read_capability_digest, status, expires_at
                FROM e2ee_attachment_objects
               WHERE uploaded_by = $1 AND conversation_id = $2 AND request_id = $3 AND prepared_at = $4
               LIMIT 1`,
@@ -103,7 +108,8 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
         if (row) {
             if (Number(row.ciphertext_size) !== size ||
                 !row.ciphertext_sha256 ||
-                !Buffer.from(row.ciphertext_sha256).equals(digest)) {
+                !Buffer.from(row.ciphertext_sha256).equals(digest) ||
+                !row.read_capability_digest || !Buffer.from(row.read_capability_digest).equals(readCapabilityDigest)) {
                 throw fail(409, 'Upload request identity was reused with different bytes', 'E2EE_ATTACHMENT_IDENTITY_CONFLICT');
             }
             if (row.status !== 'pending' || new Date(row.expires_at).getTime() <= Date.now()) {
@@ -123,9 +129,9 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
             await pool.query(
                 `INSERT INTO e2ee_attachment_objects
                     (id, conversation_id, uploaded_by, object_key, ciphertext_size, status, expires_at,
-                     request_id, prepared_at, ciphertext_sha256)
-                 VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
-                [attachmentId, id, userId, objectKey, size, expiresAt, requestId || null, preparedAt || null, digest]
+                     request_id, prepared_at, ciphertext_sha256, read_capability_digest)
+                 VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9, $10)`,
+                [attachmentId, id, userId, objectKey, size, expiresAt, requestId || null, preparedAt || null, digest, readCapabilityDigest]
             );
         } catch (error) {
             // A concurrent retry may have won the unique reservation. Ask caller
@@ -204,16 +210,23 @@ const completeUpload = async (userId, attachmentId) => {
     return { attachmentId, status: 'uploaded', ciphertextSize: actualSize };
 };
 
-const createDownloadTicket = async (userId, attachmentId) => {
+const createDownloadTicket = async (userId, attachmentId, readCapability) => {
     if (typeof attachmentId !== 'string' || !UUID_RE.test(attachmentId)) throw fail(400, 'attachmentId không hợp lệ');
     const config = getConfig();
     const { rows } = await pool.query(
-        `SELECT id, conversation_id, object_key, ciphertext_size, status
+        `SELECT id, conversation_id, object_key, ciphertext_size, read_capability_digest, status
            FROM e2ee_attachment_objects WHERE id = $1 LIMIT 1`,
         [attachmentId]
     );
     const row = rows[0];
     if (!row || row.status !== 'uploaded') throw fail(404, 'Không tìm thấy tệp E2EE đã tải lên');
+    if (!row.read_capability_digest || typeof readCapability !== 'string' || readCapability.length < 16 || readCapability.length > 512) {
+        throw fail(403, 'Thiếu quyền đọc tệp E2EE', 'E2EE_ATTACHMENT_READ_AUTHORITY_REQUIRED');
+    }
+    const capabilityDigest = crypto.createHash('sha256').update(readCapability, 'utf8').digest();
+    if (!crypto.timingSafeEqual(Buffer.from(row.read_capability_digest), capabilityDigest)) {
+        throw fail(403, 'Quyền đọc tệp E2EE không hợp lệ', 'E2EE_ATTACHMENT_READ_AUTHORITY_INVALID');
+    }
     await assertConversationAccess(userId, row.conversation_id);
     const ticket = makeTicket(config, {
         method: 'GET', attachmentId, objectKey: row.object_key,
