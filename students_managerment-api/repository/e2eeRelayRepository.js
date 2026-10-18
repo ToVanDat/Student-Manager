@@ -113,6 +113,20 @@ const provisionIdentity = async (userId, deviceId, identity, registrationId, ide
         if (Number(device.registration_id) !== registrationId) {
             throw httpError(409, 'registrationId không khớp thiết bị');
         }
+        const canonical = await client.query(
+            'SELECT identity_public FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 FOR UPDATE',
+            [userId, identityType]
+        );
+        if (canonical.rows[0]) {
+            if (JSON.stringify(canonical.rows[0].identity_public) !== JSON.stringify(identity)) {
+                throw httpError(409, 'Identity tài khoản đã tồn tại; linked device phải dùng cùng CompositeIdentityV1');
+            }
+        } else {
+            await client.query(
+                'INSERT INTO e2ee_sdk_identities (user_id, identity_type, identity_public) VALUES ($1,$2,$3::jsonb)',
+                [userId, identityType, JSON.stringify(identity)]
+            );
+        }
         const { rows } = await client.query(
             `UPDATE e2ee_sdk_devices SET identity_public = $4::jsonb, last_seen_at = NOW()
              WHERE user_id = $1 AND device_id = $2 AND identity_type = $3
@@ -120,7 +134,7 @@ const provisionIdentity = async (userId, deviceId, identity, registrationId, ide
              RETURNING device_id`,
             [userId, deviceId, identityType, JSON.stringify(identity)]
         );
-        if (!rows[0]) throw httpError(409, 'Identity đã tồn tại và không thể thay đổi bằng provisioning thường');
+        if (!rows[0]) throw httpError(409, 'Identity thiết bị đã tồn tại và không thể thay đổi bằng provisioning thường');
     });
 
 const uploadPreKeys = async (userId, deviceId, keys, identityType = 'aci') => withTransaction(async client => {
