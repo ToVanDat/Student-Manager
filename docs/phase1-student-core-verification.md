@@ -34,7 +34,8 @@ Relevant files:
 
 ## Verification status
 
-- Added regression tests, but this execution environment did not provide a local checkout/Node runtime connected to the branch, PostgreSQL or Redis. **The new test suite and frontend build/lint have not been run here.**
+- Ran the four `studentPageQuery.test.js` cases in an isolated Node.js test directory copied from the tracked helper/test source: 4 passed, 0 failed. This is a focused unit-test run, not a run of the repository's full `npm test` suite.
+- This environment could not clone the repository or connect to PostgreSQL/Redis. **The full backend suite and frontend build/lint have not been run here.**
 - Do not interpret the source fix as end-to-end runtime verification. Next step is to pull this branch, install dependencies, run `npm test` in the backend and `npm run build` / `npm run lint` in the frontend, then exercise the student list with no filters and with search/class/gender combinations against a database whose schema has been verified.
 
 ## Remaining Phase 1 work
