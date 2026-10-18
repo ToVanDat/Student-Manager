@@ -567,10 +567,12 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     const deviceId = [2, 3, 4, 5].find(id => !used.has(id));
     if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
     const registrationId = crypto.randomInt(1, 65536);
+    const deviceToken = crypto.randomBytes(32).toString('base64url');
+    const deviceTokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     await client.query(
-        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type)
-         VALUES ($1,$2,$3,$4,$5,TRUE,'aci')`,
-        [userId, deviceId, registrationId, metadata.deviceType || 'web', encryptedDeviceName || null]
+        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash)
+         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6)`,
+        [userId, deviceId, registrationId, metadata.deviceType || 'web', encryptedDeviceName || null, deviceTokenHash]
     );
     await client.query(
         `UPDATE e2ee_sdk_provisioning_sessions SET assigned_device_id = $2, encrypted_device_name = $3,
@@ -578,7 +580,7 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
          WHERE session_id = $1`,
         [sessionId, deviceId, encryptedDeviceName || null]
     );
-    return { deviceId };
+    return { deviceId, deviceToken };
 });
 
 const acknowledgeProvisioning = async (userId, sessionId) => {
