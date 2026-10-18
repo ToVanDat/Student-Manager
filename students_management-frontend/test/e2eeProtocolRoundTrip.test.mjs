@@ -3,16 +3,7 @@ import assert from 'node:assert/strict';
 import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { inMemoryStore } from '@open-e2ee/signal-protocol-sdk/local/store/memory';
 
-const memoryStore = () => {
-    const store = inMemoryStore();
-    const getMetadata = store.getMetadata.bind(store);
-    store.getMetadata = async key => {
-        const value = (await getMetadata(key)) ?? null;
-        console.log('TEST_RELAY_META', key, value === null ? 'null' : typeof value);
-        return value;
-    };
-    return store;
-};
+const memoryStore = () => inMemoryStore();
 
 class InMemoryRelay {
     constructor() {
@@ -61,7 +52,6 @@ class InMemoryRelay {
     }
 
     async provisionIdentityKey(request) {
-        console.log('TEST_RELAY_IDENTITY', request.userId, request.deviceId);
         const identityKey = String(request.userId);
         const existing = this.identities.get(identityKey);
         if (existing && JSON.stringify(existing) !== JSON.stringify(request.identity)) {
@@ -77,7 +67,6 @@ class InMemoryRelay {
     async getIdentityKey(userId) { return this.identities.get(String(userId)) || null; }
 
     async uploadPreKeys(userId, deviceId, keys, identityType = 'aci') {
-        console.log('TEST_RELAY_UPLOAD', userId, deviceId, Array.isArray(keys) ? keys.length : typeof keys);
         const list = this.prekeys.get(this.key(userId, deviceId)) || [];
         for (const key of keys) {
             const id = `${key.type}:${key.keyId}`;
@@ -91,7 +80,6 @@ class InMemoryRelay {
     }
 
     async getPreKeyInventory(userId, deviceId) {
-        console.log('TEST_RELAY_INVENTORY', userId, deviceId);
         const list = this.prekeys.get(this.key(userId, deviceId)) || [];
         const latest = type => list.filter(k => k.type === type).sort((a, b) => b.createdAt - a.createdAt)[0];
         const signed = latest('ecSignedPreKey');
@@ -113,7 +101,6 @@ class InMemoryRelay {
     }
 
     async getPreKeyCount(userId, deviceId, type) {
-        console.log('TEST_RELAY_COUNT', userId, deviceId, type);
         const inventory = await this.getPreKeyInventory(userId, deviceId);
         return type === 'ec' ? inventory.ecOneTimePreKeyCount : inventory.kemOneTimePreKeyCount;
     }
@@ -243,10 +230,17 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
         console.log('TEST_DECRYPTED_LINKED', JSON.stringify(receivedLinked[0]));
         assert.equal(receivedPrimary.length, 1);
         assert.equal(receivedLinked.length, 1);
-        assert.equal(receivedPrimary[0].content.body, 'e2ee multi-device round-trip');
-        assert.equal(receivedLinked[0].content.body, 'e2ee multi-device round-trip');
-        assert.equal(receivedPrimary[0].content.appMessageId, 'test-message-multi-device');
-        assert.equal(receivedLinked[0].content.appMessageId, 'test-message-multi-device');
+        // SDK v11 intentionally returns decrypted plaintext as a string.
+        const primaryContent = typeof receivedPrimary[0].content === 'string'
+            ? JSON.parse(receivedPrimary[0].content)
+            : receivedPrimary[0].content;
+        const linkedContent = typeof receivedLinked[0].content === 'string'
+            ? JSON.parse(receivedLinked[0].content)
+            : receivedLinked[0].content;
+        assert.equal(primaryContent.body, 'e2ee multi-device round-trip');
+        assert.equal(linkedContent.body, 'e2ee multi-device round-trip');
+        assert.equal(primaryContent.appMessageId, 'test-message-multi-device');
+        assert.equal(linkedContent.appMessageId, 'test-message-multi-device');
     } finally {
         await alice.stop?.();
         await bobPrimary.stop?.();
