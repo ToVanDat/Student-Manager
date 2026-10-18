@@ -76,9 +76,15 @@ After inspecting the live schema and the SDK adapter contracts, prepare a separa
 
 ## Updated package verification (2026-10-18)
 
-A fresh web check found a version/metadata discrepancy that must be resolved before installing this dependency: the SDK documentation and GitHub repository describe an `11.0.x` profile and MIT/Apache-2.0 licensing, while the npm package page currently surfaced a `2.0.2` release with AGPL-3.0-or-later metadata. Do not assume these are the same publish artifact or install based on the documentation alone. Verify the exact npm dist-tag, tarball, package.json, integrity, license file, and matching Git tag before selecting a version. Sources checked:
-- https://github.com/open-e2ee/signal-protocol-js
+The current npm versions page and the SDK GitHub repository now agree that `@open-e2ee/signal-protocol-sdk@11.0.0` is the latest tag and that this version is dual-licensed `MIT OR Apache-2.0`. The npm versions page still shows older releases (including `2.0.2`) with different license metadata; do not use an older version or an unpinned install. Pin `11.0.0` explicitly if and only if the isolated proof-of-concept is approved after review. Sources:
+- https://www.npmjs.com/package/@open-e2ee/signal-protocol-sdk?activeTab=versions
+- https://github.com/open-e2ee/signal-protocol-js (package.json at the repository's current release)
 - https://docs.open-e2ee.dev/start/browser
-- https://www.npmjs.com/package/@open-e2ee/signal-protocol-sdk
 
-The browser adapter also requires OPFS/IndexedDB storage, a same-origin key boundary review, and CSP support for `wasm-unsafe-eval` for its web SQLite path. The current repository's Vite frontend package has no E2EE SDK dependency, and this audit environment cannot run the user's full local app or PostgreSQL database. Therefore no package was installed and no integration/migration was committed. The next safe action is to resolve the exact package artifact/license and run the isolated browser round-trip in a real checkout before production changes.
+Important limitations remain:
+- This is an independent implementation of a versioned Signal Protocol profile; it is not affiliated with Signal Messenger and is not wire-compatible with Signal Messenger/libsignal.
+- The project states that it has not received an independent firm security audit. The package has been published very recently, so it should not be treated as a proven drop-in dependency solely because the license/version metadata now matches.
+- Browser storage is not an absolute secret boundary: same-origin JavaScript can access data and keys. The web SQLite adapter needs OPFS and a CSP allowing `wasm-unsafe-eval`; IndexedDB fallback also requires a threat-model review.
+- The Student-Manager repository is available to this workflow through GitHub file APIs, but this environment does not provide the local checkout, npm install/build runtime, or connected PostgreSQL instance needed to execute the browser two-device round-trip or inspect the live schema.
+
+Decision: the candidate's version and license metadata discrepancy is resolved for `11.0.0`, but the implementation gate is **not** passed. No SDK dependency, production source, or database migration has been committed. Next implementation step is an isolated browser-only proof-of-concept in a real checkout, pinned to `11.0.0`, with two independent device stores; verify round-trip, reload persistence, tampering/decrypt failure, duplicate/out-of-order delivery, CSP/build compatibility, and the SDK's adapter/API behavior before integrating it into REST or Socket.IO.
