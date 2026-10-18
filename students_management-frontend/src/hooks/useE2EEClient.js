@@ -52,6 +52,6 @@ export const useE2EEClient = () => {
     return {
         ...clientState,
         isLocalStoreReady: clientState.status === 'local-ready',
-        isRelayConnected: false
+        isRelayConnected: clientState.relayState === 'connected'
     };
 };
