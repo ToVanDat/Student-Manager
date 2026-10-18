@@ -91,7 +91,15 @@ const getDevices = async (userId, requesterId) => {
          ORDER BY device_id`,
         [userId]
     );
-    return rows.map(row => ({ ...row, deviceId: Number(row.device_id) }));
+    return rows.map(row => ({
+        deviceId: Number(row.device_id),
+        deviceType: row.device_type,
+        registered: Boolean(row.registered),
+        linked: Boolean(row.linked),
+        enabled: Boolean(row.enabled),
+        lastSeenAt: row.last_seen_at ? new Date(row.last_seen_at).getTime() : null,
+        createdAt: new Date(row.created_at).getTime()
+    }));
 };
 
 const removeDevice = async (userId, deviceId) => withTransaction(async client => {
