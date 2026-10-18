@@ -33,6 +33,19 @@ const revokeMyDevice = async (req, res, next) => {
     }
 };
 
+const claimConversationDevicePrekey = async (req, res, next) => {
+    try {
+        const conversationId = Number(req.params.conversationId);
+        const data = await e2eeService.claimConversationDevicePrekey(
+            Number(req.user.id), conversationId, req.params.deviceId
+        );
+        return res.status(200).json({ data });
+    } catch (error) {
+        if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
+    }
+};
+
 const getConversationDeviceBundles = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
@@ -48,5 +61,6 @@ module.exports = {
     registerDevice,
     listMyDevices,
     revokeMyDevice,
-    getConversationDeviceBundles
+    getConversationDeviceBundles,
+    claimConversationDevicePrekey
 };
