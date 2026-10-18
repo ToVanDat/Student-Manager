@@ -1,0 +1,15 @@
+name = "student-manager-e2ee-r2"
+main = "src/index.js"
+compatibility_date = "2026-10-18"
+
+[[r2_buckets]]
+binding = "E2EE_BUCKET"
+bucket_name = "REPLACE_WITH_YOUR_PRIVATE_R2_BUCKET"
+
+[vars]
+# Set this to the exact frontend origin, for example https://app.example.com.
+E2EE_FRONTEND_ORIGIN = "https://REPLACE_WITH_YOUR_FRONTEND_HOST"
+
+# Set with: npx wrangler secret put E2EE_ATTACHMENT_TICKET_SECRET
+# Do not commit the secret. Use the same random secret (at least 32 bytes)
+# in the API environment and this Worker.
