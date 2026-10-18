@@ -66,6 +66,10 @@ Still required before merge/production:
 - A live PostgreSQL integration test now runs in the disposable PostgreSQL CI job for concurrent one-time-prekey claims, ciphertext mailbox fan-out, retry idempotency, acknowledgement, notification decision deduplication across recipient devices, and device revocation/pending-envelope cleanup. It does not yet test concurrent notification delivery under independent processes, Redis-backed session authorization against a live Redis instance, or Socket.IO subscription authorization end-to-end.
 - The SDK provides a supported `adapters.remoteObjectStore` boundary and S3 adapter, but enabling it requires a broker with authenticated per-account object reservations, opaque server-generated object IDs, short-lived upload/download URLs, content-size/type enforcement, deletion propagation, and configured storage credentials. Do not ship cloud credentials to the browser. No storage provider/broker is configured in this branch, so E2EE attachments remain blocked.
 
+## Browser verification
+
+- Added `docs/E2EE_MANUAL_TEST_PLAN.md` with a two-independent-profile test matrix for activation, encrypted text, offline delivery, retry, controls, fail-closed legacy paths, missing local history key, provisioning expiry, and device revocation. This is a runbook, not evidence that those manual tests have already been performed.
+
 ## Key files
 
 - `students_management-frontend/src/services/e2ee/e2eeRelayAdapter.js`
