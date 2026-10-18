@@ -6,7 +6,8 @@ const relayService = require('./e2eeRelayService');
 const MAX_CIPHERTEXT_BYTES = 500 * 1024 * 1024;
 const UPLOAD_TTL_SECONDS = 10 * 60;
 const DOWNLOAD_TTL_SECONDS = 5 * 60;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nconst REQUEST_ID_RE = /^media-upload\/[A-Za-z0-9_-]{24}$/;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const REQUEST_ID_RE = /^media-upload\/[A-Za-z0-9_-]{24}$/;
 
 const fail = (statusCode, message, code) => {
     const error = new Error(message);
@@ -66,13 +67,13 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
         throw fail(400, 'ciphertextSize phải từ 1 byte đến 500 MB');
     }
 
-    // SDK retries must resolve to the same reservation; never mint a second object
-    // for the same logical preparation. Older callers may omit these fields.
+    // SDK retries must resolve to the same reservation; the SDK upload contract
+    // always supplies immutable request identity and both cryptographic digests.
     const requestId = body.requestId;
     const preparedAt = body.preparedAt;
     let digest = null;
     let readCapabilityDigest = null;
-    if (requestId != null || preparedAt != null || body.digest != null || body.readCapabilityDigest != null) {
+    {
         if (typeof requestId !== 'string' || !REQUEST_ID_RE.test(requestId) ||
             !Number.isSafeInteger(preparedAt) || preparedAt <= 0 ||
             typeof body.digest !== 'string' || typeof body.readCapabilityDigest !== 'string') {
