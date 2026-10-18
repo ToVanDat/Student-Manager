@@ -55,19 +55,21 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
     let deviceId = requested;
     if (requested == null) {
         const { rows } = await client.query(
-            'SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL ORDER BY device_id',
+            'SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 ORDER BY device_id',
             [userId]
         );
         const used = new Set(rows.map(row => Number(row.device_id)));
         deviceId = [2, 3, 4, 5].find(id => !used.has(id));
         if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
     }
-    if (deviceId === 1) {
-        const existing = await getDeviceRow(client, userId, 1, 'aci', true);
-        if (existing) throw httpError(409, 'Thiết bị chính đã đăng ký; cần quy trình khôi phục riêng');
-    } else {
-        const existing = await getDeviceRow(client, userId, deviceId, 'aci', true);
-        if (existing) throw httpError(409, 'Device slot đã được sử dụng');
+    const existingResult = await client.query(
+        'SELECT id, revoked_at FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND identity_type = \'aci\' FOR UPDATE',
+        [userId, deviceId]
+    );
+    if (existingResult.rows[0]) {
+        throw httpError(409, existingResult.rows[0].revoked_at
+            ? 'Device slot đã bị thu hồi; không được tái sử dụng'
+            : 'Device slot đã được sử dụng');
     }
     const { rows } = await client.query(
         `INSERT INTO e2ee_sdk_devices
@@ -161,7 +163,10 @@ const provisionIdentity = async (userId, deviceId, identity, registrationId, ide
             [userId, identityType]
         );
         if (canonical.rows[0]) {
-            if (JSON.stringify(canonical.rows[0].identity_public) !== JSON.stringify(identity)) {
+            const current = canonical.rows[0].identity_public;
+            if (Number(current?.version) !== Number(identity?.version) ||
+                current?.x25519PublicKey !== identity?.x25519PublicKey ||
+                current?.ed25519PublicKey !== identity?.ed25519PublicKey) {
                 throw httpError(409, 'Identity tài khoản đã tồn tại; linked device phải dùng cùng CompositeIdentityV1');
             }
         } else {
