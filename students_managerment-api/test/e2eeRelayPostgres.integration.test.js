@@ -145,6 +145,47 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
             [secondaryPk]
         );
         assert.equal(remaining.rows[0].count, 0, 'revocation must remove pending envelopes for the device');
+
+        await t.test('device provisioning expiry and rollback do not leave an active linked device', async () => {
+            const session = await repository.createProvisioningSession(senderId, Buffer.alloc(32, 21).toString('base64'));
+            await repository.connectNewDevice(
+                senderId,
+                session.sessionId,
+                Buffer.alloc(32, 22).toString('base64'),
+                { deviceType: 'web' }
+            );
+            await repository.sendProvisioningMessage(senderId, session.sessionId, Buffer.from('encrypted-provisioning-payload').toString('base64'));
+            const linked = await repository.completeProvisioning(senderId, session.sessionId, null, { deviceType: 'web' });
+            assert.ok(linked.deviceToken);
+            assert.ok(linked.deviceId >= 2 && linked.deviceId <= 5);
+
+            await repository.rollbackProvisioning(senderId, session.sessionId);
+            const rolledBackDevice = await pool.query(
+                'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL',
+                [senderId, linked.deviceId]
+            );
+            assert.equal(rolledBackDevice.rowCount, 0, 'rollback must remove the unacknowledged linked device');
+            const rolledBackSession = await pool.query(
+                'SELECT status FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1',
+                [session.sessionId]
+            );
+            assert.equal(rolledBackSession.rows[0].status, 'rolled_back');
+
+            const expired = await repository.createProvisioningSession(senderId, Buffer.alloc(32, 23).toString('base64'));
+            await pool.query(
+                "UPDATE e2ee_sdk_provisioning_sessions SET expires_at = NOW() - INTERVAL '1 second' WHERE session_id = $1",
+                [expired.sessionId]
+            );
+            await assert.rejects(
+                repository.connectNewDevice(
+                    senderId,
+                    expired.sessionId,
+                    Buffer.alloc(32, 24).toString('base64'),
+                    { deviceType: 'web' }
+                ),
+                error => error.statusCode === 404
+            );
+        });
     } finally {
         await pool.end();
     }
