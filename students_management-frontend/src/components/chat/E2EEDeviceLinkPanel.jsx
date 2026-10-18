@@ -203,7 +203,7 @@ export default function E2EEDeviceLinkPanel({ user, clientState }) {
             <button
                 type="button"
                 onClick={() => {
-                    setMode(['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED'].includes(clientState?.errorCode) ? 'link-this-device' : 'primary');
+                    setMode(['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) ? 'link-this-device' : 'primary');
                     setOpen(true);
                 }}
                 className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
