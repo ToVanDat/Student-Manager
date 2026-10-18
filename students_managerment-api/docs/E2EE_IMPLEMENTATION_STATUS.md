@@ -33,13 +33,17 @@ This branch is an incremental backend foundation. It is **not yet a complete or 
 
 ## Protocol SDK decision to validate
 
-A browser-compatible option worth evaluating is `@open-e2ee/signal-protocol-sdk`. Its current docs describe browser-local stores and a custom relay interface. It is an independent implementation/profile, not affiliated or wire-compatible with Signal Messenger/libsignal. Review the exact package version, license, protocol deviations, storage threat model, and independent audit status before adopting it. Do not treat package documentation as a security audit.
+The current candidate is `@open-e2ee/signal-protocol-sdk@11.0.0`, which documents browser stores and a custom `SignalProtocolRelayServer` adapter. The current repository README lists MIT OR Apache-2.0; an older 2.x release used AGPL, so pin the version and verify the package tarball/lockfile license before install. This is an independent implementation/profile, not affiliated or wire-compatible with Signal Messenger/libsignal. Its assurance page explicitly says it has not been audited by an independent firm. The browser store also does not defend against same-origin XSS, and the SDK's public docs have some versioned reference pages that should be reconciled with the exact installed package exports. Review the protocol deviations, CSP, key persistence/recovery and threat model before production adoption.
 
 References:
 - https://github.com/open-e2ee/signal-protocol-js
 - https://docs.open-e2ee.dev/start/browser
 - https://docs.open-e2ee.dev/reference/adapters
 - https://github.com/signalapp/libsignal
+- https://docs.open-e2ee.dev/reference/adapters
+- https://docs.open-e2ee.dev/start/browser
+- https://docs.open-e2ee.dev/reference/api
+- https://docs.open-e2ee.dev/reference/security-and-protocol-policy
 
 ## Additional plaintext guard added
 
@@ -47,7 +51,7 @@ The existing REST message-create controller and Socket.IO `message:send` event n
 
 ## Required next implementation stage
 
-1. Pin a specific browser SDK version and complete license/security review before installing it.
+1. Pin `@open-e2ee/signal-protocol-sdk@11.0.0` only after verifying the exact package tarball, exports, lockfile and license; complete the security/threat-model review before enabling it.
 2. Implement its device-local store and adapter to the existing authenticated backend; do not trust user IDs supplied by the client.
 3. Design and implement the SDK-compatible relay contract, including identity assertions, envelope fan-out, acknowledgements, prekey replenishment, and device revocation semantics.
 4. Integrate encryption before REST/Socket.IO and decryption only on recipient devices.
