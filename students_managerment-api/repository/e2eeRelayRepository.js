@@ -192,11 +192,18 @@ const uploadPreKeys = async (userId, deviceId, keys, identityType = 'aci') => wi
         await client.query(
             `INSERT INTO e2ee_sdk_prekeys (device_pk, identity_type, key_type, key_id, public_key, signature)
              VALUES ($1,$2,$3,$4,$5,$6)
-             ON CONFLICT (device_pk, identity_type, key_type, key_id)
-             DO UPDATE SET public_key = EXCLUDED.public_key, signature = EXCLUDED.signature
-             WHERE e2ee_sdk_prekeys.claimed_at IS NULL`,
+             ON CONFLICT (device_pk, identity_type, key_type, key_id) DO NOTHING`,
             [device.id, identityType, key.type, key.keyId, key.publicKey, key.signature || null]
         );
+        const existing = await client.query(
+            `SELECT public_key, signature FROM e2ee_sdk_prekeys
+             WHERE device_pk = $1 AND identity_type = $2 AND key_type = $3 AND key_id = $4`,
+            [device.id, identityType, key.type, key.keyId]
+        );
+        if (existing.rows[0]?.public_key !== key.publicKey ||
+            (existing.rows[0]?.signature || null) !== (key.signature || null)) {
+            throw httpError(409, 'Prekey ID đã được sử dụng với nội dung khác; không ghi đè khóa đã công bố');
+        }
     }
 });
 
