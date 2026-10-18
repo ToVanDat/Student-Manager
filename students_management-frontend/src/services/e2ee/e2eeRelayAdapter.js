@@ -1,7 +1,7 @@
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import socket from '@/socket/socket.js';
 import { getE2EEDeviceCredential, saveE2EEDeviceCredential, deleteE2EEDeviceCredential } from './e2eeDeviceCredentialStore';
-import { setStoredE2EEDeviceId } from './e2eeDeviceStateStore';
+import { setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
 
 const unwrap = response => response?.data?.data;
 const unsupported = (name) => {
@@ -58,7 +58,7 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         return currentDeviceId;
     };
 
-    const requireCredential = async deviceId = requireDevice() => {
+    const requireCredential = async (deviceId = requireDevice()) => {
         const token = await getE2EEDeviceCredential(userId, Number(deviceId));
         if (!token) {
             const error = new Error('Per-device relay credential is missing. Revoke and securely re-link this device.');
@@ -120,7 +120,11 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         async removeDevice(requestedUserId, deviceId) {
             assertOwnUser(requestedUserId);
             await e2eeRelayApi.removeDevice(deviceId);
-            if (Number(deviceId) === currentDeviceId) currentDeviceId = null;
+            if (Number(deviceId) === currentDeviceId) {
+                await deleteE2EEDeviceCredential(userId, currentDeviceId);
+                await clearStoredE2EEDeviceId(userId);
+                currentDeviceId = null;
+            }
         },
 
         async provisionIdentityKey(request) {
@@ -177,10 +181,11 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
 
         async publishPlannedPreKeys(requestedUserId, deviceId, plan, identityType = 'aci') {
             assertOwnUser(requestedUserId);
-            const inventory = unwrap(await e2eeRelayApi.getPreKeyInventory(deviceId, identityType));
+            const token = await requireCredential(deviceId);
+            const inventory = unwrap(await e2eeRelayApi.getPreKeyInventory(deviceId, identityType, token));
             const keys = await plan(inventory);
             if (keys?.length) {
-                await e2eeRelayApi.uploadPreKeys(deviceId, { identityType, keys });
+                await e2eeRelayApi.uploadPreKeys(deviceId, { identityType, keys }, token);
             }
         },
 
@@ -326,7 +331,13 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             delete payload.platform;
             delete payload.appVersion;
             delete payload.osVersion;
-            return unwrap(await e2eeRelayApi.completeProvisioning(sessionId, payload));
+            const result = unwrap(await e2eeRelayApi.completeProvisioning(sessionId, payload));
+            if (result?.deviceToken && Number.isInteger(Number(result.deviceId))) {
+                currentDeviceId = Number(result.deviceId);
+                await saveE2EEDeviceCredential(userId, currentDeviceId, result.deviceToken);
+                await setStoredE2EEDeviceId(userId, currentDeviceId);
+            }
+            return result;
         },
 
         async acknowledgeProvisioning(sessionId) {
