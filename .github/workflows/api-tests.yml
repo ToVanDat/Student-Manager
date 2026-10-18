@@ -54,6 +54,10 @@ jobs:
         run: |
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_objects_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_objects_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_retry_identity_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_retry_identity_migration.sql
 
   test-api:
     runs-on: ubuntu-latest
