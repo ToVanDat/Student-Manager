@@ -61,28 +61,93 @@ const assertConversationAccess = async (userId, conversationId) => {
 
 const createUploadTicket = async (userId, conversationId, body = {}) => {
     const id = await assertConversationAccess(userId, conversationId);
-    const size = body.ciphertextSize;
+    const size = body.ciphertextSize ?? body.contentLength;
     if (!Number.isSafeInteger(size) || size < 1 || size > MAX_CIPHERTEXT_BYTES) {
         throw fail(400, 'ciphertextSize phải từ 1 byte đến 500 MB');
     }
+
+    // SDK retries must resolve to the same reservation; never mint a second object
+    // for the same logical preparation. Older callers may omit these fields.
+    const requestId = body.requestId;
+    const preparedAt = body.preparedAt;
+    let digest = null;
+    if (requestId != null || preparedAt != null || body.digest != null) {
+        if (typeof requestId !== 'string' || !UUID_RE.test(requestId) ||
+            !Number.isSafeInteger(preparedAt) || preparedAt <= 0 ||
+            typeof body.digest !== 'string') {
+            throw fail(400, 'requestId, preparedAt và digest phải được gửi cùng nhau');
+        }
+        try {
+            digest = Buffer.from(body.digest, 'base64');
+        } catch {
+            throw fail(400, 'digest không hợp lệ');
+        }
+        if (digest.length !== 32 || digest.toString('base64') !== body.digest) {
+            throw fail(400, 'digest phải là SHA-256 Base64 chuẩn');
+        }
+    }
+
     const config = getConfig();
-    const attachmentId = crypto.randomUUID();
-    const objectKey = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + UPLOAD_TTL_SECONDS * 1000);
-    await pool.query(
-        `INSERT INTO e2ee_attachment_objects
-            (id, conversation_id, uploaded_by, object_key, ciphertext_size, status, expires_at)
-         VALUES ($1, $2, $3, $4, $5, 'pending', $6)`,
-        [attachmentId, id, userId, objectKey, size, expiresAt]
-    );
+    let attachmentId;
+    let objectKey;
+    let expiresAt;
+    if (requestId) {
+        const existing = await pool.query(
+            `SELECT id, object_key, ciphertext_size, ciphertext_sha256, status, expires_at
+               FROM e2ee_attachment_objects
+              WHERE uploaded_by = $1 AND conversation_id = $2 AND request_id = $3 AND prepared_at = $4
+              LIMIT 1`,
+            [userId, id, requestId, preparedAt]
+        );
+        const row = existing.rows[0];
+        if (row) {
+            if (Number(row.ciphertext_size) !== size ||
+                !row.ciphertext_sha256 ||
+                !Buffer.from(row.ciphertext_sha256).equals(digest)) {
+                throw fail(409, 'Upload request identity was reused with different bytes', 'E2EE_ATTACHMENT_IDENTITY_CONFLICT');
+            }
+            if (row.status !== 'pending' || new Date(row.expires_at).getTime() <= Date.now()) {
+                throw fail(409, 'Upload reservation is no longer pending; reconcile the original upload before retrying', 'E2EE_ATTACHMENT_RESERVATION_CLOSED');
+            }
+            attachmentId = row.id;
+            objectKey = row.object_key;
+            expiresAt = new Date(row.expires_at);
+        }
+    }
+
+    if (!attachmentId) {
+        attachmentId = crypto.randomUUID();
+        objectKey = crypto.randomUUID();
+        expiresAt = new Date(Date.now() + UPLOAD_TTL_SECONDS * 1000);
+        try {
+            await pool.query(
+                `INSERT INTO e2ee_attachment_objects
+                    (id, conversation_id, uploaded_by, object_key, ciphertext_size, status, expires_at,
+                     request_id, prepared_at, ciphertext_sha256)
+                 VALUES ($1, $2, $3, $4, $5, 'pending', $6, $7, $8, $9)`,
+                [attachmentId, id, userId, objectKey, size, expiresAt, requestId || null, preparedAt || null, digest]
+            );
+        } catch (error) {
+            // A concurrent retry may have won the unique reservation. Ask caller
+            // to retry the same preparation; do not create an untracked object.
+            if (error?.code === '23505' && requestId) {
+                throw fail(409, 'Upload reservation was created concurrently; retry the same request', 'E2EE_ATTACHMENT_RESERVATION_RACE');
+            }
+            throw error;
+        }
+    }
+
+    const ttl = Math.max(1, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
     const ticket = makeTicket(config, {
         method: 'PUT', attachmentId, objectKey, conversationId: id,
-        userId: Number(userId), expectedSize: size, ttl: UPLOAD_TTL_SECONDS
+        userId: Number(userId), expectedSize: size, ttl
     });
     return {
         attachmentId,
+        objectId: attachmentId,
         uploadUrl: workerUrl(config, attachmentId),
         uploadToken: ticket,
+        headers: { Authorization: `Bearer ${ticket}`, 'Content-Type': 'application/octet-stream' },
         expiresAt: expiresAt.toISOString(),
         maxCiphertextBytes: MAX_CIPHERTEXT_BYTES
     };
