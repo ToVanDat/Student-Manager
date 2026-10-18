@@ -68,7 +68,7 @@ export default {
             if (request.headers.get('origin') && !cors['access-control-allow-origin']) return json(403, 'Origin không được phép');
             return new Response(null, { status: 204, headers: cors });
         }
-        if (!['PUT', 'GET', 'HEAD'].includes(request.method) || !/^\/v1\/objects\/[0-9a-f-]{36}$/i.test(url.pathname)) {
+        if (!['PUT', 'GET', 'HEAD', 'DELETE'].includes(request.method) || !/^\/v1\/objects\/[0-9a-f-]{36}$/i.test(url.pathname)) {
             return withCors(json(404, 'Không tìm thấy endpoint'), cors);
         }
         const attachmentId = url.pathname.split('/').at(-1);
