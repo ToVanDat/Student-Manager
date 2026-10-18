@@ -540,7 +540,7 @@ const sendProvisioningMessage = async (userId, sessionId, encryptedMessage) => {
 
 const getProvisioningMessage = async (userId, sessionId) => {
     const { rows } = await pool.query(
-        `SELECT status, encrypted_message, expires_at FROM e2ee_sdk_provisioning_sessions
+        `SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at FROM e2ee_sdk_provisioning_sessions
          WHERE session_id = $1 AND owner_user_id = $2 LIMIT 1`,
         [sessionId, userId]
     );
@@ -549,6 +549,7 @@ const getProvisioningMessage = async (userId, sessionId) => {
     return {
         status: expired && !['completed', 'rolled_back'].includes(rows[0].status) ? 'expired' : rows[0].status,
         message: rows[0].encrypted_message || null,
+        newDeviceEphemeralPublicKey: rows[0].new_device_ephemeral_public_key || null,
         expiresAt: expired ? null : new Date(rows[0].expires_at).getTime()
     };
 };
