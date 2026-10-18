@@ -43,6 +43,16 @@ const provisionIdentity = async (userId, deviceId, body = {}) => {
     return relayRepository.provisionIdentity(userId, slot, body.identity, registrationId, identityType);
 };
 
+const rotateIdentityKey = async (userId, deviceId, body = {}) => {
+    const slot = integer(deviceId, 'deviceId', 1, 5);
+    const registrationId = integer(body.registrationId, 'registrationId', 1, 65535);
+    const identityType = body.identityType || 'aci';
+    if (!['aci', 'pni'].includes(identityType)) throw fail(400, 'identityType không hợp lệ');
+    if (!body.identity || typeof body.identity !== 'object' || Array.isArray(body.identity)) throw fail(400, 'identity không hợp lệ');
+    assertBase64(body.expectedCurrentCommitment, 'expectedCurrentCommitment', 44);
+    if (Buffer.from(body.expectedCurrentCommitment, 'base64').length !== 32) throw fail(400, 'expectedCurrentCommitment phải dài 32 byte');
+    return relayRepository.rotateIdentityKey(userId, slot, body.identity, registrationId, body.expectedCurrentCommitment, identityType);
+};
 const uploadPreKeys = async (userId, deviceId, body = {}) => {
     const slot = integer(deviceId, 'deviceId', 1, 5);
     const identityType = body.identityType || 'aci';
@@ -209,7 +219,7 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, removeDevice, provisionIdentity,
+    registerDevice, getDevices, removeDevice, provisionIdentity, rotateIdentityKey,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, uploadPreKeys,
     fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
