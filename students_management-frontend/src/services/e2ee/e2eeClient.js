@@ -1,6 +1,8 @@
 import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { webSqliteStore } from '@open-e2ee/signal-protocol-sdk/local/store/web-sqlite';
 import { createE2EERelayAdapter } from './e2eeRelayAdapter';
+import { e2eeRelayApi } from '@/api/e2eeRelayApi';
+import { getStoredE2EEDeviceId, setStoredE2EEDeviceId } from './e2eeDeviceStateStore';
 
 const listeners = new Set();
 let activeContext = null;
@@ -118,6 +120,23 @@ export const initializeE2EEClient = async (userId) => {
                 await closeResources(previous.client, previous.storage, previous.unsubscribeRelayState);
             }
 
+            let deviceId = await getStoredE2EEDeviceId(normalizedUserId);
+            const devicesResponse = await e2eeRelayApi.getDevices(normalizedUserId);
+            const serverDevices = devicesResponse.data?.data || [];
+            if (deviceId == null) {
+                if (serverDevices.length > 0) {
+                    const error = new Error('Tài khoản đã có thiết bị E2EE. Hãy liên kết thiết bị này từ thiết bị chính thay vì tạo identity mới.');
+                    error.code = 'E2EE_DEVICE_LINK_REQUIRED';
+                    throw error;
+                }
+                deviceId = 1;
+                await setStoredE2EEDeviceId(normalizedUserId, deviceId);
+            } else if (serverDevices.length > 0 && !serverDevices.some(device => Number(device.deviceId) === deviceId)) {
+                const error = new Error('Thiết bị E2EE cục bộ đã bị thu hồi hoặc không còn đăng ký trên relay.');
+                error.code = 'E2EE_DEVICE_REVOKED';
+                throw error;
+            }
+
             storage = await webSqliteStore({
                 name: `student-manager-e2ee-user-${normalizedUserId}.db`
             });
@@ -130,7 +149,7 @@ export const initializeE2EEClient = async (userId) => {
 
             relay = createE2EERelayAdapter(normalizedUserId);
             client = await createSignalProtocolClient({
-                identity: { userId: normalizedUserId },
+                identity: { userId: normalizedUserId, deviceId },
                 adapters: { storage, relay }
             });
             if (typeof client.registerHook !== 'function' || typeof client.startRelaySubscription !== 'function') {
