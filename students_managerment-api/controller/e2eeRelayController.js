@@ -67,12 +67,20 @@ module.exports = {
                 Number(req.user.id), req.params.conversationId, req.body
             );
             if (!data.duplicate) {
-                getIO().to(`e2ee-device:${data.recipientUserId}:${data.recipientDeviceId}`)
-                    .emit('e2ee:envelope:available', {
-                        envelopeId: data.id,
-                        deviceId: data.recipientDeviceId,
-                        serverTimestamp: data.serverTimestamp
+                try {
+                    getIO().to(`e2ee-device:${data.recipientUserId}:${data.recipientDeviceId}`)
+                        .emit('e2ee:envelope:available', {
+                            envelopeId: data.id,
+                            deviceId: data.recipientDeviceId,
+                            serverTimestamp: data.serverTimestamp
+                        });
+                } catch (deliveryError) {
+                    // The durable mailbox insert is authoritative. A reconnecting
+                    // device recovers through GET /mailbox even if Socket.IO is down.
+                    console.warn('[E2EE][relay] wake-up signal unavailable', {
+                        code: deliveryError.code || 'SOCKET_UNAVAILABLE'
                     });
+                }
             }
             return res.status(data.duplicate ? 200 : 201).json({ data });
         } catch (error) {
