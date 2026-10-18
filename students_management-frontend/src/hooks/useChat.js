@@ -121,7 +121,24 @@ export const useChat = () => {
                 if (cancelled) return;
 
                 const loadedMessages = res.data?.data || [];
+                let localE2EEMessages = [];
+                try {
+                    localE2EEMessages = await loadE2EEHistory(currentUserId, activeId);
+                } catch (historyError) {
+                    toast.error('Không thể mở lịch sử E2EE trên thiết bị này. Có thể kho khóa cục bộ đã mất.');
+                    console.warn('[E2EE] local history unavailable', {
+                        code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE'
+                    });
+                }
                 if (cancelled) return;
+                const seenMessageIds = new Set(loadedMessages.map(item => String(item.id)));
+                const mergedMessages = [
+                    ...loadedMessages,
+                    ...localE2EEMessages.filter(item => !seenMessageIds.has(String(item.id)))
+                ].sort((a, b) =>
+                    (Date.parse(a.created_at || a.createdAt || '') || 0) -
+                    (Date.parse(b.created_at || b.createdAt || '') || 0)
+                );
 
                 const callsResponse = await callApi.getHistory(100, 0, activeId);
                 if (cancelled) return;
@@ -131,7 +148,7 @@ export const useChat = () => {
                     _timelineType: 'call'
                 }));
                 setCallHistory(loadedCalls);
-                setMessages(loadedMessages);
+                setMessages(mergedMessages);
 
                 const membersResponse = await chatApi.getConversationMembers(activeId);
                 if (cancelled) return;
