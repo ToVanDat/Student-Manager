@@ -293,19 +293,21 @@ const pullEnvelopes = async (userId, deviceId, limit = 100) => {
     const device = await getDeviceRow(pool, userId, deviceId);
     if (!device) throw httpError(403, 'Thiết bị không hoạt động');
     const { rows } = await pool.query(
-        `SELECT id, sender_user_id, sender_device_pk, ciphertext, message_type,
-                delivery_class, content_kind, client_timestamp_ms, operation_epoch_ms,
-                server_timestamp_ms, client_message_id, recipient_registration_id
-         FROM e2ee_sdk_envelopes
-         WHERE recipient_device_pk = $1 AND acknowledged_at IS NULL
-           AND (expires_at IS NULL OR expires_at > NOW())
-         ORDER BY server_timestamp_ms, id LIMIT $2`,
+        `SELECT e.id, e.sender_user_id, sd.device_id AS sender_device_id,
+                e.ciphertext, e.message_type, e.delivery_class, e.content_kind,
+                e.client_timestamp_ms, e.operation_epoch_ms, e.server_timestamp_ms,
+                e.client_message_id, e.recipient_registration_id
+         FROM e2ee_sdk_envelopes e
+         JOIN e2ee_sdk_devices sd ON sd.id = e.sender_device_pk
+         WHERE e.recipient_device_pk = $1 AND e.acknowledged_at IS NULL
+           AND (e.expires_at IS NULL OR e.expires_at > NOW())
+         ORDER BY e.server_timestamp_ms, e.id LIMIT $2`,
         [device.id, Math.max(1, Math.min(Number(limit) || 100, 200))]
     );
     return rows.map(row => ({
         id: row.id,
         senderUserId: String(row.sender_user_id),
-        senderDeviceId: Number(row.sender_device_pk),
+        senderDeviceId: Number(row.sender_device_id),
         ciphertext: row.ciphertext,
         messageType: row.message_type,
         deliveryClass: row.delivery_class,
