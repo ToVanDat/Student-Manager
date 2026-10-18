@@ -1,0 +1,8 @@
+{
+  "name": "student-manager-e2ee-r2-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
