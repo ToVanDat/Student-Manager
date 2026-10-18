@@ -18,7 +18,7 @@ The API stores only an opaque attachment UUID, conversation/user authorization r
 6. Configure the API environment:
    - `E2EE_R2_WORKER_URL=https://<your-worker-host>`
    - `E2EE_ATTACHMENT_TICKET_SECRET=<same secret as Worker>`
-7. Keep the feature unavailable until the database migration has been reviewed and applied to a disposable database matching the deployed schema.
+7. Keep the feature unavailable until both `sql/e2ee_attachment_objects_migration.sql` and `sql/e2ee_attachment_retry_identity_migration.sql` have been reviewed and applied in that order to a disposable database matching the deployed schema. The retry-identity migration is designed to be rerunnable.
 
 The API returns 503 if the Worker URL or sufficiently long ticket secret is missing. The Worker validates HMAC-SHA256 tickets, expiry, HTTP method, attachment UUID, and exact expected size. Upload bytes are streamed with a 500 MiB hard ceiling; the Worker rejects overrun/underrun and uses a conditional create so a ticket cannot overwrite an existing object. Download tickets are short-lived and issued only after the API confirms membership in an E2EE-enabled conversation.
 
