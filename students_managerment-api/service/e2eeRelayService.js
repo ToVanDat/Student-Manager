@@ -66,7 +66,17 @@ const uploadPreKeys = async (userId, deviceId, body = {}) => {
             typeof key?.publicKey !== 'string' || !key.publicKey.trim() || key.publicKey.length > 16384 ||
             (key.signature != null && (typeof key.signature !== 'string' || key.signature.length > 16384)) ||
             ids.has(identity)) throw fail(400, 'Prekey không hợp lệ hoặc trùng ID/type');
-        if (key.type === 'ecSignedPreKey' && !key.signature) throw fail(400, 'ecSignedPreKey cần signature');
+        const decodedPublicKey = Buffer.from(key.publicKey, 'base64');
+        const expectedPublicLength = key.type.startsWith('ec') ? 32 : 1569;
+        if (decodedPublicKey.length !== expectedPublicLength || decodedPublicKey.toString('base64') !== key.publicKey) {
+            throw fail(400, 'Độ dài hoặc encoding public prekey không hợp lệ');
+        }
+        if (['ecSignedPreKey', 'kemOneTimePreKey', 'kemLastResortPreKey'].includes(key.type)) {
+            const signature = Buffer.from(key.signature || '', 'base64');
+            if (!key.signature || signature.length !== 64 || signature.toString('base64') !== key.signature) {
+                throw fail(400, 'Prekey đã ký cần signature Ed25519 hợp lệ');
+            }
+        }
         ids.add(identity);
     }
     await relayRepository.uploadPreKeys(userId, slot, body.keys, identityType);
