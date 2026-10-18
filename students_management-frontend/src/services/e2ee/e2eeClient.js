@@ -245,7 +245,12 @@ export const sendE2EEMessage = async (recipientUserId, plaintext) => {
         error.code = 'E2EE_EMPTY_MESSAGE';
         throw error;
     }
-    return client.send(String(recipientUserId), plaintext);
+    // The SDK serializes DataMessageInput fields and intentionally drops
+    // application-specific properties. Wrap app control/message objects as JSON
+    // inside the protocol body so conversation IDs, reply IDs, edit/recall
+    // operations and idempotency IDs survive encryption unchanged.
+    const wireContent = typeof plaintext === 'string' ? plaintext : JSON.stringify(plaintext);
+    return client.send(String(recipientUserId), wireContent);
 };
 export const getE2EEStorage = () => activeContext?.storage ?? null;
 export const getE2EERelayAdapter = () => activeContext?.relay ?? null;
