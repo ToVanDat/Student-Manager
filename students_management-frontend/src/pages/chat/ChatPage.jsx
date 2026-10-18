@@ -123,6 +123,7 @@ export default function ChatPage() {
     const {
         conversations,
         activeId,
+        e2eeHistoryIssue,
         setActiveId,
         messages,
         callHistory,
@@ -409,6 +410,7 @@ export default function ChatPage() {
                             <ChatWindow
                                 activeConversation={activeConversation}
                                 e2eeStatus={e2eeStatus}
+                                e2eeHistoryIssue={e2eeHistoryIssue?.conversationId === Number(activeId) ? e2eeHistoryIssue : null}
                                 e2eeClientReady={e2eeClient.isLocalStoreReady && e2eeClient.relayState === 'connected'}
                                 onEnableE2EE={enableActiveConversationE2EE}
                                 enablingE2EE={enablingE2EE}
