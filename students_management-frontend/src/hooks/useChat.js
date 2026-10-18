@@ -7,6 +7,7 @@ import socket from '@/socket/socket.js';
 import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { sendE2EEMessage, subscribeDecryptedE2EEMessages } from '@/services/e2ee/e2eeClient';
+import { loadE2EEHistory, saveE2EEHistoryMessage, deleteE2EEHistoryMessage } from '@/services/e2ee/e2eeHistoryStore';
 
 export const useChat = () => {
     const { user } = useAuth();
