@@ -34,15 +34,17 @@ Relevant files:
 
 ## Verification status
 
-- Ran the four `studentPageQuery.test.js` cases in an isolated Node.js test directory copied from the tracked helper/test source: 4 passed, 0 failed. This is a focused unit-test run, not a run of the repository's full `npm test` suite.
-- This environment could not clone the repository or connect to PostgreSQL/Redis. **The full backend suite and frontend build/lint have not been run here.**
+- The repository's full backend `npm test` suite passed in GitHub Actions.
+- Frontend `npm run lint` passed in GitHub Actions.
+- Frontend `npm run build` passed in GitHub Actions.
+- CI run: https://github.com/ToVanDat/Student-Manager/actions/runs/39127700472
+- These are CI checks against the committed source. No PostgreSQL/Redis integration test was run, and the live database schema has not been inspected.
 - Do not interpret the source fix as end-to-end runtime verification. Next step is to pull this branch, install dependencies, run `npm test` in the backend and `npm run build` / `npm run lint` in the frontend, then exercise the student list with no filters and with search/class/gender combinations against a database whose schema has been verified.
 
 ## Remaining Phase 1 work
 
 Before marking Phase 1 fully complete:
-1. Run backend tests and frontend build/lint in the project's actual checkout.
-2. Verify the students/classes constraints and any desired audit timestamp behavior against the live schema without modifying it.
-3. Add integration tests for list/search/filter/pagination and create/update/delete against a disposable test database.
-4. Confirm expected behavior for empty results, page beyond last page, class deletion while referenced, duplicate student code/email, and invalid class IDs.
-5. Only then continue to transfer-class, student status, bulk actions and audit history.
+1. Inspect the students/classes constraints and any desired audit timestamp behavior against the target schema without modifying it.
+2. Add integration tests for list/search/filter/pagination and create/update/delete against a disposable test database.
+3. Confirm behavior for empty results, page beyond last page, class deletion while referenced, duplicate student code/email, and invalid class IDs.
+4. Only then continue to transfer-class, student status, bulk actions and audit history.
