@@ -6,7 +6,7 @@ const relayService = require('./e2eeRelayService');
 const MAX_CIPHERTEXT_BYTES = 500 * 1024 * 1024;
 const UPLOAD_TTL_SECONDS = 10 * 60;
 const DOWNLOAD_TTL_SECONDS = 5 * 60;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;\nconst REQUEST_ID_RE = /^media-upload\/[A-Za-z0-9_-]{24}$/;
 
 const fail = (statusCode, message, code) => {
     const error = new Error(message);
@@ -73,7 +73,7 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
     let digest = null;
     let readCapabilityDigest = null;
     if (requestId != null || preparedAt != null || body.digest != null || body.readCapabilityDigest != null) {
-        if (typeof requestId !== 'string' || !UUID_RE.test(requestId) ||
+        if (typeof requestId !== 'string' || !REQUEST_ID_RE.test(requestId) ||
             !Number.isSafeInteger(preparedAt) || preparedAt <= 0 ||
             typeof body.digest !== 'string' || typeof body.readCapabilityDigest !== 'string') {
             throw fail(400, 'requestId, preparedAt, digest và readCapabilityDigest phải được gửi cùng nhau');
@@ -163,7 +163,7 @@ const completeUpload = async (userId, attachmentId) => {
     if (typeof attachmentId !== 'string' || !UUID_RE.test(attachmentId)) throw fail(400, 'attachmentId không hợp lệ');
     const config = getConfig();
     const { rows } = await pool.query(
-        `SELECT id, conversation_id, uploaded_by, object_key, ciphertext_size, status, expires_at
+        `SELECT id, conversation_id, uploaded_by, object_key, ciphertext_size, ciphertext_sha256, status, expires_at
            FROM e2ee_attachment_objects WHERE id = $1 LIMIT 1`,
         [attachmentId]
     );
@@ -178,7 +178,7 @@ const completeUpload = async (userId, attachmentId) => {
     const ticket = makeTicket(config, {
         method: 'HEAD', attachmentId, objectKey: row.object_key,
         conversationId: Number(row.conversation_id), userId: Number(userId),
-        expectedSize: Number(row.ciphertext_size), ttl: 60
+        expectedSize: Number(row.ciphertext_size), expectedDigest: Buffer.from(row.ciphertext_sha256 || []).toString('base64url'), ttl: 60
     });
     let response;
     try {
@@ -208,6 +208,146 @@ const completeUpload = async (userId, attachmentId) => {
         }
     }
     return { attachmentId, status: 'uploaded', ciphertextSize: actualSize };
+};
+
+
+const getUploadReceipt = async (userId, row, { allowPending = true } = {}) => {
+    const config = getConfig();
+    if (Number(row.uploaded_by) !== Number(userId)) throw fail(403, 'Không có quyền xác minh upload này');
+    if (!['pending', 'uploaded'].includes(row.status)) throw fail(410, 'Upload đã bị đóng', 'E2EE_ATTACHMENT_RESERVATION_CLOSED');
+    if (row.status === 'pending' && !allowPending) throw fail(409, 'Upload chưa được hoàn tất');
+    if (row.status === 'pending' && new Date(row.expires_at).getTime() <= Date.now()) {
+        throw fail(410, 'Phiên tải tệp đã hết hạn', 'E2EE_ATTACHMENT_TICKET_EXPIRED');
+    }
+    await assertConversationAccess(userId, row.conversation_id);
+    const ticket = makeTicket(config, {
+        method: 'HEAD', attachmentId: row.id, objectKey: row.object_key,
+        conversationId: Number(row.conversation_id), userId: Number(userId),
+        expectedSize: Number(row.ciphertext_size),
+        expectedDigest: Buffer.from(row.ciphertext_sha256 || []).toString('base64url'), ttl: 60
+    });
+    let response;
+    try {
+        response = await fetch(workerUrl(config, row.id), {
+            method: 'HEAD', headers: { Authorization: `Bearer ${ticket}` }, signal: AbortSignal.timeout(8000)
+        });
+    } catch {
+        throw fail(502, 'Không thể xác minh tệp trên R2; hãy thử lại', 'E2EE_ATTACHMENT_VERIFY_FAILED');
+    }
+    if (response.status === 404) {
+        if (row.status === 'uploaded') throw fail(409, 'Metadata đã hoàn tất nhưng object không còn tồn tại', 'E2EE_ATTACHMENT_OBJECT_MISSING');
+        return null;
+    }
+    if (!response.ok) throw fail(502, 'Không thể xác minh ciphertext trên R2', 'E2EE_ATTACHMENT_VERIFY_FAILED');
+    const contentLength = Number(response.headers.get('content-length'));
+    const digest = response.headers.get('x-e2ee-sha256');
+    const expectedDigest = Buffer.from(row.ciphertext_sha256 || []).toString('base64url');
+    if (contentLength !== Number(row.ciphertext_size) || !expectedDigest || digest !== expectedDigest) {
+        throw fail(409, 'Object trên R2 không khớp với bản chuẩn bị bất biến', 'E2EE_ATTACHMENT_DIGEST_MISMATCH');
+    }
+    if (row.status === 'pending') {
+        const result = await pool.query(
+            `UPDATE e2ee_attachment_objects SET status = 'uploaded', uploaded_at = COALESCE(uploaded_at, CURRENT_TIMESTAMP)
+             WHERE id = $1 AND uploaded_by = $2 AND status = 'pending'`,
+            [row.id, userId]
+        );
+        if (!result.rowCount) {
+            const latest = await pool.query('SELECT status FROM e2ee_attachment_objects WHERE id = $1', [row.id]);
+            if (latest.rows[0]?.status !== 'uploaded') throw fail(409, 'Upload thay đổi trạng thái trong lúc xác minh');
+        }
+    }
+    return { objectId: row.id, contentLength, digest: Buffer.from(digest, 'base64url').toString('base64') };
+};
+
+const reconcileUpload = async (userId, attachmentId) => {
+    if (typeof attachmentId !== 'string' || !UUID_RE.test(attachmentId)) throw fail(400, 'attachmentId không hợp lệ');
+    const { rows } = await pool.query(
+        `SELECT id, conversation_id, uploaded_by, object_key, ciphertext_size, ciphertext_sha256, status, expires_at
+           FROM e2ee_attachment_objects WHERE id = $1 LIMIT 1`, [attachmentId]
+    );
+    const row = rows[0];
+    if (!row) throw fail(404, 'Không tìm thấy upload gốc');
+    const receipt = await getUploadReceipt(userId, row);
+    return receipt;
+};
+
+const abandonUpload = async (userId, body = {}) => {
+    const { requestId, preparedAt } = body;
+    if (typeof requestId !== 'string' || !REQUEST_ID_RE.test(requestId) ||
+        !Number.isSafeInteger(preparedAt) || preparedAt <= 0) {
+        throw fail(400, 'requestId hoặc preparedAt không hợp lệ');
+    }
+    const { rows } = await pool.query(
+        `SELECT id, conversation_id, uploaded_by, object_key, ciphertext_size, ciphertext_sha256, status, expires_at
+           FROM e2ee_attachment_objects
+          WHERE uploaded_by = $1 AND request_id = $2 AND prepared_at = $3
+          LIMIT 1`, [userId, requestId, preparedAt]
+    );
+    const row = rows[0];
+    if (!row || row.status === 'deleted') return { abandoned: true };
+    if (Number(row.uploaded_by) !== Number(userId)) throw fail(403, 'Không có quyền hủy upload này');
+    await deleteStoredObject(userId, row, true);
+    return { abandoned: true };
+};
+
+const deleteStoredObject = async (userId, row, allowPending = false) => {
+    if (Number(row.uploaded_by) !== Number(userId)) throw fail(403, 'Chỉ người tải lên mới được xóa object E2EE');
+    if (row.status === 'deleted') return { deleted: true };
+    if (row.status !== 'uploaded' && !(allowPending && row.status === 'pending')) {
+        throw fail(409, 'Object chưa ở trạng thái có thể xóa');
+    }
+    const config = getConfig();
+    const ticket = makeTicket(config, {
+        method: 'DELETE', attachmentId: row.id, objectKey: row.object_key,
+        conversationId: Number(row.conversation_id), userId: Number(userId),
+        expectedSize: Number(row.ciphertext_size),
+        expectedDigest: Buffer.from(row.ciphertext_sha256 || []).toString('base64url'), ttl: 60
+    });
+    let response;
+    try {
+        response = await fetch(workerUrl(config, row.id), {
+            method: 'DELETE', headers: { Authorization: `Bearer ${ticket}` }, signal: AbortSignal.timeout(8000)
+        });
+    } catch {
+        throw fail(502, 'Không thể xác nhận xóa object trên R2; hãy thử lại', 'E2EE_ATTACHMENT_DELETE_FAILED');
+    }
+    if (!response.ok) throw fail(502, 'R2 chưa xác nhận xóa object', 'E2EE_ATTACHMENT_DELETE_FAILED');
+    await pool.query(
+        `UPDATE e2ee_attachment_objects SET status = 'deleted'
+         WHERE id = $1 AND uploaded_by = $2 AND status <> 'deleted'`, [row.id, userId]
+    );
+    return { deleted: true };
+};
+
+const deleteObject = async (userId, attachmentId) => {
+    if (typeof attachmentId !== 'string' || !UUID_RE.test(attachmentId)) throw fail(400, 'attachmentId không hợp lệ');
+    const { rows } = await pool.query(
+        `SELECT id, conversation_id, uploaded_by, object_key, ciphertext_size, ciphertext_sha256, status, expires_at
+           FROM e2ee_attachment_objects WHERE id = $1 LIMIT 1`, [attachmentId]
+    );
+    const row = rows[0];
+    if (!row) return { deleted: true };
+    await assertConversationAccess(userId, row.conversation_id);
+    return deleteStoredObject(userId, row, false);
+};
+
+const resolveUploadConversation = async (userId, body = {}) => {
+    const { requestId, preparedAt, digest, readCapabilityDigest, contentLength } = body;
+    if (typeof requestId !== 'string' || !REQUEST_ID_RE.test(requestId) ||
+        !Number.isSafeInteger(preparedAt) || preparedAt <= 0) throw fail(400, 'Upload identity không hợp lệ');
+    const { rows } = await pool.query(
+        `SELECT id, conversation_id, ciphertext_size, ciphertext_sha256, read_capability_digest, status
+           FROM e2ee_attachment_objects WHERE uploaded_by = $1 AND request_id = $2 AND prepared_at = $3 LIMIT 1`,
+        [userId, requestId, preparedAt]
+    );
+    const row = rows[0];
+    if (!row) return null;
+    if (Number(row.ciphertext_size) !== Number(contentLength) ||
+        !row.ciphertext_sha256 || Buffer.from(row.ciphertext_sha256).toString('base64') !== digest ||
+        (row.read_capability_digest && Buffer.from(row.read_capability_digest).toString('base64') !== readCapabilityDigest)) {
+        throw fail(409, 'Upload identity was reused with different preparation bytes', 'E2EE_ATTACHMENT_IDENTITY_CONFLICT');
+    }
+    return { conversationId: Number(row.conversation_id), objectId: row.id, status: row.status };
 };
 
 const createDownloadTicket = async (userId, attachmentId, readCapability) => {
@@ -240,7 +380,7 @@ const createDownloadTicket = async (userId, attachmentId, readCapability) => {
     const ticket = makeTicket(config, {
         method: 'GET', attachmentId, objectKey: row.object_key,
         conversationId: Number(row.conversation_id), userId: Number(userId),
-        expectedSize: Number(row.ciphertext_size), ttl: DOWNLOAD_TTL_SECONDS
+        expectedSize: Number(row.ciphertext_size), expectedDigest: Buffer.from(row.ciphertext_sha256).toString('base64url'), ttl: DOWNLOAD_TTL_SECONDS
     });
     return {
         attachmentId,
@@ -252,7 +392,7 @@ const createDownloadTicket = async (userId, attachmentId, readCapability) => {
 };
 
 module.exports = {
-    MAX_CIPHERTEXT_BYTES, createUploadTicket, completeUpload, createDownloadTicket,
+    MAX_CIPHERTEXT_BYTES, createUploadTicket, completeUpload, createDownloadTicket,\n    reconcileUpload, abandonUpload, deleteObject, resolveUploadConversation,
     // Exported for deterministic unit tests; never expose this signing key to clients.
     signTicket
 };
