@@ -50,7 +50,7 @@ const getStudentPage = async ({ page = 1, pageSize = 10, search = '', sortBy = '
 
     if (keyword) {
         filterValues.push(`%${keyword}%`);
-        const searchPlaceholder = `${filterValues.length}`;
+        const searchPlaceholder = '$' + filterValues.length;
         conditions.push(`(
             s.student_code ILIKE ${searchPlaceholder}
             OR s.name ILIKE ${searchPlaceholder}
@@ -62,19 +62,19 @@ const getStudentPage = async ({ page = 1, pageSize = 10, search = '', sortBy = '
 
     if (safeClassId !== null) {
         filterValues.push(safeClassId);
-        conditions.push(`s.class_id = ${filterValues.length}`);
+        conditions.push(`s.class_id = $${filterValues.length}`);
     }
 
     if (safeGender) {
         filterValues.push(safeGender);
-        conditions.push(`LOWER(BTRIM(COALESCE(s.gender, ''))) = LOWER(${filterValues.length})`);
+        conditions.push(`LOWER(BTRIM(COALESCE(s.gender, ''))) = LOWER($${filterValues.length})`);
     }
 
     const whereSql = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const countValues = [...filterValues];
     const listValues = [...filterValues, safePageSize, offset];
-    const limitPosition = `${filterValues.length + 1}`;
-    const offsetPosition = `${filterValues.length + 2}`;
+    const limitPosition = '$' + (filterValues.length + 1);
+    const offsetPosition = '$' + (filterValues.length + 2);
 
     const [listResult, countResult, statsResult, classesResult, recentResult] = await Promise.all([
         pool.query(
