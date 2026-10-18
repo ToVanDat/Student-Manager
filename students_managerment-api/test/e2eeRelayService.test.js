@@ -5,20 +5,6 @@ const relayRepository = require('../repository/e2eeRelayRepository');
 const conversationRepository = require('../repository/conversationRepository');
 const service = require('../service/e2eeRelayService');
 
-const original = {};
-const replace = (object, key, value) => {
-    if (!(key in original)) original[key] = { object, value: object[key] };
-    object[key] = value;
-};
-const restore = () => {
-    for (const { object, value } of Object.values(original)) {
-        const key = Object.keys(object).find(name => object[name] === original[name]?.replacement);
-        // Restoration is handled by explicit property snapshots below.
-        void key;
-        void value;
-    }
-};
-
 const validEnvelope = overrides => ({
     targetUserId: 22,
     targetDeviceId: 2,
