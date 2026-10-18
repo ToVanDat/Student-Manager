@@ -55,8 +55,8 @@ export const subscribeE2EEClientState = (listener) => {
 
 /**
  * Opens the SDK-managed encrypted browser store for one account and creates a
- * local Signal Protocol client. No relay is attached in this foundation step:
- * this function intentionally does not enable messaging or upload key material.
+ * local Signal Protocol client, authenticated relay adapter, and receive hook.
+ * A conversation is still not E2EE-enabled merely because this client is ready.
  *
  * OPFS is used to give each signed-in account a separate local store. We do not
  * silently fall back to the SDK's fixed-name IndexedDB store because doing so
@@ -115,7 +115,7 @@ export const initializeE2EEClient = async (userId) => {
             if (activeContext) {
                 const previous = activeContext;
                 activeContext = null;
-                await closeResources(previous.client, previous.storage);
+                await closeResources(previous.client, previous.storage, previous.unsubscribeRelayState);
             }
 
             storage = await webSqliteStore({
@@ -161,7 +161,7 @@ export const initializeE2EEClient = async (userId) => {
             });
             return client;
         } catch (error) {
-            await closeResources(client, storage);
+            await closeResources(client, storage, unsubscribeRelayState);
             if (token === generation) {
                 const code = typeof error?.code === 'string' ? error.code : 'E2EE_LOCAL_STORE_FAILED';
                 publish({
