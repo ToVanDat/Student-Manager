@@ -149,6 +149,52 @@ const removeDevice = async (userId, deviceId) => withTransaction(async client =>
     return { deviceId: Number(rows[0].device_id) };
 });
 
+const rotateIdentityKey = async (userId, deviceId, identity, registrationId, expectedCommitmentBase64, identityType = 'aci') =>
+    withTransaction(async client => {
+        const device = await getDeviceRow(client, userId, deviceId, identityType, true);
+        if (!device) throw httpError(401, 'Thiết bị E2EE không còn hoạt động');
+        const currentResult = await client.query(
+            'SELECT identity_public, identity_commitment FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 FOR UPDATE',
+            [userId, identityType]
+        );
+        const current = currentResult.rows[0];
+        if (!current) throw httpError(404, 'Không có identity hiện tại để xoay khóa');
+        const expected = Buffer.from(expectedCommitmentBase64, 'base64');
+        if (expected.length !== 32 || expected.toString('base64') !== expectedCommitmentBase64) {
+            throw httpError(400, 'expectedCurrentCommitment phải là base64 của 32 byte');
+        }
+        const currentCommitment = identityCommitment(current.identity_public);
+        if (!crypto.timingSafeEqual(currentCommitment, expected)) {
+            throw httpError(409, 'Identity đã thay đổi; cần tải lại trạng thái trước khi xoay khóa', 'E2EE_IDENTITY_COMMITMENT_MISMATCH');
+        }
+        const nextCommitment = identityCommitment(identity);
+        if (crypto.timingSafeEqual(currentCommitment, nextCommitment)) {
+            throw httpError(409, 'Identity mới trùng identity hiện tại');
+        }
+        await client.query(
+            `UPDATE e2ee_sdk_identities SET identity_public = $3::jsonb, identity_commitment = $4,
+                revision = revision + 1, updated_at = NOW()
+             WHERE user_id = $1 AND identity_type = $2`,
+            [userId, identityType, JSON.stringify(identity), nextCommitment.toString('base64')]
+        );
+        const revoked = await client.query(
+            `UPDATE e2ee_sdk_devices SET enabled = FALSE, revoked_at = NOW(), device_token_hash = NULL
+             WHERE user_id = $1 AND identity_type = $2 AND id <> $3 AND revoked_at IS NULL
+             RETURNING id`,
+            [userId, identityType, device.id]
+        );
+        if (revoked.rows.length) {
+            const ids = revoked.rows.map(row => row.id);
+            await client.query('DELETE FROM e2ee_sdk_prekeys WHERE device_pk = ANY($1::bigint[])', [ids]);
+            await client.query('DELETE FROM e2ee_sdk_envelopes WHERE recipient_device_pk = ANY($1::bigint[]) AND acknowledged_at IS NULL', [ids]);
+        }
+        await client.query('DELETE FROM e2ee_sdk_prekeys WHERE device_pk = $1', [device.id]);
+        await client.query(
+            `UPDATE e2ee_sdk_devices SET identity_public = $2::jsonb, registration_id = $3, last_seen_at = NOW()
+             WHERE id = $1`,
+            [device.id, JSON.stringify(identity), registrationId]
+        );
+    });
 const getIdentityKey = async (userId, identityType = 'aci') => {
     const { rows } = await pool.query(
         'SELECT identity_public FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 LIMIT 1',
@@ -663,7 +709,7 @@ const getDeviceBySlot = async (userId, deviceId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity,
+    registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity, rotateIdentityKey,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
     sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE, authenticateDeviceCredential,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
