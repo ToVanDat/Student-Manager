@@ -68,7 +68,7 @@ const createBucket = () => {
 };
 const request = (method, token, body) => new Request(`https://worker.test/v1/objects/${attachmentId}`, {
     method,
-    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/octet-stream', 'Content-Length': String(body.length) } : {}) },
+    headers: { Authorization: `Bearer ${token}`, ...(body ? { 'Content-Type': 'application/octet-stream' } : {}) },
     ...(body ? { body } : {})
 });
 const env = bucket => ({ E2EE_BUCKET: bucket, E2EE_ATTACHMENT_TICKET_SECRET: secret, E2EE_FRONTEND_ORIGIN: 'https://app.example.test' });
