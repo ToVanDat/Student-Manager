@@ -2,7 +2,7 @@
 
 ## Current scope
 
-This branch now contains a first end-to-end integration slice for **direct text chat only**. Do not treat it as production-ready until the protocol round-trip CI job passes, the migration is tested against a disposable schema matching the real database, and the remaining limitations below are resolved.
+This branch now contains a first end-to-end integration slice for **direct text chat only**. CI now passes the two-client/two-recipient-device Signal Protocol round-trip, backend tests, frontend lint/build, and a PostgreSQL migration smoke test on a disposable minimal base schema. This still is not production-ready until the remaining limitations below and manual browser tests are resolved.
 
 ### Browser client and local state
 
@@ -35,14 +35,14 @@ This branch now contains a first end-to-end integration slice for **direct text 
 
 ## Important limitations still open
 
-1. **Protocol round-trip CI is being added and must pass on the latest commit.** A passing mocked relay round-trip validates SDK encryption/decryption and multi-device fan-out, not the deployed Express/PostgreSQL relay or real-browser storage.
+1. **Protocol round-trip CI passes on the latest validated commit.** The test validates SDK encryption/decryption and fan-out to two recipient devices through an in-memory relay. It does not validate the deployed Express/PostgreSQL relay or real-browser storage.
 2. The QR provisioning flow and server endpoints have been added, but must be exercised manually across two separate browser profiles and audited for interrupted/expired provisioning, rollback, token loss, and linked-device re-registration.
 3. E2EE local history is per device. It is not a server-side decrypted transcript and is not synchronized to a newly linked device. Legacy history remains available from the existing server APIs.
 4. E2EE attachments are not implemented because there is no configured encrypted remote-object-store adapter. The UI blocks uploads rather than leaking plaintext.
 5. E2EE notifications are generic in-app notifications only. Push delivery and durable notification-center records for encrypted messages are not yet wired.
 6. Group-chat E2EE is not implemented. The activation endpoint intentionally rejects group conversations.
 7. Device revocation/rotation invalidates relay credentials and prekeys, but full UX for account recovery after loss of the primary device's identity/private key is not implemented. Do not silently generate a replacement identity for an existing account.
-8. The PostgreSQL migration has not been applied or validated against the user's actual database. Check existing constraints/types and run it against a disposable schema first.
+8. The PostgreSQL migration passed a smoke test twice against a disposable PostgreSQL 16 database with minimal `users`, `conversations`, and `messages` base tables, including idempotency. It has **not** been applied or validated against the user's actual database. Check existing constraints/types and test against a disposable schema matching the deployed schema first.
 9. The SDK is an independent implementation/profile, not affiliated or wire-compatible with Signal Messenger/libsignal, and its public docs state it has not been independently audited. Browser storage and IndexedDB credentials do not protect against same-origin XSS. Review the protocol profile, CSP, key recovery, threat model, and exact package tarball/license before production use.
 
 ## Validation plan
@@ -56,7 +56,7 @@ CI workflow `.github/workflows/quality-checks.yml` now includes:
 
 Still required before merge/production:
 
-- Confirm all latest workflow jobs passed; do not infer success from an earlier commit.
+- Confirm all latest workflow jobs passed; do not infer success from an earlier commit. The latest validated run passed API tests, frontend lint/build, the Signal Protocol round-trip, and the migration smoke test.
 - Execute migration tests against a disposable PostgreSQL schema matching the deployed schema.
 - Manual browser test across two separate profiles: link device, send text, reconnect/offline delivery, edit/recall/reaction, search, revoke device, missing local key, and failed provisioning rollback.
 - Add integration tests for real Express relay auth, concurrent prekey claims, retries/idempotency, socket subscription authorization, and the migration's constraints.
