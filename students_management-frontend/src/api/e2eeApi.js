@@ -8,6 +8,6 @@ export const e2eeApi = {
     revokeDevice: (deviceId) => client.delete(`/api/e2ee/devices/${encodeURIComponent(deviceId)}`),
     getConversationDeviceBundles: (conversationId) =>
         client.get(`/api/e2ee/conversations/${encodeURIComponent(conversationId)}/device-bundles`),
-    claimConversationDevicePrekey: (conversationId, deviceId) =>
-        client.post(`/api/e2ee/conversations/${encodeURIComponent(conversationId)}/devices/${encodeURIComponent(deviceId)}/claim-prekey`)
+    claimConversationDevicePrekey: (conversationId, userId, deviceId) =>
+        client.post(`/api/e2ee/conversations/${encodeURIComponent(conversationId)}/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}/claim-prekey`)
 };
