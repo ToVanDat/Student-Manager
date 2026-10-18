@@ -143,7 +143,7 @@ const getConversationDeviceBundles = async (conversationId, requesterId) => {
     }));
 };
 
-const claimConversationDevicePrekey = async (conversationId, requesterId, targetDeviceId) => withTransaction(async (client) => {
+const claimConversationDevicePrekey = async (conversationId, requesterId, targetUserId, targetDeviceId) => withTransaction(async (client) => {
     const membership = await client.query(
         `SELECT 1 FROM conversation_members
          WHERE conversation_id = $1 AND user_id = $2 AND left_at IS NULL LIMIT 1`,
@@ -161,11 +161,12 @@ const claimConversationDevicePrekey = async (conversationId, requesterId, target
          JOIN conversation_members cm ON cm.user_id = d.user_id
          WHERE cm.conversation_id = $1
            AND cm.left_at IS NULL
-           AND d.device_id = $2
+           AND d.user_id = $2
+           AND d.device_id = $3
            AND d.revoked_at IS NULL
          LIMIT 1
          FOR UPDATE OF d`,
-        [conversationId, targetDeviceId]
+        [conversationId, targetUserId, targetDeviceId]
     );
     if (!deviceResult.rows[0]) {
         const error = new Error('Không tìm thấy thiết bị E2EE đang hoạt động trong conversation');
