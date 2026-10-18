@@ -250,7 +250,7 @@ export const sendE2EEMessage = async (recipientUserId, plaintext) => {
     // inside the protocol body so conversation IDs, reply IDs, edit/recall
     // operations and idempotency IDs survive encryption unchanged.
     const wireContent = typeof plaintext === 'string' ? plaintext : JSON.stringify(plaintext);
-    return client.send(String(recipientUserId), wireContent);
+    return client.send(String(recipientUserId), { body: wireContent });
 };
 export const getE2EEStorage = () => activeContext?.storage ?? null;
 export const getE2EERelayAdapter = () => activeContext?.relay ?? null;
