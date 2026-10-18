@@ -62,6 +62,28 @@ export const useChat = () => {
             }
             return;
         }
+        if (payload.type === 'reaction' && payload.targetMessageId && payload.emoji) {
+            const targetId = `e2ee:${String(payload.targetMessageId)}`;
+            const target = messages.find(item => String(item.id) === targetId)
+                || (await loadE2EEHistory(currentUserId, conversationId)).find(item => String(item.id) === targetId);
+            if (target) {
+                const existingReactions = target.reactions || [];
+                const alreadyReacted = existingReactions.some(reaction =>
+                    Number(reaction.user_id) === senderId && reaction.emoji === payload.emoji
+                );
+                const reactions = payload.action === 'remove'
+                    ? existingReactions.filter(reaction =>
+                        !(Number(reaction.user_id) === senderId && reaction.emoji === payload.emoji)
+                    )
+                    : alreadyReacted
+                        ? existingReactions
+                        : [...existingReactions, { user_id: senderId, emoji: payload.emoji }];
+                const updated = { ...target, reactions };
+                await saveE2EEHistoryMessage(currentUserId, updated);
+                setMessages(previous => previous.map(item => String(item.id) === targetId ? updated : item));
+            }
+            return;
+        }
         if (payload.type !== 'message') return;
 
         const messageId = `e2ee:${String(payload.appMessageId ?? decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
