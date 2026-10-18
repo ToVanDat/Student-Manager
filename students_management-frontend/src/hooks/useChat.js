@@ -46,6 +46,11 @@ export const useChat = () => {
         // unknown top-level DataMessageInput properties.
         const protocolContent = parseObject(decrypted?.content);
         let payload = protocolContent || { type: 'message', body: String(decrypted?.content ?? '') };
+        if (protocolContent?.dataMessage && typeof protocolContent.dataMessage === 'object') {
+            const body = protocolContent.dataMessage.body;
+            const applicationPayload = parseObject(body);
+            payload = applicationPayload || { type: 'message', body: String(body ?? '') };
+        }
         if (payload.dataMessage && typeof payload.dataMessage === 'object') {
             const dataMessage = payload.dataMessage;
             payload = parseObject(dataMessage.body) || {
