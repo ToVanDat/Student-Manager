@@ -1021,6 +1021,29 @@ export const useChat = () => {
 
     const deleteMessageForEveryone = useCallback(async (messageId) => {
         if (!messageId) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            if (Number(existing.sender_id) !== currentUserId) {
+                toast.error('Chỉ người gửi mới có thể xóa tin nhắn E2EE cho mọi người.');
+                return;
+            }
+            const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
+            if (!conversation?.userId) throw new Error('Không xác định được người nhận E2EE.');
+            try {
+                await sendE2EEMessage(conversation.userId, {
+                    type: 'recall',
+                    targetMessageId: String(messageId).replace(/^e2ee:/, ''),
+                    conversationId: String(existing.conversation_id),
+                    timestamp: Date.now()
+                });
+                setMessages(previous => previous.map(item => String(item.id) === String(messageId)
+                    ? { ...item, content: 'Tin nhắn đã được thu hồi', is_recalled: true } : item));
+            } catch (error) {
+                toast.error('Không thể gửi yêu cầu xóa E2EE tới thiết bị người nhận.');
+                console.warn('[E2EE] delete-for-everyone send failed', { code: error?.code || 'E2EE_DELETE_FAILED' });
+            }
+            return;
+        }
 
         try {
             const res = await chatApi.deleteMessageForEveryone(messageId);
@@ -1037,7 +1060,7 @@ export const useChat = () => {
             console.error('Không thể xoá message cho tất cả:', error);
             toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn cho mọi người');
         }
-    }, []);
+    }, [messages, conversations, currentUserId]);
 
     const sendAttachment = useCallback(async (file, quality = 'standard', onUploadProgress) => {
         if (!activeId || !file) return;
