@@ -13,12 +13,20 @@ const originalEnv = process.env.JWT_SECRET;
 const snapshots = [];
 
 const stub = (object, key, replacement) => {
-    snapshots.push({ object, key, value: object[key] });
-    object[key] = replacement;
+    snapshots.push({ object, key, descriptor: Object.getOwnPropertyDescriptor(object, key) });
+    Object.defineProperty(object, key, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: replacement
+    });
 };
 
 const restore = () => {
-    for (const item of snapshots.splice(0).reverse()) item.object[item.key] = item.value;
+    for (const item of snapshots.splice(0).reverse()) {
+        if (item.descriptor) Object.defineProperty(item.object, item.key, item.descriptor);
+        else delete item.object[item.key];
+    }
     if (originalEnv === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = originalEnv;
 };
