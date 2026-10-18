@@ -1,8 +1,9 @@
 import { openDB } from 'idb';
 
-const openStateDb = userId => openDB(`student-manager-e2ee-device-state-${String(userId)}`, 1, {
+const openStateDb = userId => openDB(`student-manager-e2ee-device-state-${String(userId)}`, 2, {
     upgrade(db) {
         if (!db.objectStoreNames.contains('device')) db.createObjectStore('device', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('state')) db.createObjectStore('state', { keyPath: 'id' });
     }
 });
 
@@ -34,3 +35,15 @@ export const clearStoredE2EEDeviceId = async userId => {
     const db = await openStateDb(userId);
     try { await db.delete('device', 'current'); } finally { db.close(); }
 };
+
+
+export const e2eeProvisioningLocalStateStore = userId => ({
+    async setItemAsync(key, value) {
+        const db = await openStateDb(userId);
+        try { await db.put('state', { id: String(key), value: String(value) }); } finally { db.close(); }
+    },
+    async deleteItemAsync(key) {
+        const db = await openStateDb(userId);
+        try { await db.delete('state', String(key)); } finally { db.close(); }
+    }
+});
