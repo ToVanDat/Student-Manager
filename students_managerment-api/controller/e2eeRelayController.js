@@ -1,6 +1,7 @@
 const e2eeRelayService = require('../service/e2eeRelayService');
 const { getIO } = require('../src/socket/socket');
 const notificationDeliveryService = require('../service/notificationDeliveryService');
+const e2eeAttachmentService = require('../service/e2eeAttachmentService');
 
 const notifyE2EERecipient = async (data, senderId) => {
     if (!data?.notifyRecipient) return;
@@ -36,7 +37,20 @@ const run = (handler) => async (req, res, next) => {
     }
 };
 
+const createAttachmentUploadTicket = run(req => e2eeAttachmentService.createUploadTicket(
+    Number(req.user.id), req.params.conversationId, req.body
+));
+const completeAttachmentUpload = run(req => e2eeAttachmentService.completeUpload(
+    Number(req.user.id), req.params.attachmentId
+));
+const createAttachmentDownloadTicket = run(req => e2eeAttachmentService.createDownloadTicket(
+    Number(req.user.id), req.params.attachmentId
+));
+
 module.exports = {
+    createAttachmentUploadTicket,
+    completeAttachmentUpload,
+    createAttachmentDownloadTicket,
     registerDevice: run(req => e2eeRelayService.registerDevice(Number(req.user.id), req.body)),
     getDevices: run(req => e2eeRelayService.getDevices(Number(req.user.id), Number(req.params.userId))),
     getIdentityKey: run(async req => {
