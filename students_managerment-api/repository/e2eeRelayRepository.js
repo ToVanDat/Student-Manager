@@ -195,38 +195,44 @@ const fetchPreKeyBundle = async (targetUserId, targetDeviceId, identityType = 'a
     const device = await getDeviceRow(client, targetUserId, targetDeviceId, identityType, true);
     if (!device || !device.identity_public) return null;
 
+    const canonicalResult = await client.query(
+        'SELECT identity_public FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2',
+        [targetUserId, identityType]
+    );
+    const identity = canonicalResult.rows[0]?.identity_public || device.identity_public;
+    if (!identity) return null;
+
     const { rows: keyRows } = await client.query(
-        `SELECT key_type, key_id, public_key, signature
-         FROM e2ee_sdk_prekeys
-         WHERE device_pk = $1 AND identity_type = $2
-         ORDER BY key_id
-         FOR UPDATE SKIP LOCKED`,
+        `SELECT id, key_type, key_id, public_key, signature
+         FROM e2ee_sdk_prekeys WHERE device_pk = $1 AND identity_type = $2 ORDER BY key_id`,
         [device.id, identityType]
     );
-    const find = type => keyRows.find(row => row.key_type === type && row.key_type !== 'ecPreKey' && row.key_type !== 'kemOneTimePreKey');
+    const find = type => keyRows.find(row => row.key_type === type);
     const signed = find('ecSignedPreKey');
     const kemLast = find('kemLastResortPreKey');
-    if (!signed || !kemLast) throw httpError(409, 'Thiết bị chưa có signed/KEM prekey hoàn chỉnh');
+    if (!signed) throw httpError(409, 'Thiết bị chưa có EC signed prekey');
 
     const claimOne = async type => {
         const { rows } = await client.query(
-            `SELECT id, key_id, public_key FROM e2ee_sdk_prekeys
+            `SELECT id, key_id, public_key, signature FROM e2ee_sdk_prekeys
              WHERE device_pk = $1 AND identity_type = $2 AND key_type = $3 AND claimed_at IS NULL
              ORDER BY key_id LIMIT 1 FOR UPDATE SKIP LOCKED`,
             [device.id, identityType, type]
         );
         if (!rows[0]) return null;
         await client.query('UPDATE e2ee_sdk_prekeys SET claimed_at = NOW() WHERE id = $1 AND claimed_at IS NULL', [rows[0].id]);
-        return { keyId: Number(rows[0].key_id), publicKey: rows[0].public_key };
+        return { keyId: Number(rows[0].key_id), publicKey: rows[0].public_key, ...(rows[0].signature ? { signature: rows[0].signature } : {}) };
     };
     const ecOne = await claimOne('ecPreKey');
     const kemOne = await claimOne('kemOneTimePreKey');
+    if (!kemOne && !kemLast) throw httpError(409, 'Thiết bị chưa có KEM prekey');
     return {
-        identityKey: device.identity_public,
         registrationId: Number(device.registration_id),
-        signedPreKey: { keyId: Number(signed.key_id), publicKey: signed.public_key, signature: signed.signature },
-        kemLastResortPreKey: { keyId: Number(kemLast.key_id), publicKey: kemLast.public_key },
-        oneTimePreKey: ecOne,
+        deviceId: Number(device.device_id),
+        identity,
+        ecSignedPreKey: { keyId: Number(signed.key_id), publicKey: signed.public_key, signature: signed.signature },
+        ecOneTimePreKey: ecOne,
+        kemLastResortPreKey: kemOne ? null : (kemLast ? { keyId: Number(kemLast.key_id), publicKey: kemLast.public_key, signature: kemLast.signature } : null),
         kemOneTimePreKey: kemOne
     };
 });
