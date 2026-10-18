@@ -2,7 +2,7 @@
 
 ## Current scope
 
-This branch now contains a first end-to-end integration slice for **direct text chat only**. CI now passes the two-client/two-recipient-device Signal Protocol round-trip, backend tests, frontend lint/build, and a PostgreSQL migration smoke test on a disposable minimal base schema. This still is not production-ready until the remaining limitations below and manual browser tests are resolved.
+This branch now contains a first end-to-end integration slice for **direct text chat only**. The latest validated CI commit passed the Signal Protocol two-account/two-recipient-device round-trip, backend tests, frontend lint/build, idempotent PostgreSQL migration smoke test, and live PostgreSQL relay integration test. The live database test uses a purpose-built disposable schema; it is not validation against the user's deployed schema. This still is not production-ready until the remaining limitations below and manual browser tests are resolved.
 
 ### Browser client and local state
 
@@ -58,7 +58,7 @@ Still required before merge/production:
 
 - Confirm all latest workflow jobs passed for the final commit; do not infer success from an earlier commit. The API workflow now runs the migration twice and the live relay integration test against the same disposable PostgreSQL service, plus the API unit suite and frontend lint/build. The separate quality workflow runs the SDK round-trip, backend tests, frontend lint, and production build.
 - Execute migration tests against a disposable PostgreSQL schema matching the deployed schema. The current live integration job uses a purpose-built minimal schema, not a copy of the deployed schema.
-- Manual browser test across two separate profiles: link device, send text, reconnect/offline delivery, edit/recall/reaction, search, revoke device, missing local key, and failed provisioning rollback.
+- Manual browser acceptance checklist is documented in `students_managerment-api/docs/E2EE_BROWSER_ACCEPTANCE_CHECKLIST.md`. Run it across two separate browser profiles before merge: link device, send text, reconnect/offline delivery, edit/recall/reaction, search, revoke device, missing local key, and failed provisioning rollback.
 - API unit tests cover relay request validation, direct-recipient mismatch, missing direct conversation, mailbox device-slot validation, acknowledgement ID validation, and repository query paths. Those mocked tests remain useful but are not a substitute for the new live PostgreSQL integration test.
 - Added an Express HTTP integration test for JWT/session middleware and per-device credential middleware around the mailbox route. Redis, session/user lookups, and repository calls are stubbed; it verifies the HTTP/auth chain, not live database integration.
 - API unit tests cover relay request validation, direct-recipient mismatch, missing direct conversation, mailbox device-slot validation, acknowledgement ID validation, mailbox query scoping, device revocation query sequence, and notification deduplication/retry behavior. These unit tests use a stubbed repository/database boundary.
