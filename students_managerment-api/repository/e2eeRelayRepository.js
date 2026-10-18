@@ -354,6 +354,8 @@ const pullEnvelopes = async (userId, deviceId, limit = 100) => {
         id: row.id,
         senderUserId: String(row.sender_user_id),
         senderDeviceId: Number(row.sender_device_id),
+        targetUserId: String(userId),
+        targetDeviceId: Number(deviceId),
         ciphertext: row.ciphertext,
         messageType: row.message_type,
         deliveryClass: row.delivery_class,
