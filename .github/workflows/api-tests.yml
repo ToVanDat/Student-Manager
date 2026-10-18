@@ -5,13 +5,60 @@ on:
     branches:
       - main
       - feature/chat-1to1-complete
+      - feature/e2ee-foundation
   pull_request:
     branches:
       - main
       - feature/chat-1to1-complete
+      - feature/e2ee-foundation
   workflow_dispatch:
 
 jobs:
+  e2ee-migration-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: e2ee_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d e2ee_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Create minimal base-schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE users (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE conversations (id BIGSERIAL PRIMARY KEY, type TEXT NOT NULL DEFAULT 'direct');
+          CREATE TABLE messages (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE conversation_members (
+            conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            left_at TIMESTAMPTZ,
+            PRIMARY KEY (conversation_id, user_id)
+          );
+          SQL
+      - name: Apply E2EE migration twice (idempotency smoke test)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_objects_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_objects_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_retry_identity_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_attachment_retry_identity_migration.sql
+
   test-api:
     runs-on: ubuntu-latest
     defaults:
@@ -28,6 +75,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run API unit tests
         run: npm test
+      - name: Run Cloudflare R2 Worker tests
+        run: node --test cloudflare/e2ee-r2-worker/test/worker.test.js
 
   build-frontend:
     runs-on: ubuntu-latest
@@ -47,3 +96,43 @@ jobs:
         run: npm run lint
       - name: Build frontend
         run: npm run build
+
+
+  e2ee-relay-postgres-integration:
+    name: E2EE relay live PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: e2ee_relay_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d e2ee_relay_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: students_managerment-api
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: e2ee_relay_integration
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      E2EE_POSTGRES_INTEGRATION: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run live PostgreSQL relay integration test
+        run: node --test test/e2eeRelayPostgres.integration.test.js

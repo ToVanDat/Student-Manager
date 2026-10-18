@@ -5,6 +5,7 @@ const conversationRepository = require('../repository/conversationRepository');
 const webPushService = require('../service/webPushService');
 const notificationDeliveryService = require('../service/notificationDeliveryService');
 const userRepository = require('../repository/userRepository');
+const e2eeRepository = require('../repository/e2eeRepository');
 
 /**
  * Gửi message
@@ -39,6 +40,18 @@ const createMessage = async (req, res) => {
         ) {
             return res.status(400).json({
                 message: 'Nội dung message không được để trống'
+            });
+        }
+
+        // Never let the legacy plaintext endpoint bypass E2EE once a conversation
+        // has been activated. A dedicated encrypted-envelope sender must be used.
+        if (!await conversationRepository.isConversationMember(conversationId, senderId)) {
+            return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
+        }
+        if (await e2eeRepository.isConversationE2EEEnabled(conversationId)) {
+            return res.status(409).json({
+                code: 'E2EE_REQUIRED',
+                message: 'Cuộc trò chuyện đã bật E2EE; cần gửi ciphertext qua luồng mã hóa.'
             });
         }
 
@@ -89,6 +102,10 @@ const createMessage = async (req, res) => {
             'CREATE MESSAGE ERROR:',
             error
         );
+
+        if (error.statusCode === 409 || error.statusCode === 403) {
+            return res.status(error.statusCode).json({ message: error.message, code: error.statusCode === 409 ? 'E2EE_REQUIRED' : undefined });
+        }
 
         if (
             error.message ===

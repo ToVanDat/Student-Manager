@@ -30,7 +30,11 @@ import {
     PanelRight,
     Mail,
     Download,
-    FileText
+    FileText,
+    Shield,
+    ShieldAlert,
+    ShieldCheck,
+    LoaderCircle
 } from 'lucide-react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'sonner';
@@ -45,6 +49,11 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function ChatWindow({
     activeConversation,
+    e2eeStatus = null,
+    e2eeHistoryIssue = null,
+    e2eeClientReady = false,
+    onEnableE2EE,
+    enablingE2EE = false,
     onBackToList,
     messages,
     currentUserId,
@@ -1089,6 +1098,24 @@ export default function ChatWindow({
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
+                    {activeConversation.type === 'direct' && e2eeStatus?.available && (
+                        e2eeStatus.enabled ? (
+                            <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
+                                <ShieldCheck size={16} /> E2EE
+                            </span>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={onEnableE2EE}
+                                disabled={!e2eeStatus.canEnable || !e2eeClientReady || enablingE2EE}
+                                className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-slate-800"
+                                title={!e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
+                            >
+                                {enablingE2EE ? <LoaderCircle size={16} className="animate-spin" /> : <Shield size={16} />}
+                                E2EE
+                            </button>
+                        )
+                    )}
                     <div className="relative">
                         <button ref={chatThemeButtonRef} type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
                             <Palette size={18} />
@@ -1452,6 +1479,17 @@ export default function ChatWindow({
                     }
                 }}
                 className="h-full overflow-y-auto px-5 py-6" style={{ backgroundColor: 'var(--chat-theme-bg)' }}>
+                {e2eeHistoryIssue && (
+                    <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                        <div className="flex items-start gap-2">
+                            <ShieldAlert size={18} className="mt-0.5 shrink-0" />
+                            <div>
+                                <p className="font-semibold">Không thể mở lịch sử E2EE cục bộ</p>
+                                <p className="mt-1 text-xs leading-5">Khóa lịch sử của trình duyệt này có thể đã mất hoặc dữ liệu không đọc được. Tin nhắn E2EE cũ không thể được khôi phục từ máy chủ. Đừng xóa dữ liệu trình duyệt, đặt lại kho khóa hoặc tạo identity mới để thử sửa lỗi; các thao tác đó có thể làm mất khả năng giải mã thêm dữ liệu.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
