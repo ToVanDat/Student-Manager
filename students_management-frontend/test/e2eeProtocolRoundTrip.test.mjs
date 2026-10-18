@@ -235,10 +235,10 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
         const linkedContent = typeof receivedLinked[0].content === 'string'
             ? JSON.parse(receivedLinked[0].content)
             : receivedLinked[0].content;
-        assert.equal(primaryContent.body, 'e2ee multi-device round-trip');
-        assert.equal(linkedContent.body, 'e2ee multi-device round-trip');
-        assert.equal(primaryContent.appMessageId, 'test-message-multi-device');
-        assert.equal(linkedContent.appMessageId, 'test-message-multi-device');
+        assert.equal(primaryContent.dataMessage.body, 'e2ee multi-device round-trip');
+        assert.equal(linkedContent.dataMessage.body, 'e2ee multi-device round-trip');
+        assert.equal(primaryContent.dataMessage.appMessageId, 'test-message-multi-device');
+        assert.equal(linkedContent.dataMessage.appMessageId, 'test-message-multi-device');
     } finally {
         await alice.stop?.();
         await bobPrimary.stop?.();
