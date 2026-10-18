@@ -32,7 +32,7 @@ This branch now contains a first end-to-end integration slice for **direct text 
 - Encrypted edits, recalls, and reactions are sent as encrypted control messages and saved to the local encrypted history store.
 - Search for an activated E2EE conversation is local-only; search text is not sent to the server.
 - E2EE relay requests generic notification-center and Web Push alerts through the existing notification service and preferences; it passes an empty message body and generic sender label, never decrypted body, ciphertext, filename, or attachment metadata. The relay deduplicates notification decisions across recipient devices for one logical message. Delivery is best-effort; notification-service failures do not fail a durable ciphertext send.
-- Attachments are deliberately blocked in E2EE conversations. They must not fall back to the legacy plaintext upload path.
+- The E2EE attachment broker now has an additive metadata migration, authenticated short-lived HMAC tickets, and a Cloudflare R2 Worker that streams opaque bytes with a 500 MiB limit and validates exact object size. The broker requires E2EE-enabled conversation membership and fails closed when Worker configuration is absent. The React attachment picker and SDK remote-object-store adapter are not yet integrated, so the UI must continue blocking E2EE uploads; do not treat the broker as a complete end-user attachment feature.
 
 ## Important limitations still open
 
@@ -40,7 +40,7 @@ This branch now contains a first end-to-end integration slice for **direct text 
 2. The QR provisioning flow and server endpoints have been added, but must be exercised manually across two separate browser profiles and audited for interrupted/expired provisioning, rollback, token loss, and linked-device re-registration.
    Mailbox retry and pagination also need validation under transient API errors, decryption failures, reconnects, and unsubscribe/cleanup.
 3. E2EE local history is per device. It is not a server-side decrypted transcript and is not synchronized to a newly linked device. Legacy history remains available from the existing server APIs. If the local history key is missing or history decryption fails, the chat now shows a warning and does not auto-generate a replacement key.
-4. E2EE attachments are not implemented because there is no configured encrypted remote-object-store adapter. The UI blocks uploads rather than leaking plaintext.
+4. **E2EE attachment transport is a backend/Worker foundation only.** See `docs/E2EE_R2_ATTACHMENTS.md`. The Worker is not deployed/configured in the user's environment, the new additive migration has not been applied to the real database, and the React UI/Signal SDK remote-object-store adapter has not been wired in. Keep UI uploads blocked until those pieces and browser tests are complete.
 5. E2EE notifications are generic and best-effort. The relay calls the existing notification-center/Web Push delivery service with a generic sender label and an empty message body. Delivery failure does not fail an already durable ciphertext send; validate behavior against the configured push provider and recipient preferences.
 6. Group-chat E2EE is not implemented. The activation endpoint intentionally rejects group conversations.
 7. Device revocation/rotation invalidates relay credentials and prekeys, but full UX for account recovery after loss of the primary device's identity/private key is not implemented. Do not silently generate a replacement identity for an existing account.
