@@ -335,7 +335,6 @@ export default function ChatPage() {
                             <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{unreadCallNotificationCount > 99 ? '99+' : unreadCallNotificationCount}</span>
                         )}
                     </button>
-                    <E2EEDeviceLinkPanel user={user} clientState={e2eeClient} />
                     <div className="relative" ref={accountMenuRef}>
                         <button
                             type="button"
@@ -355,6 +354,8 @@ export default function ChatPage() {
                         {accountMenuOpen && (
                             <GlobalMoreMenu
                                 user={user}
+                                e2eeUser={user}
+                                e2eeClientState={e2eeClient}
                                 onSelectSettings={(tab) => {
                                     setAccountMenuOpen(false);
                                     navigate(`/students?view=settings&tab=${encodeURIComponent(tab)}`);

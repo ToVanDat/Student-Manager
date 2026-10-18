@@ -22,7 +22,7 @@ import { e2eeProvisioningLocalStateStore } from '@/services/e2ee/e2eeDeviceState
 
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-export default function E2EEDeviceLinkPanel({ user, clientState }) {
+export default function E2EEDeviceLinkPanel({ user, clientState, compact = false }) {
     const [open, setOpen] = useState(false);
     const [mode, setMode] = useState('primary');
     const [qrUrl, setQrUrl] = useState('');
@@ -202,20 +202,23 @@ export default function E2EEDeviceLinkPanel({ user, clientState }) {
         <>
             <button
                 type="button"
+                role={compact ? 'menuitem' : undefined}
                 onClick={() => {
                     setMode(['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) ? 'link-this-device' : 'primary');
                     setOpen(true);
                 }}
-                className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className={compact
+                    ? "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-200 dark:hover:bg-slate-700"
+                    : "inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"}
                 title="Liên kết thiết bị E2EE"
             >
-                <Smartphone size={16} />
-                Thiết bị E2EE
+                <Smartphone size={16} className={compact ? "shrink-0 text-slate-500 dark:text-slate-400" : ""} />
+                <span>Thiết bị E2EE</span>
             </button>
 
             {open && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Liên kết thiết bị E2EE">
-                    <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/55 p-4 backdrop-blur-[2px]" role="dialog" aria-modal="true" aria-label="Liên kết thiết bị E2EE">
+                    <div className="my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="mb-4 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <ShieldCheck className="text-emerald-600" size={21} />
