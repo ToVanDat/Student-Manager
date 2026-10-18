@@ -122,11 +122,20 @@ const completeUpload = async (userId, attachmentId) => {
     if (!Number.isSafeInteger(actualSize) || actualSize !== Number(row.ciphertext_size)) {
         throw fail(409, 'Kích thước ciphertext trên object storage không khớp', 'E2EE_ATTACHMENT_SIZE_MISMATCH');
     }
-    await pool.query(
+    const finalized = await pool.query(
         `UPDATE e2ee_attachment_objects SET status = 'uploaded', uploaded_at = CURRENT_TIMESTAMP
          WHERE id = $1 AND uploaded_by = $2 AND status = 'pending'`,
         [attachmentId, userId]
     );
+    if (!finalized.rowCount) {
+        const latest = await pool.query(
+            'SELECT status FROM e2ee_attachment_objects WHERE id = $1 LIMIT 1',
+            [attachmentId]
+        );
+        if (latest.rows[0]?.status !== 'uploaded') {
+            throw fail(409, 'Tệp đã thay đổi trạng thái; không thể hoàn tất', 'E2EE_ATTACHMENT_STATE_CONFLICT');
+        }
+    }
     return { attachmentId, status: 'uploaded', ciphertextSize: actualSize };
 };
 
