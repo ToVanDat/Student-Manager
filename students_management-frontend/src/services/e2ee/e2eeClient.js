@@ -183,6 +183,11 @@ export const initializeE2EEClient = async (userId) => {
             });
             return client;
         } catch (error) {
+            // If subscription startup failed after publishing activeContext, do not
+            // leave a closed client visible to later callers as if it were usable.
+            if (activeContext?.userId === normalizedUserId && activeContext.client === client) {
+                activeContext = null;
+            }
             await closeResources(client, storage, unsubscribeRelayState, relay);
             if (token === generation) {
                 const code = typeof error?.code === 'string' ? error.code : 'E2EE_LOCAL_STORE_FAILED';
