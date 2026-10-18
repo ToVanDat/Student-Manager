@@ -9,7 +9,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_e2ee_attachment_upload_request
     ON e2ee_attachment_objects (uploaded_by, conversation_id, request_id, prepared_at)
     WHERE request_id IS NOT NULL AND prepared_at IS NOT NULL;
 
-DO $
+DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
@@ -20,12 +20,12 @@ BEGIN
             ADD CONSTRAINT e2ee_attachment_sha256_length_check
             CHECK (ciphertext_sha256 IS NULL OR octet_length(ciphertext_sha256) = 32);
     END IF;
-END $;
+END $$;
 
 ALTER TABLE e2ee_attachment_objects
     ADD COLUMN IF NOT EXISTS read_capability_digest BYTEA;
 
-DO $
+DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
@@ -36,4 +36,4 @@ BEGIN
             ADD CONSTRAINT e2ee_attachment_read_capability_digest_length_check
             CHECK (read_capability_digest IS NULL OR octet_length(read_capability_digest) = 32);
     END IF;
-END $;
+END $$;
