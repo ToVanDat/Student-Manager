@@ -385,6 +385,21 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 };
 
 const getConversationE2EEStatus = async (requesterId, conversationId) => {
+    const schema = await pool.query(
+        "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready, to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
+    );
+    if (!schema.rows[0]?.settings_ready || !schema.rows[0]?.devices_ready) {
+        return {
+            conversationId: Number(conversationId),
+            available: false,
+            enabled: false,
+            canEnable: false,
+            memberCount: 0,
+            activeDeviceCount: 0,
+            readyDeviceCount: 0,
+            membersWithoutDevices: 0
+        };
+    }
     const member = await pool.query(
         'SELECT 1 FROM conversation_members WHERE conversation_id = $1 AND user_id = $2 AND left_at IS NULL LIMIT 1',
         [conversationId, requesterId]
@@ -412,6 +427,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
     return {
         conversationId: Number(conversationId),
         type: rows[0].type,
+        available: true,
         enabled: Boolean(rows[0].enabled),
         memberCount: Number(rows[0].member_count),
         activeDeviceCount: Number(rows[0].active_device_count),
@@ -424,6 +440,12 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
 };
 
 const enableConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
+    const schema = await client.query(
+        "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready, to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
+    );
+    if (!schema.rows[0]?.settings_ready || !schema.rows[0]?.devices_ready) {
+        throw httpError(503, 'Cần chạy migration E2EE trước khi kích hoạt', 'E2EE_SCHEMA_NOT_READY');
+    }
     await assertConversationMember(client, conversationId, requesterId);
     const statusResult = await client.query(
         `SELECT c.type,
