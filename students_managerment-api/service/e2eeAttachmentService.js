@@ -171,7 +171,7 @@ const completeUpload = async (userId, attachmentId) => {
     const row = rows[0];
     if (!row) throw fail(404, 'Không tìm thấy tệp E2EE');
     if (Number(row.uploaded_by) !== Number(userId)) throw fail(403, 'Chỉ người tải lên mới được hoàn tất tệp này');
-    if (row.status === 'uploaded') return { attachmentId, status: 'uploaded', ciphertextSize: Number(row.ciphertext_size) };
+    if (row.status === 'uploaded') {\n        const receipt = await getUploadReceipt(userId, row, { allowPending: false });\n        return { attachmentId, status: 'uploaded', ciphertextSize: receipt.contentLength, requestId: row.request_id, preparedAt: row.prepared_at };\n    }
     if (row.status !== 'pending' || new Date(row.expires_at).getTime() <= Date.now()) {
         throw fail(410, 'Phiên tải tệp đã hết hạn', 'E2EE_ATTACHMENT_TICKET_EXPIRED');
     }
@@ -208,7 +208,7 @@ const completeUpload = async (userId, attachmentId) => {
             throw fail(409, 'Tệp đã thay đổi trạng thái; không thể hoàn tất', 'E2EE_ATTACHMENT_STATE_CONFLICT');
         }
     }
-    return { attachmentId, status: 'uploaded', ciphertextSize: actualSize };
+    return { attachmentId, status: 'uploaded', ciphertextSize: actualSize, requestId: row.request_id, preparedAt: row.prepared_at };
 };
 
 
@@ -360,7 +360,7 @@ const createDownloadTicket = async (userId, attachmentId, readCapability) => {
         [attachmentId]
     );
     const row = rows[0];
-    if (!row || row.status !== 'uploaded') throw fail(404, 'Không tìm thấy tệp E2EE đã tải lên');
+    if (!row || row.status !== 'uploaded') throw fail(404, 'Không tìm thấy tệp E2EE đã tải lên');\n    if (!row.ciphertext_sha256 || !row.read_capability_digest) throw fail(409, 'Metadata an toàn của tệp E2EE không đầy đủ', 'E2EE_ATTACHMENT_METADATA_INCOMPLETE');
     if (!row.read_capability_digest || typeof readCapability !== 'string' || readCapability.length < 16 || readCapability.length > 512) {
         throw fail(403, 'Thiếu quyền đọc tệp E2EE', 'E2EE_ATTACHMENT_READ_AUTHORITY_REQUIRED');
     }
