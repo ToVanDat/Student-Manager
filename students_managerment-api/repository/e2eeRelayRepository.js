@@ -190,9 +190,10 @@ const provisionIdentity = async (userId, deviceId, identity, registrationId, ide
             );
         }
         const canonical = await client.query(
-            'SELECT identity_public FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 FOR UPDATE',
+            'SELECT identity_public, identity_commitment FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 FOR UPDATE',
             [userId, identityType]
         );
+        const commitment = identityCommitmentBase64(identity);
         if (canonical.rows[0]) {
             const current = canonical.rows[0].identity_public;
             if (Number(current?.version) !== Number(identity?.version) ||
@@ -200,10 +201,16 @@ const provisionIdentity = async (userId, deviceId, identity, registrationId, ide
                 current?.ed25519PublicKey !== identity?.ed25519PublicKey) {
                 throw httpError(409, 'Identity tài khoản đã tồn tại; linked device phải dùng cùng CompositeIdentityV1');
             }
+            if (!canonical.rows[0].identity_commitment) {
+                await client.query(
+                    'UPDATE e2ee_sdk_identities SET identity_commitment = $3, updated_at = NOW() WHERE user_id = $1 AND identity_type = $2',
+                    [userId, identityType, commitment]
+                );
+            }
         } else {
             await client.query(
-                'INSERT INTO e2ee_sdk_identities (user_id, identity_type, identity_public) VALUES ($1,$2,$3::jsonb)',
-                [userId, identityType, JSON.stringify(identity)]
+                'INSERT INTO e2ee_sdk_identities (user_id, identity_type, identity_public, identity_commitment) VALUES ($1,$2,$3::jsonb,$4)',
+                [userId, identityType, JSON.stringify(identity), commitment]
             );
         }
         const { rows } = await client.query(
