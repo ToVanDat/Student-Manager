@@ -124,6 +124,14 @@ CREATE TABLE IF NOT EXISTS e2ee_sdk_devices (
     UNIQUE (user_id, device_id, identity_type)
 );
 
+-- Device slots are unique only while active. Revoked slots can be reused without
+-- deleting the historical device row or allowing the old credential to work.
+ALTER TABLE e2ee_sdk_devices DROP CONSTRAINT IF EXISTS e2ee_sdk_devices_user_id_device_id_key;
+ALTER TABLE e2ee_sdk_devices DROP CONSTRAINT IF EXISTS e2ee_sdk_devices_user_id_device_id_identity_type_key;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_e2ee_sdk_devices_active_slot
+    ON e2ee_sdk_devices(user_id, device_id)
+    WHERE revoked_at IS NULL;
+
 CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_devices_active_user
     ON e2ee_sdk_devices(user_id, device_id)
     WHERE revoked_at IS NULL AND enabled = TRUE AND registered = TRUE;
