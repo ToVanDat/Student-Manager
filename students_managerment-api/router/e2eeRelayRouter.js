@@ -24,11 +24,14 @@ router.use(authMiddleware);
 // SDK numeric device slots are a separate contract from the legacy UUID registry.
 router.post('/devices', keyMutationLimiter, controller.registerDevice);
 router.get('/users/:userId/devices', controller.getDevices);
+router.get('/users/:userId/identity', controller.getIdentityKey);
+router.get('/users/:userId/active-devices', controller.getActiveDevices);
 router.delete('/devices/:deviceId', keyMutationLimiter, controller.removeDevice);
 router.put('/devices/:deviceId/identity', keyMutationLimiter, controller.provisionIdentity);
 router.put('/devices/:deviceId/prekeys', keyMutationLimiter, controller.uploadPreKeys);
 router.get('/devices/:deviceId/prekeys/count/:type', controller.getPreKeyCount);
 router.get('/devices/:deviceId/prekeys/inventory', controller.getPreKeyInventory);
+router.delete('/devices/:deviceId/prekeys/kem-stale', keyMutationLimiter, controller.clearStaleKemPreKeys);
 router.get('/users/:userId/devices/:deviceId/prekey-bundle', keyMutationLimiter, controller.fetchPreKeyBundle);
 
 router.post('/conversations/:conversationId/envelopes', relaySendLimiter, controller.sendEnvelope);
