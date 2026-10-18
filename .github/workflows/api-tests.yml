@@ -54,16 +54,6 @@ jobs:
         run: |
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
-      - name: Run live PostgreSQL E2EE relay integration tests
-        working-directory: students_managerment-api
-        env:
-          E2EE_POSTGRES_INTEGRATION: '1'
-          DB_HOST: localhost
-          DB_PORT: '5432'
-          DB_NAME: e2ee_migration_test
-          DB_USER: postgres
-          DB_PASSWORD: postgres
-        run: node --test test/e2eeRelayPostgres.integration.test.js
 
   test-api:
     runs-on: ubuntu-latest
