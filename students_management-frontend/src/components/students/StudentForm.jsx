@@ -168,20 +168,20 @@ function StudentForm({ student, onSubmit, onCancel }) {
     };
 
     return (
-        <div className="rounded-b-xl bg-white dark:bg-slate-900">
+        <div className="rounded-b-2xl bg-white px-1 pb-1 dark:bg-slate-900 sm:px-2">
             <h2 className="sr-only">
                 {student
                     ? t('updateStudent')
                     : t('addStudent')}
             </h2>
 
-            <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={handleSubmit}>
+            <form className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2" onSubmit={handleSubmit}>
                 {/* Mã sinh viên */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('studentCode')}</label>
+                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('studentCode')}</label>
 
                     <input
-                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
                         type="text"
                         name="student_code"
                         value={formData.student_code}
@@ -198,10 +198,10 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Họ tên */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('fullName')}</label>
+                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('fullName')}</label>
 
                     <input
-                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
                         type="text"
                         name="name"
                         value={formData.name}
@@ -218,10 +218,10 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Email */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Email</label>
+                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">Email</label>
 
                     <input
-                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
                         type="email"
                         name="email"
                         value={formData.email}
@@ -238,10 +238,10 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Ngày sinh */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('dateOfBirth')}</label>
+                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('dateOfBirth')}</label>
 
                     <input
-                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
                         type="date"
                         name="date_of_birth"
                         value={formData.date_of_birth}
@@ -257,10 +257,10 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Giới tính */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('gender')}</label>
+                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('gender')}</label>
 
                     <select
-                        className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
                         name="gender"
                         value={formData.gender}
                         onChange={handleChange}
@@ -287,7 +287,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Class selection from the actual classes API */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300" htmlFor="student-class-id">{t('className')}</label>
+                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300" htmlFor="student-class-id">{t('className')}</label>
                     <select
                         id="student-class-id"
                         className="h-11 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-900 outline-none transition hover:border-slate-300 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/10 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
@@ -322,7 +322,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                 <div className="col-span-full mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5 dark:border-slate-800">
                     <button
                         type="submit"
-                        className="rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting || classesLoading || classes.length === 0}
+                        className="min-h-10 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60" disabled={isSubmitting || classesLoading || classes.length === 0}
                     >
                         {student
                             ? t('update')
@@ -332,7 +332,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     {student && (
                         <button
                             type="button"
-                            className="rounded-md bg-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                            className="min-h-10 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-500/15 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                             onClick={onCancel}
                         >
                             {t('cancel')}

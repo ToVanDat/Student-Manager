@@ -226,16 +226,16 @@ export default function ChatSidebar({
                     placeholder={t("searchConversations")}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-10 rounded-lg border border-[#dce4ef] bg-white dark:border-slate-700 dark:bg-slate-900 pl-10 pr-4 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 dark:focus:border-blue-700 dark:focus:ring-blue-950/50"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-700 dark:focus:bg-slate-900 dark:focus:ring-blue-950/50"
                 />
             </div>
 
-            <div className="mb-3 mt-1 flex gap-1 border-b border-slate-200 dark:border-slate-800">
+            <div className="mb-3 mt-1 flex gap-1 rounded-xl border border-slate-200/80 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/70">
                 <button
                     type="button"
                     aria-pressed={filter === 'all'}
                     onClick={() => setFilter('all')}
-                    className={`flex-1 h-10 border-b-2 text-sm font-medium transition-colors ${filter === 'all' ? 'border-[#174a7e] text-[#174a7e] dark:border-blue-400 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
+                    className={`flex-1 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${filter === 'all' ? 'bg-white text-blue-800 shadow-sm dark:bg-slate-800 dark:text-blue-200' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
                     {t('allConversations')} <span className="ml-1">{conversations.length}</span>
                 </button>
@@ -243,7 +243,7 @@ export default function ChatSidebar({
                     type="button"
                     aria-pressed={filter === 'unread'}
                     onClick={() => setFilter('unread')}
-                    className={`flex-1 h-10 border-b-2 text-sm font-medium transition-colors ${filter === 'unread' ? 'border-[#174a7e] text-[#174a7e] dark:border-blue-400 dark:text-blue-300' : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
+                    className={`flex-1 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${filter === 'unread' ? 'bg-white text-blue-800 shadow-sm dark:bg-slate-800 dark:text-blue-200' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
                     {t('unreadOnly')} {unreadTotal > 0 && <span className="ml-1">{unreadTotal}</span>}
                 </button>

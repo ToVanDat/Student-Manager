@@ -2,6 +2,7 @@ import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { webSqliteStore } from '@open-e2ee/signal-protocol-sdk/local/store/web-sqlite';
 import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
+import { createE2EER2ObjectStore } from './e2eeR2ObjectStore';
 import { getStoredE2EEDeviceId, setStoredE2EEDeviceId } from './e2eeDeviceStateStore';
 
 const listeners = new Set();
@@ -10,6 +11,12 @@ let initialization = null;
 let initializingUserId = null;
 let generation = 0;
 const decryptedMessageListeners = new Set();
+let activeAttachmentConversationId = null;
+
+export const setE2EEAttachmentConversationId = (conversationId) => {
+    const value = Number(conversationId);
+    activeAttachmentConversationId = Number.isSafeInteger(value) && value > 0 ? value : null;
+};
 
 const initialState = {
     status: 'idle',
@@ -153,7 +160,7 @@ export const initializeE2EEClient = async (userId) => {
             await relay.registerDevice(normalizedUserId, { deviceId, deviceType: 'web' });
             client = await createSignalProtocolClient({
                 identity: { userId: normalizedUserId, deviceId },
-                adapters: { storage, relay }
+                adapters: { storage, relay, remoteObjectStore: createE2EER2ObjectStore({ getConversationId: () => activeAttachmentConversationId }) }
             });
             if (typeof client.registerHook !== 'function' || typeof client.startRelaySubscription !== 'function') {
                 throw new Error('Installed Signal Protocol SDK does not expose the expected receive lifecycle API.');
@@ -257,6 +264,87 @@ export const sendE2EEMessage = async (recipientUserId, plaintext) => {
     const wireContent = typeof plaintext === 'string' ? plaintext : JSON.stringify(plaintext);
     return client.send(String(recipientUserId), { body: wireContent });
 };
+/**
+ * Uploads a file through the SDK's encrypted attachment flow. The SDK encrypts
+ * bytes locally and returns a pointer that must itself be sent inside an E2EE
+ * message. This helper deliberately does not fall back to the legacy upload API.
+ */
+export const uploadE2EEAttachment = async (file, { onProgress } = {}) => {
+    const client = getE2EEClient();
+    if (!client || typeof client.uploadAttachment !== 'function') {
+        const error = new Error('The active Signal client does not support encrypted attachments.');
+        error.code = 'E2EE_ATTACHMENT_UNAVAILABLE';
+        throw error;
+    }
+    if (!activeAttachmentConversationId) {
+        const error = new Error('Select an E2EE-enabled conversation before uploading an attachment.');
+        error.code = 'E2EE_ATTACHMENT_CONVERSATION_REQUIRED';
+        throw error;
+    }
+    if (!(file instanceof Blob) || file.size < 1) {
+        const error = new TypeError('A non-empty File or Blob is required for an E2EE attachment.');
+        error.code = 'E2EE_ATTACHMENT_INVALID_FILE';
+        throw error;
+    }
+
+    const mimeType = typeof file.type === 'string' && file.type ? file.type.toLowerCase() : 'application/octet-stream';
+    const isImage = mimeType.startsWith('image/');
+    const isVideo = mimeType.startsWith('video/');
+    const isAudio = mimeType.startsWith('audio/');
+    const isDocument = mimeType === 'application/pdf'
+        || mimeType.startsWith('text/')
+        || mimeType.includes('officedocument')
+        || mimeType === 'application/msword'
+        || mimeType === 'application/zip'
+        || mimeType === 'application/octet-stream';
+    const maxBytes = isImage ? 20 * 1024 * 1024
+        : isVideo ? 500 * 1024 * 1024
+            : (isAudio || isDocument) ? 100 * 1024 * 1024
+                : 0;
+    if (!maxBytes) {
+        const error = new Error('Loại tệp này chưa được cho phép gửi qua E2EE.');
+        error.code = 'E2EE_ATTACHMENT_TYPE_NOT_ALLOWED';
+        throw error;
+    }
+    if (file.size > maxBytes) {
+        const error = new Error('Tệp vượt quá giới hạn kích thước cho loại tệp này.');
+        error.code = 'E2EE_ATTACHMENT_TOO_LARGE';
+        throw error;
+    }
+    const allowedContentTypes = ['image/*', 'video/*', 'audio/*', 'application/pdf', 'text/*',
+        'application/msword', 'application/zip', 'application/octet-stream',
+        'application/vnd.openxmlformats-officedocument.*'];
+    return client.uploadAttachment(file, {
+        mimeType,
+        attachment: {
+            policy: {
+                maxPlaintextSizeBytes: maxBytes,
+                allowedContentTypes
+            },
+            ...(typeof onProgress === 'function' ? { onProgress } : {})
+        }
+    });
+};
+
+/**
+ * Downloads and decrypts a pointer received inside a verified E2EE message.
+ * The caller remains responsible for rendering the returned bytes safely.
+ */
+export const downloadE2EEAttachment = async (pointer, options = {}) => {
+    const client = getE2EEClient();
+    if (!client || typeof client.downloadAttachment !== 'function') {
+        const error = new Error('The active Signal client does not support encrypted attachment downloads.');
+        error.code = 'E2EE_ATTACHMENT_UNAVAILABLE';
+        throw error;
+    }
+    if (!pointer || typeof pointer !== 'object' || Array.isArray(pointer)) {
+        const error = new TypeError('A valid E2EE attachment pointer is required.');
+        error.code = 'E2EE_ATTACHMENT_POINTER_INVALID';
+        throw error;
+    }
+    return client.downloadAttachment(pointer, options);
+};
+
 export const getE2EEStorage = () => activeContext?.storage ?? null;
 export const getE2EERelayAdapter = () => activeContext?.relay ?? null;
 

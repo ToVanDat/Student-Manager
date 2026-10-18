@@ -115,3 +115,54 @@ test('Worker rejects tampered/expired tickets and deletes only with a method-bou
     assert.equal(deleted.status, 204);
     assert.equal(bucket.objects.size, 0);
 });
+
+test('Worker rejects ciphertext whose streamed byte count differs from the immutable ticket', async () => {
+    const bucket = createBucket();
+    const mismatch = await worker.fetch(
+        request('PUT', ticket('PUT', { expectedSize: bytes.length + 1 }), bytes),
+        env(bucket)
+    );
+    assert.equal(mismatch.status, 400);
+    assert.equal(bucket.objects.size, 0);
+
+    const overrun = await worker.fetch(
+        request('PUT', ticket('PUT'), new Uint8Array(bytes.length + 1)),
+        env(bucket)
+    );
+    assert.equal(overrun.status, 400);
+    assert.equal(bucket.objects.size, 0);
+});
+
+test('Worker enforces the configured frontend origin for browser preflight requests', async () => {
+    const bucket = createBucket();
+    const allowed = await worker.fetch(new Request('https://worker.test/v1/objects/' + attachmentId, {
+        method: 'OPTIONS',
+        headers: { Origin: 'https://app.example.test', 'Access-Control-Request-Method': 'PUT' }
+    }), env(bucket));
+    assert.equal(allowed.status, 204);
+    assert.equal(allowed.headers.get('access-control-allow-origin'), 'https://app.example.test');
+    assert.match(allowed.headers.get('access-control-allow-methods') || '', /PUT/);
+
+    const denied = await worker.fetch(new Request('https://worker.test/v1/objects/' + attachmentId, {
+        method: 'OPTIONS',
+        headers: { Origin: 'https://evil.example', 'Access-Control-Request-Method': 'PUT' }
+    }), env(bucket));
+    assert.equal(denied.status, 403);
+    assert.equal(denied.headers.get('access-control-allow-origin'), null);
+});
+
+test('Worker rejects method/path mismatches and does not expose object bytes without a valid ticket', async () => {
+    const bucket = createBucket();
+    const wrongPath = await worker.fetch(new Request('https://worker.test/v1/objects/not-a-uuid', {
+        method: 'GET', headers: { Authorization: `Bearer ${ticket('GET')}` }
+    }), env(bucket));
+    assert.equal(wrongPath.status, 404);
+
+    const wrongAttachment = await worker.fetch(
+        request('GET', ticket('GET', { attachmentId: 'c3b7f38d-1c5a-4d89-9c13-2a8b3f0c1d22' })),
+        env(bucket)
+    );
+    assert.equal(wrongAttachment.status, 403);
+    assert.equal(bucket.objects.size, 0);
+});
+
