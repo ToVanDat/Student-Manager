@@ -112,7 +112,7 @@ function StudentHeader({
     };
 
     return (
-        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] dark:border-slate-700 bg-white dark:bg-slate-900 px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px]">
+        <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_4px_18px_rgba(15,23,42,0.025)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90 sm:px-6 lg:px-[30px]">
             <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label={t("openMenu")} title={t("openMenu")}>
                 <Menu size={22} />
             </button>
