@@ -22,6 +22,7 @@ This branch is an incremental backend foundation. It is **not yet a complete or 
 - Normal registration cannot reactivate a revoked device ID; a reinstalled/recovered client must register a new device ID and use a separately designed trust/recovery flow.
 - Re-uploading the same one-time prekey ID no longer clears its claimed state, preventing a claimed prekey from being reused by accidental bundle re-registration.
 - Listing device bundles no longer consumes prekeys. Prekeys are claimed only for a specific user/device pair in the conversation, reducing accidental or cross-device prekey exhaustion.
+- The one-time prekey claim route has a route-level request limit. This is a basic abuse control, not a substitute for account-aware distributed rate limiting or monitoring.
 - Removed a redundant/ineffective condition from the own-device listing query.
 
 ## Important security boundary
