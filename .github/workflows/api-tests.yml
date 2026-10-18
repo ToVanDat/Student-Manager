@@ -12,6 +12,41 @@ on:
   workflow_dispatch:
 
 jobs:
+  e2ee-migration-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: e2ee_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d e2ee_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Create minimal base-schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE users (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE conversations (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE messages (id BIGSERIAL PRIMARY KEY);
+          SQL
+      - name: Apply E2EE migration twice (idempotency smoke test)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
+          psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
+
   test-api:
     runs-on: ubuntu-latest
     defaults:
