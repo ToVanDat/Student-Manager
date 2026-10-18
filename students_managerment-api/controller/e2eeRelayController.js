@@ -1,5 +1,27 @@
 const e2eeRelayService = require('../service/e2eeRelayService');
 const { getIO } = require('../src/socket/socket');
+const notificationDeliveryService = require('../service/notificationDeliveryService');
+
+const notifyE2EERecipient = async (data, senderId) => {
+    if (!data?.notifyRecipient) return;
+    try {
+        // Never pass decrypted content, filename, or attachment metadata into
+        // notification center / Web Push for E2EE messages.
+        await notificationDeliveryService.notifyMessageRecipients({
+            io: getIO(),
+            conversationId: Number(data.conversationId),
+            senderId: Number(senderId),
+            senderName: 'Người gửi',
+            message: { id: null, content: '' }
+        });
+    } catch (error) {
+        // The ciphertext mailbox is already durable. Notification delivery is
+        // best-effort and must not turn a successful encrypted send into failure.
+        console.warn('[E2EE][relay] generic notification unavailable', {
+            code: error?.code || 'E2EE_NOTIFICATION_FAILED'
+        });
+    }
+};
 
 const run = (handler) => async (req, res, next) => {
     try {
@@ -81,6 +103,7 @@ module.exports = {
             const data = await e2eeRelayService.sendDirectEnvelope(
                 Number(req.user.id), Number(req.params.userId), req.body
             );
+            await notifyE2EERecipient(data, Number(req.user.id));
             if (!data.duplicate) {
                 try {
                     getIO().to(`e2ee-device:${data.recipientUserId}:${data.recipientDeviceId}`)
@@ -109,6 +132,7 @@ module.exports = {
             const data = await e2eeRelayService.sendEnvelope(
                 Number(req.user.id), req.params.conversationId, req.body
             );
+            await notifyE2EERecipient(data, Number(req.user.id));
             if (!data.duplicate) {
                 try {
                     getIO().to(`e2ee-device:${data.recipientUserId}:${data.recipientDeviceId}`)
