@@ -11,7 +11,8 @@ This branch is an incremental backend foundation. It is **not yet a complete or 
   - `POST /devices` — register/update the current user's public device bundle and upload one-time public prekeys.
   - `GET /devices` — list the current user's active devices.
   - `DELETE /devices/:deviceId` — revoke one of the current user's devices.
-  - `GET /conversations/:conversationId/device-bundles` — for conversation members only, return active public device bundles and claim at most one unused one-time prekey per device.
+  - `GET /conversations/:conversationId/device-bundles` — for conversation members only, list active public device bundles without consuming one-time prekeys.
+  - `POST /conversations/:conversationId/users/:userId/devices/:deviceId/claim-prekey` — atomically claim one unused prekey for a specific active device belonging to a conversation member.
 - Frontend API wrapper in `students_management-frontend/src/api/e2eeApi.js`.
 
 ### Hardening performed in this pass
@@ -20,6 +21,7 @@ This branch is an incremental backend foundation. It is **not yet a complete or 
 - A device ID is now bound to its first identity public key; registration rejects an unexpected identity-key change with HTTP 409 rather than silently overwriting the trust identity.
 - Normal registration cannot reactivate a revoked device ID; a reinstalled/recovered client must register a new device ID and use a separately designed trust/recovery flow.
 - Re-uploading the same one-time prekey ID no longer clears its claimed state, preventing a claimed prekey from being reused by accidental bundle re-registration.
+- Listing device bundles no longer consumes prekeys. Prekeys are claimed only for a specific user/device pair in the conversation, reducing accidental or cross-device prekey exhaustion.
 - Removed a redundant/ineffective condition from the own-device listing query.
 
 ## Important security boundary
