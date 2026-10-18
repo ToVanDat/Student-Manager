@@ -67,7 +67,7 @@ const readConversationBinding = async (requestId, preparedAt) => {
         });
     } finally { db.close(); }
 };
-const saveConversationBinding = async (requestId, preparedAt, conversationId) => {
+const saveConversationBinding = async (requestId, preparedAt, conversationId, objectId = null) => {
     const db = await openJobDb();
     try {
         await new Promise((resolve, reject) => {
@@ -82,6 +82,25 @@ const saveConversationBinding = async (requestId, preparedAt, conversationId) =>
             transaction.oncomplete = resolve;
             transaction.onerror = () => reject(transaction.error || new Error('Cannot persist attachment retry context'));
             transaction.onabort = () => reject(transaction.error || new Error('Attachment retry context write aborted'));
+        });
+    } finally { db.close(); }
+};
+const removeBindingByObjectId = async objectId => {
+    if (!objectId) return;
+    const db = await openJobDb();
+    try {
+        await new Promise((resolve, reject) => {
+            const transaction = db.transaction(STORE_NAME, 'readwrite');
+            const store = transaction.objectStore(STORE_NAME);
+            const request = store.getAll();
+            request.onsuccess = () => {
+                for (const entry of request.result || []) {
+                    if (entry.objectId === objectId) store.delete(entry.key);
+                }
+            };
+            request.onerror = () => reject(request.error || new Error('Cannot enumerate attachment retry context'));
+            transaction.oncomplete = resolve;
+            transaction.onerror = () => reject(transaction.error || new Error('Cannot clean attachment retry context'));
         });
     } finally { db.close(); }
 };
@@ -157,7 +176,7 @@ export const createE2EER2ObjectStore = ({ getConversationId }) => ({
         const data = unwrap(await client.post(
             `${root}/attachments/${encodeURIComponent(objectId)}/complete`
         ));
-        if (data?.status !== 'uploaded') throw new Error('Broker did not confirm attachment upload completion');
+        if (data?.status !== 'uploaded') throw new Error('Broker did not confirm attachment upload completion');\n        if (data.requestId && Number.isSafeInteger(Number(data.preparedAt))) {\n            await removeConversationBinding(data.requestId, Number(data.preparedAt));\n        } else {\n            await removeBindingByObjectId(objectId);\n        }
     },
 
     async reconcileUpload({ objectId }) {
@@ -170,7 +189,7 @@ export const createE2EER2ObjectStore = ({ getConversationId }) => ({
             Number(data.contentLength) < 1 || typeof data.digest !== 'string') {
             throw new Error('Broker returned an invalid upload receipt');
         }
-        return { objectId, contentLength: Number(data.contentLength), digest: fromBase64(data.digest) };
+        await removeBindingByObjectId(objectId);\n        return { objectId, contentLength: Number(data.contentLength), digest: fromBase64(data.digest) };
     },
 
     async abandonUpload({ requestId, preparedAt }) {
