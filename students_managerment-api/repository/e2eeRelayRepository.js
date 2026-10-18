@@ -111,7 +111,13 @@ const provisionIdentity = async (userId, deviceId, identity, registrationId, ide
         const device = await getDeviceRow(client, userId, deviceId, identityType, true);
         if (!device) throw httpError(404, 'Không tìm thấy thiết bị E2EE đang hoạt động');
         if (Number(device.registration_id) !== registrationId) {
-            throw httpError(409, 'registrationId không khớp thiết bị');
+            if (device.identity_public) {
+                throw httpError(409, 'registrationId không khớp thiết bị đã provision');
+            }
+            await client.query(
+                'UPDATE e2ee_sdk_devices SET registration_id = $3 WHERE user_id = $1 AND device_id = $2 AND identity_type = $4',
+                [userId, deviceId, registrationId, identityType]
+            );
         }
         const canonical = await client.query(
             'SELECT identity_public FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 FOR UPDATE',
