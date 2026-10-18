@@ -240,3 +240,32 @@ export const sendE2EEMessage = async (recipientUserId, plaintext) => {
     }
     return client.send(String(recipientUserId), plaintext);
 };
+export const getE2EEStorage = () => activeContext?.storage ?? null;
+export const getE2EERelayAdapter = () => activeContext?.relay ?? null;
+
+export const openE2EEProvisioningContext = async (userId) => {
+    const normalizedUserId = String(userId ?? '').trim();
+    if (!normalizedUserId || !/^[1-9][0-9]*$/.test(normalizedUserId)) {
+        const error = new Error('A valid authenticated user ID is required for device provisioning.');
+        error.code = 'E2EE_INVALID_USER';
+        throw error;
+    }
+    if (activeContext?.userId === normalizedUserId) {
+        return {
+            storage: activeContext.storage,
+            relay: activeContext.relay,
+            close: async () => {}
+        };
+    }
+    const storage = await webSqliteStore({
+        name: `student-manager-e2ee-user-${normalizedUserId}.db`
+    });
+    const relay = createE2EERelayAdapter(normalizedUserId);
+    return {
+        storage,
+        relay,
+        close: async () => {
+            await closeResources(null, storage);
+        }
+    };
+};
