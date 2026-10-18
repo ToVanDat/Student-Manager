@@ -360,9 +360,17 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             return unwrap(await e2eeRelayApi.deleteProvisioningSession(sessionId));
         },
 
-        // Identity rotation requires compare-and-swap against the SDK commitment.
-        // It remains fail-closed until the backend stores and verifies that commitment.
-        rotateIdentityKey: async () => { throw unsupported('rotateIdentityKey'); }
+        async rotateIdentityKey(request) {
+            assertOwnUser(request.userId);
+            const deviceId = Number(request.deviceId);
+            const token = await requireCredential(deviceId);
+            return unwrap(await e2eeRelayApi.rotateIdentity(deviceId, {
+                identity: request.identity,
+                registrationId: request.registrationId,
+                identityType: request.identityType || 'aci',
+                expectedCurrentCommitment: bytesToBase64(request.expectedCurrentCommitment)
+            }, token));
+        }
     };
 
     return adapter;
