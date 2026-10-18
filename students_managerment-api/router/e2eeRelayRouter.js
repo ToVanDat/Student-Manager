@@ -44,6 +44,14 @@ router.get('/devices/:deviceId/prekeys/inventory', deviceAuth, controller.getPre
 router.delete('/devices/:deviceId/prekeys/kem-stale', deviceAuth, keyMutationLimiter, controller.clearStaleKemPreKeys);
 router.get('/users/:userId/devices/:deviceId/prekey-bundle', keyMutationLimiter, controller.fetchPreKeyBundle);
 
+router.post('/conversations/:conversationId/attachments/upload-ticket', relaySendLimiter, controller.createAttachmentUploadTicket);
+router.post('/attachments/uploads/resolve', relaySendLimiter, controller.resolveAttachmentUploadConversation);
+router.post('/attachments/uploads/abandon', relaySendLimiter, controller.abandonAttachmentUpload);
+router.post('/attachments/:attachmentId/complete', relaySendLimiter, controller.completeAttachmentUpload);
+router.post('/attachments/:attachmentId/reconcile', relaySendLimiter, controller.reconcileAttachmentUpload);
+router.post('/attachments/:attachmentId/download-ticket', relaySendLimiter, controller.createAttachmentDownloadTicket);
+router.delete('/attachments/:attachmentId', relaySendLimiter, controller.deleteAttachmentObject);
+
 router.get('/conversations/:conversationId/status', controller.getConversationStatus);
 router.post('/conversations/:conversationId/enable', keyMutationLimiter, controller.enableConversation);
 router.post('/conversations/:conversationId/envelopes', deviceAuth, relaySendLimiter, controller.sendEnvelope);
