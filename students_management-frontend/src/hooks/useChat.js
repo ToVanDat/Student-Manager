@@ -1002,6 +1002,11 @@ export const useChat = () => {
 
     const deleteMessageForMe = useCallback(async (messageId) => {
         if (!messageId) return;
+        const existing = messages.find(item => String(item.id) === String(messageId));
+        if (existing?._e2ee) {
+            setMessages(previous => previous.filter(item => String(item.id) !== String(messageId)));
+            return;
+        }
 
         try {
             await chatApi.deleteMessageForMe(messageId);
@@ -1012,7 +1017,7 @@ export const useChat = () => {
             console.error('Không thể xoá message cho tôi:', error);
             toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn');
         }
-    }, []);
+    }, [messages]);
 
     const deleteMessageForEveryone = useCallback(async (messageId) => {
         if (!messageId) return;
