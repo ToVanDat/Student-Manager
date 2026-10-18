@@ -55,6 +55,12 @@ module.exports = {
     fetchPreKeyBundle: run(req => e2eeRelayService.fetchPreKeyBundle(
         Number(req.user.id), Number(req.params.userId), req.params.deviceId, req.query.identityType || 'aci'
     )),
+    getConversationStatus: run(req => e2eeRelayService.getConversationE2EEStatus(
+        Number(req.user.id), req.params.conversationId
+    )),
+    enableConversation: run(req => e2eeRelayService.enableConversationE2EE(
+        Number(req.user.id), req.params.conversationId
+    )),
     pullEnvelopes: run(req => e2eeRelayService.pullEnvelopes(
         Number(req.user.id), req.params.deviceId, req.query.limit
     )),
