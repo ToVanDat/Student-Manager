@@ -613,6 +613,19 @@ const deleteProvisioningSession = async (userId, sessionId) => {
         [sessionId, userId]
     );
 };
+const authenticateDeviceCredential = async (userId, deviceId, token) => {
+    if (typeof token !== 'string' || token.length < 32 || token.length > 256) return null;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const { rows } = await pool.query(
+        `SELECT id, user_id, device_id, registration_id FROM e2ee_sdk_devices
+         WHERE user_id = $1 AND device_id = $2 AND device_token_hash = $3
+           AND revoked_at IS NULL AND enabled = TRUE AND registered = TRUE
+         LIMIT 1`,
+        [userId, deviceId, tokenHash]
+    );
+    return rows[0] || null;
+};
+
 const getDeviceBySlot = async (userId, deviceId) => {
     const { rows } = await pool.query(
         'SELECT id, device_id, registration_id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL AND enabled = TRUE AND registered = TRUE',
@@ -624,7 +637,7 @@ const getDeviceBySlot = async (userId, deviceId) => {
 module.exports = {
     registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
-    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE,
+    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE, authenticateDeviceCredential,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, getDeviceBySlot
 };
