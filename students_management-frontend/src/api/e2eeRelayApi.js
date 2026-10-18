@@ -5,11 +5,14 @@ const root = '/api/e2ee/relay';
 export const e2eeRelayApi = {
     registerDevice: (payload) => client.post(`${root}/devices`, payload),
     getDevices: (userId) => client.get(`${root}/users/${encodeURIComponent(userId)}/devices`),
+    getIdentityKey: (userId, identityType = 'aci') => client.get(`${root}/users/${encodeURIComponent(userId)}/identity`, { params: { identityType } }),
+    getActiveDevices: (userId) => client.get(`${root}/users/${encodeURIComponent(userId)}/active-devices`),
     removeDevice: (deviceId) => client.delete(`${root}/devices/${encodeURIComponent(deviceId)}`),
     provisionIdentity: (deviceId, payload) => client.put(`${root}/devices/${encodeURIComponent(deviceId)}/identity`, payload),
     uploadPreKeys: (deviceId, payload) => client.put(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys`, payload),
     getPreKeyCount: (deviceId, type, identityType = 'aci') =>
         client.get(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys/count/${encodeURIComponent(type)}`, { params: { identityType } }),
+    clearStaleKemPreKeys: (deviceId, identityType = 'aci') => client.delete(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys/kem-stale`, { params: { identityType } }),
     getPreKeyInventory: (deviceId, identityType = 'aci') =>
         client.get(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys/inventory`, { params: { identityType } }),
     fetchPreKeyBundle: (userId, deviceId, identityType = 'aci') =>
