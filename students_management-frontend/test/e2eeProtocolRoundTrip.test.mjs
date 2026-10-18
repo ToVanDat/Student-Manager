@@ -3,6 +3,13 @@ import assert from 'node:assert/strict';
 import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { inMemoryStore } from '@open-e2ee/signal-protocol-sdk/local/store/memory';
 
+const memoryStore = () => {
+    const store = inMemoryStore();
+    const getMetadata = store.getMetadata.bind(store);
+    store.getMetadata = async key => (await getMetadata(key)) ?? null;
+    return store;
+};
+
 class InMemoryRelay {
     constructor() {
         this.devices = new Map();
@@ -192,10 +199,10 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
     const receivedLinked = [];
     const alice = await createSignalProtocolClient({
         identity: { userId: 'alice', deviceId: 1 },
-        adapters: { storage: inMemoryStore(), relay }
+        adapters: { storage: memoryStore(), relay }
     });
 
-    const bobPrimaryStorage = inMemoryStore();
+    const bobPrimaryStorage = memoryStore();
     const bobPrimary = await createSignalProtocolClient({
         identity: { userId: 'bob', deviceId: 1 },
         adapters: { storage: bobPrimaryStorage, relay },
@@ -206,7 +213,7 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
 
     // Simulate the SDK identity material transferred by the encrypted device
     // provisioning flow. Device 2 still generates its own signed and one-time keys.
-    const bobLinkedStorage = inMemoryStore();
+    const bobLinkedStorage = memoryStore();
     await bobLinkedStorage.storeIdentityKey(await bobPrimaryStorage.getIdentityKey());
     await bobLinkedStorage.setLocalRegistrationId(await bobPrimaryStorage.getLocalRegistrationId());
     const bobLinked = await createSignalProtocolClient({
