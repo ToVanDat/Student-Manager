@@ -12,3 +12,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_e2ee_attachment_upload_request
 ALTER TABLE e2ee_attachment_objects
     ADD CONSTRAINT e2ee_attachment_sha256_length_check
     CHECK (ciphertext_sha256 IS NULL OR octet_length(ciphertext_sha256) = 32);
+
+ALTER TABLE e2ee_attachment_objects
+    ADD COLUMN IF NOT EXISTS read_capability_digest BYTEA;
+
+ALTER TABLE e2ee_attachment_objects
+    ADD CONSTRAINT e2ee_attachment_read_capability_digest_length_check
+    CHECK (read_capability_digest IS NULL OR octet_length(read_capability_digest) = 32);
