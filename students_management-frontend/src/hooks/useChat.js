@@ -15,6 +15,7 @@ export const useChat = () => {
     const [conversations, setConversations] = useState([]);
     const [activeId, setActiveId] = useState(null);
     const [messages, setMessages] = useState([]);
+    const [e2eeHistoryIssue, setE2EEHistoryIssue] = useState(null);
     const [searchResults, setSearchResults] = useState([]);
     const [loading, setLoading] = useState(false);
     const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -168,6 +169,7 @@ export const useChat = () => {
         }
 
         let cancelled = false;
+        setE2EEHistoryIssue(null);
 
         const loadMessages = async () => {
             setLoading(true);
@@ -179,7 +181,9 @@ export const useChat = () => {
                 let localE2EEMessages = [];
                 try {
                     localE2EEMessages = await loadE2EEHistory(currentUserId, activeId);
+                    setE2EEHistoryIssue(null);
                 } catch (historyError) {
+                    setE2EEHistoryIssue({ conversationId: Number(activeId), code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE' });
                     toast.error('Không thể mở lịch sử E2EE trên thiết bị này. Có thể kho khóa cục bộ đã mất.');
                     console.warn('[E2EE] local history unavailable', {
                         code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE'
@@ -1530,6 +1534,7 @@ export const useChat = () => {
     return {
         conversations,
         activeId,
+        e2eeHistoryIssue,
         conversationMembers,
         setActiveId,
         addGroupMember,
