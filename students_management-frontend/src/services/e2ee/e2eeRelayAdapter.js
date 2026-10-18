@@ -328,6 +328,7 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
                     ? { encryptedDeviceName: bytesToBase64(new Uint8Array(deviceMetadata.encryptedDeviceName)) }
                     : {})
             };
+            delete payload.deviceName;
             delete payload.platform;
             delete payload.appVersion;
             delete payload.osVersion;
