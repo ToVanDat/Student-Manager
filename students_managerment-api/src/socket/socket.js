@@ -176,6 +176,38 @@ const initSocket = (server) => {
         socket.join(`session:${sessionId}`);
         socket.join(`user:${userId}`);
 
+        // E2EE relay subscriptions are device-scoped, not just user-scoped.
+        // A socket can subscribe only to a numeric device slot owned by the
+        // authenticated account. On reconnect the client must pull its durable
+        // mailbox; this room is only a wake-up signal and never carries plaintext.
+        socket.on('e2ee:subscribe', async ({ deviceId } = {}, acknowledge) => {
+            const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
+            try {
+                const slot = Number(deviceId);
+                if (!Number.isSafeInteger(slot) || slot < 1 || slot > 5) {
+                    return ack({ ok: false, code: 'INVALID_DEVICE_ID' });
+                }
+                const relayDevice = await require('../../repository/e2eeRelayRepository')
+                    .getDeviceBySlot(userId, slot);
+                if (!relayDevice) return ack({ ok: false, code: 'DEVICE_NOT_REGISTERED' });
+                socket.join(`e2ee-device:${userId}:${slot}`);
+                ack({ ok: true, deviceId: slot });
+            } catch (error) {
+                console.warn('[E2EE][subscribe] rejected', { code: error.code || 'SUBSCRIBE_FAILED' });
+                ack({ ok: false, code: error.code || 'SUBSCRIBE_FAILED' });
+            }
+        });
+
+        socket.on('e2ee:unsubscribe', ({ deviceId } = {}, acknowledge) => {
+            const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
+            const slot = Number(deviceId);
+            if (!Number.isSafeInteger(slot) || slot < 1 || slot > 5) {
+                return ack({ ok: false, code: 'INVALID_DEVICE_ID' });
+            }
+            socket.leave(`e2ee-device:${userId}:${slot}`);
+            ack({ ok: true });
+        });
+
         // Một user có thể mở nhiều tab/device. Chỉ khi socket đầu tiên kết nối
         // mới chuyển trạng thái offline -> online.
         let userSockets = onlineUsers.get(userId);
