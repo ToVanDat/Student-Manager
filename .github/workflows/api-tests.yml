@@ -39,8 +39,14 @@ jobs:
         run: |
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 <<'SQL'
           CREATE TABLE users (id BIGSERIAL PRIMARY KEY);
-          CREATE TABLE conversations (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE conversations (id BIGSERIAL PRIMARY KEY, type TEXT NOT NULL DEFAULT 'direct');
           CREATE TABLE messages (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE conversation_members (
+            conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            left_at TIMESTAMPTZ,
+            PRIMARY KEY (conversation_id, user_id)
+          );
           SQL
       - name: Apply E2EE migration twice (idempotency smoke test)
         env:
@@ -48,6 +54,16 @@ jobs:
         run: |
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/e2ee_foundation_migration.sql
+      - name: Run live PostgreSQL E2EE relay integration tests
+        working-directory: students_managerment-api
+        env:
+          E2EE_POSTGRES_INTEGRATION: '1'
+          DB_HOST: localhost
+          DB_PORT: '5432'
+          DB_NAME: e2ee_migration_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+        run: node --test test/e2eeRelayPostgres.integration.test.js
 
   test-api:
     runs-on: ubuntu-latest
