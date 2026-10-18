@@ -492,6 +492,114 @@ const enableConversationE2EE = async (requesterId, conversationId) => withTransa
     )).rows[0];
     return { ...current, enabled: true };
 });
+const createProvisioningSession = async (userId, ephemeralPublicKey) => {
+    const primary = await getDeviceBySlot(userId, 1);
+    if (!primary) throw httpError(409, 'Thiết bị chính chưa đăng ký E2EE');
+    const sessionId = crypto.randomUUID();
+    const { rows } = await pool.query(
+        `INSERT INTO e2ee_sdk_provisioning_sessions (session_id, owner_user_id, owner_ephemeral_public_key)
+         VALUES ($1,$2,$3) RETURNING session_id, expires_at`,
+        [sessionId, userId, ephemeralPublicKey]
+    );
+    return { sessionId: rows[0].session_id, expiresAt: new Date(rows[0].expires_at).getTime() };
+};
+
+const connectNewDevice = async (userId, sessionId, ephemeralPublicKey, metadata) => {
+    const { rows } = await pool.query(
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET new_device_ephemeral_public_key = $3, new_device_metadata = $4::jsonb, status = 'connected'
+         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'waiting'
+           AND expires_at > NOW()
+         RETURNING session_id`,
+        [sessionId, userId, ephemeralPublicKey, JSON.stringify(metadata || {})]
+    );
+    if (!rows[0]) throw httpError(404, 'Phiên liên kết thiết bị không tồn tại hoặc đã hết hạn');
+};
+
+const sendProvisioningMessage = async (userId, sessionId, encryptedMessage) => {
+    const { rows } = await pool.query(
+        `UPDATE e2ee_sdk_provisioning_sessions SET encrypted_message = $3, status = 'ready'
+         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'connected'
+           AND expires_at > NOW() AND new_device_ephemeral_public_key IS NOT NULL
+         RETURNING session_id`,
+        [sessionId, userId, encryptedMessage]
+    );
+    if (!rows[0]) throw httpError(409, 'Phiên liên kết chưa sẵn sàng để gửi gói mã hóa');
+};
+
+const getProvisioningMessage = async (userId, sessionId) => {
+    const { rows } = await pool.query(
+        `SELECT status, encrypted_message, expires_at FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2 LIMIT 1`,
+        [sessionId, userId]
+    );
+    if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết thiết bị');
+    const expired = new Date(rows[0].expires_at).getTime() <= Date.now();
+    return {
+        status: expired && !['completed', 'rolled_back'].includes(rows[0].status) ? 'expired' : rows[0].status,
+        message: rows[0].encrypted_message || null,
+        expiresAt: expired ? null : new Date(rows[0].expires_at).getTime()
+    };
+};
+
+const completeProvisioning = async (userId, sessionId, encryptedDeviceName, metadata = {}) => withTransaction(async client => {
+    const sessionResult = await client.query(
+        `SELECT * FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'ready' AND expires_at > NOW()
+         FOR UPDATE`,
+        [sessionId, userId]
+    );
+    const session = sessionResult.rows[0];
+    if (!session) throw httpError(409, 'Phiên liên kết chưa sẵn sàng hoặc đã hết hạn');
+    const slots = await client.query('SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1', [userId]);
+    const used = new Set(slots.rows.map(row => Number(row.device_id)));
+    const deviceId = [2, 3, 4, 5].find(id => !used.has(id));
+    if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
+    const registrationId = crypto.randomInt(1, 65536);
+    await client.query(
+        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type)
+         VALUES ($1,$2,$3,$4,$5,TRUE,'aci')`,
+        [userId, deviceId, registrationId, metadata.deviceType || 'web', encryptedDeviceName || null]
+    );
+    await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions SET assigned_device_id = $2, encrypted_device_name = $3,
+             status = 'linked_pending_ack', completed_at = NOW(), expires_at = NOW() + INTERVAL '5 minutes'
+         WHERE session_id = $1`,
+        [sessionId, deviceId, encryptedDeviceName || null]
+    );
+    return { deviceId };
+});
+
+const acknowledgeProvisioning = async (userId, sessionId) => {
+    const { rows } = await pool.query(
+        `UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'
+         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' AND expires_at > NOW()
+         RETURNING session_id`,
+        [sessionId, userId]
+    );
+    if (!rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
+};
+
+const rollbackProvisioning = async (userId, sessionId) => withTransaction(async client => {
+    const { rows } = await client.query(
+        `SELECT assigned_device_id FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' FOR UPDATE`,
+        [sessionId, userId]
+    );
+    if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
+    if (rows[0].assigned_device_id) {
+        await client.query('DELETE FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND linked = TRUE', [userId, rows[0].assigned_device_id]);
+    }
+    await client.query("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back' WHERE session_id = $1", [sessionId]);
+});
+
+const deleteProvisioningSession = async (userId, sessionId) => {
+    await pool.query(
+        `DELETE FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1 AND owner_user_id = $2
+         AND status IN ('waiting', 'connected', 'ready', 'rolled_back', 'expired')`,
+        [sessionId, userId]
+    );
+};
 const getDeviceBySlot = async (userId, deviceId) => {
     const { rows } = await pool.query(
         'SELECT id, device_id, registration_id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL AND enabled = TRUE AND registered = TRUE',
@@ -503,5 +611,7 @@ const getDeviceBySlot = async (userId, deviceId) => {
 module.exports = {
     registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
-    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE, getDeviceBySlot
+    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE,
+    createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
+    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, getDeviceBySlot
 };
