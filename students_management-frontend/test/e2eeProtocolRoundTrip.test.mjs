@@ -50,6 +50,7 @@ class InMemoryRelay {
     }
 
     async provisionIdentityKey(request) {
+        console.log('TEST_RELAY_IDENTITY', request.userId, request.deviceId);
         const identityKey = String(request.userId);
         const existing = this.identities.get(identityKey);
         if (existing && JSON.stringify(existing) !== JSON.stringify(request.identity)) {
@@ -65,6 +66,7 @@ class InMemoryRelay {
     async getIdentityKey(userId) { return this.identities.get(String(userId)) || null; }
 
     async uploadPreKeys(userId, deviceId, keys, identityType = 'aci') {
+        console.log('TEST_RELAY_UPLOAD', userId, deviceId, Array.isArray(keys) ? keys.length : typeof keys);
         const list = this.prekeys.get(this.key(userId, deviceId)) || [];
         for (const key of keys) {
             const id = `${key.type}:${key.keyId}`;
@@ -78,6 +80,7 @@ class InMemoryRelay {
     }
 
     async getPreKeyInventory(userId, deviceId) {
+        console.log('TEST_RELAY_INVENTORY', userId, deviceId);
         const list = this.prekeys.get(this.key(userId, deviceId)) || [];
         const latest = type => list.filter(k => k.type === type).sort((a, b) => b.createdAt - a.createdAt)[0];
         const signed = latest('ecSignedPreKey');
