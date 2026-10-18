@@ -41,6 +41,10 @@ References:
 - https://docs.open-e2ee.dev/reference/adapters
 - https://github.com/signalapp/libsignal
 
+## Additional plaintext guard added
+
+The existing REST message-create controller and Socket.IO `message:send` event now check the conversation's E2EE activation record and reject legacy plaintext sends with an explicit `E2EE_REQUIRED` response. Before the migration exists, the repository checks `to_regclass` and leaves legacy behavior unchanged. This is a guard only: there is still no E2EE activation endpoint or encrypted send/receive relay, so it does not enable E2EE by itself.
+
 ## Required next implementation stage
 
 1. Pin a specific browser SDK version and complete license/security review before installing it.
