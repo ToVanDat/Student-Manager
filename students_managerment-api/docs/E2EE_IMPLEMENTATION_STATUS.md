@@ -52,17 +52,24 @@ References:
 
 The existing REST message-create controller and Socket.IO `message:send` event now check the conversation's E2EE activation record and reject legacy plaintext sends with an explicit `E2EE_REQUIRED` response. Before the migration exists, the repository checks `to_regclass` and leaves legacy behavior unchanged. This is a guard only: there is still no E2EE activation endpoint or encrypted send/receive relay, so it does not enable E2EE by itself.
 
+## Browser SDK integration progress
+
+- Pinned `@open-e2ee/signal-protocol-sdk` to `11.0.0` and added its `idb` peer dependency to the frontend package manifest. The frontend workflow installs with `npm install`; this repository does not currently contain a frontend lockfile.
+- Added `students_management-frontend/src/services/e2ee/e2eeClient.js`. It opens the SDK's encrypted browser SQLite store in a per-account OPFS database and creates a local `SignalProtocolClient`. It exposes initialization, client access, lifecycle state subscription, and shutdown. Private keys/session state are not sent to the API.
+- Added `students_management-frontend/src/hooks/useE2EEClient.js` for React-side lifecycle/status management.
+- This is deliberately **local-only** at this stage. `local-ready` means only that the local store/client initialized; it does not mean a conversation is E2EE-enabled, that a relay is connected, or that messages are being encrypted. There is no plaintext fallback policy change from these files.
+- The browser store currently requires OPFS/Web SQLite. It fails closed rather than silently switching to the SDK's fixed-name IndexedDB store, which could mix account identities in a shared browser profile. A separate account-scoped fallback needs a store adapter designed and tested for that purpose.
+
 ## Required next implementation stage
 
-1. Pin `@open-e2ee/signal-protocol-sdk@11.0.0` only after verifying the exact package tarball, exports, lockfile and license; complete the security/threat-model review before enabling it.
-2. Implement its device-local store and adapter to the existing authenticated backend; do not trust user IDs supplied by the client.
-3. Design and implement the SDK-compatible relay contract, including identity assertions, envelope fan-out, acknowledgements, prekey replenishment, and device revocation semantics.
-4. Integrate encryption before REST/Socket.IO and decryption only on recipient devices.
-5. Change message persistence/realtime payloads so the server receives only ciphertext for E2EE messages, while legacy messages remain readable.
-6. Add conversation activation and explicit mixed-history UI.
-7. Add multi-device, one-time-prekey concurrency, replay, revoked-device, edit/recall, file, and regression tests.
-8. Run frontend build/lint, backend tests, migration against a disposable schema matching the actual DB, and protocol round-trip tests before merging.
+1. Implement the SDK-compatible relay contract against the exact pinned SDK `11.0.0` declarations: server-owned device slots, identity provisioning/rotation, signed/KEM/one-time prekeys, envelope mailbox, subscription state, durable acknowledgements, retries, linked-device sync, and rate limits.
+2. Add a separate ciphertext-only message/envelope persistence model. Do not make `messages.content` contain plaintext or a fabricated ciphertext placeholder for E2EE messages.
+3. Wire the SDK client to the authenticated relay, register the decrypt hook before starting subscriptions, and encrypt before any REST/Socket.IO network send. Decryption must happen only on recipient devices.
+4. Adapt history, unread/delivery/read receipts, edit/recall/delete, attachments, notifications, and search so server-side features never need E2EE plaintext. Search of E2EE messages must be local-only unless a separately designed privacy-preserving search is adopted.
+5. Add a deliberate per-conversation activation transition and mixed-history rendering. Activation must not occur until all active devices have registered compatible keys and the encrypted send/receive path is available.
+6. Add two-account/two-device end-to-end tests, one-time-prekey concurrency/replay tests, revoked-device and missing-key tests, plus edit/recall, attachment, notification and search regressions.
+7. Run frontend lint/build, backend API tests, migration tests against a disposable schema matching the actual database, and protocol round-trip tests on the latest commit before merging.
 
 ## Validation status
 
-The migration has not been executed against the user's PostgreSQL database. No build, lint, or automated tests have been run in the remote repository environment. This branch must be reviewed and tested before merge.
+The migration has not been executed against the user's PostgreSQL database. The latest local-store integration has not yet been validated by a completed CI run. The SDK relay is not implemented, chat send/receive is not wired to the SDK, and E2EE activation remains unavailable. Do not describe this branch as complete E2EE until those gates pass.
