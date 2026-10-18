@@ -50,14 +50,14 @@ function StudentTable({
                     id="student-mobile-sort"
                     value={sortOptions.some(option => option.value === sortBy) ? sortBy : 'id'}
                     onChange={event => onSortChange?.(event.target.value)}
-                    className="max-w-[58%] rounded-md border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    className="max-w-[58%] rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                     {sortOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
                 </select>
                 <button
                     type="button"
                     onClick={() => onSortChange?.(sortBy)}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                     title={sortOrder === 'asc' ? t('sortDescending') : t('sortAscending')}
                     aria-label={sortOrder === 'asc' ? t('sortDescending') : t('sortAscending')}
                 >
