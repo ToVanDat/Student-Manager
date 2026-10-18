@@ -63,13 +63,22 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
         if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
     }
     const existingResult = await client.query(
-        'SELECT id, revoked_at FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND identity_type = \'aci\' FOR UPDATE',
+        'SELECT id, revoked_at, registration_id, device_type, registered, linked, enabled, created_at FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND identity_type = \'aci\' FOR UPDATE',
         [userId, deviceId]
     );
     if (existingResult.rows[0]) {
-        throw httpError(409, existingResult.rows[0].revoked_at
-            ? 'Device slot đã bị thu hồi; không được tái sử dụng'
-            : 'Device slot đã được sử dụng');
+        const existing = existingResult.rows[0];
+        if (existing.revoked_at) throw httpError(409, 'Device slot đã bị thu hồi; không được tái sử dụng');
+        await client.query('UPDATE e2ee_sdk_devices SET last_seen_at = NOW() WHERE id = $1', [existing.id]);
+        return {
+            device_id: Number(deviceId),
+            registration_id: Number(existing.registration_id),
+            device_type: existing.device_type,
+            registered: Boolean(existing.registered),
+            linked: Boolean(existing.linked),
+            enabled: Boolean(existing.enabled),
+            created_at: existing.created_at
+        };
     }
     const { rows } = await client.query(
         `INSERT INTO e2ee_sdk_devices
