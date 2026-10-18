@@ -187,4 +187,24 @@ CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_envelopes_mailbox
     ON e2ee_sdk_envelopes(recipient_device_pk, server_timestamp_ms, id)
     WHERE acknowledged_at IS NULL;
 
+
+CREATE TABLE IF NOT EXISTS e2ee_sdk_provisioning_sessions (
+    session_id UUID PRIMARY KEY,
+    owner_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    owner_ephemeral_public_key TEXT NOT NULL,
+    new_device_ephemeral_public_key TEXT,
+    new_device_metadata JSONB,
+    encrypted_message TEXT,
+    encrypted_device_name TEXT,
+    assigned_device_id SMALLINT,
+    status TEXT NOT NULL DEFAULT 'waiting'
+        CHECK (status IN ('waiting', 'connected', 'ready', 'linked_pending_ack', 'completed', 'rolled_back', 'expired')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL '5 minutes'),
+    completed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_provisioning_owner
+    ON e2ee_sdk_provisioning_sessions(owner_user_id, created_at DESC);
+
 COMMIT;
