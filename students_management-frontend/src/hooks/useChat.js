@@ -50,6 +50,21 @@ export const useChat = () => {
         } else {
             payload = { type: 'message', body: String(decrypted?.content ?? '') };
         }
+
+        // The SDK content adapter wraps DataMessageInput in a protocol-level
+        // dataMessage object. Application JSON belongs inside its body field.
+        if (payload?.dataMessage && typeof payload.dataMessage.body === 'string') {
+            const protocolBody = payload.dataMessage.body;
+            try {
+                const parsedBody = JSON.parse(protocolBody);
+                payload = parsedBody && typeof parsedBody === 'object' && !Array.isArray(parsedBody)
+                    ? parsedBody
+                    : { type: 'message', body: protocolBody };
+            } catch {
+                payload = { type: 'message', body: protocolBody };
+            }
+        }
+
         const senderId = Number(decrypted?.senderId ?? decrypted?.senderUserId);
         const explicitConversationId = payload.conversationId ?? decrypted?.conversationId;
         const targetConversation = explicitConversationId != null
