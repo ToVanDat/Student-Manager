@@ -1,8 +1,9 @@
 import { Bell, KeyRound, LogOut, Monitor, Moon, ShieldCheck, UserRound } from 'lucide-react';
+import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
 import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
-export default function GlobalMoreMenu({ user, onSelectSettings, onLogout }) {
+export default function GlobalMoreMenu({ user, e2eeUser, e2eeClientState, onSelectSettings, onLogout }) {
     const { t } = useLanguage();
     const ITEMS = [
         { id: 'account', label: t('account'), Icon: UserRound },
@@ -33,6 +34,8 @@ export default function GlobalMoreMenu({ user, onSelectSettings, onLogout }) {
                     <Icon size={17} className="shrink-0 text-slate-500 dark:text-slate-400" /><span>{label}</span>
                 </button>
             ))}
+            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+            {e2eeUser && e2eeClientState && <E2EEDeviceLinkPanel user={e2eeUser} clientState={e2eeClientState} compact />}
             <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
             <button type="button" role="menuitem" onClick={onLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500">
                 <LogOut size={17} /><span>{t('logout')}</span>
