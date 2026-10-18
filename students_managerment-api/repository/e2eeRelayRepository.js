@@ -8,6 +8,26 @@ const httpError = (statusCode, message, code) => {
     return error;
 };
 
+const compositeIdentityBytes = identity => {
+    if (!identity || Number(identity.version) !== 1) throw httpError(400, 'CompositeIdentityV1 không hợp lệ');
+    const decodeKey = (value, name) => {
+        if (typeof value !== 'string') throw httpError(400, `${name} không hợp lệ`);
+        const bytes = Buffer.from(value, 'base64');
+        if (bytes.length !== 32 || bytes.toString('base64') !== value) throw httpError(400, `${name} phải là base64 canonical 32 byte`);
+        return bytes;
+    };
+    const x = decodeKey(identity.x25519PublicKey, 'x25519PublicKey');
+    const ed = decodeKey(identity.ed25519PublicKey, 'ed25519PublicKey');
+    const encoded = Buffer.alloc(67);
+    encoded[0] = 1; encoded[1] = 1; x.copy(encoded, 2); encoded[34] = 2; ed.copy(encoded, 35);
+    return encoded;
+};
+
+const identityCommitment = identity => crypto.createHash('sha256')
+    .update(Buffer.concat([Buffer.from('signal-protocol-js composite identity v1', 'utf8'), compositeIdentityBytes(identity)]))
+    .digest();
+
+const identityCommitmentBase64 = identity => identityCommitment(identity).toString('base64');
 const withTransaction = async (callback) => {
     const client = await pool.connect();
     try {
