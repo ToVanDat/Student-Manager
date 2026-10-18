@@ -239,6 +239,8 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
             appMessageId: 'test-message-multi-device'
         });
         assert.ok(result.messageId);
+        console.log('TEST_DECRYPTED_PRIMARY', JSON.stringify(receivedPrimary[0]));
+        console.log('TEST_DECRYPTED_LINKED', JSON.stringify(receivedLinked[0]));
         assert.equal(receivedPrimary.length, 1);
         assert.equal(receivedLinked.length, 1);
         assert.equal(receivedPrimary[0].content.body, 'e2ee multi-device round-trip');
