@@ -4,6 +4,14 @@ const root = '/api/e2ee/relay';
 
 export const e2eeRelayApi = {
     registerDevice: (payload) => client.post(`${root}/devices`, payload),
+    createProvisioningSession: (userId, ephemeralPublicKey) => client.post(`${root}/provisioning`, { ephemeralPublicKey }),
+    connectNewDevice: (sessionId, ephemeralPublicKey, deviceMetadata) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/connect`, { ephemeralPublicKey, deviceMetadata }),
+    sendProvisioningMessage: (sessionId, encryptedMessage) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/message`, { encryptedMessage }),
+    getProvisioningMessage: (sessionId) => client.get(`${root}/provisioning/${encodeURIComponent(sessionId)}/message`),
+    completeProvisioning: (sessionId, payload) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/complete`, payload),
+    acknowledgeProvisioning: (sessionId) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/ack`),
+    rollbackProvisioning: (sessionId) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/rollback`),
+    deleteProvisioningSession: (sessionId) => client.delete(`${root}/provisioning/${encodeURIComponent(sessionId)}`),
     getDevices: (userId) => client.get(`${root}/users/${encodeURIComponent(userId)}/devices`),
     getIdentityKey: (userId, identityType = 'aci') => client.get(`${root}/users/${encodeURIComponent(userId)}/identity`, { params: { identityType } }),
     getActiveDevices: (userId) => client.get(`${root}/users/${encodeURIComponent(userId)}/active-devices`),
