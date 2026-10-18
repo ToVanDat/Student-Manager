@@ -72,3 +72,13 @@ After inspecting the live schema and the SDK adapter contracts, prepare a separa
 - Tampering, invalid envelope, missing session, and failed decryption show an explicit error and never display ciphertext as if it were plaintext.
 - Search, reply, edit, notifications, reconnect, and pagination have tests for both legacy and E2EE messages.
 - Frontend build, backend test suite, and migration tests are run and their actual results recorded before rollout.
+
+
+## Updated package verification (2026-10-18)
+
+A fresh web check found a version/metadata discrepancy that must be resolved before installing this dependency: the SDK documentation and GitHub repository describe an `11.0.x` profile and MIT/Apache-2.0 licensing, while the npm package page currently surfaced a `2.0.2` release with AGPL-3.0-or-later metadata. Do not assume these are the same publish artifact or install based on the documentation alone. Verify the exact npm dist-tag, tarball, package.json, integrity, license file, and matching Git tag before selecting a version. Sources checked:
+- https://github.com/open-e2ee/signal-protocol-js
+- https://docs.open-e2ee.dev/start/browser
+- https://www.npmjs.com/package/@open-e2ee/signal-protocol-sdk
+
+The browser adapter also requires OPFS/IndexedDB storage, a same-origin key boundary review, and CSP support for `wasm-unsafe-eval` for its web SQLite path. The current repository's Vite frontend package has no E2EE SDK dependency, and this audit environment cannot run the user's full local app or PostgreSQL database. Therefore no package was installed and no integration/migration was committed. The next safe action is to resolve the exact package artifact/license and run the isolated browser round-trip in a real checkout before production changes.
