@@ -183,7 +183,7 @@ export const initializeE2EEClient = async (userId) => {
             });
             return client;
         } catch (error) {
-            await closeResources(client, storage, unsubscribeRelayState);
+            await closeResources(client, storage, unsubscribeRelayState, relay);
             if (token === generation) {
                 const code = typeof error?.code === 'string' ? error.code : 'E2EE_LOCAL_STORE_FAILED';
                 publish({
