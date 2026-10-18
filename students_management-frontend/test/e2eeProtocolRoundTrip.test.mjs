@@ -154,7 +154,7 @@ class InMemoryRelay {
             identity,
             ecSignedPreKey: { keyId: signed.keyId, publicKey: signed.publicKey, signature: signed.signature },
             ecOneTimePreKey: ecOne ? { keyId: ecOne.keyId, publicKey: ecOne.publicKey } : null,
-            kemLastResortPreKey: kemOne ? null : { keyId: kemLast.keyId, publicKey: kemLast.publicKey, signature: kemLast.signature },
+            kemLastResortPreKey: { keyId: kemLast.keyId, publicKey: kemLast.publicKey, signature: kemLast.signature },
             kemOneTimePreKey: kemOne ? { keyId: kemOne.keyId, publicKey: kemOne.publicKey, signature: kemOne.signature } : null
         };
     }
