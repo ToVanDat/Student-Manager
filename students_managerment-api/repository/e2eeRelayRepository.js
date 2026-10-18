@@ -59,7 +59,7 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
             [userId]
         );
         const used = new Set(rows.map(row => Number(row.device_id)));
-        deviceId = [2, 3, 4, 5].find(id => !used.has(id));
+        deviceId = rows.length === 0 ? 1 : [2, 3, 4, 5].find(id => !used.has(id));
         if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
     }
     const existingResult = await client.query(
