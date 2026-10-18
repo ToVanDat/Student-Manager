@@ -99,4 +99,82 @@ CREATE TABLE IF NOT EXISTS conversation_e2ee_settings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+
+-- SDK v11 numeric device slots and key inventory. Kept separate from the
+-- earlier UUID device registry until an explicit compatibility migration is
+-- reviewed; the SDK relay must never guess a numeric slot from a UUID.
+CREATE TABLE IF NOT EXISTS e2ee_sdk_devices (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_id SMALLINT NOT NULL CHECK (device_id BETWEEN 1 AND 5),
+    registration_id INTEGER NOT NULL,
+    device_type TEXT NOT NULL DEFAULT 'web'
+        CHECK (device_type IN ('web', 'desktop', 'mobile', 'tablet')),
+    encrypted_device_name TEXT,
+    registered BOOLEAN NOT NULL DEFAULT TRUE,
+    linked BOOLEAN NOT NULL DEFAULT FALSE,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    identity_type TEXT NOT NULL DEFAULT 'aci' CHECK (identity_type IN ('aci', 'pni')),
+    identity_public JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    UNIQUE (user_id, device_id),
+    UNIQUE (user_id, device_id, identity_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_devices_active_user
+    ON e2ee_sdk_devices(user_id, device_id)
+    WHERE revoked_at IS NULL AND enabled = TRUE AND registered = TRUE;
+
+CREATE TABLE IF NOT EXISTS e2ee_sdk_prekeys (
+    id BIGSERIAL PRIMARY KEY,
+    device_pk BIGINT NOT NULL REFERENCES e2ee_sdk_devices(id) ON DELETE CASCADE,
+    identity_type TEXT NOT NULL DEFAULT 'aci' CHECK (identity_type IN ('aci', 'pni')),
+    key_type TEXT NOT NULL CHECK (key_type IN (
+        'ecPreKey', 'ecSignedPreKey', 'kemOneTimePreKey', 'kemLastResortPreKey'
+    )),
+    key_id BIGINT NOT NULL,
+    public_key TEXT NOT NULL,
+    signature TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMPTZ,
+    claimed_at TIMESTAMPTZ,
+    UNIQUE (device_pk, identity_type, key_type, key_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_prekeys_available
+    ON e2ee_sdk_prekeys(device_pk, identity_type, key_type, key_id)
+    WHERE claimed_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS e2ee_sdk_envelopes (
+    id UUID PRIMARY KEY,
+    conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    sender_device_pk BIGINT NOT NULL REFERENCES e2ee_sdk_devices(id) ON DELETE CASCADE,
+    recipient_user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_device_pk BIGINT NOT NULL REFERENCES e2ee_sdk_devices(id) ON DELETE CASCADE,
+    client_message_id UUID NOT NULL,
+    ciphertext TEXT NOT NULL,
+    message_type TEXT NOT NULL CHECK (message_type IN (
+        'ciphertext', 'prekey_bundle', 'sender_key', 'unidentified_sender', 'retry_request'
+    )),
+    delivery_class TEXT NOT NULL CHECK (delivery_class IN (
+        'user-visible', 'background-sync', 'ephemeral'
+    )),
+    content_kind TEXT NOT NULL DEFAULT 'message' CHECK (content_kind IN ('message', 'receipt')),
+    client_timestamp_ms BIGINT NOT NULL,
+    operation_epoch_ms BIGINT,
+    recipient_registration_id INTEGER,
+    server_timestamp_ms BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM clock_timestamp()) * 1000)::BIGINT,
+    delivered_at TIMESTAMPTZ,
+    acknowledged_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    UNIQUE (sender_user_id, client_message_id, recipient_device_pk)
+);
+
+CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_envelopes_mailbox
+    ON e2ee_sdk_envelopes(recipient_device_pk, server_timestamp_ms, id)
+    WHERE acknowledged_at IS NULL;
+
 COMMIT;
