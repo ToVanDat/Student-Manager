@@ -68,11 +68,21 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         return token;
     };
 
-    socket.on('connect', () => updateConnectionState({ state: 'connected' }));
-    socket.on('disconnect', () => updateConnectionState({ state: 'reconnecting', reason: 'closed' }));
-    socket.on('connect_error', () => updateConnectionState({ state: 'reconnecting', reason: 'error' }));
+    const onSocketConnect = () => updateConnectionState({ state: 'connected' });
+    const onSocketDisconnect = () => updateConnectionState({ state: 'reconnecting', reason: 'closed' });
+    const onSocketConnectError = () => updateConnectionState({ state: 'reconnecting', reason: 'error' });
+    socket.on('connect', onSocketConnect);
+    socket.on('disconnect', onSocketDisconnect);
+    socket.on('connect_error', onSocketConnectError);
 
     const adapter = {
+        dispose() {
+            socket.off('connect', onSocketConnect);
+            socket.off('disconnect', onSocketDisconnect);
+            socket.off('connect_error', onSocketConnectError);
+            connectionListeners.clear();
+        },
+
         getCurrentDeviceId() { return currentDeviceId; },
 
         get relayConnectionState() {
