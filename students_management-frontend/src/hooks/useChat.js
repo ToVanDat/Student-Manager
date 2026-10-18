@@ -30,41 +30,31 @@ export const useChat = () => {
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
     useEffect(() => subscribeDecryptedE2EEMessages(async decrypted => {
-        // SDK v11 exposes the decrypted plaintext as a string (usually JSON),
-        // not as an already-parsed application object.
-        let payload = null;
-        if (decrypted?.content && typeof decrypted.content === 'object' && !Array.isArray(decrypted.content)) {
-            payload = decrypted.content;
-        } else if (typeof decrypted?.content === 'string') {
+        const parseObject = value => {
+            if (value && typeof value === 'object' && !Array.isArray(value)) return value;
+            if (typeof value !== 'string') return null;
             try {
-                const parsed = JSON.parse(decrypted.content);
-                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-                    payload = parsed.dataMessage && typeof parsed.dataMessage === 'object' && !Array.isArray(parsed.dataMessage)
-                        ? parsed.dataMessage
-                        : parsed;
-                }
+                const parsed = JSON.parse(value);
+                return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
             } catch {
-                // Preserve compatibility with non-JSON plaintext from older clients.
+                return null;
             }
-            if (!payload) payload = { type: 'message', body: decrypted.content };
-        } else {
-            payload = { type: 'message', body: String(decrypted?.content ?? '') };
-        }
+        };
 
-        // The SDK content adapter wraps DataMessageInput in a protocol-level
-        // dataMessage object. Application JSON belongs inside its body field.
-        if (payload?.dataMessage && typeof payload.dataMessage.body === 'string') {
-            const protocolBody = payload.dataMessage.body;
-            try {
-                const parsedBody = JSON.parse(protocolBody);
-                payload = parsedBody && typeof parsedBody === 'object' && !Array.isArray(parsedBody)
-                    ? parsedBody
-                    : { type: 'message', body: protocolBody };
-            } catch {
-                payload = { type: 'message', body: protocolBody };
-            }
+        // SDK v11 delivers protocol content as JSON text. App-specific fields
+        // must be carried inside DataMessageInput.body because the SDK drops
+        // unknown top-level DataMessageInput properties.
+        const protocolContent = parseObject(decrypted?.content);
+        let payload = protocolContent || { type: 'message', body: String(decrypted?.content ?? '') };
+        if (payload.dataMessage && typeof payload.dataMessage === 'object') {
+            const dataMessage = payload.dataMessage;
+            payload = parseObject(dataMessage.body) || {
+                type: 'message',
+                body: String(dataMessage.body ?? '')
+            };
+        } else if (!payload.type && typeof payload.body === 'string') {
+            payload = parseObject(payload.body) || { type: 'message', body: payload.body };
         }
-
         const senderId = Number(decrypted?.senderId ?? decrypted?.senderUserId);
         const explicitConversationId = payload.conversationId ?? decrypted?.conversationId;
         const targetConversation = explicitConversationId != null
