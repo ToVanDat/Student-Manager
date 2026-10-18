@@ -223,7 +223,16 @@ const createDownloadTicket = async (userId, attachmentId, readCapability) => {
     if (!row.read_capability_digest || typeof readCapability !== 'string' || readCapability.length < 16 || readCapability.length > 512) {
         throw fail(403, 'Thiếu quyền đọc tệp E2EE', 'E2EE_ATTACHMENT_READ_AUTHORITY_REQUIRED');
     }
-    const capabilityDigest = crypto.createHash('sha256').update(readCapability, 'utf8').digest();
+    // SDK readCapability is base64url-encoded random bytes. Hash the decoded
+    // bytes, matching the SDK's readCapabilityDigest calculation (not UTF-8 text).
+    if (!/^[A-Za-z0-9_-]+$/.test(readCapability)) {
+        throw fail(403, 'Quyền đọc tệp E2EE không hợp lệ', 'E2EE_ATTACHMENT_READ_AUTHORITY_INVALID');
+    }
+    const capabilityBytes = Buffer.from(readCapability, 'base64url');
+    if (capabilityBytes.length < 16 || capabilityBytes.toString('base64url') !== readCapability) {
+        throw fail(403, 'Quyền đọc tệp E2EE không hợp lệ', 'E2EE_ATTACHMENT_READ_AUTHORITY_INVALID');
+    }
+    const capabilityDigest = crypto.createHash('sha256').update(capabilityBytes).digest();
     if (!crypto.timingSafeEqual(Buffer.from(row.read_capability_digest), capabilityDigest)) {
         throw fail(403, 'Quyền đọc tệp E2EE không hợp lệ', 'E2EE_ATTACHMENT_READ_AUTHORITY_INVALID');
     }
