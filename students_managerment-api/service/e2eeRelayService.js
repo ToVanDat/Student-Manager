@@ -94,6 +94,72 @@ const getConversationE2EEStatus = async (requesterId, conversationId) =>
 
 const enableConversationE2EE = async (requesterId, conversationId) =>
     relayRepository.enableConversationE2EE(requesterId, integer(conversationId, 'conversationId'));
+const assertSessionId = value => {
+    if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+        throw fail(400, 'sessionId không hợp lệ');
+    }
+    return value;
+};
+
+const assertBase64 = (value, name, max = 16384) => {
+    if (typeof value !== 'string' || !value || value.length > max ||
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+        throw fail(400, `${name} phải là base64 hợp lệ`);
+    }
+    return value;
+};
+
+const createProvisioningSession = async (userId, body = {}) =>
+    relayRepository.createProvisioningSession(userId, assertBase64(body.ephemeralPublicKey, 'ephemeralPublicKey'));
+
+const connectNewDevice = async (userId, sessionId, body = {}) => {
+    assertSessionId(sessionId);
+    const ephemeralPublicKey = assertBase64(body.ephemeralPublicKey, 'ephemeralPublicKey');
+    const metadata = body.deviceMetadata && typeof body.deviceMetadata === 'object' && !Array.isArray(body.deviceMetadata)
+        ? body.deviceMetadata : {};
+    return relayRepository.connectNewDevice(userId, sessionId, ephemeralPublicKey, metadata);
+};
+
+const sendProvisioningMessage = async (userId, sessionId, body = {}) => {
+    assertSessionId(sessionId);
+    if (typeof body.encryptedMessage !== 'string' || !body.encryptedMessage || body.encryptedMessage.length > 700_000) {
+        throw fail(400, 'encryptedMessage không hợp lệ');
+    }
+    return relayRepository.sendProvisioningMessage(userId, sessionId, body.encryptedMessage);
+};
+
+const getProvisioningMessage = async (userId, sessionId) => {
+    assertSessionId(sessionId);
+    return relayRepository.getProvisioningMessage(userId, sessionId);
+};
+
+const completeProvisioning = async (userId, sessionId, body = {}) => {
+    assertSessionId(sessionId);
+    if (body.encryptedDeviceName != null && (typeof body.encryptedDeviceName !== 'string' || body.encryptedDeviceName.length > 2048)) {
+        throw fail(400, 'encryptedDeviceName không hợp lệ');
+    }
+    const metadata = body.deviceMetadata && typeof body.deviceMetadata === 'object' && !Array.isArray(body.deviceMetadata)
+        ? body.deviceMetadata : {};
+    if (metadata.deviceType != null && !['web', 'desktop', 'mobile', 'tablet'].includes(metadata.deviceType)) {
+        throw fail(400, 'deviceType không hợp lệ');
+    }
+    return relayRepository.completeProvisioning(userId, sessionId, body.encryptedDeviceName || null, metadata);
+};
+
+const acknowledgeProvisioning = async (userId, sessionId) => {
+    assertSessionId(sessionId);
+    return relayRepository.acknowledgeProvisioning(userId, sessionId);
+};
+
+const rollbackProvisioning = async (userId, sessionId) => {
+    assertSessionId(sessionId);
+    return relayRepository.rollbackProvisioning(userId, sessionId);
+};
+
+const deleteProvisioningSession = async (userId, sessionId) => {
+    assertSessionId(sessionId);
+    return relayRepository.deleteProvisioningSession(userId, sessionId);
+};
 const sendEnvelope = async (senderUserId, conversationId, body = {}) => {
     const conversation = integer(conversationId, 'conversationId');
     const targetUserId = integer(body.targetUserId, 'targetUserId');
@@ -143,7 +209,9 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, removeDevice, provisionIdentity, uploadPreKeys,
+    registerDevice, getDevices, removeDevice, provisionIdentity,
+    createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
+    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, uploadPreKeys,
     fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
     pullEnvelopes, markDelivered
 };
