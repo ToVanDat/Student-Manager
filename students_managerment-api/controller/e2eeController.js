@@ -37,7 +37,7 @@ const claimConversationDevicePrekey = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const data = await e2eeService.claimConversationDevicePrekey(
-            Number(req.user.id), conversationId, req.params.deviceId
+            Number(req.user.id), conversationId, Number(req.params.userId), req.params.deviceId
         );
         return res.status(200).json({ data });
     } catch (error) {
