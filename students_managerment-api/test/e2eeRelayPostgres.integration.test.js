@@ -66,6 +66,10 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
             'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = 1',
             [recipientId]
         )).rows[0].id;
+        const secondaryPk = (await pool.query(
+            'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = 2',
+            [recipientId]
+        )).rows[0].id;
         const signedKey = Buffer.alloc(32, 9).toString('base64');
         const ecOneTimeKey = Buffer.alloc(32, 10).toString('base64');
         const kemOneTimeKey = Buffer.alloc(1568, 11).toString('base64');
@@ -138,9 +142,7 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
         );
         const remaining = await pool.query(
             'SELECT COUNT(*)::int AS count FROM e2ee_sdk_envelopes WHERE recipient_device_pk = $1 AND acknowledged_at IS NULL',
-            [secondaryMailbox[0].targetDeviceId === recipientSecondary.device_id
-                ? (await pool.query('SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = 2', [recipientId])).rows[0]?.id ?? -1
-                : -1]
+            [secondaryPk]
         );
         assert.equal(remaining.rows[0].count, 0, 'revocation must remove pending envelopes for the device');
     } finally {
