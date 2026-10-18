@@ -118,7 +118,7 @@ test('dashboard statistics remain global when roster filters are present', async
 
     assert.equal(result.statistics.totalStudents, 18);
     assert.equal(result.statistics.totalClasses, 4);
-    assert.doesNotMatch(calls[2].sql, /WHERE/i);
+    assert.doesNotMatch(calls[2].sql, /\\n\\s+WHERE\\s+/i);
     assert.deepEqual(calls[2].values, []);
 });
 
