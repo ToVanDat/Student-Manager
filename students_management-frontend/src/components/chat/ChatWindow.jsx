@@ -49,6 +49,7 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 export default function ChatWindow({
     activeConversation,
     e2eeStatus = null,
+    e2eeHistoryIssue = null,
     e2eeClientReady = false,
     onEnableE2EE,
     enablingE2EE = false,
@@ -1477,6 +1478,17 @@ export default function ChatWindow({
                     }
                 }}
                 className="h-full overflow-y-auto px-5 py-6" style={{ backgroundColor: 'var(--chat-theme-bg)' }}>
+                {e2eeHistoryIssue && (
+                    <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+                        <div className="flex items-start gap-2">
+                            <ShieldAlert size={18} className="mt-0.5 shrink-0" />
+                            <div>
+                                <p className="font-semibold">Không thể mở lịch sử E2EE cục bộ</p>
+                                <p className="mt-1 text-xs leading-5">Khóa lịch sử của trình duyệt này có thể đã mất hoặc dữ liệu không đọc được. Tin nhắn E2EE cũ không thể được khôi phục từ máy chủ. Đừng xóa dữ liệu trình duyệt, đặt lại kho khóa hoặc tạo identity mới để thử sửa lỗi; các thao tác đó có thể làm mất khả năng giải mã thêm dữ liệu.</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 {hasMoreMessages && (
                     <div className="flex justify-center mb-4">
                         <button
