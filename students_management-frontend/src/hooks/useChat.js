@@ -37,9 +37,28 @@ export const useChat = () => {
         const targetConversation = explicitConversationId != null
             ? conversations.find(item => String(item.id) === String(explicitConversationId))
             : conversations.find(item => item.type === 'direct' && Number(item.userId) === senderId);
-        if (!targetConversation?.id || payload.type !== 'message') return;
-
+        if (!targetConversation?.id) return;
         const conversationId = Number(targetConversation.id);
+        if (payload.type === 'edit' && payload.targetMessageId) {
+            const targetId = `e2ee:${String(payload.targetMessageId)}`;
+            setMessages(previous => previous.map(item =>
+                String(item.id) === targetId && Number(item.sender_id) === senderId
+                    ? { ...item, content: String(payload.body || ''), is_edited: true }
+                    : item
+            ));
+            return;
+        }
+        if (payload.type === 'recall' && payload.targetMessageId) {
+            const targetId = `e2ee:${String(payload.targetMessageId)}`;
+            setMessages(previous => previous.map(item =>
+                String(item.id) === targetId && Number(item.sender_id) === senderId
+                    ? { ...item, content: 'Tin nhắn đã được thu hồi', is_recalled: true }
+                    : item
+            ));
+            return;
+        }
+        if (payload.type !== 'message') return;
+
         const messageId = `e2ee:${String(payload.appMessageId ?? decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
         const createdAt = new Date(decrypted?.timestamp ?? decrypted?.receivedAt ?? payload.timestamp ?? Date.now()).toISOString();
         const receivedMessage = {
