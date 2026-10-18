@@ -40,7 +40,7 @@ export const useChat = () => {
         if (!targetConversation?.id || payload.type !== 'message') return;
 
         const conversationId = Number(targetConversation.id);
-        const messageId = `e2ee:${String(decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
+        const messageId = `e2ee:${String(payload.appMessageId ?? decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
         const createdAt = new Date(decrypted?.timestamp ?? decrypted?.receivedAt ?? payload.timestamp ?? Date.now()).toISOString();
         const receivedMessage = {
             id: messageId,
@@ -1092,15 +1092,17 @@ export const useChat = () => {
                 if (conversation?.type !== 'direct' || !conversation?.userId) {
                     throw new Error('E2EE hiện chỉ hỗ trợ tin nhắn văn bản trong chat 1-1.');
                 }
-                const sent = await sendE2EEMessage(conversation.userId, {
+                const appMessageId = crypto.randomUUID();
+                await sendE2EEMessage(conversation.userId, {
                     type: 'message',
+                    appMessageId,
                     body: text,
                     conversationId: String(activeId),
                     timestamp: Date.now(),
                     replyToMessageId
                 });
                 setMessages(prev => prev.map(item => item.tempId === tempId
-                    ? { ...item, id: `e2ee:${sent?.messageId || tempId}`, status: 'sent', _e2ee: true }
+                    ? { ...item, id: `e2ee:${appMessageId}`, status: 'sent', _e2ee: true }
                     : item));
                 return;
             }
