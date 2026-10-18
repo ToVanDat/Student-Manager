@@ -94,16 +94,48 @@ const getDevices = async (userId, requesterId) => {
     return rows.map(row => ({ ...row, deviceId: Number(row.device_id) }));
 };
 
-const removeDevice = async (userId, deviceId) => {
+const removeDevice = async (userId, deviceId) => withTransaction(async client => {
     if (deviceId === 1) throw httpError(409, 'Không thể thu hồi thiết bị chính bằng API liên kết thiết bị');
-    const { rows } = await pool.query(
-        `UPDATE e2ee_sdk_devices SET revoked_at = NOW(), enabled = FALSE
-         WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL
-         RETURNING id, device_id`,
+    const deviceResult = await client.query(
+        'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL FOR UPDATE',
         [userId, deviceId]
     );
-    if (!rows[0]) throw httpError(404, 'Không tìm thấy thiết bị E2EE đang hoạt động');
+    const device = deviceResult.rows[0];
+    if (!device) throw httpError(404, 'Không tìm thấy thiết bị E2EE đang hoạt động');
+    await client.query('DELETE FROM e2ee_sdk_envelopes WHERE recipient_device_pk = $1 AND acknowledged_at IS NULL', [device.id]);
+    await client.query('DELETE FROM e2ee_sdk_prekeys WHERE device_pk = $1', [device.id]);
+    const { rows } = await client.query(
+        'UPDATE e2ee_sdk_devices SET revoked_at = NOW(), enabled = FALSE WHERE id = $1 RETURNING id, device_id',
+        [device.id]
+    );
     return { deviceId: Number(rows[0].device_id) };
+});
+
+const getIdentityKey = async (userId, identityType = 'aci') => {
+    const { rows } = await pool.query(
+        'SELECT identity_public FROM e2ee_sdk_identities WHERE user_id = $1 AND identity_type = $2 LIMIT 1',
+        [userId, identityType]
+    );
+    return rows[0]?.identity_public || null;
+};
+
+const getActiveDevices = async (userId) => {
+    const { rows } = await pool.query(
+        'SELECT user_id, device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL AND enabled = TRUE AND registered = TRUE ORDER BY device_id',
+        [userId]
+    );
+    return rows.map(row => ({ userId: String(row.user_id), deviceId: Number(row.device_id) }));
+};
+
+const clearStaleKemPreKeys = async (userId, deviceId, identityType = 'aci') => {
+    const { rows } = await pool.query(
+        `DELETE FROM e2ee_sdk_prekeys p USING e2ee_sdk_devices d
+         WHERE p.device_pk = d.id AND d.user_id = $1 AND d.device_id = $2
+           AND d.identity_type = $3 AND p.identity_type = $3 AND p.key_type = 'kemOneTimePreKey'
+         RETURNING p.id`,
+        [userId, deviceId, identityType]
+    );
+    return { cleared: rows.length };
 };
 
 const provisionIdentity = async (userId, deviceId, identity, registrationId, identityType = 'aci') =>
@@ -349,7 +381,7 @@ const getDeviceBySlot = async (userId, deviceId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, removeDevice, provisionIdentity,
+    registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
     sendEnvelope, pullEnvelopes, markDelivered, getDeviceBySlot
 };
