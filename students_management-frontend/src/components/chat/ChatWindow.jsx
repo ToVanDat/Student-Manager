@@ -100,33 +100,10 @@ export default function ChatWindow({
     const [input, setInput] = useState('');
     const [chatTheme, setChatTheme] = useState('default');
     const [showChatThemePicker, setShowChatThemePicker] = useState(false);
-    const chatThemeButtonRef = useRef(null);
-    const [chatThemePickerPosition, setChatThemePickerPosition] = useState({ top: 0, right: 16 });
     const [savingChatThemeIds, setSavingChatThemeIds] = useState(() => new Set());
     const activeConversationIdRef = useRef(activeConversation?.id);
     const chatThemeRequestVersionsRef = useRef(new Map());
     const pendingChatThemeIdsRef = useRef(new Set());
-
-    useEffect(() => {
-        if (!showChatThemePicker) return undefined;
-        const updatePosition = () => {
-            const button = chatThemeButtonRef.current;
-            if (!button) return;
-            const rect = button.getBoundingClientRect();
-            const panelWidth = 224;
-            const margin = 12;
-            const right = Math.max(margin, window.innerWidth - rect.right);
-            const top = Math.min(Math.max(margin, rect.bottom + 8), Math.max(margin, window.innerHeight - margin - 360));
-            setChatThemePickerPosition({ top, right: Math.min(right, Math.max(margin, window.innerWidth - panelWidth - margin)) });
-        };
-        updatePosition();
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-        return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
-        };
-    }, [showChatThemePicker, activeConversation?.id]);
 
     activeConversationIdRef.current = activeConversation?.id;
     const chatThemes = useMemo(() => [
@@ -1117,21 +1094,38 @@ export default function ChatWindow({
                         )
                     )}
                     <div className="relative">
-                        <button ref={chatThemeButtonRef} type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
+                        <button type="button" onClick={() => setShowChatThemePicker(open => !open)} className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t('chatTheme')} title={t('chatTheme')} aria-expanded={showChatThemePicker}>
                             <Palette size={18} />
                         </button>
                         {showChatThemePicker && createPortal(
-                            <div className="fixed z-[10000] max-h-[min(420px,calc(100dvh-24px))] w-56 overflow-y-auto overscroll-contain rounded-xl border p-3 shadow-2xl" style={{ top: chatThemePickerPosition.top, right: chatThemePickerPosition.right, backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
-                                <p className="mb-1 text-xs font-semibold" style={{ color: 'var(--chat-theme-other-text)' }}>{t('chatTheme')}</p>
-                                <p className="mb-3 text-[10px] leading-4" style={{ color: 'var(--chat-theme-meta)' }}>{t('chatThemeDescription')}</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {chatThemes.map(item => (
-                                        <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatThemeIds.has(String(activeConversation?.id))} aria-pressed={chatTheme === item.value} className={`flex items-center gap-2 rounded-lg border p-2 text-left text-[11px] transition ${chatTheme === item.value ? 'border-blue-500 ring-1 ring-blue-200 dark:ring-blue-900' : 'border-slate-200 dark:border-slate-700'} disabled:opacity-50`}>
-                                            <span className="size-4 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: isDarkMode ? item.dark : item.color }} />
-                                            <span className="truncate text-slate-700 dark:text-slate-200">{item.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]" onMouseDown={event => { if (event.target === event.currentTarget) setShowChatThemePicker(false); }}>
+                                <section role="dialog" aria-modal="true" aria-label={t('chatTheme')} className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" style={{ maxHeight: 'min(620px, calc(100dvh - 32px))' }}>
+                                    <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+                                        <div className="min-w-0">
+                                            <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('chatTheme')}</h2>
+                                            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('chatThemeDescription')}</p>
+                                        </div>
+                                        <button type="button" onClick={() => setShowChatThemePicker(false)} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white" aria-label="Đóng"><X size={18} /></button>
+                                    </div>
+                                    <div className="grid max-h-[min(440px,calc(100dvh-150px))] grid-cols-1 gap-3 overflow-y-auto p-4 sm:grid-cols-2">
+                                        {chatThemes.map(item => (
+                                            <button key={item.value} type="button" onClick={() => chooseChatTheme(item.value)} disabled={savingChatThemeIds.has(String(activeConversation?.id))} aria-pressed={chatTheme === item.value} className={`group flex min-h-[76px] items-center gap-3 rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${chatTheme === item.value ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100 dark:bg-blue-950/40 dark:ring-blue-900' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800'} disabled:cursor-wait disabled:opacity-60`}>
+                                                <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-black/10" style={{ backgroundColor: isDarkMode ? item.dark : item.color }}>
+                                                    <span className="flex h-5 w-7 translate-x-1 items-center justify-center rounded-l-md text-[7px]" style={{ backgroundColor: isDarkMode ? item.ownBubbleDark : item.ownBubble, color: isDarkMode ? item.ownTextDark : item.ownText }}>Aa</span>
+                                                </span>
+                                                <span className="min-w-0 flex-1">
+                                                    <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{item.label}</span>
+                                                    <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">{chatTheme === item.value ? 'Đang sử dụng' : 'Áp dụng chủ đề'}</span>
+                                                </span>
+                                                {chatTheme === item.value && <Check size={17} className="shrink-0 text-blue-600 dark:text-blue-400" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                                        <span>{savingChatThemeIds.has(String(activeConversation?.id)) ? 'Đang lưu chủ đề…' : 'Chủ đề áp dụng cho cuộc trò chuyện này'}</span>
+                                        <button type="button" onClick={() => chooseChatTheme('default')} disabled={chatTheme === 'default' || savingChatThemeIds.has(String(activeConversation?.id))} className="rounded-lg px-3 py-2 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950/40">Đặt lại</button>
+                                    </div>
+                                </section>
                             </div>,
                             document.body
                         )}
