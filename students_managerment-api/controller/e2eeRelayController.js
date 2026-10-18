@@ -44,7 +44,7 @@ const completeAttachmentUpload = run(req => e2eeAttachmentService.completeUpload
     Number(req.user.id), req.params.attachmentId
 ));
 const createAttachmentDownloadTicket = run(req => e2eeAttachmentService.createDownloadTicket(
-    Number(req.user.id), req.params.attachmentId
+    Number(req.user.id), req.params.attachmentId, req.body?.readCapability
 ));
 
 module.exports = {
