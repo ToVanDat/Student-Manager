@@ -315,7 +315,7 @@ const getPreKeyInventory = async (userId, deviceId, identityType = 'aci') => {
         [userId, deviceId, identityType]
     );
     const count = type => rows.filter(row => row.key_type === type && !row.claimed_at).length;
-    const first = type => rows.find(row => row.key_type === type);
+    const first = type => rows.filter(row => row.key_type === type).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
     const toMetadata = row => row ? ({
         keyId: Number(row.key_id),
         publicKey: row.public_key,
@@ -343,7 +343,7 @@ const fetchPreKeyBundle = async (targetUserId, targetDeviceId, identityType = 'a
 
     const { rows: keyRows } = await client.query(
         `SELECT id, key_type, key_id, public_key, signature
-         FROM e2ee_sdk_prekeys WHERE device_pk = $1 AND identity_type = $2 ORDER BY key_id`,
+         FROM e2ee_sdk_prekeys WHERE device_pk = $1 AND identity_type = $2 ORDER BY created_at DESC, key_id DESC`,
         [device.id, identityType]
     );
     const find = type => keyRows.find(row => row.key_type === type);
