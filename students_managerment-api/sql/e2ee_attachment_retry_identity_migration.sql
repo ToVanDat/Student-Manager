@@ -12,6 +12,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_e2ee_attachment_upload_request
     ON e2ee_attachment_objects (uploaded_by, conversation_id, request_id, prepared_at)
     WHERE request_id IS NOT NULL AND prepared_at IS NOT NULL;
 
+-- SDK request IDs are scoped to the authenticated account, not to a conversation.
+-- This prevents the same immutable preparation from reserving objects in two chats.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_e2ee_attachment_upload_request_global
+    ON e2ee_attachment_objects (uploaded_by, request_id, prepared_at)
+    WHERE request_id IS NOT NULL AND prepared_at IS NOT NULL;
+
 DO $$
 BEGIN
     IF NOT EXISTS (
