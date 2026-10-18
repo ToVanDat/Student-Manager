@@ -18,6 +18,7 @@ export const e2eeRelayApi = {
     getActiveDevices: (userId) => client.get(`${root}/users/${encodeURIComponent(userId)}/active-devices`),
     removeDevice: (deviceId) => client.delete(`${root}/devices/${encodeURIComponent(deviceId)}`),
     provisionIdentity: (deviceId, payload, token) => client.put(`${root}/devices/${encodeURIComponent(deviceId)}/identity`, payload, deviceAuth(token)),
+    rotateIdentity: (deviceId, payload, token) => client.put(`${root}/devices/${encodeURIComponent(deviceId)}/identity/rotate`, payload, deviceAuth(token)),
     uploadPreKeys: (deviceId, payload, token) => client.put(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys`, payload, deviceAuth(token)),
     getPreKeyCount: (deviceId, type, identityType = 'aci', token) =>
         client.get(`${root}/devices/${encodeURIComponent(deviceId)}/prekeys/count/${encodeURIComponent(type)}`, { params: { identityType }, ...deviceAuth(token) }),
