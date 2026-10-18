@@ -113,12 +113,27 @@ const createUploadTicket = async (userId, conversationId, body = {}) => {
                 !row.read_capability_digest || !Buffer.from(row.read_capability_digest).equals(readCapabilityDigest)) {
                 throw fail(409, 'Upload request identity was reused with different bytes', 'E2EE_ATTACHMENT_IDENTITY_CONFLICT');
             }
-            if (row.status !== 'pending' || new Date(row.expires_at).getTime() <= Date.now()) {
-                throw fail(409, 'Upload reservation is no longer pending; reconcile the original upload before retrying', 'E2EE_ATTACHMENT_RESERVATION_CLOSED');
+            if (row.status === 'deleted') {
+                throw fail(410, 'Upload reservation has been deleted and cannot be reused', 'E2EE_ATTACHMENT_RESERVATION_CLOSED');
             }
             attachmentId = row.id;
             objectKey = row.object_key;
             expiresAt = new Date(row.expires_at);
+            if (row.status === 'pending' && expiresAt.getTime() <= Date.now()) {
+                // Renew the signed transfer window for the same immutable reservation;
+                // never mint a second object for an uncertain upload.
+                expiresAt = new Date(Date.now() + UPLOAD_TTL_SECONDS * 1000);
+                await pool.query(
+                    `UPDATE e2ee_attachment_objects SET expires_at = $2
+                     WHERE id = $1 AND status = 'pending'`,
+                    [attachmentId, expiresAt]
+                );
+            }
+            if (row.status === 'uploaded') {
+                // Returning a PUT ticket is safe: the Worker rejects overwrites.
+                // The SDK receives the canonical object ID and reconciles the 409.
+                expiresAt = new Date(Date.now() + UPLOAD_TTL_SECONDS * 1000);
+            }
         }
     }
 
@@ -220,9 +235,7 @@ const getUploadReceipt = async (userId, row, { allowPending = true } = {}) => {
     if (Number(row.uploaded_by) !== Number(userId)) throw fail(403, 'Không có quyền xác minh upload này');
     if (!['pending', 'uploaded'].includes(row.status)) throw fail(410, 'Upload đã bị đóng', 'E2EE_ATTACHMENT_RESERVATION_CLOSED');
     if (row.status === 'pending' && !allowPending) throw fail(409, 'Upload chưa được hoàn tất');
-    if (row.status === 'pending' && new Date(row.expires_at).getTime() <= Date.now()) {
-        throw fail(410, 'Phiên tải tệp đã hết hạn', 'E2EE_ATTACHMENT_TICKET_EXPIRED');
-    }
+    const reservationExpired = row.status === 'pending' && new Date(row.expires_at).getTime() <= Date.now();
     await assertConversationAccess(userId, row.conversation_id);
     const ticket = makeTicket(config, {
         method: 'HEAD', attachmentId: row.id, objectKey: row.object_key,
@@ -240,6 +253,7 @@ const getUploadReceipt = async (userId, row, { allowPending = true } = {}) => {
     }
     if (response.status === 404) {
         if (row.status === 'uploaded') throw fail(409, 'Metadata đã hoàn tất nhưng object không còn tồn tại', 'E2EE_ATTACHMENT_OBJECT_MISSING');
+        if (reservationExpired) throw fail(410, 'Upload đã hết hạn và không có object để khôi phục', 'E2EE_ATTACHMENT_TICKET_EXPIRED');
         return null;
     }
     if (!response.ok) throw fail(502, 'Không thể xác minh ciphertext trên R2', 'E2EE_ATTACHMENT_VERIFY_FAILED');
