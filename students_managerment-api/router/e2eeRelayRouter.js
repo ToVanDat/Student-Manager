@@ -37,6 +37,7 @@ router.get('/users/:userId/identity', controller.getIdentityKey);
 router.get('/users/:userId/active-devices', controller.getActiveDevices);
 router.delete('/devices/:deviceId', keyMutationLimiter, controller.removeDevice);
 router.put('/devices/:deviceId/identity', deviceAuth, keyMutationLimiter, controller.provisionIdentity);
+router.put('/devices/:deviceId/identity/rotate', deviceAuth, keyMutationLimiter, controller.rotateIdentityKey);
 router.put('/devices/:deviceId/prekeys', deviceAuth, keyMutationLimiter, controller.uploadPreKeys);
 router.get('/devices/:deviceId/prekeys/count/:type', deviceAuth, controller.getPreKeyCount);
 router.get('/devices/:deviceId/prekeys/inventory', deviceAuth, controller.getPreKeyInventory);
