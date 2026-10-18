@@ -55,22 +55,6 @@ const openJobDb = () => new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error || new Error('Cannot open E2EE attachment job store'));
 });
-const withBindingStore = async (mode, operation) => {
-    const db = await openJobDb();
-    try {
-        return await new Promise((resolve, reject) => {
-            const transaction = db.transaction(STORE_NAME, mode);
-            const store = transaction.objectStore(STORE_NAME);
-            let result;
-            try { result = operation(store); } catch (error) { reject(error); return; }
-            transaction.oncomplete = () => resolve(result?.result);
-            transaction.onerror = () => reject(transaction.error || new Error('Attachment job transaction failed'));
-            transaction.onabort = () => reject(transaction.error || new Error('Attachment job transaction aborted'));
-        });
-    } finally {
-        db.close();
-    }
-};
 const bindingKey = (requestId, preparedAt) => `${requestId}:${preparedAt}`;
 const readConversationBinding = async (requestId, preparedAt) => {
     const db = await openJobDb();
