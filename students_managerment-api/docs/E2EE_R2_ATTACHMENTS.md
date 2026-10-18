@@ -2,9 +2,9 @@
 
 ## Scope and fail-closed behavior
 
-This slice adds an authenticated metadata/ticket API and a Cloudflare Worker that writes only opaque ciphertext objects to a private R2 bucket. It does not yet wire the chat attachment picker or Signal SDK's `remoteObjectStore` adapter into the React UI. The current UI must continue blocking E2EE attachment sends until that client integration and browser acceptance tests are complete.
+This slice adds an authenticated metadata/ticket API and a Cloudflare Worker that writes only opaque ciphertext objects to a private R2 bucket. A client-side `SignalProtocolRemoteObjectStore` adapter now maps the SDK upload/download contract to the authenticated API. It is intentionally not configured on the singleton Signal client and the chat attachment picker remains blocked: the app still needs a durable conversation-scoped upload preparation, deletion/reconciliation support, and browser acceptance tests before enabling transfers.
 
-The API stores only an opaque attachment UUID, conversation/user authorization references, expected ciphertext byte length, state, and timestamps. It does not store a filename, MIME type, plaintext hash, file key, or decrypted content. The Worker uses an opaque random R2 key and sets `application/octet-stream`; R2 must remain private and must not be exposed through a public bucket/custom domain.
+The API stores only an opaque attachment UUID, conversation/user authorization references, expected ciphertext byte length, SHA-256 digest of ciphertext, a hash commitment to the SDK read capability, retry preparation identity, state, and timestamps. It does not store a filename, MIME type, raw read capability, file key, or decrypted content. The Worker uses an opaque random R2 key and sets `application/octet-stream`; R2 must remain private and must not be exposed through a public bucket/custom domain.
 
 ## Deploy the Worker
 
@@ -24,10 +24,10 @@ The API returns 503 if the Worker URL or sufficiently long ticket secret is miss
 
 ## API flow
 
-- `POST /api/e2ee/relay/conversations/:conversationId/attachments/upload-ticket` with `{ "ciphertextSize": <bytes> }`
+- `POST /api/e2ee/relay/conversations/:conversationId/attachments/upload-ticket` with ciphertext size plus SDK `requestId`, immutable `preparedAt`, Base64 SHA-256 `digest`, and Base64 `readCapabilityDigest` for retry-stable reservations.
 - Browser PUTs the **already encrypted bytes** to `uploadUrl` with `Authorization: Bearer <uploadToken>` and `Content-Type: application/octet-stream`.
 - `POST /api/e2ee/relay/attachments/:attachmentId/complete` verifies the object exists and its actual size matches the declared ciphertext size before marking it uploaded.
-- `POST /api/e2ee/relay/attachments/:attachmentId/download-ticket` returns a short-lived GET ticket only to a current conversation member. The browser downloads bytes and decrypts locally with the key/nonce carried inside the Signal SDK's encrypted attachment reference, never in server metadata.
+- `POST /api/e2ee/relay/attachments/:attachmentId/download-ticket` requires the `readCapability` carried inside the SDK encrypted attachment pointer and verifies its SHA-256 commitment before issuing a short-lived GET ticket. Conversation membership is checked again. The raw capability, media key, and plaintext never enter server metadata.
 
 The current API scope allows only conversations whose existing E2EE status is enabled. Group E2EE is still disabled, so this endpoint cannot be used to bypass group activation.
 
@@ -40,3 +40,7 @@ The current API scope allows only conversations whose existing E2EE status is en
 - Verify ticket expiry, token replay, oversized/undersized upload, membership removal, revoked membership, and E2EE-disabled conversation cases.
 - Do not log bearer tickets, object keys, ciphertext bytes, filenames, or attachment keys.
 - Keep chat UI upload disabled until the official SDK's attachment encryption/decryption and remote object store contract are integrated and tested. The Worker only transports bytes; it does not encrypt them.
+
+## SDK adapter status and remaining gates
+
+`students_management-frontend/src/services/e2ee/e2eeR2ObjectStore.js` implements the SDK `createUpload`, `completeUpload`, and `createDownload` adapter methods and fails closed if the upload preparation lacks a 32-byte digest or read-capability commitment. It is not yet attached to `createSignalProtocolClient`: the SDK upload contract does not carry a conversation ID, so the UI must persist a stable mapping from each prepared upload/job to its conversation rather than relying on whichever chat happens to be open when a retry runs. The broker also does not yet implement the SDK optional `reconcileUpload`, `abandonUpload`, or `deleteObject` operations. Do not enable production attachment uploads until those recovery/deletion semantics and end-to-end browser tests are complete.
