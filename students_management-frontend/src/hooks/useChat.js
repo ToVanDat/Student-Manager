@@ -28,6 +28,38 @@ export const useChat = () => {
     const seenMessageEventIdsRef = useRef(new Set());
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
+    useEffect(() => subscribeDecryptedE2EEMessages(async decrypted => {
+        const payload = decrypted?.content && typeof decrypted.content === 'object'
+            ? decrypted.content
+            : { type: 'message', body: String(decrypted?.content ?? '') };
+        const senderId = Number(decrypted?.senderId ?? decrypted?.senderUserId);
+        const explicitConversationId = payload.conversationId ?? decrypted?.conversationId;
+        const targetConversation = explicitConversationId != null
+            ? conversations.find(item => String(item.id) === String(explicitConversationId))
+            : conversations.find(item => item.type === 'direct' && Number(item.userId) === senderId);
+        if (!targetConversation?.id || payload.type !== 'message') return;
+
+        const conversationId = Number(targetConversation.id);
+        const messageId = `e2ee:${String(decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
+        const createdAt = new Date(decrypted?.timestamp ?? decrypted?.receivedAt ?? payload.timestamp ?? Date.now()).toISOString();
+        const receivedMessage = {
+            id: messageId,
+            conversation_id: conversationId,
+            sender_id: Number.isFinite(senderId) ? senderId : 0,
+            content: String(payload.body ?? ''),
+            reply_to_message_id: payload.replyToMessageId ?? null,
+            created_at: createdAt,
+            status: 'sent',
+            is_read: false,
+            _e2ee: true
+        };
+        setMessages(previous => previous.some(item => String(item.id) === messageId)
+            ? previous
+            : Number(activeId) === conversationId ? [...previous, receivedMessage] : previous);
+        setConversations(previous => previous.map(item => Number(item.id) === conversationId
+            ? { ...item, lastMessage: receivedMessage.content, lastMessageAt: createdAt } : item));
+    }), [activeId, conversations]);
+
     const fetchConversations = useCallback(async () => {
         try {
             const res = await chatApi.getConversations();
