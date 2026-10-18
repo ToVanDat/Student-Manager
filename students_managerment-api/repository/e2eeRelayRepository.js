@@ -75,7 +75,7 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
     let deviceId = requested;
     if (requested == null) {
         const { rows } = await client.query(
-            'SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 ORDER BY device_id',
+            'SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL ORDER BY device_id',
             [userId]
         );
         const used = new Set(rows.map(row => Number(row.device_id)));
@@ -83,7 +83,7 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
         if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
     }
     const existingResult = await client.query(
-        'SELECT id, revoked_at, registration_id, device_type, registered, linked, enabled, created_at FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND identity_type = \'aci\' FOR UPDATE',
+        'SELECT id, revoked_at, registration_id, device_type, registered, linked, enabled, created_at FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND identity_type = \'aci\' AND revoked_at IS NULL FOR UPDATE',
         [userId, deviceId]
     );
     if (existingResult.rows[0]) {
@@ -590,7 +590,7 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     );
     const session = sessionResult.rows[0];
     if (!session) throw httpError(409, 'Phiên liên kết chưa sẵn sàng hoặc đã hết hạn');
-    const slots = await client.query('SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1', [userId]);
+    const slots = await client.query('SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
     const used = new Set(slots.rows.map(row => Number(row.device_id)));
     const deviceId = [2, 3, 4, 5].find(id => !used.has(id));
     if (!deviceId) throw httpError(409, 'Tài khoản đã đạt giới hạn 5 thiết bị E2EE');
