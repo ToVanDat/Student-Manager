@@ -5,6 +5,7 @@
 - Scope: student roster listing/search/filter/sort/pagination, form validation, CRUD code path.
 - Method: source audit of the React page/hook/API, Express router/controller/validation/service/repository and existing tests.
 - No database migration was run. No schema or user data was changed.
+- Added `students_managerment-api/sql/student_schema_readonly_audit.sql`, a SELECT-only audit of actual `students`/`classes` columns, constraints, FK delete rules, indexes, duplicate candidate values, and orphan references. It reports counts/duplicate values, not student rows. Run it in DBeaver against the target database before changing schema or asserting constraints.
 
 ## Confirmed issue fixed
 
@@ -46,5 +47,13 @@ Relevant files:
 Before marking Phase 1 fully complete:
 1. Inspect the students/classes constraints and any desired audit timestamp behavior against the target schema without modifying it.
 2. Add integration tests for list/search/filter/pagination and create/update/delete against a disposable test database.
-3. Confirm behavior for empty results, page beyond last page, class deletion while referenced, duplicate student code/email, and invalid class IDs.
-4. Only then continue to transfer-class, student status, bulk actions and audit history.
+3. Run `students_managerment-api/sql/student_schema_readonly_audit.sql` in DBeaver against the target database and review the output for unique indexes/constraints, class foreign-key delete behavior, nullable fields, duplicate candidate values and orphan references. The script is read-only; do not infer a migration should run just because a constraint is absent.
+4. Create a separate disposable PostgreSQL database using the verified schema/migrations, then add/run integration tests for list/search/class/gender filters, sorting/pagination, empty results, page beyond last page, CRUD, duplicate student code/email, invalid class IDs, and deleting a class while students reference it. Do not point tests at the development database or run destructive setup against it.
+5. Only after schema and integration behavior are verified, decide whether to implement transfer-class, student status, bulk actions and audit history. Those are not added yet because their business rules/schema are unconfirmed.
+
+
+## Safe schema-audit artifact
+
+- Read-only SQL: [`students_managerment-api/sql/student_schema_readonly_audit.sql`](../students_managerment-api/sql/student_schema_readonly_audit.sql)
+- The audit deliberately does not create/drop tables, run migrations, or modify rows.
+- This repository connection cannot inspect the user's live PostgreSQL instance. The SQL must be run by the project owner in DBeaver (or another authorized PostgreSQL client); until then, the live schema and real constraint behavior remain unverified.
