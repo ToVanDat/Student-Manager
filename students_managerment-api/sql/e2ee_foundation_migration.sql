@@ -127,6 +127,16 @@ CREATE INDEX IF NOT EXISTS idx_e2ee_sdk_devices_active_user
     ON e2ee_sdk_devices(user_id, device_id)
     WHERE revoked_at IS NULL AND enabled = TRUE AND registered = TRUE;
 
+CREATE TABLE IF NOT EXISTS e2ee_sdk_identities (
+    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    identity_type TEXT NOT NULL DEFAULT 'aci' CHECK (identity_type IN ('aci', 'pni')),
+    identity_public JSONB NOT NULL,
+    revision BIGINT NOT NULL DEFAULT 1,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, identity_type)
+);
+
 CREATE TABLE IF NOT EXISTS e2ee_sdk_prekeys (
     id BIGSERIAL PRIMARY KEY,
     device_pk BIGINT NOT NULL REFERENCES e2ee_sdk_devices(id) ON DELETE CASCADE,
