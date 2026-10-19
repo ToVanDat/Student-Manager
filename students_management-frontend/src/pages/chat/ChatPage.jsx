@@ -14,8 +14,6 @@ import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { useE2EEClient } from '@/hooks/useE2EEClient';
 import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
-import socket from '@/socket/socket.js';
-
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
