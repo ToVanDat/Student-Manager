@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { useE2EEClient } from '@/hooks/useE2EEClient';
 import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
+import socket from '@/socket/socket.js';
 
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
@@ -296,6 +297,15 @@ export default function ChatPage() {
             setEnablingE2EE(false);
         }
     };
+
+    useEffect(() => {
+        const handleE2EEModeUpdated = (payload) => {
+            if (Number(payload?.conversationId) !== Number(activeId)) return;
+            setE2eeStatus(previous => previous ? { ...previous, enabled: Boolean(payload.enabled), mode: payload.mode || 'active', pausedAt: payload.pausedAt || null } : previous);
+        };
+        socket.on('conversation:e2ee-mode-updated', handleE2EEModeUpdated);
+        return () => socket.off('conversation:e2ee-mode-updated', handleE2EEModeUpdated);
+    }, [activeId]);
 
     const enableActiveConversationE2EE = async () => {
         if (!activeId || enablingE2EE) return;
