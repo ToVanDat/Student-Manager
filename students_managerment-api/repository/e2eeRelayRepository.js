@@ -508,6 +508,9 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
     return { id: rows[0].id, acknowledged: true };
 };
 
+// E2EE activation is paused by default. Existing enabled conversations remain untouched.
+const isE2EEActivationEnabled = () => process.env.E2EE_ACTIVATION_ENABLED === 'true';
+
 const getConversationE2EEStatus = async (requesterId, conversationId) => {
     const schema = await pool.query(
         "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready, to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
@@ -517,6 +520,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
             conversationId: Number(conversationId),
             available: false,
             enabled: false,
+            activationEnabled: isE2EEActivationEnabled(),
             canEnable: false,
             memberCount: 0,
             activeDeviceCount: 0,
@@ -554,17 +558,22 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
         type: rows[0].type,
         available: true,
         enabled: Boolean(rows[0].enabled),
+        activationEnabled: isE2EEActivationEnabled(),
         memberCount: Number(rows[0].member_count),
         activeDeviceCount: Number(rows[0].active_device_count),
         readyDeviceCount: Number(rows[0].ready_device_count),
         membersWithoutDevices: Number(rows[0].members_without_devices),
-        canEnable: rows[0].type === 'direct' && Number(rows[0].member_count) === 2 &&
+        canEnable: isE2EEActivationEnabled() && rows[0].type === 'direct' && Number(rows[0].member_count) === 2 &&
             Number(rows[0].members_without_devices) === 0 &&
             Number(rows[0].active_device_count) > 0 && Number(rows[0].active_device_count) === Number(rows[0].ready_device_count)
     };
 };
 
 const enableConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
+    // Server-side enforcement is authoritative; UI state is not a security boundary.
+    if (!isE2EEActivationEnabled()) {
+        throw httpError(503, 'E2EE đang tạm dừng kích hoạt mới. Lịch sử và các cuộc trò chuyện E2EE hiện có được giữ nguyên.', 'E2EE_ACTIVATION_PAUSED');
+    }
     const schema = await client.query(
         "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready, to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
     );
