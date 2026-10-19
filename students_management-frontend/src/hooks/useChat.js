@@ -856,7 +856,7 @@ export const useChat = () => {
         const requestId = ++messageSearchRequestRef.current;
         const conversationId = Number(activeId);
         const statusResponse = await e2eeRelayApi.getConversationStatus(conversationId);
-        if (statusResponse.data?.data?.enabled) {
+        if (statusResponse.data?.data?.enabled && statusResponse.data?.data?.mode !== 'paused') {
             // Never send a search term for E2EE content to the server.
             return messages.filter(item =>
                 Number(item.conversation_id) === conversationId &&
@@ -1149,7 +1149,7 @@ export const useChat = () => {
     const sendAttachment = useCallback(async (file, quality = 'standard', onUploadProgress) => {
         if (!activeId || !file) return;
         const e2eeStatusResponse = await e2eeRelayApi.getConversationStatus(activeId);
-        if (e2eeStatusResponse.data?.data?.enabled) {
+        if (e2eeStatusResponse.data?.data?.enabled && e2eeStatusResponse.data?.data?.mode !== 'paused') {
             toast.error('Tệp đính kèm E2EE chưa được tích hợp; tệp chưa được gửi.');
             return;
         }
@@ -1267,7 +1267,7 @@ export const useChat = () => {
         try {
             const statusResponse = await e2eeRelayApi.getConversationStatus(activeId);
             const e2eeStatus = statusResponse.data?.data;
-            if (e2eeStatus?.enabled) {
+            if (e2eeStatus?.enabled && e2eeStatus?.mode !== 'paused') {
                 const conversation = conversations.find(item => Number(item.id) === Number(activeId));
                 if (conversation?.type !== 'direct' || !conversation?.userId) {
                     throw new Error('E2EE hiện chỉ hỗ trợ tin nhắn văn bản trong chat 1-1.');
