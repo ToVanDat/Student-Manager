@@ -23,12 +23,15 @@ Temporarily allow ordinary messages in a conversation whose E2EE history already
 
 ## Rollout / acceptance checklist
 
-- [ ] Migration is additive and has a rollback plan; no existing rows or key material are deleted.
-- [ ] REST and Socket.IO use the same explicit mode policy.
+- [x] Additive migration added at `students_managerment-api/sql/e2ee_pause_mode_migration.sql`; it preserves existing settings rows and key material. Apply it only after the base E2EE schema migration.
+- [ ] Production rollout and rollback have not been executed; rollback must not delete keys or history.
+- [x] REST and Socket.IO plaintext guards share `e2eeRepository.isConversationE2EEEnabled`; that guard now returns true only for `mode = 'active'`.
+- [x] Encrypted-envelope relay rejects sends unless the conversation is `active`.
 - [ ] Existing E2EE history remains readable on the original device.
-- [ ] UI warns all participants before/after the downgrade.
+- [x] Chat header labels paused conversations and warns new messages are not end-to-end encrypted.
+- [ ] A pause control and realtime mode-change broadcast are not yet wired into the chat page.
 - [ ] Regression tests cover both transports and mixed history ordering.
-- [ ] Build, lint, API tests, and two-account/multi-device tests pass.
+- [ ] Build, lint, API tests, and two-account/multi-device tests have not yet been run for this branch.
 
 ## Safety note
 
