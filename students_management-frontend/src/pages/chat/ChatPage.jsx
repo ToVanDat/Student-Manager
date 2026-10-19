@@ -279,6 +279,24 @@ export default function ChatPage() {
         return () => { cancelled = true; };
     }, [activeId, user?.id, e2eeClient.status, e2eeClient.relayState]);
 
+    const pauseActiveConversationE2EE = async () => {
+        if (!activeId || enablingE2EE || !e2eeStatus?.enabled || e2eeStatus?.mode === 'paused') return;
+        const confirmed = window.confirm(
+            'Tạm dừng E2EE cho cuộc trò chuyện này? Tin nhắn mới sẽ không được mã hóa đầu cuối và có thể được máy chủ đọc. Lịch sử E2EE cũ trên thiết bị sẽ được giữ nguyên. Thao tác này ảnh hưởng đến cả hai người.'
+        );
+        if (!confirmed) return;
+        setEnablingE2EE(true);
+        try {
+            const response = await e2eeRelayApi.pauseConversation(activeId);
+            setE2eeStatus(previous => ({ ...previous, ...(response.data?.data || {}), enabled: true, mode: 'paused' }));
+            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.');
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.');
+        } finally {
+            setEnablingE2EE(false);
+        }
+    };
+
     const enableActiveConversationE2EE = async () => {
         if (!activeId || enablingE2EE) return;
         if (!e2eeClient.isLocalStoreReady || e2eeClient.relayState !== 'connected') {
@@ -413,6 +431,7 @@ export default function ChatPage() {
                                 e2eeHistoryIssue={e2eeHistoryIssue?.conversationId === Number(activeId) ? e2eeHistoryIssue : null}
                                 e2eeClientReady={e2eeClient.isLocalStoreReady && e2eeClient.relayState === 'connected'}
                                 onEnableE2EE={enableActiveConversationE2EE}
+                                onPauseE2EE={pauseActiveConversationE2EE}
                                 enablingE2EE={enablingE2EE}
                                 onBackToList={() => setActiveId(null)}
                                 messages={timelineMessages}
