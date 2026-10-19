@@ -537,6 +537,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
         `SELECT c.type,
             EXISTS (SELECT 1 FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id) AS enabled,
             COALESCE((SELECT s.mode FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1), 'active') AS mode,
+            (SELECT s.paused_at FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1) AS paused_at,
             (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
