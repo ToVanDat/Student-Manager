@@ -53,7 +53,7 @@ const assertConversationMember = async (client, conversationId, userId) => {
 
 const assertE2EEEnabled = async (client, conversationId) => {
     const { rowCount } = await client.query(
-        "SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 AND mode = 'active' LIMIT 1",
+        "SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 AND e2ee_state = 'active' LIMIT 1",
         [conversationId]
     );
     if (!rowCount) throw httpError(409, 'E2EE chưa ở trạng thái hoạt động cho conversation này', 'E2EE_NOT_ACTIVE');
@@ -536,7 +536,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
     const { rows } = await pool.query(
         `SELECT c.type,
             EXISTS (SELECT 1 FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id) AS enabled,
-            COALESCE((SELECT s.mode FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1), 'active') AS mode,
+            COALESCE((SELECT s.e2ee_state FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1), 'active') AS mode,
             (SELECT s.paused_at FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1) AS paused_at,
             (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
@@ -577,13 +577,13 @@ const pauseConversationE2EE = async (requesterId, conversationId) => withTransac
     if (!schema.rows[0]?.settings_ready) throw httpError(503, 'Cần chạy migration E2EE trước khi tạm dừng', 'E2EE_SCHEMA_NOT_READY');
     await assertConversationMember(client, conversationId, requesterId);
     const result = await client.query(
-        `UPDATE conversation_e2ee_settings SET mode = 'paused', paused_at = NOW(), paused_by = $2
-         WHERE conversation_id = $1 AND mode = 'active'
-         RETURNING conversation_id, mode, paused_at`,
+        `UPDATE conversation_e2ee_settings SET e2ee_state = 'paused', paused_at = NOW(), paused_by = $2
+         WHERE conversation_id = $1 AND e2ee_state = 'active'
+         RETURNING conversation_id, e2ee_state AS mode, paused_at`,
         [conversationId, requesterId]
     );
     if (!result.rowCount) {
-        const existing = await client.query('SELECT mode, paused_at FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1', [conversationId]);
+        const existing = await client.query('SELECT e2ee_state AS mode, paused_at FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1', [conversationId]);
         if (!existing.rowCount) throw httpError(409, 'E2EE chưa được bật cho cuộc trò chuyện này', 'E2EE_NOT_ENABLED');
         return { conversationId: Number(conversationId), mode: existing.rows[0].mode, pausedAt: existing.rows[0].paused_at, alreadyPaused: true };
     }
