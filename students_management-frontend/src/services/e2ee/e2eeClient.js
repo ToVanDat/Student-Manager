@@ -250,7 +250,7 @@ export const sendE2EEMessage = async (recipientUserId, plaintext) => {
     }
     const validText = typeof plaintext === 'string' && plaintext.trim().length > 0;
     const validControl = plaintext && typeof plaintext === 'object' && !Array.isArray(plaintext) &&
-        ['message', 'edit', 'recall', 'reaction'].includes(plaintext.type) &&
+        ['message', 'edit', 'recall', 'reaction', 'attachment'].includes(plaintext.type) &&
         (plaintext.type !== 'message' || (typeof plaintext.body === 'string' && plaintext.body.trim().length > 0));
     if (!validText && !validControl) {
         const error = new Error('E2EE message payload is empty or has an unsupported control type');
