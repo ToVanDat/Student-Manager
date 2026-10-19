@@ -1103,13 +1103,21 @@ export default function ChatWindow({
                             <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
                                 <ShieldCheck size={16} /> E2EE
                             </span>
+                        ) : !e2eeStatus.activationEnabled ? (
+                            <span
+                                className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                title="Tạm dừng bật E2EE cho cuộc trò chuyện mới. Các cuộc trò chuyện E2EE đã bật vẫn giữ nguyên."
+                                role="status"
+                            >
+                                <Shield size={16} /> E2EE tạm dừng
+                            </span>
                         ) : (
                             <button
                                 type="button"
                                 onClick={onEnableE2EE}
                                 disabled={!e2eeStatus.canEnable || !e2eeClientReady || enablingE2EE}
                                 className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-slate-800"
-                                title={!e2eeStatus.activationEnabled ? 'E2EE đang tạm dừng kích hoạt mới' : !e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
+                                title={!e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
                             >
                                 {enablingE2EE ? <LoaderCircle size={16} className="animate-spin" /> : <Shield size={16} />}
                                 E2EE
