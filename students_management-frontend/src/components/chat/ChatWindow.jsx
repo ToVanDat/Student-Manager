@@ -53,6 +53,7 @@ export default function ChatWindow({
     e2eeHistoryIssue = null,
     e2eeClientReady = false,
     onEnableE2EE,
+    onPauseE2EE,
     enablingE2EE = false,
     onBackToList,
     messages,
@@ -1103,6 +1104,15 @@ export default function ChatWindow({
                             <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
                                 <ShieldCheck size={16} /> E2EE
                             </span>
+                            <button
+                                type="button"
+                                onClick={onPauseE2EE}
+                                disabled={enablingE2EE || !onPauseE2EE}
+                                className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
+                                title="Tạm dừng E2EE cho tin nhắn mới"
+                            >
+                                Tạm dừng
+                            </button>
                         ) : e2eeStatus.enabled && e2eeStatus.mode === 'paused' ? (
                             <span
                                 className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
