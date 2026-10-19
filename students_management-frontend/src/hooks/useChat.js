@@ -865,11 +865,19 @@ export const useChat = () => {
         const conversationId = Number(activeId);
         const statusResponse = await e2eeRelayApi.getConversationStatus(conversationId);
         if (statusResponse.data?.data?.enabled && statusResponse.data?.data?.mode !== 'paused') {
-            // Never send a search term for E2EE content to the server.
-            return messages.filter(item =>
-                Number(item.conversation_id) === conversationId &&
-                String(item.content || '').toLocaleLowerCase().includes(normalizedQuery.toLocaleLowerCase())
-            );
+            // Never send E2EE search terms or plaintext to the server. Search both
+            // the current view and the device-local encrypted history store.
+            const localHistory = await loadE2EEHistory(currentUserId, conversationId);
+            if (requestId !== messageSearchRequestRef.current) return [];
+            const allLocalMessages = new Map();
+            for (const item of [...localHistory, ...messages]) {
+                if (Number(item?.conversation_id) !== conversationId || item?._e2ee !== true) continue;
+                allLocalMessages.set(String(item.id), item);
+            }
+            const needle = normalizedQuery.toLocaleLowerCase();
+            return [...allLocalMessages.values()]
+                .filter(item => String(item.content || '').toLocaleLowerCase().includes(needle))
+                .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
         }
         const res = await chatApi.searchMessages(conversationId, normalizedQuery);
         if (requestId !== messageSearchRequestRef.current) return [];
@@ -879,7 +887,7 @@ export const useChat = () => {
             throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
         }
         return results;
-    }, [activeId, messages]);
+    }, [activeId, messages, currentUserId]);
 
     const openSearchResult = useCallback((result) => {
         if (!result?.id) return;
