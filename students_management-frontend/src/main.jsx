@@ -8,6 +8,7 @@ import { LanguageProvider } from './context/LanguageContext.jsx';
 
 import './styles/tailwind.css';
 import './styles/reference-ui.css';
+import './styles/chat-messenger-polish.css';
 
 createRoot(document.getElementById('root')).render(
     // <StrictMode>
