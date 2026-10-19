@@ -7,17 +7,26 @@ export default function ConversationItem({ conversation, isSelected, onClick }) 
     const { t } = useLanguage();
     const { name, avatar, lastMessage, lastMessageAt, unreadCount, isOnline } = conversation;
     const parsedLastActivityAt = lastMessageAt ? new Date(lastMessageAt) : null;
-    const time = parsedLastActivityAt && Number.isFinite(parsedLastActivityAt.getTime())
+    const validActivityDate = parsedLastActivityAt && Number.isFinite(parsedLastActivityAt.getTime());
+    const time = validActivityDate
         ? parsedLastActivityAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         : '';
+    const activityLabel = validActivityDate
+        ? parsedLastActivityAt.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+        : '';
     const isGroup = conversation.type === 'group';
+    const unreadLabel = unreadCount > 0
+        ? `${unreadCount} tin nhắn chưa đọc`
+        : '';
 
     return (
         <button
             type="button"
             onClick={onClick}
             aria-current={isSelected ? 'true' : undefined}
-            className={`group relative flex w-full min-w-0 items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-950 ${isSelected ? 'border-blue-100 bg-gradient-to-r from-blue-50 to-white shadow-sm dark:border-blue-900/70 dark:from-blue-950/40 dark:to-slate-950' : 'hover:border-slate-100 hover:bg-white dark:hover:border-slate-800 dark:hover:bg-slate-900'}`}
+            aria-label={[`Cuộc trò chuyện: ${name}`, unreadLabel].filter(Boolean).join(', ')}
+            title={[`Cuộc trò chuyện: ${name}`, activityLabel ? `Hoạt động gần nhất: ${activityLabel}` : '', unreadLabel].filter(Boolean).join(' · ')}
+            className={`group relative flex w-full min-w-0 items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-[background-color,border-color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-950 ${isSelected ? 'border-blue-100 bg-gradient-to-r from-blue-50 to-white shadow-sm dark:border-blue-900/70 dark:from-blue-950/40 dark:to-slate-950' : 'hover:border-slate-100 hover:bg-white dark:hover:border-slate-800 dark:hover:bg-slate-900'}`}
         >
             {isSelected && <span className="absolute inset-y-2 left-0 w-[3px] rounded-r bg-blue-600 dark:bg-blue-400" aria-hidden="true" />}
             <span className="relative shrink-0">
