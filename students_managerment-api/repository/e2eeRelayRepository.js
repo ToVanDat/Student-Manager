@@ -53,10 +53,10 @@ const assertConversationMember = async (client, conversationId, userId) => {
 
 const assertE2EEEnabled = async (client, conversationId) => {
     const { rowCount } = await client.query(
-        'SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1',
+        "SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 AND e2ee_state = 'active' LIMIT 1",
         [conversationId]
     );
-    if (!rowCount) throw httpError(409, 'E2EE chưa được kích hoạt cho conversation này', 'E2EE_NOT_ENABLED');
+    if (!rowCount) throw httpError(409, 'E2EE chưa ở trạng thái hoạt động cho conversation này', 'E2EE_NOT_ACTIVE');
 };
 
 const getDeviceRow = async (client, userId, deviceId, identityType = 'aci', lock = false) => {
@@ -508,6 +508,9 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
     return { id: rows[0].id, acknowledged: true };
 };
 
+// E2EE activation is paused by default. Existing enabled conversations remain untouched.
+const isE2EEActivationEnabled = () => process.env.E2EE_ACTIVATION_ENABLED === 'true';
+
 const getConversationE2EEStatus = async (requesterId, conversationId) => {
     const schema = await pool.query(
         "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready, to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
@@ -517,6 +520,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
             conversationId: Number(conversationId),
             available: false,
             enabled: false,
+            activationEnabled: isE2EEActivationEnabled(),
             canEnable: false,
             memberCount: 0,
             activeDeviceCount: 0,
@@ -532,6 +536,8 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
     const { rows } = await pool.query(
         `SELECT c.type,
             EXISTS (SELECT 1 FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id) AS enabled,
+            COALESCE((SELECT s.e2ee_state FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1), 'active') AS mode,
+            (SELECT s.paused_at FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1) AS paused_at,
             (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
@@ -554,17 +560,41 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
         type: rows[0].type,
         available: true,
         enabled: Boolean(rows[0].enabled),
+        mode: rows[0].mode || 'active',
+        activationEnabled: isE2EEActivationEnabled(),
         memberCount: Number(rows[0].member_count),
         activeDeviceCount: Number(rows[0].active_device_count),
         readyDeviceCount: Number(rows[0].ready_device_count),
         membersWithoutDevices: Number(rows[0].members_without_devices),
-        canEnable: rows[0].type === 'direct' && Number(rows[0].member_count) === 2 &&
+        canEnable: isE2EEActivationEnabled() && rows[0].type === 'direct' && Number(rows[0].member_count) === 2 &&
             Number(rows[0].members_without_devices) === 0 &&
             Number(rows[0].active_device_count) > 0 && Number(rows[0].active_device_count) === Number(rows[0].ready_device_count)
     };
 };
 
+const pauseConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
+    const schema = await client.query("SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready");
+    if (!schema.rows[0]?.settings_ready) throw httpError(503, 'Cần chạy migration E2EE trước khi tạm dừng', 'E2EE_SCHEMA_NOT_READY');
+    await assertConversationMember(client, conversationId, requesterId);
+    const result = await client.query(
+        `UPDATE conversation_e2ee_settings SET e2ee_state = 'paused', paused_at = NOW(), paused_by = $2
+         WHERE conversation_id = $1 AND e2ee_state = 'active'
+         RETURNING conversation_id, e2ee_state AS mode, paused_at`,
+        [conversationId, requesterId]
+    );
+    if (!result.rowCount) {
+        const existing = await client.query('SELECT e2ee_state AS mode, paused_at FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1', [conversationId]);
+        if (!existing.rowCount) throw httpError(409, 'E2EE chưa được bật cho cuộc trò chuyện này', 'E2EE_NOT_ENABLED');
+        return { conversationId: Number(conversationId), mode: existing.rows[0].mode, pausedAt: existing.rows[0].paused_at, alreadyPaused: true };
+    }
+    return { conversationId: Number(conversationId), mode: result.rows[0].mode, pausedAt: result.rows[0].paused_at, alreadyPaused: false };
+});
+
 const enableConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
+    // Server-side enforcement is authoritative; UI state is not a security boundary.
+    if (!isE2EEActivationEnabled()) {
+        throw httpError(503, 'E2EE đang tạm dừng kích hoạt mới. Lịch sử và các cuộc trò chuyện E2EE hiện có được giữ nguyên.', 'E2EE_ACTIVATION_PAUSED');
+    }
     const schema = await client.query(
         "SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready, to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
     );
@@ -746,7 +776,7 @@ const getDeviceBySlot = async (userId, deviceId) => {
 module.exports = {
     registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity, rotateIdentityKey,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
-    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE, authenticateDeviceCredential,
+    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, authenticateDeviceCredential,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, getDeviceBySlot
 };

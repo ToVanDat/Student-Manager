@@ -29,6 +29,7 @@ export const e2eeRelayApi = {
         client.get(`${root}/users/${encodeURIComponent(userId)}/devices/${encodeURIComponent(deviceId)}/prekey-bundle`, { params: { identityType } }),
     getConversationStatus: (conversationId) => client.get(`${root}/conversations/${encodeURIComponent(conversationId)}/status`),
     enableConversation: (conversationId) => client.post(`${root}/conversations/${encodeURIComponent(conversationId)}/enable`),
+    pauseConversation: (conversationId) => client.post(`${root}/conversations/${encodeURIComponent(conversationId)}/pause`),
     sendDirectEnvelope: (userId, envelope, token) => client.post(`${root}/users/${encodeURIComponent(userId)}/envelopes`, envelope, deviceAuth(token)),
     sendEnvelope: (conversationId, envelope, token) =>
         client.post(`${root}/conversations/${encodeURIComponent(conversationId)}/envelopes`, envelope, deviceAuth(token)),

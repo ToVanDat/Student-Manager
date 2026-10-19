@@ -13,6 +13,10 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
         path.join(__dirname, '..', 'sql', 'e2ee_foundation_migration.sql'),
         'utf8'
     );
+    const pauseModeMigration = fs.readFileSync(
+        path.join(__dirname, '..', 'sql', 'e2ee_pause_mode_migration.sql'),
+        'utf8'
+    );
 
     try {
         await pool.query('CREATE TABLE IF NOT EXISTS users (id BIGSERIAL PRIMARY KEY)');
@@ -25,6 +29,7 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
             PRIMARY KEY (conversation_id, user_id)
         )`);
         await pool.query(migration);
+        await pool.query(pauseModeMigration);
 
         const userRows = await pool.query(
             'INSERT INTO users DEFAULT VALUES RETURNING id'

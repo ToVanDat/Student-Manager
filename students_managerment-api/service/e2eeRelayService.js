@@ -114,6 +114,9 @@ const getConversationE2EEStatus = async (requesterId, conversationId) =>
 
 const enableConversationE2EE = async (requesterId, conversationId) =>
     relayRepository.enableConversationE2EE(requesterId, integer(conversationId, 'conversationId'));
+
+const pauseConversationE2EE = async (requesterId, conversationId) =>
+    relayRepository.pauseConversationE2EE(requesterId, integer(conversationId, 'conversationId'));
 const assertSessionId = value => {
     if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
         throw fail(400, 'sessionId không hợp lệ');
@@ -232,6 +235,6 @@ module.exports = {
     registerDevice, getDevices, removeDevice, provisionIdentity, rotateIdentityKey,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, uploadPreKeys,
-    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
+    fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
     pullEnvelopes, markDelivered
 };

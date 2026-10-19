@@ -14,7 +14,6 @@ import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { useE2EEClient } from '@/hooks/useE2EEClient';
 import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
-
 import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -279,6 +278,33 @@ export default function ChatPage() {
         return () => { cancelled = true; };
     }, [activeId, user?.id, e2eeClient.status, e2eeClient.relayState]);
 
+    const pauseActiveConversationE2EE = async () => {
+        if (!activeId || enablingE2EE || !e2eeStatus?.enabled || e2eeStatus?.mode === 'paused') return;
+        const confirmed = window.confirm(
+            'Tạm dừng E2EE cho cuộc trò chuyện này? Tin nhắn mới sẽ không được mã hóa đầu cuối và có thể được máy chủ đọc. Lịch sử E2EE cũ trên thiết bị sẽ được giữ nguyên. Thao tác này ảnh hưởng đến cả hai người.'
+        );
+        if (!confirmed) return;
+        setEnablingE2EE(true);
+        try {
+            const response = await e2eeRelayApi.pauseConversation(activeId);
+            setE2eeStatus(previous => ({ ...previous, ...(response.data?.data || {}), enabled: true, mode: 'paused' }));
+            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.');
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.');
+        } finally {
+            setEnablingE2EE(false);
+        }
+    };
+
+    useEffect(() => {
+        const handleE2EEModeUpdated = (payload) => {
+            if (Number(payload?.conversationId) !== Number(activeId)) return;
+            setE2eeStatus(previous => previous ? { ...previous, enabled: Boolean(payload.enabled), mode: payload.mode || 'active', pausedAt: payload.pausedAt || null } : previous);
+        };
+        socket.on('conversation:e2ee-mode-updated', handleE2EEModeUpdated);
+        return () => socket.off('conversation:e2ee-mode-updated', handleE2EEModeUpdated);
+    }, [activeId]);
+
     const enableActiveConversationE2EE = async () => {
         if (!activeId || enablingE2EE) return;
         if (!e2eeClient.isLocalStoreReady || e2eeClient.relayState !== 'connected') {
@@ -414,6 +440,7 @@ export default function ChatPage() {
                                 e2eeHistoryIssue={e2eeHistoryIssue?.conversationId === Number(activeId) ? e2eeHistoryIssue : null}
                                 e2eeClientReady={e2eeClient.isLocalStoreReady && e2eeClient.relayState === 'connected'}
                                 onEnableE2EE={enableActiveConversationE2EE}
+                                onPauseE2EE={pauseActiveConversationE2EE}
                                 enablingE2EE={enablingE2EE}
                                 onBackToList={() => setActiveId(null)}
                                 messages={timelineMessages}
