@@ -122,9 +122,29 @@ module.exports = {
     enableConversation: run(req => e2eeRelayService.enableConversationE2EE(
         Number(req.user.id), req.params.conversationId
     )),
-    pauseConversation: run(req => e2eeRelayService.pauseConversationE2EE(
-        Number(req.user.id), req.params.conversationId
-    )),
+    pauseConversation: async (req, res, next) => {
+        try {
+            const result = await e2eeRelayService.pauseConversationE2EE(
+                Number(req.user.id), req.params.conversationId
+            );
+            // Broadcast only mode metadata, never message content or key material.
+            getIO().to(`conversation:${Number(req.params.conversationId)}`).emit('conversation:e2ee-mode-updated', {
+                conversationId: Number(req.params.conversationId),
+                enabled: true,
+                mode: result.mode,
+                pausedAt: result.pausedAt || null
+            });
+            return res.json({ data: result });
+        } catch (error) {
+            if (error.statusCode) {
+                return res.status(error.statusCode).json({
+                    message: error.message,
+                    ...(error.code ? { code: error.code } : {})
+                });
+            }
+            return next(error);
+        }
+    },
     pullEnvelopes: run(req => e2eeRelayService.pullEnvelopes(
         Number(req.user.id), req.params.deviceId, req.query.limit
     )),
