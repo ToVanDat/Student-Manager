@@ -35,6 +35,22 @@ export default function ChatSidebar({
         return () => clearTimeout(timer);
     }, [showNewChat, userSearch, searchUsers]);
 
+    useEffect(() => {
+        if (!showNewChat) return undefined;
+        const handleDialogKeyDown = event => {
+            if (event.key !== 'Escape' || creatingGroup || startingDirectId) return;
+            setShowNewChat(false);
+            setNewChatError('');
+            setStartingDirectId(null);
+            setMode('direct');
+            setUserSearch('');
+            setGroupName('');
+            setSelectedIds([]);
+        };
+        window.addEventListener('keydown', handleDialogKeyDown);
+        return () => window.removeEventListener('keydown', handleDialogKeyDown);
+    }, [showNewChat, creatingGroup, startingDirectId]);
+
     const getIsOnline = conversation => conversation.type === 'direct'
         && onlineUserIds.has(Number(conversation.userId));
 
@@ -175,7 +191,7 @@ export default function ChatSidebar({
                         </p>
                     )}
 
-                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" aria-live="polite">
                         {searchResults.map(user => {
                             const selected = selectedIds.includes(Number(user.id));
                             return (
@@ -199,8 +215,11 @@ export default function ChatSidebar({
                                 </button>
                             );
                         })}
-                        {userSearch && searchResults.length === 0 && (
-                            <p className="py-3 text-center text-xs text-slate-400 dark:text-slate-500">{t('noUsersFound')}</p>
+                        {userSearch.trim() && searchResults.length === 0 && (
+                            <p className="px-3 py-6 text-center text-xs text-slate-400 dark:text-slate-500">{t('noUsersFound')}</p>
+                        )}
+                        {!userSearch.trim() && searchResults.length === 0 && (
+                            <p className="px-3 py-6 text-center text-xs text-slate-400 dark:text-slate-500">{t('findUserToChat')}</p>
                         )}
                     </div>
 
@@ -220,14 +239,20 @@ export default function ChatSidebar({
             )}
 
             <div className="relative mb-4">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                    type="text"
+                    type="search"
+                    aria-label={t('searchConversations')}
                     placeholder={t("searchConversations")}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-700 dark:focus:bg-slate-900 dark:focus:ring-blue-950/50"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-10 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-700 dark:focus:bg-slate-900 dark:focus:ring-blue-950/50"
                 />
+                {searchTerm && (
+                    <button type="button" onClick={() => setSearchTerm('')} aria-label={t('close')} title={t('close')} className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                        <X size={14} />
+                    </button>
+                )}
             </div>
 
             <div className="mb-3 mt-1 flex gap-1 rounded-xl border border-slate-200/80 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/70">
@@ -249,7 +274,7 @@ export default function ChatSidebar({
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1" aria-label={t('recentConversations')}>
                 {filteredConversations.map(item => (
                     <ConversationItem
                         key={item.id}
@@ -261,6 +286,24 @@ export default function ChatSidebar({
                         onClick={() => onSelectConversation(item.id)}
                     />
                 ))}
+                {filteredConversations.length === 0 && (
+                    <div className="flex min-h-40 flex-col items-center justify-center px-5 py-8 text-center">
+                        <span className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500">
+                            <Search size={19} aria-hidden="true" />
+                        </span>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {filter === 'unread' ? t('unreadOnly') : t('searchConversations')}
+                        </p>
+                        <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500 dark:text-slate-400">
+                            {filter === 'unread' ? t('noMessagesYet') : t('noUsersFound')}
+                        </p>
+                        {(searchTerm || filter === 'unread') && (
+                            <button type="button" onClick={() => { setSearchTerm(''); setFilter('all'); }} className="mt-3 rounded-lg px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                                {t('allConversations')}
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
