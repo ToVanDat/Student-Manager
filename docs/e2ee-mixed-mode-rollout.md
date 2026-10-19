@@ -29,7 +29,8 @@ Temporarily allow ordinary messages in a conversation whose E2EE history already
 - [x] Encrypted-envelope relay rejects sends unless the conversation is `active`.
 - [ ] Existing E2EE history remains readable on the original device.
 - [x] Chat header labels paused conversations and warns new messages are not end-to-end encrypted.
-- [ ] A pause control and realtime mode-change broadcast are not yet wired into the chat page.
+- [x] Chat header includes a pause control with explicit downgrade confirmation.
+- [x] API broadcasts `conversation:e2ee-mode-updated`; the active chat page updates its mode state in realtime.
 - [ ] Regression tests cover both transports and mixed history ordering.
 - [ ] Build, lint, API tests, and two-account/multi-device tests have not yet been run for this branch.
 
