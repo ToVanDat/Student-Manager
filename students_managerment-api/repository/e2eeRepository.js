@@ -210,7 +210,7 @@ const isConversationE2EEEnabled = async (conversationId) => {
     if (!tableCheck.rows[0]?.table_exists) return false;
 
     const { rows } = await pool.query(
-        'SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1',
+        "SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 AND e2ee_state = 'active' LIMIT 1",
         [conversationId]
     );
     return rows.length > 0;

@@ -54,6 +54,7 @@ router.delete('/attachments/:attachmentId', relaySendLimiter, controller.deleteA
 
 router.get('/conversations/:conversationId/status', controller.getConversationStatus);
 router.post('/conversations/:conversationId/enable', keyMutationLimiter, controller.enableConversation);
+router.post('/conversations/:conversationId/pause', keyMutationLimiter, controller.pauseConversation);
 router.post('/conversations/:conversationId/envelopes', deviceAuth, relaySendLimiter, controller.sendEnvelope);
 router.post('/users/:userId/envelopes', deviceAuth, relaySendLimiter, controller.sendDirectEnvelope);
 router.get('/devices/:deviceId/mailbox', deviceAuth, controller.pullEnvelopes);
