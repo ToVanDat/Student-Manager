@@ -94,6 +94,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Lint frontend
         run: npm run lint
+      - name: E2EE protocol round-trip tests
+        run: npm run test:e2ee
       - name: Build frontend
         run: npm run build
 
