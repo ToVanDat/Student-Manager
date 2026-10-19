@@ -122,6 +122,9 @@ module.exports = {
     enableConversation: run(req => e2eeRelayService.enableConversationE2EE(
         Number(req.user.id), req.params.conversationId
     )),
+    pauseConversation: run(req => e2eeRelayService.pauseConversationE2EE(
+        Number(req.user.id), req.params.conversationId
+    )),
     pullEnvelopes: run(req => e2eeRelayService.pullEnvelopes(
         Number(req.user.id), req.params.deviceId, req.query.limit
     )),
