@@ -1109,7 +1109,7 @@ export default function ChatWindow({
                                 onClick={onEnableE2EE}
                                 disabled={!e2eeStatus.canEnable || !e2eeClientReady || enablingE2EE}
                                 className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-slate-800"
-                                title={!e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
+                                title={!e2eeStatus.activationEnabled ? 'E2EE đang tạm dừng kích hoạt mới' : !e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
                             >
                                 {enablingE2EE ? <LoaderCircle size={16} className="animate-spin" /> : <Shield size={16} />}
                                 E2EE
