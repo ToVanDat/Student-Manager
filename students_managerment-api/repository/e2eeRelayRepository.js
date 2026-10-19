@@ -53,10 +53,10 @@ const assertConversationMember = async (client, conversationId, userId) => {
 
 const assertE2EEEnabled = async (client, conversationId) => {
     const { rowCount } = await client.query(
-        'SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1',
+        "SELECT 1 FROM conversation_e2ee_settings WHERE conversation_id = $1 AND mode = 'active' LIMIT 1",
         [conversationId]
     );
-    if (!rowCount) throw httpError(409, 'E2EE chưa được kích hoạt cho conversation này', 'E2EE_NOT_ENABLED');
+    if (!rowCount) throw httpError(409, 'E2EE chưa ở trạng thái hoạt động cho conversation này', 'E2EE_NOT_ACTIVE');
 };
 
 const getDeviceRow = async (client, userId, deviceId, identityType = 'aci', lock = false) => {
