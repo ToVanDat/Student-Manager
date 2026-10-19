@@ -536,6 +536,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
     const { rows } = await pool.query(
         `SELECT c.type,
             EXISTS (SELECT 1 FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id) AS enabled,
+            COALESCE((SELECT s.mode FROM conversation_e2ee_settings s WHERE s.conversation_id = c.id LIMIT 1), 'active') AS mode,
             (SELECT COUNT(*)::int FROM conversation_members cm WHERE cm.conversation_id = c.id AND cm.left_at IS NULL) AS member_count,
             (SELECT COUNT(*)::int FROM e2ee_sdk_devices d JOIN conversation_members cm ON cm.user_id = d.user_id
              WHERE cm.conversation_id = c.id AND cm.left_at IS NULL AND d.revoked_at IS NULL AND d.enabled = TRUE AND d.registered = TRUE) AS active_device_count,
@@ -558,6 +559,7 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
         type: rows[0].type,
         available: true,
         enabled: Boolean(rows[0].enabled),
+        mode: rows[0].mode || 'active',
         activationEnabled: isE2EEActivationEnabled(),
         memberCount: Number(rows[0].member_count),
         activeDeviceCount: Number(rows[0].active_device_count),
@@ -568,6 +570,24 @@ const getConversationE2EEStatus = async (requesterId, conversationId) => {
             Number(rows[0].active_device_count) > 0 && Number(rows[0].active_device_count) === Number(rows[0].ready_device_count)
     };
 };
+
+const pauseConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
+    const schema = await client.query("SELECT to_regclass('public.conversation_e2ee_settings') IS NOT NULL AS settings_ready");
+    if (!schema.rows[0]?.settings_ready) throw httpError(503, 'Cần chạy migration E2EE trước khi tạm dừng', 'E2EE_SCHEMA_NOT_READY');
+    await assertConversationMember(client, conversationId, requesterId);
+    const result = await client.query(
+        `UPDATE conversation_e2ee_settings SET mode = 'paused', paused_at = NOW(), paused_by = $2
+         WHERE conversation_id = $1 AND mode = 'active'
+         RETURNING conversation_id, mode, paused_at`,
+        [conversationId, requesterId]
+    );
+    if (!result.rowCount) {
+        const existing = await client.query('SELECT mode, paused_at FROM conversation_e2ee_settings WHERE conversation_id = $1 LIMIT 1', [conversationId]);
+        if (!existing.rowCount) throw httpError(409, 'E2EE chưa được bật cho cuộc trò chuyện này', 'E2EE_NOT_ENABLED');
+        return { conversationId: Number(conversationId), mode: existing.rows[0].mode, pausedAt: existing.rows[0].paused_at, alreadyPaused: true };
+    }
+    return { conversationId: Number(conversationId), mode: result.rows[0].mode, pausedAt: result.rows[0].paused_at, alreadyPaused: false };
+});
 
 const enableConversationE2EE = async (requesterId, conversationId) => withTransaction(async client => {
     // Server-side enforcement is authoritative; UI state is not a security boundary.
@@ -755,7 +775,7 @@ const getDeviceBySlot = async (userId, deviceId) => {
 module.exports = {
     registerDevice, getDevices, removeDevice, getIdentityKey, getActiveDevices, clearStaleKemPreKeys, provisionIdentity, rotateIdentityKey,
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
-    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, enableConversationE2EE, authenticateDeviceCredential,
+    sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, authenticateDeviceCredential,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, getDeviceBySlot
 };
