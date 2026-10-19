@@ -38,9 +38,14 @@ export default function ChatSidebar({
     useEffect(() => {
         if (!showNewChat) return undefined;
         const handleDialogKeyDown = event => {
-            if (event.key === 'Escape' && !creatingGroup && !startingDirectId) {
-                closeNewChat();
-            }
+            if (event.key !== 'Escape' || creatingGroup || startingDirectId) return;
+            setShowNewChat(false);
+            setNewChatError('');
+            setStartingDirectId(null);
+            setMode('direct');
+            setUserSearch('');
+            setGroupName('');
+            setSelectedIds([]);
         };
         window.addEventListener('keydown', handleDialogKeyDown);
         return () => window.removeEventListener('keydown', handleDialogKeyDown);
