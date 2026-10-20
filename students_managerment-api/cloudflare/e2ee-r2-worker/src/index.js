@@ -68,6 +68,17 @@ export default {
             if (request.headers.get('origin') && !cors['access-control-allow-origin']) return json(403, 'Origin không được phép');
             return new Response(null, { status: 204, headers: cors });
         }
+        // Lightweight health check; does not access R2 or expose secrets.
+        if (request.method === 'GET' && url.pathname === '/') {
+            return withCors(new Response(JSON.stringify({
+                service: 'student-manager-e2ee-r2',
+                status: 'ok'
+            }), {
+                status: 200,
+                headers: { 'content-type': 'application/json; charset=utf-8' }
+            }), cors);
+        }
+
         if (!['PUT', 'GET', 'HEAD', 'DELETE'].includes(request.method) || !/^\/v1\/objects\/[0-9a-f-]{36}$/i.test(url.pathname)) {
             return withCors(json(404, 'Không tìm thấy endpoint'), cors);
         }
