@@ -168,10 +168,17 @@ test('Worker rejects method/path mismatches and does not expose object bytes wit
 
 
 
-test('Worker returns 404 for root and invalid object paths without touching R2', async () => {
+test('Worker exposes a root health endpoint and still rejects invalid object paths without touching R2', async () => {
     const bucket = createBucket();
     const root = await worker.fetch(new Request('https://worker.test/'), env(bucket));
-    assert.equal(root.status, 404);
+    assert.equal(root.status, 200);
+    assert.deepEqual(await root.json(), {
+        service: 'student-manager-e2ee-r2',
+        status: 'ok'
+    });
+    assert.equal(root.headers.get('content-type'), 'application/json; charset=utf-8');
+    assert.equal(root.headers.get('cache-control'), 'no-store');
+
     const malformed = await worker.fetch(new Request('https://worker.test/v1/objects/not-a-uuid'), env(bucket));
     assert.equal(malformed.status, 404);
     assert.equal(bucket.objects.size, 0);
