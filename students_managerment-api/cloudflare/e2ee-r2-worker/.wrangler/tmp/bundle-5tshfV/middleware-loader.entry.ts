@@ -3,12 +3,12 @@
 // export dynamically through wrangler, or we can potentially let users directly
 // add them as a sort of "plugin" system.
 
-import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "C:\\Users\\ADMIN\\Student-Manager\\students_managerment-api\\cloudflare\\e2ee-r2-worker\\.wrangler\\tmp\\bundle-fYI3zO\\middleware-insertion-facade.js";
+import ENTRY, { __INTERNAL_WRANGLER_MIDDLEWARE__ } from "C:\\Users\\ADMIN\\Student-Manager\\students_managerment-api\\cloudflare\\e2ee-r2-worker\\.wrangler\\tmp\\bundle-5tshfV\\middleware-insertion-facade.js";
 import { __facade_invoke__, __facade_register__, Dispatcher } from "C:\\Users\\ADMIN\\AppData\\Local\\npm-cache\\_npx\\32026684e21afda6\\node_modules\\wrangler\\templates\\middleware\\common.ts";
-import type { WorkerEntrypointConstructor } from "C:\\Users\\ADMIN\\Student-Manager\\students_managerment-api\\cloudflare\\e2ee-r2-worker\\.wrangler\\tmp\\bundle-fYI3zO\\middleware-insertion-facade.js";
+import type { WorkerEntrypointConstructor } from "C:\\Users\\ADMIN\\Student-Manager\\students_managerment-api\\cloudflare\\e2ee-r2-worker\\.wrangler\\tmp\\bundle-5tshfV\\middleware-insertion-facade.js";
 
 // Preserve all the exports from the worker
-export * from "C:\\Users\\ADMIN\\Student-Manager\\students_managerment-api\\cloudflare\\e2ee-r2-worker\\.wrangler\\tmp\\bundle-fYI3zO\\middleware-insertion-facade.js";
+export * from "C:\\Users\\ADMIN\\Student-Manager\\students_managerment-api\\cloudflare\\e2ee-r2-worker\\.wrangler\\tmp\\bundle-5tshfV\\middleware-insertion-facade.js";
 
 class __Facade_ScheduledController__ implements ScheduledController {
 	readonly #noRetry: ScheduledController["noRetry"];

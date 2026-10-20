@@ -114,9 +114,9 @@ var src_default = {
           customMetadata: { attachmentId, expectedDigest: ticket.expectedDigest }
         });
         if (!result) return withCors(json(409, "T\u1EC7p \u0111\xE3 \u0111\u01B0\u1EE3c t\u1EA3i l\xEAn; ticket kh\xF4ng th\u1EC3 ghi \u0111\xE8 object"), cors);
-        const storedDigest2 = result.checksums?.sha256;
+        const storedDigest = result.checksums?.sha256;
         const toHex = /* @__PURE__ */ __name((bytes) => Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join(""), "toHex");
-        if (!storedDigest2 || toHex(new Uint8Array(storedDigest2)) !== toHex(expectedDigest)) {
+        if (!storedDigest || toHex(new Uint8Array(storedDigest)) !== toHex(expectedDigest)) {
           await env.E2EE_BUCKET.delete(key);
           return withCors(json(422, "Digest ciphertext kh\xF4ng kh\u1EDBp"), cors);
         }
@@ -125,28 +125,32 @@ var src_default = {
         return withCors(json(400, error?.message === "E2EE_CIPHERTEXT_SIZE_LIMIT" || error?.message === "E2EE_CIPHERTEXT_SIZE_MISMATCH" ? "K\xEDch th\u01B0\u1EDBc ciphertext kh\xF4ng h\u1EE3p l\u1EC7" : "Kh\xF4ng th\u1EC3 l\u01B0u ciphertext"), cors);
       }
     }
-    const object = request.method === "HEAD" ? await env.E2EE_BUCKET.head(key) : await env.E2EE_BUCKET.get(key);
-    if (!object) return withCors(json(404, "Kh\xF4ng t\xECm th\u1EA5y ciphertext"), cors);
-    if (object.size !== ticket.expectedSize) return withCors(json(409, "K\xEDch th\u01B0\u1EDBc ciphertext kh\xF4ng kh\u1EDBp"), cors);
-    const storedDigest = object.checksums?.sha256;
-    const storedDigestB64 = storedDigest ? btoa(String.fromCharCode(...new Uint8Array(storedDigest))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "") : "";
-    if (storedDigestB64 !== ticket.expectedDigest) return withCors(json(409, "Digest ciphertext kh\xF4ng kh\u1EDBp"), cors);
-    if (request.method === "HEAD") {
-      return withCors(new Response(null, {
-        status: 200,
-        headers: { "content-type": "application/octet-stream", "content-length": String(object.size), "x-e2ee-sha256": storedDigestB64 }
-      }), cors);
-    }
-    return withCors(new Response(object.body, {
-      status: 200,
-      headers: {
-        "content-type": "application/octet-stream",
-        "content-length": String(object.size),
-        "x-e2ee-sha256": storedDigestB64,
-        "content-disposition": "attachment",
-        "x-content-type-options": "nosniff"
+    try {
+      const object = request.method === "HEAD" ? await env.E2EE_BUCKET.head(key) : await env.E2EE_BUCKET.get(key);
+      if (!object) return withCors(json(404, "Kh\xF4ng t\xECm th\u1EA5y ciphertext"), cors);
+      if (object.size !== ticket.expectedSize) return withCors(json(409, "K\xEDch th\u01B0\u1EDBc ciphertext kh\xF4ng kh\u1EDBp"), cors);
+      const storedDigest = object.checksums?.sha256;
+      const storedDigestB64 = storedDigest ? btoa(String.fromCharCode(...new Uint8Array(storedDigest))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "") : "";
+      if (storedDigestB64 !== ticket.expectedDigest) return withCors(json(409, "Digest ciphertext kh\xF4ng kh\u1EDBp"), cors);
+      if (request.method === "HEAD") {
+        return withCors(new Response(null, {
+          status: 200,
+          headers: { "content-type": "application/octet-stream", "content-length": String(object.size), "x-e2ee-sha256": storedDigestB64 }
+        }), cors);
       }
-    }), cors);
+      return withCors(new Response(object.body, {
+        status: 200,
+        headers: {
+          "content-type": "application/octet-stream",
+          "content-length": String(object.size),
+          "x-e2ee-sha256": storedDigestB64,
+          "content-disposition": "attachment",
+          "x-content-type-options": "nosniff"
+        }
+      }), cors);
+    } catch {
+      return withCors(json(502, "Kh\xF4ng th\u1EC3 truy c\u1EADp ciphertext"), cors);
+    }
   }
 };
 
@@ -197,7 +201,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-fYI3zO/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-5tshfV/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -229,7 +233,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-fYI3zO/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-5tshfV/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
