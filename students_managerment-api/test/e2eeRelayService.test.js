@@ -123,3 +123,53 @@ test('mailbox acknowledgement validates envelope IDs and device slots', async ()
         relayRepository.markDelivered = oldAck;
     }
 });
+
+test('prekey upload accepts the SDK tagged ML-KEM-1024 public-key encoding', async () => {
+    const oldUpload = relayRepository.uploadPreKeys;
+    let received;
+    relayRepository.uploadPreKeys = async (...args) => { received = args; };
+    try {
+        const publicKeyBytes = Buffer.alloc(1569);
+        publicKeyBytes[0] = 0x0A;
+        const publicKey = publicKeyBytes.toString('base64');
+        const result = await service.uploadPreKeys(11, 1, {
+            identityType: 'aci',
+            keys: [{ type: 'kemOneTimePreKey', keyId: 7, publicKey, signature: Buffer.alloc(64).toString('base64') }]
+        });
+        assert.deepEqual(result, { uploaded: 1 });
+        assert.equal(received[0], 11);
+        assert.equal(received[1], 1);
+        assert.equal(received[2][0].publicKey, publicKey);
+    } finally {
+        relayRepository.uploadPreKeys = oldUpload;
+    }
+});
+
+test('prekey upload rejects untagged ML-KEM public keys and invalid algorithm tags', async () => {
+    const oldUpload = relayRepository.uploadPreKeys;
+    let writes = 0;
+    relayRepository.uploadPreKeys = async () => { writes += 1; };
+    try {
+        const signature = Buffer.alloc(64).toString('base64');
+        const untagged = Buffer.alloc(1568).toString('base64');
+        await assert.rejects(
+            service.uploadPreKeys(11, 1, {
+                keys: [{ type: 'kemOneTimePreKey', keyId: 8, publicKey: untagged, signature }]
+            }),
+            error => error.statusCode === 400
+        );
+
+        const wrongTagBytes = Buffer.alloc(1569);
+        wrongTagBytes[0] = 0x08;
+        await assert.rejects(
+            service.uploadPreKeys(11, 1, {
+                keys: [{ type: 'kemOneTimePreKey', keyId: 9, publicKey: wrongTagBytes.toString('base64'), signature }]
+            }),
+            error => error.statusCode === 400 && /algorithm tag 0x0A/.test(error.message)
+        );
+        assert.equal(writes, 0);
+    } finally {
+        relayRepository.uploadPreKeys = oldUpload;
+    }
+});
+
