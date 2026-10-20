@@ -503,6 +503,7 @@ export default function ChatWindow({
     }, [showSearchPanel, searchQuery, activeConversation?.id, onSearchMessages]);
 
     useEffect(() => {
+        setShowE2EEIdentityVerification(false);
         setShowMoreMenu(false);
         setShowSearchPanel(false);
         setSearchQuery('');
