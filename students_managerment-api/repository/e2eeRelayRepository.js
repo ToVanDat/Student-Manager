@@ -114,6 +114,19 @@ const registerDevice = async (userId, input) => withTransaction(async (client) =
 });
 
 const getDevices = async (userId) => {
+    // Give local installations a clear, actionable response when the additive
+    // SDK relay migration has not been applied, instead of leaking a generic 500
+    // caused by PostgreSQL's "relation does not exist" error.
+    const schema = await pool.query(
+        "SELECT to_regclass('public.e2ee_sdk_devices') IS NOT NULL AS devices_ready"
+    );
+    if (!schema.rows[0]?.devices_ready) {
+        throw httpError(
+            503,
+            'E2EE relay chưa sẵn sàng: cần áp dụng sql/e2ee_foundation_migration.sql vào database đang được backend sử dụng rồi khởi động lại backend.',
+            'E2EE_SCHEMA_NOT_READY'
+        );
+    }
     const { rows } = await pool.query(
         `SELECT device_id, device_type, registered, linked, enabled, last_seen_at, created_at
          FROM e2ee_sdk_devices
