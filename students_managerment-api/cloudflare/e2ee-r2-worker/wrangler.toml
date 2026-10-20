@@ -7,4 +7,4 @@ binding = "E2EE_BUCKET"
 bucket_name = "student-manager-e2ee-attachments"
 
 [vars]
-E2EE_FRONTEND_ORIGIN = "http://localhost:5173"
+E2EE_FRONTEND_ORIGIN = "http://localhost:5173"  
