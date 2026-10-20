@@ -1,0 +1,117 @@
+/* Product-wide UI refresh — additive styling only; preserves React behavior and feature-specific layouts. */
+:root {
+  color-scheme: light;
+  --ui-brand: #365fe8;
+  --ui-brand-strong: #2748c7;
+  --ui-brand-soft: #edf2ff;
+  --ui-ink: #17233b;
+  --ui-muted: #687790;
+  --ui-line: #e4e9f2;
+  --ui-surface: #ffffff;
+  --ui-canvas: #f5f7fc;
+  --ui-radius: 16px;
+  --ui-shadow: 0 8px 28px rgba(20, 35, 70, .055);
+}
+.dark {
+  color-scheme: dark;
+  --ui-brand: #8098ff;
+  --ui-brand-strong: #9aabff;
+  --ui-brand-soft: #202b50;
+  --ui-ink: #e8edfa;
+  --ui-muted: #9aa8c0;
+  --ui-line: #2b3850;
+  --ui-surface: #111a2b;
+  --ui-canvas: #0a1020;
+  --ui-shadow: 0 12px 32px rgba(0, 0, 0, .2);
+}
+html { scroll-behavior: smooth; }
+body {
+  color: var(--ui-ink);
+  background-color: var(--ui-canvas);
+  font-feature-settings: "ss01" on;
+  text-rendering: optimizeLegibility;
+}
+button, input, select, textarea { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--ui-brand) 38%, transparent);
+  outline-offset: 2px;
+}
+::selection { background: #dbe5ff; color: #1c347d; }
+a { text-underline-offset: 3px; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select, textarea {
+  min-width: 0;
+  border-color: var(--ui-line);
+  border-radius: 10px;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus, textarea:focus {
+  border-color: var(--ui-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-brand) 14%, transparent);
+  outline: none;
+}
+input::placeholder, textarea::placeholder { color: #94a0b5; }
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark select, .dark textarea {
+  border-color: var(--ui-line);
+  background-color: #0d1627;
+  color: var(--ui-ink);
+}
+.dark input::placeholder, .dark textarea::placeholder { color: #7f8da5; }
+.app-card, .dashboard-surface, .feature-surface {
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
+}
+.dashboard-surface, .feature-surface, [role="dialog"], dialog {
+  backdrop-filter: saturate(1.12);
+}
+table { border-collapse: separate; border-spacing: 0; }
+table thead th {
+  color: var(--ui-muted);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+table tbody tr { transition: background-color .14s ease; }
+table tbody tr:hover { background-color: color-mix(in srgb, var(--ui-brand-soft) 52%, transparent); }
+.dark table tbody tr:hover { background-color: #18243a; }
+hr { border-color: var(--ui-line); }
+[role="dialog"], dialog {
+  border-color: var(--ui-line);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(10, 20, 40, .22);
+}
+.dark [role="dialog"], .dark dialog {
+  border-color: var(--ui-line);
+  background-color: var(--ui-surface);
+  color: var(--ui-ink);
+}
+:where(.chat-shell, [data-chat-shell]) { min-width: 0; }
+:where(.chat-shell, [data-chat-shell]) button { -webkit-tap-highlight-color: transparent; }
+:where(.chat-shell, [data-chat-shell]) input { min-width: 0; }
+:where(.chat-shell, [data-chat-shell]) :is(button, a, input, textarea):focus-visible {
+  outline-offset: 2px;
+}
+:where(.chat-shell, [data-chat-shell]) .overflow-y-auto,
+:where(.chat-shell, [data-chat-shell]) .overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+:where(.chat-shell, [data-chat-shell]) ::-webkit-scrollbar { width: 7px; height: 7px; }
+:where(.chat-shell, [data-chat-shell]) ::-webkit-scrollbar-thumb { border-radius: 999px; background: #cbd5e1; }
+:where(.chat-shell, [data-chat-shell]) ::-webkit-scrollbar-track { background: transparent; }
+@media (hover: hover) {
+  button:not(:disabled) { transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease; }
+  button:not(:disabled):active { transform: translateY(1px); }
+}
+@media (max-width: 768px) {
+  [role="dialog"], dialog { max-width: calc(100vw - 20px); border-radius: 16px; }
+  table { font-size: .875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
