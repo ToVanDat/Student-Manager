@@ -29,6 +29,9 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
     const [qrInput, setQrInput] = useState('');
     const [busy, setBusy] = useState(false);
     const [statusText, setStatusText] = useState('');
+    const [devices, setDevices] = useState([]);
+    const [devicesLoading, setDevicesLoading] = useState(false);
+    const [revokingDeviceId, setRevokingDeviceId] = useState(null);
     const sessionRef = useRef(null);
     const stopRef = useRef(false);
 
@@ -37,6 +40,45 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
         stopRef.current = false;
         return () => { stopRef.current = true; };
     }, [open]);
+
+    useEffect(() => {
+        if (!open || !user?.id) return undefined;
+        let cancelled = false;
+        setDevicesLoading(true);
+        e2eeRelayApi.getDevices(user.id)
+            .then(response => {
+                if (!cancelled) setDevices(Array.isArray(response.data?.data) ? response.data.data : []);
+            })
+            .catch(error => {
+                if (!cancelled) {
+                    setDevices([]);
+                    setStatusText(error?.response?.data?.message || 'Không thể tải danh sách thiết bị E2EE.');
+                }
+            })
+            .finally(() => { if (!cancelled) setDevicesLoading(false); });
+        return () => { cancelled = true; };
+    }, [open, user?.id, clientState?.deviceId]);
+
+    const revokeLinkedDevice = async device => {
+        const deviceId = Number(device?.deviceId);
+        if (!Number.isInteger(deviceId) || deviceId < 1 || deviceId > 5) return;
+        if (deviceId === Number(clientState?.deviceId)) {
+            toast.error('Không thể thu hồi thiết bị đang sử dụng từ chính thiết bị đó. Hãy thực hiện trên một thiết bị tin cậy khác.');
+            return;
+        }
+        const confirmed = window.confirm('Thu hồi thiết bị E2EE này? Thiết bị sẽ không thể gửi/nhận envelope mới bằng credential hiện tại. Có thể cần liên kết lại các thiết bị còn lại nếu identity bị xoay vòng.');
+        if (!confirmed) return;
+        setRevokingDeviceId(deviceId);
+        try {
+            await e2eeRelayApi.removeDevice(deviceId);
+            setDevices(previous => previous.filter(item => Number(item.deviceId) !== deviceId));
+            toast.success('Đã thu hồi thiết bị E2EE.');
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Không thể thu hồi thiết bị.');
+        } finally {
+            setRevokingDeviceId(null);
+        }
+    };
 
     const startPrimaryLink = async () => {
         if (!user?.id || !clientState?.isLocalStoreReady) {
@@ -233,6 +275,30 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
                                 <X size={18} />
                             </button>
                         </div>
+
+                        <section className="mb-4 rounded-xl border border-slate-200 p-3 dark:border-slate-700" aria-label="Danh sách thiết bị E2EE">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">Thiết bị đã đăng ký</h3>
+                                <span className="text-xs text-slate-500 dark:text-slate-400">{devicesLoading ? 'Đang tải…' : `${devices.length} thiết bị`}</span>
+                            </div>
+                            {!devicesLoading && devices.length === 0 ? (
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Chưa có thiết bị E2EE nào được đăng ký hoặc không tải được danh sách.</p>
+                            ) : (
+                                <ul className="space-y-2">
+                                    {devices.map(device => (
+                                        <li key={device.deviceId} className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/70">
+                                            <div className="min-w-0">
+                                                <p className="truncate text-xs font-semibold text-slate-800 dark:text-slate-100">Thiết bị {device.deviceId} {Number(device.deviceId) === 1 ? '· chính' : ''} {Number(device.deviceId) === Number(clientState?.deviceId) ? '· hiện tại' : ''}</p>
+                                                <p className="text-[11px] text-slate-500 dark:text-slate-400">{device.deviceType || 'web'} · {device.enabled ? 'đang bật' : 'đã tắt'}{device.lastSeenAt ? ` · hoạt động ${new Date(device.lastSeenAt).toLocaleString()}` : ''}</p>
+                                            </div>
+                                            <button type="button" disabled={revokingDeviceId != null || Number(device.deviceId) === Number(clientState?.deviceId)} onClick={() => revokeLinkedDevice(device)} className="shrink-0 rounded-lg border border-rose-200 px-2 py-1.5 text-[11px] font-semibold text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40" title={Number(device.deviceId) === Number(clientState?.deviceId) ? 'Thu hồi thiết bị này từ một thiết bị tin cậy khác' : 'Thu hồi thiết bị'}>
+                                                {revokingDeviceId === Number(device.deviceId) ? 'Đang thu hồi…' : 'Thu hồi'}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </section>
 
                         {mode === 'link-this-device' ? (
                             <div className="space-y-3">
