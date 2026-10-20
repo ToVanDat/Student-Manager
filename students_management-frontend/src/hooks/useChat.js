@@ -6,7 +6,7 @@ import { userApi } from '@/api/userApi';
 import socket from '@/socket/socket.js';
 import { toast } from 'sonner';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
-import { sendE2EEMessage, subscribeDecryptedE2EEMessages, setE2EEAttachmentConversationId } from '@/services/e2ee/e2eeClient';
+import { sendE2EEMessage, subscribeDecryptedE2EEMessages, setE2EEAttachmentConversationId, uploadE2EEAttachment, downloadE2EEAttachment } from '@/services/e2ee/e2eeClient';
 import { loadE2EEHistory, saveE2EEHistoryMessage, deleteE2EEHistoryMessage } from '@/services/e2ee/e2eeHistoryStore';
 
 export const useChat = () => {
@@ -119,7 +119,7 @@ export const useChat = () => {
             }
             return;
         }
-        if (payload.type !== 'message') return;
+        if (payload.type !== 'message' && payload.type !== 'attachment') return;
 
         const messageId = `e2ee:${String(payload.appMessageId ?? decrypted?.messageId ?? decrypted?.id ?? Date.now())}`;
         const createdAt = new Date(decrypted?.timestamp ?? decrypted?.receivedAt ?? payload.timestamp ?? Date.now()).toISOString();
@@ -127,7 +127,8 @@ export const useChat = () => {
             id: messageId,
             conversation_id: conversationId,
             sender_id: Number.isFinite(senderId) ? senderId : 0,
-            content: String(payload.body ?? ''),
+            content: payload.type === 'attachment' ? `📎 ${String(payload.fileName || 'Tệp đính kèm')}` : String(payload.body ?? ''),
+            ...(payload.type === 'attachment' ? { files: [{ id: `e2ee-file:${String(payload.appMessageId ?? decrypted?.messageId ?? decrypted?.id ?? Date.now())}`, file_name: String(payload.fileName || 'attachment'), file_size: Number(payload.fileSize) || 0, mime_type: String(payload.mimeType || 'application/octet-stream'), _e2ee: true, _e2eePointer: payload.pointer }] } : {}),
             reply_to_message_id: payload.replyToMessageId ?? null,
             created_at: createdAt,
             status: 'sent',
@@ -864,11 +865,19 @@ export const useChat = () => {
         const conversationId = Number(activeId);
         const statusResponse = await e2eeRelayApi.getConversationStatus(conversationId);
         if (statusResponse.data?.data?.enabled && statusResponse.data?.data?.mode !== 'paused') {
-            // Never send a search term for E2EE content to the server.
-            return messages.filter(item =>
-                Number(item.conversation_id) === conversationId &&
-                String(item.content || '').toLocaleLowerCase().includes(normalizedQuery.toLocaleLowerCase())
-            );
+            // Never send E2EE search terms or plaintext to the server. Search both
+            // the current view and the device-local encrypted history store.
+            const localHistory = await loadE2EEHistory(currentUserId, conversationId);
+            if (requestId !== messageSearchRequestRef.current) return [];
+            const allLocalMessages = new Map();
+            for (const item of [...localHistory, ...messages]) {
+                if (Number(item?.conversation_id) !== conversationId || item?._e2ee !== true) continue;
+                allLocalMessages.set(String(item.id), item);
+            }
+            const needle = normalizedQuery.toLocaleLowerCase();
+            return [...allLocalMessages.values()]
+                .filter(item => String(item.content || '').toLocaleLowerCase().includes(needle))
+                .sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
         }
         const res = await chatApi.searchMessages(conversationId, normalizedQuery);
         if (requestId !== messageSearchRequestRef.current) return [];
@@ -878,7 +887,7 @@ export const useChat = () => {
             throw new Error('Phản hồi tìm kiếm từ máy chủ không hợp lệ.');
         }
         return results;
-    }, [activeId, messages]);
+    }, [activeId, messages, currentUserId]);
 
     const openSearchResult = useCallback((result) => {
         if (!result?.id) return;
@@ -1156,9 +1165,29 @@ export const useChat = () => {
     const sendAttachment = useCallback(async (file, quality = 'standard', onUploadProgress) => {
         if (!activeId || !file) return;
         const e2eeStatusResponse = await e2eeRelayApi.getConversationStatus(activeId);
-        if (e2eeStatusResponse.data?.data?.enabled && e2eeStatusResponse.data?.data?.mode !== 'paused') {
-            toast.error('Tệp đính kèm E2EE chưa được tích hợp; tệp chưa được gửi.');
-            return;
+        const e2eeStatus = e2eeStatusResponse.data?.data;
+        if (e2eeStatus?.enabled && e2eeStatus?.mode !== 'paused') {
+            const conversation = conversations.find(item => Number(item.id) === Number(activeId));
+            if (conversation?.type !== 'direct' || !conversation?.userId) {
+                toast.error('Tệp E2EE hiện chỉ hỗ trợ chat 1-1. Tệp chưa được gửi.');
+                return;
+            }
+            const tempId = `e2ee-file-${crypto.randomUUID()}`;
+            const optimisticMessage = { id: tempId, tempId, conversation_id: activeId, sender_id: currentUserId, content: `📎 ${file.name}`, created_at: new Date().toISOString(), status: 'uploading', _e2ee: true, files: [{ id: `${tempId}:file`, file_name: file.name, file_size: file.size, mime_type: file.type || 'application/octet-stream', _e2ee: true, uploadStatus: 'uploading', uploadProgress: 0 }] };
+            setMessages(prev => [...prev, optimisticMessage]);
+            try {
+                const pointer = await uploadE2EEAttachment(file, { onProgress: onUploadProgress });
+                const appMessageId = crypto.randomUUID();
+                await sendE2EEMessage(conversation.userId, { type: 'attachment', appMessageId, conversationId: String(activeId), timestamp: Date.now(), fileName: file.name, fileSize: file.size, mimeType: file.type || 'application/octet-stream', pointer });
+                const finalMessage = { ...optimisticMessage, id: `e2ee:${appMessageId}`, tempId: undefined, status: 'sent', files: [{ id: `e2ee-file:${appMessageId}`, file_name: file.name, file_size: file.size, mime_type: file.type || 'application/octet-stream', _e2ee: true, _e2eePointer: pointer }] };
+                await saveE2EEHistoryMessage(currentUserId, finalMessage);
+                setMessages(prev => prev.map(item => item.tempId === tempId ? finalMessage : item));
+                return finalMessage.files[0];
+            } catch (error) {
+                setMessages(prev => prev.map(item => item.tempId === tempId ? { ...item, status: 'failed' } : item));
+                toast.error(error?.message || 'Không thể gửi tệp E2EE.');
+                throw error;
+            }
         }
 
         const tempId = `temp-file-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -1250,7 +1279,7 @@ export const useChat = () => {
             ));
             throw error;
         }
-    }, [activeId, currentUserId]);
+    }, [activeId, currentUserId, conversations]);
 
     const sendMessage = useCallback(async (content, replyToMessageId = null) => {
         const text = typeof content === 'string' ? content.trim() : '';
@@ -1401,26 +1430,39 @@ export const useChat = () => {
         }
     }, []);
 
+    const getFileBlob = useCallback(async (file) => {
+        if (file?._e2ee) {
+            if (!file._e2eePointer) throw new Error('Thiếu pointer của tệp E2EE.');
+            const decrypted = await downloadE2EEAttachment(file._e2eePointer);
+            if (decrypted instanceof Blob) return decrypted;
+            if (decrypted instanceof ArrayBuffer) return new Blob([decrypted], { type: file.mime_type || 'application/octet-stream' });
+            if (ArrayBuffer.isView(decrypted)) return new Blob([decrypted], { type: file.mime_type || 'application/octet-stream' });
+            if (decrypted?.data instanceof Uint8Array) return new Blob([decrypted.data], { type: file.mime_type || 'application/octet-stream' });
+            throw new Error('SDK không trả về dữ liệu tệp đã giải mã hợp lệ.');
+        }
+        if (!file?.id) throw new Error('Tệp không hợp lệ.');
+        const response = await chatApi.downloadFile(file.id);
+        return response.data;
+    }, [downloadE2EEAttachment]);
+
     const downloadFile = useCallback(async (file) => {
         if (!file?.id) return;
-
-        const response = await chatApi.downloadFile(file.id);
-        const blobUrl = window.URL.createObjectURL(response.data);
+        const blob = await getFileBlob(file);
+        const blobUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
-
         link.href = blobUrl;
         link.download = file.file_name || 'download';
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(blobUrl);
-    }, []);
+    }, [getFileBlob]);
 
     const previewFile = useCallback(async (file) => {
         if (!file?.id) return null;
-        const response = await chatApi.downloadFile(file.id);
-        return window.URL.createObjectURL(response.data);
-    }, []);
+        const blob = await getFileBlob(file);
+        return window.URL.createObjectURL(blob);
+    }, [getFileBlob]);
 
     const userSearchRequestRef = useRef(0);
 
