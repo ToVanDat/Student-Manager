@@ -150,7 +150,7 @@ export default function E2EEIdentityVerification({ currentUserId, recipientUserI
                             <p className="break-all font-mono text-sm leading-7 tracking-wide text-slate-900 dark:text-slate-100">{formatFingerprint(fingerprint)}</p>
                             <button type="button" onClick={copyFingerprint} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold hover:bg-white dark:border-slate-600 dark:hover:bg-slate-800"><Copy size={14} /> Sao chép mã</button>
                         </div>
-                        <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">Mã được tính từ public identity key mà relay trả về. Trạng thái xác minh được lưu cục bộ trên trình duyệt này. Đây là TOFU + xác minh thủ công; chưa thay thế kiểm toán SDK hoặc cơ chế xác minh danh tính đa thiết bị.</p>
+                        <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">Mã được tính từ cặp public identity key của cả hai người mà relay trả về theo thứ tự user ID cố định. Đây là mã an toàn riêng của dự án, không phải định dạng Safety Number chính thức của Signal. Trạng thái xác minh được lưu cục bộ trên trình duyệt này; đây là TOFU + xác minh thủ công, chưa thay thế kiểm toán SDK.</p>
                         {!verified && (
                             <button type="button" disabled={saving} onClick={markVerified} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50">
                                 <Check size={16} /> {saving ? 'Đang lưu…' : changed ? 'Xác minh lại sau khi so sánh' : 'Đã so sánh mã an toàn'}
