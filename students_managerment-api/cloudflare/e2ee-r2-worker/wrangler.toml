@@ -1,4 +1,3 @@
-```toml
 name = "student-manager-e2ee-r2"
 main = "src/index.js"
 compatibility_date = "2026-10-18"
@@ -8,9 +7,4 @@ binding = "E2EE_BUCKET"
 bucket_name = "student-manager-e2ee-attachments"
 
 [vars]
-# Thay bằng origin frontend thực tế của bạn.
 E2EE_FRONTEND_ORIGIN = "http://localhost:5173"
-
-# Secret phải được thiết lập riêng bằng Wrangler CLI.
-# Không ghi giá trị secret vào file này.
-```
