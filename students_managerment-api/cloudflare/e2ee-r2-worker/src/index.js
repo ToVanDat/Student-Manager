@@ -125,7 +125,6 @@ export default {
                 }
                 return withCors(new Response(null, { status: 201, headers: { 'content-length': '0' } }), cors);
             } catch (error) {
-                // Never return provider errors or object keys to clients.
                 return withCors(json(400, error?.message === 'E2EE_CIPHERTEXT_SIZE_LIMIT' ||
                     error?.message === 'E2EE_CIPHERTEXT_SIZE_MISMATCH'
                     ? 'Kích thước ciphertext không hợp lệ' : 'Không thể lưu ciphertext'), cors);
@@ -140,7 +139,7 @@ export default {
             if (object.size !== ticket.expectedSize) return withCors(json(409, 'Kích thước ciphertext không khớp'), cors);
             const storedDigest = object.checksums?.sha256;
             const storedDigestB64 = storedDigest
-                ? btoa(String.fromCharCode(...new Uint8Array(storedDigest))).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '')
+                ? btoa(String.fromCharCode(...new Uint8Array(storedDigest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
                 : '';
             if (storedDigestB64 !== ticket.expectedDigest) return withCors(json(409, 'Digest ciphertext không khớp'), cors);
             if (request.method === 'HEAD') {
@@ -160,7 +159,6 @@ export default {
                 }
             }), cors);
         } catch {
-            // Keep provider errors and internal object keys out of client responses.
             return withCors(json(502, 'Không thể truy cập ciphertext'), cors);
         }
     }
