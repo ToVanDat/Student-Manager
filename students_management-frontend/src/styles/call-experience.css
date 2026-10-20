@@ -1,0 +1,84 @@
+/* Responsive, accessible polish for the existing WebRTC call panel. */
+.call-overlay {
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+.call-dialog {
+  isolation: isolate;
+  animation: call-dialog-enter 180ms cubic-bezier(.2,.75,.25,1) both;
+}
+.call-dialog--active > header {
+  min-height: 4.25rem;
+}
+.call-video-stage {
+  width: 100%;
+  max-height: min(68dvh, 760px);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(51, 65, 85, .92), rgba(2, 6, 23, 1) 78%);
+}
+.call-video-stage > video {
+  object-fit: contain;
+}
+.call-local-video {
+  width: clamp(7rem, 20vw, 14rem);
+  aspect-ratio: 4 / 3;
+  height: auto;
+  max-height: 32%;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+.call-local-video:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .25);
+}
+.call-controls button {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  outline-offset: 3px;
+}
+.call-controls button:focus-visible,
+.call-dialog button:focus-visible {
+  outline: 2px solid #3b82f6;
+}
+.call-audio-stage {
+  min-height: clamp(17rem, 38dvh, 25rem);
+  background-image: radial-gradient(ellipse at 50% 20%, rgba(219, 234, 254, .55), transparent 65%);
+}
+.call-overlay--video .call-dialog--active {
+  width: min(100%, 76rem);
+}
+@keyframes call-dialog-enter {
+  from { opacity: 0; transform: translateY(8px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (max-width: 640px) {
+  .call-overlay--active { padding: 0; align-items: stretch; }
+  .call-overlay--active .call-dialog--active {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .call-video-stage {
+    display: flex;
+    flex: 1;
+    min-height: 45dvh;
+    max-height: none;
+    aspect-ratio: auto;
+  }
+  .call-local-video {
+    width: clamp(6rem, 30vw, 8rem);
+    bottom: .75rem;
+    right: .75rem;
+  }
+  .call-controls { gap: .65rem; padding-top: 1rem; }
+  .call-audio-stage { flex: 1; min-height: 40dvh; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .call-dialog { animation: none; }
+  .call-local-video { transition: none; }
+}
