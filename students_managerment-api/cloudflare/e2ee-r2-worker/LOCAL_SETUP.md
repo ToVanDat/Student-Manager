@@ -18,11 +18,12 @@ Keep the output private. Use that exact value in both local configuration files.
 
 From `students_managerment-api/cloudflare/e2ee-r2-worker`:
 
-1. Copy `.dev.vars.example` to `.dev.vars`.
-2. Replace the placeholder with the generated value.
-3. Confirm `.dev.vars` is ignored by Git; never commit it.
-4. Keep `E2EE_FRONTEND_ORIGIN=http://localhost:5173` while the frontend uses that origin.
-5. Start the Worker with `npx wrangler dev`.
+1. Copy `.dev.vars.example` to `.dev.vars` (`copy .dev.vars.example .dev.vars` in Windows Command Prompt).
+2. Replace the placeholder in `.dev.vars` with a fresh random value generated above.
+3. Put the exact same value in the backend `.env` as `E2EE_ATTACHMENT_TICKET_SECRET`.
+4. `.dev.vars` is ignored by Git; never commit it or paste its value into chat/issues.
+5. Keep `E2EE_FRONTEND_ORIGIN=http://localhost:5173` while the frontend uses that origin.
+6. Start the Worker with `npx wrangler dev`.
 
 The checked-in `wrangler.toml` binds `E2EE_BUCKET` to a bucket name. Wrangler local mode normally uses local R2 emulation unless remote bindings are explicitly enabled. A successful local request does not prove data was written to the Cloudflare-hosted bucket.
 
@@ -39,7 +40,7 @@ Keep all existing variables. Restart both backend and Worker after editing envir
 
 ## Endpoint behavior
 
-- `GET /` is not an API endpoint and returns 404 by design.
+- `GET /` returns a small JSON health response (`service` and `status: ok`); it does not test R2 connectivity.
 - Object operations use `/v1/objects/{attachmentId}` with `PUT`, `GET`, `HEAD`, or `DELETE`.
 - An unauthenticated request or a request with a made-up ticket should return 403. That is expected and does not test successful upload.
 - A successful upload requires a backend-issued ticket in `Authorization: Bearer <ticket>` and the exact ciphertext size and digest bound into that ticket.
