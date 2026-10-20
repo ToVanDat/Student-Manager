@@ -11,6 +11,7 @@ import {
 } from '@/api/client.js';
 import socket from '@/socket/socket.js';
 import useWebRTCCall from '@/hooks/useWebRTCCall.js';
+import { shutdownE2EEClient } from '@/services/e2ee/e2eeClient';
 
 const AuthContext = createContext(null);
 
@@ -43,6 +44,7 @@ export const AuthProvider = ({ children }) => {
             setAccessToken(nextToken);
 
             if (!nextToken) {
+                void shutdownE2EEClient().catch(() => {});
                 setUser(null);
             }
         };
@@ -99,6 +101,14 @@ const updateUser = (partialUser) => {
 
         } finally {
 
+            // Close the active protocol client and relay listeners before clearing
+            // authentication state. The local key store is intentionally preserved.
+            try {
+                await shutdownE2EEClient();
+            } catch {
+                console.warn('[E2EE] Could not cleanly shut down the local client.');
+            }
+
             socket.disconnect();
 
             setApiAccessToken(null);
@@ -153,6 +163,7 @@ const updateUser = (partialUser) => {
                                     setAccessToken(await refreshAccessToken());
                                 } catch (retryError) {
                                     if (retryError.response?.status === 401) {
+                                        void shutdownE2EEClient().catch(() => {});
                                         socket.disconnect();
                                         setApiAccessToken(null);
                                         localStorage.removeItem('user');
@@ -167,6 +178,7 @@ const updateUser = (partialUser) => {
                             return;
                         }
 
+                        void shutdownE2EEClient().catch(() => {});
                         socket.disconnect();
                         setApiAccessToken(null);
                         localStorage.removeItem('user');
