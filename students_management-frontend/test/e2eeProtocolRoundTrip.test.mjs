@@ -265,7 +265,7 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
         const bobIdentity = bobRelayIdentity?.identity_public ?? bobRelayIdentity;
         const aliceSafety = generateCompositeSafetyNumber(aliceIdentity, bobIdentity, 'alice', 'bob');
         const bobSafety = generateCompositeSafetyNumber(bobIdentity, aliceIdentity, 'bob', 'alice');
-        assert.equal(aliceSafety.numeric.replaceAll(' ', '');
+        assert.equal(aliceSafety.numeric.replaceAll(' ', ''), bobSafety.numeric.replaceAll(' ', ''));
         const decodeQr = value => Uint8Array.from(atob(value), character => character.charCodeAt(0));
         assert.equal(aliceSafety.scannable.compare(decodeQr(bobSafety.qrData)), 'match');
         assert.equal(bobSafety.scannable.compare(decodeQr(aliceSafety.qrData)), 'match');
