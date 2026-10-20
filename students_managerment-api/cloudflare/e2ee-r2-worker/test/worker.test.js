@@ -100,6 +100,17 @@ test('Worker refuses a changed ciphertext digest and never overwrites an accepte
     assert.equal(bucket.objects.size, 1);
 });
 
+test('Worker returns 404 for a valid ticket when the ciphertext object does not exist', async () => {
+    const bucket = createBucket();
+    const get = await worker.fetch(request('GET', ticket('GET')), env(bucket));
+    assert.equal(get.status, 404);
+    assert.deepEqual(await get.json(), { message: 'Không tìm thấy ciphertext' });
+
+    const head = await worker.fetch(request('HEAD', ticket('HEAD')), env(bucket));
+    assert.equal(head.status, 404);
+    assert.equal(bucket.objects.size, 0);
+});
+
 test('Worker rejects tampered/expired tickets and deletes only with a method-bound ticket', async () => {
     const bucket = createBucket();
     const invalid = await worker.fetch(request('GET', 'not-a-ticket'), env(bucket));
