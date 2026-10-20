@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }) => {
             setAccessToken(nextToken);
 
             if (!nextToken) {
+                void shutdownE2EEClient().catch(() => {});
                 setUser(null);
             }
         };
