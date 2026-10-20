@@ -257,8 +257,12 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
             aliceVerified.numeric.replace(/\\s/g, ''),
             bobVerified.numeric.replace(/\\s/g, '')
         );
-        const aliceIdentity = await aliceStorage.getIdentityKey();
-        const bobIdentity = await bobPrimaryStorage.getIdentityKey();
+        const [aliceRelayIdentity, bobRelayIdentity] = await Promise.all([
+            relay.getIdentityKey('alice'),
+            relay.getIdentityKey('bob')
+        ]);
+        const aliceIdentity = aliceRelayIdentity?.identity_public ?? aliceRelayIdentity;
+        const bobIdentity = bobRelayIdentity?.identity_public ?? bobRelayIdentity;
         const aliceSafety = generateCompositeSafetyNumber(aliceIdentity, bobIdentity, 'alice', 'bob');
         const bobSafety = generateCompositeSafetyNumber(bobIdentity, aliceIdentity, 'bob', 'alice');
         assert.equal(aliceSafety.numeric.replace(/\\s/g, ''), bobSafety.numeric.replace(/\\s/g, ''));
