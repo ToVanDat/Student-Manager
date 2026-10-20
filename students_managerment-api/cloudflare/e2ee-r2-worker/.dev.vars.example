@@ -1,0 +1,4 @@
+# Local development only. Copy to .dev.vars and replace the placeholder with a locally generated secret.
+# Do not commit .dev.vars or use this example file as an actual secret.
+E2EE_ATTACHMENT_TICKET_SECRET="REPLACE_WITH_THE_SAME_RANDOM_SECRET_USED_BY_BACKEND"
+E2EE_FRONTEND_ORIGIN="http://localhost:5173"

@@ -166,3 +166,25 @@ test('Worker rejects method/path mismatches and does not expose object bytes wit
     assert.equal(bucket.objects.size, 0);
 });
 
+
+
+test('Worker returns 404 for root and invalid object paths without touching R2', async () => {
+    const bucket = createBucket();
+    const root = await worker.fetch(new Request('https://worker.test/'), env(bucket));
+    assert.equal(root.status, 404);
+    const malformed = await worker.fetch(new Request('https://worker.test/v1/objects/not-a-uuid'), env(bucket));
+    assert.equal(malformed.status, 404);
+    assert.equal(bucket.objects.size, 0);
+});
+
+test('Worker returns a sanitized 502 when R2 read operations throw', async () => {
+    const bucket = {
+        async head() { throw new Error('internal bucket credentials or object key'); },
+        async get() { throw new Error('internal bucket credentials or object key'); },
+        async put() { throw new Error('unused'); },
+        async delete() { throw new Error('unused'); }
+    };
+    const response = await worker.fetch(request('GET', ticket('GET')), env(bucket));
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { message: 'Không thể truy cập ciphertext' });
+});
