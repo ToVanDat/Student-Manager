@@ -1454,6 +1454,14 @@ export const useChat = () => {
             throw new Error('SDK không trả về dữ liệu tệp đã giải mã hợp lệ.');
         }
         if (!file?.id) throw new Error('Tệp không hợp lệ.');
+        // Optimistic upload placeholders are UI-only and must never be sent to
+        // the numeric legacy download endpoint (e.g. temp-upload-136).
+        if (typeof file.id === 'string' && /^(?:temp-|e2ee-file:)/i.test(file.id)) {
+            throw new Error('Tệp vẫn đang tải lên hoặc chưa được lưu thành công. Hãy đợi upload hoàn tất rồi thử lại.');
+        }
+        if (!Number.isSafeInteger(Number(file.id)) || Number(file.id) <= 0) {
+            throw new Error('ID tệp không hợp lệ. Tệp có thể chưa được tải lên thành công.');
+        }
         const response = await chatApi.downloadFile(file.id);
         return response.data;
     }, [downloadE2EEAttachment]);
