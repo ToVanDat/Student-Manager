@@ -43,12 +43,28 @@ export default function E2EEIdentityVerification({ currentUserId, recipientUserI
             setLoading(true);
             setError('');
             try {
-                const response = await e2eeRelayApi.getIdentityKey(recipientUserId, 'aci');
-                const identity = response.data?.data;
-                if (!identity || typeof identity !== 'object') {
+                const [ownResponse, recipientResponse] = await Promise.all([
+                    e2eeRelayApi.getIdentityKey(currentUserId, 'aci'),
+                    e2eeRelayApi.getIdentityKey(recipientUserId, 'aci')
+                ]);
+                const ownIdentity = ownResponse.data?.data;
+                const recipientIdentity = recipientResponse.data?.data;
+                if (!ownIdentity || typeof ownIdentity !== 'object') {
+                    throw new Error('Thiết bị của bạn chưa có identity key E2EE được đăng ký.');
+                }
+                if (!recipientIdentity || typeof recipientIdentity !== 'object') {
                     throw new Error('Người nhận chưa có identity key E2EE được đăng ký.');
                 }
-                const nextFingerprint = await getFingerprint(identity);
+                // Both participants hash the same ordered pair of public identities,
+                // so the safety code matches on Alice's and Bob's devices.
+                const participants = [
+                    { userId: String(currentUserId), identity: ownIdentity },
+                    { userId: String(recipientUserId), identity: recipientIdentity }
+                ].sort((left, right) => left.userId.localeCompare(right.userId));
+                const nextFingerprint = await getFingerprint({
+                    protocol: 'student-manager-safety-code-v1',
+                    participants
+                });
                 const db = await openTrustDb(currentUserId);
                 let record;
                 try {
