@@ -1,0 +1,4 @@
+# Local-only template. Replace the placeholder with a fresh random secret.
+# Never put the real secret in this file in source control.
+E2EE_ATTACHMENT_TICKET_SECRET="REPLACE_WITH_RANDOM_64_HEX_CHAR_SECRET"
+E2EE_FRONTEND_ORIGIN="http://localhost:5173"
