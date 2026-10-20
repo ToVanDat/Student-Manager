@@ -61,7 +61,8 @@ export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
     const fileId = file?.id;
 
     useEffect(() => {
-        if (!fileId || !Number.isInteger(Number(fileId)) || !onPreviewFile) {
+        const isE2EEFile = Boolean(file?._e2ee && file?._e2eePointer);
+        if (!fileId || (!isE2EEFile && !Number.isInteger(Number(fileId))) || !onPreviewFile) {
             setLoading(false);
             return undefined;
         }
@@ -72,7 +73,9 @@ export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
             try {
                 setLoading(true);
                 setFailed(false);
-                const url = await onPreviewFile({ id: fileId });
+                // E2EE previews need the encrypted pointer as well as the UI ID;
+                // regular attachments still use their numeric database ID.
+                const url = await onPreviewFile(file);
                 if (!active) {
                     if (url) URL.revokeObjectURL(url);
                     return;
