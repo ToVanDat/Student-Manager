@@ -201,13 +201,13 @@ export default function CallPanel({
             )}
 
             {state === 'incoming' && (
-                <div className="call-overlay fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-200/65 p-4 backdrop-blur-md sm:p-6">
+                <div className="call-overlay call-overlay--incoming fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-200/65 p-4 backdrop-blur-md sm:p-6">
                     <section
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="incoming-call-title"
                         aria-describedby="incoming-call-description"
-                        className="call-dialog my-auto w-full max-w-[390px] rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(2,6,23,.3)] dark:border-slate-700 dark:bg-slate-900 sm:p-8"
+                        className="call-dialog call-dialog--incoming my-auto w-full max-w-[390px] rounded-[28px] border border-white/70 bg-white p-6 shadow-[0_24px_80px_rgba(2,6,23,.3)] dark:border-slate-700 dark:bg-slate-900 sm:p-8"
                     >
                         <div className="flex flex-col items-center text-center">
                             <div className="mb-5 rounded-full bg-blue-50 p-1.5 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:ring-blue-900">
@@ -258,8 +258,8 @@ export default function CallPanel({
             )}
 
             {isActiveCall && (
-                <div className="call-overlay fixed inset-0 z-[190] flex items-center justify-center overflow-y-auto bg-slate-200/70 p-2 backdrop-blur-sm sm:p-4">
-                    <section className="my-auto flex max-h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] dark:border-slate-700 dark:bg-slate-900">
+                <div className={`call-overlay call-overlay--active ${call?.callType === 'video' ? 'call-overlay--video' : 'call-overlay--audio'} fixed inset-0 z-[190] flex items-center justify-center overflow-y-auto bg-slate-200/70 p-2 backdrop-blur-sm sm:p-4`}>
+                    <section className={`call-dialog call-dialog--active my-auto flex max-h-[calc(100dvh-1rem)] w-full ${call?.callType === 'video' ? 'max-w-6xl' : 'max-w-4xl'} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] dark:border-slate-700 dark:bg-slate-900`}>
                         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-slate-900 dark:border-slate-800 dark:text-white">
                             <div>
                                 <h2 className="font-semibold">
@@ -307,7 +307,7 @@ export default function CallPanel({
                                 <p className="text-xs text-slate-500">Kiểm tra kết nối mạng và quyền microphone/camera rồi thử lại.</p>
                             </div>
                         ) : call?.callType === 'video' ? (
-                            <div className="relative aspect-video min-h-0 bg-slate-100 dark:bg-black">
+                            <div className="call-video-stage relative aspect-video min-h-0 bg-slate-100 dark:bg-black">
                                 <video
                                     ref={remoteVideoRef}
                                     autoPlay
@@ -315,7 +315,7 @@ export default function CallPanel({
                                     className="h-full w-full object-contain"
                                 />
 
-                                <div className="absolute bottom-3 right-3 h-28 w-44 overflow-hidden rounded-xl border border-white/20 bg-slate-900 shadow-lg">
+                                <div className="call-local-video absolute bottom-3 right-3 h-28 w-44 overflow-hidden rounded-xl border border-white/20 bg-slate-900 shadow-lg">
                                     <video
                                         ref={localVideoRef}
                                         autoPlay
@@ -345,7 +345,7 @@ export default function CallPanel({
                                 )}
                             </div>
                         ) : (
-                            <div className="flex min-h-64 flex-col items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
+                            <div className="call-audio-stage flex min-h-64 flex-col items-center justify-center bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-white">
                                 {state === 'calling' ? (
                                     <AvatarCountdown
                                         name={displayName}
@@ -370,7 +370,7 @@ export default function CallPanel({
                             </div>
                         )}
 
-                        <div className="flex shrink-0 flex-wrap items-center justify-center gap-3 border-t border-slate-100 bg-white px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-900">
+                        <div className="call-controls flex shrink-0 flex-wrap items-center justify-center gap-3 border-t border-slate-100 bg-white px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-900">
                             {state === 'failed' ? (
                                 <>
                                     <button type="button" onClick={retryCall} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
