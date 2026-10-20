@@ -6,12 +6,12 @@ Target branch: `feature/chat-1to1-complete`
 
 - Closing the in-memory Signal client, relay listeners, and local protocol-store connection during explicit logout and definitive refresh-token expiry. Local key material and encrypted history are preserved; logout must not silently erase them.
 - Fail-closed behavior for text and attachment sends when the conversation-status response is malformed or does not explicitly declare whether E2EE is available. A failed status request already rejects the send; it must never be interpreted as permission to fall back to plaintext.
-- A direct-chat safety fingerprint UI. It hashes the canonicalized public identity object returned by the relay with SHA-256, shows the complete fingerprint, supports copying, and stores the user's manual verification pin in device-local IndexedDB. A changed fingerprint is shown as a warning and requires a new explicit verification action.
+- A direct-chat safety fingerprint UI. It hashes a canonicalized, user-ID-ordered pair of both participants' public identity objects returned by the relay with SHA-256, so both participants derive the same code. It shows the complete fingerprint, supports copying, and stores the user's manual verification pin in device-local IndexedDB. A changed fingerprint is shown as a warning and requires a new explicit verification action.
 - Linked-device inventory and revoke controls in the existing E2EE device panel. The current device cannot revoke itself from its own panel; use another trusted device to revoke it.
 
 ## Security semantics and limitations
 
-- The fingerprint is a **manual safety-code comparison aid**, not proof that the server gave the correct key on first use. Users must compare the full code through an independent trusted channel. Pins are local to the current browser profile and are not synchronized.
+- The fingerprint is a **project-specific manual safety-code comparison aid**, not the Signal application's official Safety Number format and not proof that the server gave the correct key on first use. Users must compare the full code through an independent trusted channel. Pins are local to the current browser profile and are not synchronized.
 - A key change must be treated as a security warning, not silently accepted. The current UI permits repinning only after an explicit confirmation; operators should investigate unexpected rotations before asking users to verify again.
 - Device linking transfers protocol identity through the SDK's encrypted provisioning flow. It does not automatically transfer the device-local decrypted chat history.
 - Revoking a device blocks its relay credential and server-side device state. It does not remotely erase data already copied to a previously authorized device. Confirm identity rotation and re-link behavior against the installed SDK and backend.
