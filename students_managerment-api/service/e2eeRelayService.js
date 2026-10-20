@@ -67,9 +67,14 @@ const uploadPreKeys = async (userId, deviceId, body = {}) => {
             (key.signature != null && (typeof key.signature !== 'string' || key.signature.length > 16384)) ||
             ids.has(identity)) throw fail(400, 'Prekey không hợp lệ hoặc trùng ID/type');
         const decodedPublicKey = Buffer.from(key.publicKey, 'base64');
-        const expectedPublicLength = key.type.startsWith('ec') ? 32 : 1568;
+        // OpenE2EE SDK encodes ML-KEM-1024 public keys as 0x0A || 1568 raw bytes.
+        // The algorithm tag is part of the wire key, so the encoded public key is 1569 bytes.
+        const expectedPublicLength = key.type.startsWith('ec') ? 32 : 1569;
         if (decodedPublicKey.length !== expectedPublicLength || decodedPublicKey.toString('base64') !== key.publicKey) {
             throw fail(400, 'Độ dài hoặc encoding public prekey không hợp lệ');
+        }
+        if (!key.type.startsWith('ec') && decodedPublicKey[0] !== 0x0A) {
+            throw fail(400, 'ML-KEM public prekey phải có algorithm tag 0x0A');
         }
         if (['ecSignedPreKey', 'kemOneTimePreKey', 'kemLastResortPreKey'].includes(key.type)) {
             const signature = Buffer.from(key.signature || '', 'base64');
