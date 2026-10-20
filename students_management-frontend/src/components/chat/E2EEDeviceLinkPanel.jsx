@@ -204,7 +204,12 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
                 type="button"
                 role={compact ? 'menuitem' : undefined}
                 onClick={() => {
-                    setMode(['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) ? 'link-this-device' : 'primary');
+                    setMode(
+                        ['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) ||
+                        (clientState?.deviceId != null && Number(clientState.deviceId) !== 1)
+                            ? 'link-this-device'
+                            : 'primary'
+                    );
                     setOpen(true);
                 }}
                 className={compact
@@ -258,11 +263,27 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
                                 <p className="text-sm text-slate-600 dark:text-slate-300">
                                     Tạo mã liên kết trên thiết bị chính để chuyển identity một cách mã hóa. Không gửi private key trực tiếp qua chat hoặc email.
                                 </p>
-                                <button type="button" disabled={busy || !clientState?.isLocalStoreReady || Number(clientState.deviceId) !== 1} onClick={startPrimaryLink} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                                {!clientState?.isLocalStoreReady && (
+                                    <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+                                        {clientState?.errorCode === 'E2EE_DEVICE_LINK_REQUIRED'
+                                            ? 'Tài khoản đã có identity E2EE trên thiết bị khác. Hãy liên kết trình duyệt này từ thiết bị chính; không tạo identity mới.'
+                                            : clientState?.errorCode === 'E2EE_DEVICE_REVOKED'
+                                                ? 'Thiết bị này đã bị thu hồi. Hãy liên kết lại từ thiết bị chính.'
+                                                : clientState?.errorCode === 'E2EE_DEVICE_CREDENTIAL_MISSING'
+                                                    ? 'Thiết bị chưa có thông tin xác thực cục bộ. Hãy liên kết từ thiết bị chính.'
+                                                    : 'Đang khởi tạo kho khóa E2EE cục bộ. Nút tạo mã sẽ mở khi thiết bị chính sẵn sàng.'}
+                                    </p>
+                                )}
+                                {clientState?.isLocalStoreReady && Number(clientState.deviceId) !== 1 && (
+                                    <p role="status" className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-800 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">
+                                        Thiết bị này không phải thiết bị chính (ID {String(clientState.deviceId)}). Hãy mở mục này trên thiết bị chính để tạo mã, sau đó dán mã vào đây.
+                                    </p>
+                                )}
+                                <button type="button" disabled={busy || !clientState?.isLocalStoreReady || Number(clientState.deviceId) !== 1} onClick={startPrimaryLink} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-50">
                                     {busy && <LoaderCircle size={16} className="animate-spin" />}
                                     Tạo mã liên kết
                                 </button>
-                                {['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) && (
+                                {(['E2EE_DEVICE_LINK_REQUIRED', 'E2EE_DEVICE_REVOKED', 'E2EE_DEVICE_CREDENTIAL_MISSING'].includes(clientState?.errorCode) || (clientState?.deviceId != null && Number(clientState.deviceId) !== 1)) && (
                                     <button type="button" onClick={() => setMode('link-this-device')} className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm dark:border-slate-700">
                                         Liên kết trình duyệt này từ thiết bị chính
                                     </button>
