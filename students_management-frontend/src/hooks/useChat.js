@@ -1166,6 +1166,11 @@ export const useChat = () => {
         if (!activeId || !file) return;
         const e2eeStatusResponse = await e2eeRelayApi.getConversationStatus(activeId);
         const e2eeStatus = e2eeStatusResponse.data?.data;
+        if (!e2eeStatus || typeof e2eeStatus.available !== 'boolean') {
+            const error = new Error('Không thể xác minh trạng thái bảo mật của cuộc trò chuyện. Tệp chưa được gửi.');
+            error.code = 'E2EE_STATUS_UNVERIFIED';
+            throw error;
+        }
         if (e2eeStatus?.enabled && e2eeStatus?.mode !== 'paused') {
             const conversation = conversations.find(item => Number(item.id) === Number(activeId));
             if (conversation?.type !== 'direct' || !conversation?.userId) {
