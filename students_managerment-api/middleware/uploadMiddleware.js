@@ -27,8 +27,10 @@ const MIME_LIMITS = {
     'audio/ogg': 100 * 1024 * 1024,
     'audio/webm': 100 * 1024 * 1024,
 
-    // PDF and documents: 100 MB
+    // PDF, archives and documents: 100 MB
     'application/pdf': 100 * 1024 * 1024,
+    'application/zip': 100 * 1024 * 1024,
+    'application/x-zip-compressed': 100 * 1024 * 1024,
     'text/plain': 100 * 1024 * 1024,
 
     'application/msword': 100 * 1024 * 1024,

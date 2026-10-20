@@ -52,6 +52,13 @@ const hasSignature = (mimeType, bytes) => {
             return containsAscii('RIFF') && containsAscii('WEBP', 8);
         case 'application/pdf':
             return containsAscii('%PDF-');
+        case 'application/zip':
+        case 'application/x-zip-compressed':
+            // ZIP local-file header, empty archive end-of-central-directory,
+            // or data-descriptor signature. Do not trust the filename alone.
+            return startsWith(0x50, 0x4b, 0x03, 0x04) ||
+                startsWith(0x50, 0x4b, 0x05, 0x06) ||
+                startsWith(0x50, 0x4b, 0x07, 0x08);
         case 'video/mp4':
             return containsAscii('ftyp', 4);
         case 'video/webm':
