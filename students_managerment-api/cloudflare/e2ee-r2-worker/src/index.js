@@ -132,31 +132,36 @@ export default {
             }
         }
 
-        const object = request.method === 'HEAD'
-            ? await env.E2EE_BUCKET.head(key)
-            : await env.E2EE_BUCKET.get(key);
-        if (!object) return withCors(json(404, 'Không tìm thấy ciphertext'), cors);
-        if (object.size !== ticket.expectedSize) return withCors(json(409, 'Kích thước ciphertext không khớp'), cors);
-        const storedDigest = object.checksums?.sha256;
-        const storedDigestB64 = storedDigest
-            ? btoa(String.fromCharCode(...new Uint8Array(storedDigest))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
-            : '';
-        if (storedDigestB64 !== ticket.expectedDigest) return withCors(json(409, 'Digest ciphertext không khớp'), cors);
-        if (request.method === 'HEAD') {
-            return withCors(new Response(null, {
-                status: 200,
-                headers: { 'content-type': 'application/octet-stream', 'content-length': String(object.size), 'x-e2ee-sha256': storedDigestB64 }
-            }), cors);
-        }
-        return withCors(new Response(object.body, {
-            status: 200,
-            headers: {
-                'content-type': 'application/octet-stream',
-                'content-length': String(object.size),
-                'x-e2ee-sha256': storedDigestB64,
-                'content-disposition': 'attachment',
-                'x-content-type-options': 'nosniff'
+        try {
+            const object = request.method === 'HEAD'
+                ? await env.E2EE_BUCKET.head(key)
+                : await env.E2EE_BUCKET.get(key);
+            if (!object) return withCors(json(404, 'Không tìm thấy ciphertext'), cors);
+            if (object.size !== ticket.expectedSize) return withCors(json(409, 'Kích thước ciphertext không khớp'), cors);
+            const storedDigest = object.checksums?.sha256;
+            const storedDigestB64 = storedDigest
+                ? btoa(String.fromCharCode(...new Uint8Array(storedDigest))).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '')
+                : '';
+            if (storedDigestB64 !== ticket.expectedDigest) return withCors(json(409, 'Digest ciphertext không khớp'), cors);
+            if (request.method === 'HEAD') {
+                return withCors(new Response(null, {
+                    status: 200,
+                    headers: { 'content-type': 'application/octet-stream', 'content-length': String(object.size), 'x-e2ee-sha256': storedDigestB64 }
+                }), cors);
             }
-        }), cors);
+            return withCors(new Response(object.body, {
+                status: 200,
+                headers: {
+                    'content-type': 'application/octet-stream',
+                    'content-length': String(object.size),
+                    'x-e2ee-sha256': storedDigestB64,
+                    'content-disposition': 'attachment',
+                    'x-content-type-options': 'nosniff'
+                }
+            }), cors);
+        } catch {
+            // Keep provider errors and internal object keys out of client responses.
+            return withCors(json(502, 'Không thể truy cập ciphertext'), cors);
+        }
     }
 };
