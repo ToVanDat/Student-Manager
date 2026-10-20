@@ -1303,6 +1303,14 @@ export const useChat = () => {
         try {
             const statusResponse = await e2eeRelayApi.getConversationStatus(activeId);
             const e2eeStatus = statusResponse.data?.data;
+            // A successful HTTP response with an unknown/malformed status is not
+            // permission to downgrade to plaintext. The API explicitly returns
+            // available=false only when the additive E2EE migration is absent.
+            if (!e2eeStatus || typeof e2eeStatus.available !== 'boolean') {
+                const error = new Error('Không thể xác minh trạng thái bảo mật của cuộc trò chuyện. Tin nhắn chưa được gửi.');
+                error.code = 'E2EE_STATUS_UNVERIFIED';
+                throw error;
+            }
             if (e2eeStatus?.enabled && e2eeStatus?.mode !== 'paused') {
                 const conversation = conversations.find(item => Number(item.id) === Number(activeId));
                 if (conversation?.type !== 'direct' || !conversation?.userId) {
