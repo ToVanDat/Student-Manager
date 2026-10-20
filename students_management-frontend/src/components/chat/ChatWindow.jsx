@@ -40,6 +40,7 @@ import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'sonner';
 
 import MessageBubble, { MessageMediaPreview } from './MessageBubble';
+import E2EEIdentityVerification from './E2EEIdentityVerification';
 import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
 import { notificationApi } from '@/api/notificationApi';
@@ -99,6 +100,7 @@ export default function ChatWindow({
     const { isDarkMode } = useTheme();
     const activeConversationAvatar = activeConversation?.avatar_url || activeConversation?.avatarUrl || activeConversation?.avatar || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
+    const [showE2EEIdentityVerification, setShowE2EEIdentityVerification] = useState(false);
     const [chatTheme, setChatTheme] = useState('default');
     const [showChatThemePicker, setShowChatThemePicker] = useState(false);
     const [savingChatThemeIds, setSavingChatThemeIds] = useState(() => new Set());
@@ -1082,6 +1084,22 @@ export default function ChatWindow({
                                 <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
                                     <ShieldCheck size={16} /> E2EE
                                 </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowE2EEIdentityVerification(true)}
+                                    className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-slate-800"
+                                    title="So sánh mã an toàn với người nhận"
+                                >
+                                    <ShieldCheck size={15} /> Xác minh
+                                </button>
+                                {showE2EEIdentityVerification && (
+                                    <E2EEIdentityVerification
+                                        currentUserId={currentUserId}
+                                        recipientUserId={directUserId}
+                                        recipientName={activeConversation?.name || activeConversation?.username || activeConversation?.fullName}
+                                        onClose={() => setShowE2EEIdentityVerification(false)}
+                                    />
+                                )}
                                 <button
                                 type="button"
                                 onClick={onPauseE2EE}
