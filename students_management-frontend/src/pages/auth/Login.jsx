@@ -514,184 +514,120 @@ function Login() {
     // =================================================
 
     return (
-
-        <div className="flex min-h-screen w-full items-center justify-center bg-linear-to-br from-slate-50 to-slate-100 p-0">
-
-            <div className="grid min-h-screen w-full grid-cols-[55%_45%] overflow-hidden bg-white max-[1100px]:grid-cols-[52%_48%] max-[900px]:grid-cols-2 max-[800px]:flex max-[800px]:flex-col">
-
-
-                {/* =================================================
-                    LEFT BANNER
-                ================================================= */}
-
+        <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-2">
+            <div className="min-h-[190px] overflow-hidden p-3 sm:p-5 lg:min-h-screen lg:p-6">
                 <AuthBanner />
-
-
-                {/* =================================================
-                    RIGHT FORM
-                ================================================= */}
-
-                <div className="flex min-h-screen items-center justify-center overflow-y-auto bg-white max-[800px]:min-h-[54vh] max-[800px]:flex-1 max-[800px]:items-start">
-
-                    <div className="w-full max-w-[460px] px-5 py-7 min-[451px]:px-6 min-[451px]:py-8 min-[601px]:px-[30px] min-[601px]:py-[35px] min-[901px]:px-10 min-[901px]:py-[45px] min-[1101px]:p-[55px] max-[800px]:max-w-[520px]">
-
-                        {/* LANGUAGE: grouped at the top of the form, separate from the banner */}
-                        <div className="mb-6 flex items-center justify-end min-[601px]:mb-7">
-                            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label={t('language')}>
-                                <Languages size={16} aria-hidden="true" className="ml-2 mr-1 text-slate-500" />
-                                {[
-                                    { value: 'vi', label: 'Tiếng Việt', shortLabel: 'VI', Flag: VN },
-                                    { value: 'en', label: 'English', shortLabel: 'EN', Flag: GB },
-                                ].map(option => (
-                                    <button
-                                        key={option.value}
-                                        type="button"
-                                        onClick={() => setLanguage(option.value)}
-                                        aria-pressed={language === option.value}
-                                        aria-label={option.label}
-                                        title={option.label}
-                                        className={"inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 " + (language === option.value ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100')}
-                                    >
-                                        <option.Flag aria-hidden="true" className="shrink-0 rounded-[2px] shadow-sm" style={{ width: 18, height: 12, display: 'inline-block' }} />
-                                        <span>{option.shortLabel}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* BRAND */}
-
-                        <div className="mb-[25px] flex items-center gap-2.5 min-[451px]:mb-7 min-[601px]:mb-[35px] min-[901px]:mb-[45px]">
-
-                            <div className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-linear-to-br from-blue-600 to-blue-700 text-xs font-extrabold tracking-wide text-white shadow-lg shadow-blue-600/20 min-[451px]:size-[46px] min-[451px]:rounded-xl min-[451px]:text-sm">
-                                SM
-                            </div>
-
-
-                            <div>
-
-                                <h1 className="m-0 text-[15px] leading-[1.3] font-bold text-slate-900 min-[451px]:text-[17px]">
-                                    {t('authBrandTitle')}
-                                </h1>
-
-                                <p className="mt-[3px] mb-0 text-[9px] leading-[1.3] font-medium text-slate-400 min-[451px]:text-[11px]">
-                                    {t('authBrandSubtitle')}
-                                </p>
-
-                            </div>
-
-                        </div>
-
-
-                        {/* HEADING */}
-
-                        <div className="mb-[25px] min-[451px]:mb-[30px]">
-
-                            <h2 className="mb-2 text-2xl leading-tight font-bold text-slate-900 min-[451px]:text-[26px] min-[601px]:text-[28px] min-[901px]:text-[31px]">
-
-                                {mode === 'login' &&
-                                    t('loginHeading')}
-
-                                {mode === 'register' &&
-                                    t('registerHeading')}
-
-                                {mode === 'forgot' &&
-                                    t('forgotHeading')}
-
-                            </h2>
-
-
-                            <p className="m-0 text-xs leading-relaxed text-slate-500 min-[451px]:text-[13px]">
-
-                                {mode === 'login' &&
-                                    t('loginSubtitle')}
-
-                                {mode === 'register' &&
-                                    t('registerSubtitle')}
-
-                                {mode === 'forgot' &&
-                                    t('forgotSubtitle')}
-
-                            </p>
-
-                        </div>
-
-
-                        {/* LOGIN */}
-
-                        {mode === 'login' && (
-                            <>
-                                {renderLogin()}
-                                <AdvancedLoginMethods
-                                    username={username}
-                                    onLogin={handleAdvancedLogin}
-                                    onError={reportAdvancedLoginError}
-                                    onLoading={setAdvancedLoading}
-                                />
-                                <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
-                                    <button
-                                        type="button"
-                                        aria-expanded={showQrLogin}
-                                        aria-controls="qr-login-panel"
-                                        onClick={() => setShowQrLogin((visible) => !visible)}
-                                        className="group flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                                    >
-                                        <span className="flex items-center gap-2.5">
-                                            <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"><QrCode size={17} aria-hidden="true" /></span>
-                                            <span className="text-left">Đăng nhập bằng mã QR</span>
-                                        </span>
-                                        {showQrLogin ? <ChevronUp size={17} aria-hidden="true" className="text-slate-400" /> : <ChevronDown size={17} aria-hidden="true" className="text-slate-400" />}
-                                    </button>
-                                    {showQrLogin && (
-                                        <div id="qr-login-panel" className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                                            <QrLoginPanel onLogin={handleAdvancedLogin} />
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-
-
-                        {/* REGISTER */}
-
-                        {mode === 'register' &&
-                            renderRegister()}
-
-
-                        {/* FORGOT PASSWORD */}
-
-                        {mode === 'forgot' && (
-
-                            <ForgotPasswordForm
-
-                                onLogin={() =>
-                                    changeMode(
-                                        'login'
-                                    )
-                                }
-
-                                setError={
-                                    setError
-                                }
-
-                                setSuccess={
-                                    setSuccess
-                                }
-
-                            />
-
-                        )}
-
-                    </div>
-
-                </div>
-
             </div>
 
-        </div>
+            <section className="flex min-h-[calc(100vh-190px)] items-center justify-center px-4 py-8 sm:px-8 sm:py-10 lg:min-h-screen lg:px-10 xl:px-14">
+                <div className="absolute right-4 top-4 z-10 sm:right-8 sm:top-7 lg:right-10">
+                    <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label={t('language')}>
+                        <Languages size={15} aria-hidden="true" className="ml-2 text-slate-500" />
+                        {[
+                            { value: 'vi', label: 'Tiếng Việt', shortLabel: 'VI', Flag: VN },
+                            { value: 'en', label: 'English', shortLabel: 'EN', Flag: GB },
+                        ].map(option => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setLanguage(option.value)}
+                                aria-pressed={language === option.value}
+                                aria-label={option.label}
+                                title={option.label}
+                                className={"inline-flex min-h-8 items-center gap-1.5 rounded-full px-2.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 " + (language === option.value ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-100')}
+                            >
+                                <option.Flag aria-hidden="true" className="shrink-0 rounded-[2px]" style={{ width: 17, height: 11 }} />
+                                <span>{option.shortLabel}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
+                <div className="w-full max-w-[440px] rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-9">
+                    <div className="mb-8 flex items-center gap-3">
+                        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold tracking-wide text-white">
+                            SM
+                        </div>
+                        <div>
+                            <h1 className="m-0 text-base font-bold tracking-tight text-slate-950">{t('authBrandTitle')}</h1>
+                            <p className="mt-1 mb-0 text-xs text-slate-500">{t('authBrandSubtitle')}</p>
+                        </div>
+                    </div>
+
+                    <div className="mb-6">
+                        <p className="mb-2 inline-flex text-xs font-semibold text-blue-700">
+                            {mode === 'login' ? 'STUDENT MANAGER' : mode === 'register' ? 'CREATE ACCOUNT' : 'ACCOUNT RECOVERY'}
+                        </p>
+                        <h2 className="mb-2 text-[30px] font-extrabold tracking-[-0.04em] text-slate-950 sm:text-[36px]">
+                            {mode === 'login' && t('loginHeading')}
+                            {mode === 'register' && t('registerHeading')}
+                            {mode === 'forgot' && t('forgotHeading')}
+                        </h2>
+                        <p className="m-0 text-sm leading-6 text-slate-500">
+                            {mode === 'login' && t('loginSubtitle')}
+                            {mode === 'register' && t('registerSubtitle')}
+                            {mode === 'forgot' && t('forgotSubtitle')}
+                        </p>
+                    </div>
+
+                    {mode === 'login' && (
+                        <>
+                            {renderLogin()}
+                            <AdvancedLoginMethods
+                                onLogin={handleAdvancedLogin}
+                                onError={reportAdvancedLoginError}
+                                onLoading={setAdvancedLoading}
+                            />
+
+                            <div className="mt-5 border-t border-slate-200 pt-4">
+                                <button
+                                    type="button"
+                                    aria-expanded={showQrLogin}
+                                    aria-controls="qr-login-panel"
+                                    onClick={() => {
+                                        setShowQrLogin(visible => !visible);
+                                        setError('');
+                                        setSuccess('');
+                                    }}
+                                    className="group flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-left shadow-sm transition hover:border-blue-300 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                >
+                                    <span className="flex items-center gap-3">
+                                        <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 transition group-hover:bg-blue-100 group-hover:text-blue-700">
+                                            <QrCode size={18} aria-hidden="true" />
+                                        </span>
+                                        <span>
+                                            <span className="block text-sm font-semibold text-slate-800">Đăng nhập bằng mã QR</span>
+                                            <span className="mt-0.5 block text-xs font-normal text-slate-500">Xác nhận bằng điện thoại đã đăng nhập</span>
+                                        </span>
+                                    </span>
+                                    {showQrLogin ? <ChevronUp size={17} aria-hidden="true" className="shrink-0 text-slate-400" /> : <ChevronDown size={17} aria-hidden="true" className="shrink-0 text-slate-400" />}
+                                </button>
+                                {showQrLogin && (
+                                    <div id="qr-login-panel" className="mt-3">
+                                        <QrLoginPanel onLogin={handleAdvancedLogin} />
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
+
+                    {mode === 'register' && renderRegister()}
+
+                    {mode === 'forgot' && (
+                        <ForgotPasswordForm
+                            onLogin={() => changeMode('login')}
+                            setError={setError}
+                            setSuccess={setSuccess}
+                        />
+                    )}
+
+                    <div className="mt-7 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">
+                        Student Manager · Secure account access
+                    </div>
+                </div>
+            </section>
+        </main>
     );
-
 }
 
 

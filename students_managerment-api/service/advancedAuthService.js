@@ -100,11 +100,22 @@ async function linkGoogle(userId, idToken) {
     if (existing.rows[0] && String(existing.rows[0].user_id) !== String(userId)) {
         throw new Error('Tài khoản Google này đã liên kết với tài khoản khác');
     }
+
+    // Never silently replace a different Google identity already linked to this
+    // Student Manager account. Re-linking must be an explicit, separate flow.
+    const currentLink = await pool.query(
+        'SELECT provider_subject FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2',
+        [userId, 'google']
+    );
+    if (currentLink.rows[0] && currentLink.rows[0].provider_subject !== google.sub) {
+        throw new Error('Tài khoản này đã liên kết với một Google khác. Hãy hủy liên kết hiện tại trước khi liên kết tài khoản mới.');
+    }
+
     await pool.query(
         `INSERT INTO user_oauth_accounts (user_id, provider, provider_subject, provider_email)
          VALUES ($1, 'google', $2, $3)
          ON CONFLICT (user_id, provider) DO UPDATE
-         SET provider_subject = EXCLUDED.provider_subject, provider_email = EXCLUDED.provider_email, linked_at = CURRENT_TIMESTAMP`,
+         SET provider_email = EXCLUDED.provider_email, linked_at = CURRENT_TIMESTAMP`,
         [userId, google.sub, google.email]
     );
     return { provider: 'google', email: google.email };

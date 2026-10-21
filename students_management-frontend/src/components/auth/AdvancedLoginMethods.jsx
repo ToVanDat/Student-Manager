@@ -1,62 +1,71 @@
 import { useEffect, useRef, useState } from 'react';
-import { Fingerprint, ShieldCheck } from 'lucide-react';
-import { beginPasskeyLoginApi, finishPasskeyLoginApi, googleLoginApi } from '@/api/authApi.js';
+import { ShieldCheck } from 'lucide-react';
+import { googleLoginApi } from '@/api/authApi.js';
 
-const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), c => c.charCodeAt(0));
-const encode = value => btoa(String.fromCharCode(...new Uint8Array(value))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-const serializeCredential = credential => ({
-    id: credential.id,
-    rawId: encode(credential.rawId),
-    type: credential.type,
-    authenticatorAttachment: credential.authenticatorAttachment,
-    response: {
-        clientDataJSON: encode(credential.response.clientDataJSON),
-        authenticatorData: encode(credential.response.authenticatorData),
-        signature: encode(credential.response.signature),
-        userHandle: credential.response.userHandle ? encode(credential.response.userHandle) : null
-    },
-    clientExtensionResults: credential.getClientExtensionResults()
-});
-
-export default function AdvancedLoginMethods({ username, onLogin, onError, onLoading }) {
+export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     const googleButtonRef = useRef(null);
+    const callbacksRef = useRef({ onLogin, onError, onLoading });
+    callbacksRef.current = { onLogin, onError, onLoading };
     const [googleReady, setGoogleReady] = useState(false);
+    const [googleLoadError, setGoogleLoadError] = useState('');
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         if (!clientId || !googleButtonRef.current) return undefined;
+
         let cancelled = false;
+        let script = document.querySelector('script[data-google-identity]');
+        let createdScript = false;
+
+        const handleScriptError = () => {
+            if (!cancelled) setGoogleLoadError('Không tải được dịch vụ Google. Hãy kiểm tra kết nối mạng hoặc thử lại sau.');
+        };
+
         const initialize = () => {
             if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
+
             window.google.accounts.id.initialize({
                 client_id: clientId,
                 callback: async result => {
-                    if (!result?.credential) return onError('Google không trả về ID token.');
+                    if (!result?.credential) {
+                        callbacksRef.current.onError('Google không trả về ID token.');
+                        return;
+                    }
+
                     setBusy(true);
-                    onLoading(true);
+                    callbacksRef.current.onLoading(true);
+                    callbacksRef.current.onError('');
+
                     try {
                         const data = await googleLoginApi(result.credential);
-                        onLogin(data);
+                        callbacksRef.current.onLogin(data);
                     } catch (error) {
-                        onError(error.response?.data?.message || 'Đăng nhập Google thất bại.');
+                        callbacksRef.current.onError(error.response?.data?.message || 'Đăng nhập Google thất bại.');
                     } finally {
                         setBusy(false);
-                        onLoading(false);
+                        callbacksRef.current.onLoading(false);
                     }
                 },
                 auto_select: false
             });
+
             window.google.accounts.id.renderButton(googleButtonRef.current, {
-                type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
-                shape: 'rectangular', width: Math.min(320, Math.max(200, googleButtonRef.current.parentElement?.clientWidth || 320)), logo_alignment: 'left'
+                type: 'standard',
+                theme: 'outline',
+                size: 'large',
+                text: 'continue_with',
+                shape: 'rectangular',
+                width: Math.min(320, Math.max(200, googleButtonRef.current.parentElement?.clientWidth || 320)),
+                logo_alignment: 'left'
             });
+            setGoogleLoadError('');
             setGoogleReady(true);
         };
+
         if (window.google?.accounts?.id) {
             initialize();
         } else {
-            let script = document.querySelector('script[data-google-identity]');
             if (!script) {
                 script = document.createElement('script');
                 script.src = 'https://accounts.google.com/gsi/client';
@@ -64,67 +73,49 @@ export default function AdvancedLoginMethods({ username, onLogin, onError, onLoa
                 script.defer = true;
                 script.dataset.googleIdentity = 'true';
                 document.head.appendChild(script);
+                createdScript = true;
             }
             script.addEventListener('load', initialize);
+            script.addEventListener('error', handleScriptError);
         }
+
         return () => {
             cancelled = true;
+            script?.removeEventListener('load', initialize);
+            script?.removeEventListener('error', handleScriptError);
+            // Do not remove a shared Google Identity Services script; other
+            // authenticated pages may rely on it.
+            if (createdScript && script && !script.isConnected) script = null;
         };
-    }, [onError, onLoading, onLogin]);
-
-    const loginWithPasskey = async () => {
-        onError('');
-        if (!username.trim()) {
-            onError('Nhập username trước khi đăng nhập bằng passkey.');
-            return;
-        }
-        if (!window.isSecureContext || !navigator.credentials?.get) {
-            onError('Trình duyệt hoặc kết nối hiện tại không hỗ trợ passkey. Hãy dùng đăng nhập mật khẩu.');
-            return;
-        }
-        setBusy(true);
-        onLoading(true);
-        try {
-            const { challengeId, options } = await beginPasskeyLoginApi(username.trim());
-            const publicKey = {
-                ...options,
-                challenge: decode(options.challenge),
-                allowCredentials: (options.allowCredentials || []).map(item => ({
-                    ...item,
-                    id: decode(item.id)
-                }))
-            };
-            const credential = await navigator.credentials.get({ publicKey });
-            if (!credential) throw new Error('Bạn đã hủy xác thực passkey.');
-            const data = await finishPasskeyLoginApi(challengeId, serializeCredential(credential));
-            onLogin(data);
-        } catch (error) {
-            onError(error.response?.data?.message || error.message || 'Đăng nhập passkey thất bại.');
-        } finally {
-            setBusy(false);
-            onLoading(false);
-        }
-    };
+    }, []);
 
     return (
-        <div className="mt-5 space-y-3.5">
-            <div className="relative flex items-center gap-3 text-[11px] text-slate-400">
+        <div className="mt-4 space-y-3">
+            <div className="relative flex items-center gap-3 text-xs text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
-                <span className="whitespace-nowrap">Hoặc đăng nhập bằng</span>
+                <span className="whitespace-nowrap">Hoặc tiếp tục bằng</span>
                 <span className="h-px flex-1 bg-slate-200" />
             </div>
-            <button type="button" onClick={loginWithPasskey} disabled={busy} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
-                <Fingerprint size={18} /> Đăng nhập bằng passkey
-            </button>
-            <div className="flex w-full justify-center overflow-hidden" aria-label="Đăng nhập bằng Google">
-                <div ref={googleButtonRef} />
+
+            <div className="flex min-h-11 w-full justify-center overflow-hidden" aria-label="Đăng nhập bằng Google">
+                <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-60' : ''} />
             </div>
+
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                <p className="text-center text-xs text-slate-400"><ShieldCheck className="mr-1 inline" size={14} />Cần cấu hình VITE_GOOGLE_CLIENT_ID để bật Google Login.</p>
+                <p className="text-center text-xs text-slate-400">
+                    <ShieldCheck className="mr-1 inline" size={14} />
+                    Đăng nhập Google chỉ dùng được khi ứng dụng đã được cấu hình OAuth.
+                </p>
             )}
-            {!googleReady && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                <p className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
+            {googleLoadError && (
+                <p role="status" aria-live="polite" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-xs leading-5 text-amber-800">
+                    {googleLoadError}
+                </p>
             )}
+            {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
+            )}
+            <p className="text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật.</p>
         </div>
     );
 }

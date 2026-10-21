@@ -118,7 +118,7 @@ export default function AdvancedSecurityMethods() {
                 <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Passkey và tài khoản Google</h3>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Passkey xác thực trên thiết bị của bạn; máy chủ chỉ lưu khóa công khai. Google chỉ liên kết sau khi bạn xác thực trong phiên tài khoản hiện tại.
+                Khi liên kết Google, bạn cần đang đăng nhập Student Manager và xác thực tài khoản Google trong cửa sổ Google. Backend kiểm tra Google ID token, email đã xác minh và bảo đảm Google chưa thuộc tài khoản Student Manager khác. Một Google khác đã liên kết sẽ không bị thay thế âm thầm.
             </p>
             <button type="button" disabled={busy} onClick={registerPasskey} className="mb-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
                 <Fingerprint size={16} /> Thêm passkey
@@ -136,6 +136,7 @@ export default function AdvancedSecurityMethods() {
                 {!credentials.length && <p className="text-xs text-slate-400">Chưa có passkey hoặc chưa tải được danh sách.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
+            <p className="mb-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">Chỉ xác nhận tài khoản Google của chính bạn. Sau khi liên kết, Google Login sẽ mở đúng tài khoản Student Manager hiện tại và giữ nguyên role, username cùng dữ liệu.</p>
             <div ref={googleButtonRef} />
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
             {message && <p role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message}</p>}

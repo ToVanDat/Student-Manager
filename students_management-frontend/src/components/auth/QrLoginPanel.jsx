@@ -138,38 +138,81 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     }) : '';
 
     return (
-        <section className="mt-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-            <div className="mb-3 flex items-center gap-2">
-                <QrCode size={18} className="text-blue-600" />
-                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Đăng nhập bằng QR</h3>
+        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Đăng nhập bằng mã QR">
+            <div className="mb-4 flex items-start gap-3">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                    <QrCode size={20} aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                    <h3 className="m-0 text-sm font-bold text-slate-900">Đăng nhập bằng mã QR</h3>
+                    <p className="mt-1 mb-0 text-xs leading-5 text-slate-500">
+                        Dùng điện thoại đã đăng nhập Student Manager để quét và xác nhận.
+                    </p>
+                </div>
             </div>
+
             {allowApprove && !approvalOnly && (
-                <div className="mb-4 flex gap-2">
-                    <button type="button" onClick={() => { setMode('login'); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold ${mode === 'login' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>Hiển thị QR</button>
-                    <button type="button" onClick={() => { setMode('approve'); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold ${mode === 'approve' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'}`}>Quét để xác nhận</button>
+                <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
+                    <button type="button" onClick={() => { setMode('login'); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Hiển thị QR</button>
+                    <button type="button" onClick={() => { setMode('approve'); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${mode === 'approve' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Quét để xác nhận</button>
                 </div>
             )}
+
             {mode === 'login' && !approvalOnly && (
-                <div className="flex flex-col items-center gap-3">
-                    {request ? <QRCodeSVG value={qrValue} size={208} level="M" includeMargin /> : (
-                        <button type="button" onClick={createRequest} disabled={busy} className="inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white disabled:opacity-50">
-                            <QrCode size={16} /> Tạo mã QR
+                <div className="space-y-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
+                        <ol className="space-y-2 text-xs leading-5 text-slate-600">
+                            <li className="flex gap-2"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">1</span><span>Tạo mã QR trên máy tính.</span></li>
+                            <li className="flex gap-2"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">2</span><span>Mở Student Manager trên điện thoại đã đăng nhập và quét mã.</span></li>
+                            <li className="flex gap-2"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">3</span><span>Kiểm tra yêu cầu rồi nhấn xác nhận trên điện thoại.</span></li>
+                        </ol>
+                    </div>
+
+                    <div className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                        {request ? (
+                            <>
+                                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                                    <QRCodeSVG value={qrValue} size={196} level="M" includeMargin />
+                                </div>
+                                <p className="m-0 text-center text-xs font-medium text-slate-600">Đang chờ xác nhận từ điện thoại</p>
+                            </>
+                        ) : (
+                            <>
+                                <div className="flex size-14 items-center justify-center rounded-2xl bg-slate-100 text-slate-500">
+                                    <QrCode size={27} aria-hidden="true" />
+                                </div>
+                                <p className="m-0 max-w-[240px] text-center text-xs leading-5 text-slate-500">Mã QR chỉ được tạo khi bạn yêu cầu và có thời hạn sử dụng.</p>
+                                <button type="button" onClick={createRequest} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                    <QrCode size={16} aria-hidden="true" /> {busy ? 'Đang tạo mã…' : 'Tạo mã QR'}
+                                </button>
+                            </>
+                        )}
+                    </div>
+
+                    {request && (
+                        <button type="button" onClick={createRequest} disabled={busy} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50">
+                            <RefreshCw size={14} aria-hidden="true" /> Tạo mã QR mới
                         </button>
                     )}
-                    {request && <button type="button" onClick={createRequest} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"><RefreshCw size={14} /> Tạo QR mới</button>}
-                    <p className="m-0 text-center text-xs text-slate-500">{status || 'Mã QR chỉ dùng một lần và hết hạn sau 2 phút.'}</p>
+                    <p role="status" aria-live="polite" className="m-0 text-center text-xs leading-5 text-slate-500">
+                        {status || 'Không chia sẻ ảnh QR với người khác. QR hết hạn sau 2 phút hoặc khi được sử dụng.'}
+                    </p>
                 </div>
             )}
+
             {mode === 'approve' && allowApprove && (
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-xs text-slate-500"><Camera size={15} /> Quét QR từ thiết bị mới, rồi xác nhận yêu cầu.</div>
-                    <video ref={videoRef} muted playsInline className="max-h-64 w-full rounded-lg bg-slate-950 object-cover" />
-                    {cameraError && <p className="m-0 text-xs text-amber-600">{cameraError}</p>}
+                    <div className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">
+                        Quét mã trên máy tính chỉ khi bạn tự yêu cầu đăng nhập. Kiểm tra yêu cầu trước khi cho phép.
+                    </div>
+                    <video ref={videoRef} muted playsInline className="max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
+                    {cameraError && <p role="status" className="m-0 text-xs leading-5 text-amber-700">{cameraError}</p>}
                     <form onSubmit={submitManual} className="space-y-2">
-                        <textarea value={manualPayload} onChange={event => setManualPayload(event.target.value)} rows={2} placeholder="Hoặc dán nội dung QR JSON tại đây" className="w-full rounded-lg border border-slate-200 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-950" />
-                        <button type="submit" disabled={busy || !manualPayload.trim()} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50">Xác nhận yêu cầu</button>
+                        <label className="block text-xs font-semibold text-slate-700" htmlFor="qr-login-manual-payload">Nhập nội dung QR thủ công</label>
+                        <textarea id="qr-login-manual-payload" value={manualPayload} onChange={event => setManualPayload(event.target.value)} rows={2} placeholder="Dán nội dung QR nếu camera không hoạt động" className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
+                        <button type="submit" disabled={busy || !manualPayload.trim()} className="min-h-10 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang xác nhận…' : 'Xác nhận yêu cầu'}</button>
                     </form>
-                    {status && <p role="status" className="text-xs text-slate-500">{status}</p>}
+                    {status && <p role="status" aria-live="polite" className="m-0 text-xs leading-5 text-slate-600">{status}</p>}
                 </div>
             )}
         </section>
