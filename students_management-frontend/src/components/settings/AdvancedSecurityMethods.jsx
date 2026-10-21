@@ -16,11 +16,27 @@ export default function AdvancedSecurityMethods() {
     const [currentPassword, setCurrentPassword] = useState('');
     const googleButtonRef = useRef(null);
     const refresh = useCallback(async () => {
-        try {
-            const [passkeys, linkedGoogle] = await Promise.all([listPasskeysApi(), getGoogleLinkApi()]);
-            setCredentials(passkeys);
-            setGoogleLink(linkedGoogle);
-        } catch (error) { setMessage(error.response?.data?.message || 'Không tải được phương thức bảo mật.'); }
+        const [passkeysResult, googleResult] = await Promise.allSettled([
+            listPasskeysApi(),
+            getGoogleLinkApi()
+        ]);
+        const errors = [];
+
+        if (passkeysResult.status === 'fulfilled') {
+            setCredentials(passkeysResult.value);
+        } else {
+            errors.push('Không tải được danh sách passkey.');
+        }
+
+        if (googleResult.status === 'fulfilled') {
+            setGoogleLink(googleResult.value);
+        } else {
+            errors.push('Không tải được trạng thái liên kết Google.');
+        }
+
+        if (errors.length) {
+            setMessage(errors.join(' '));
+        }
     }, []);
 
     useEffect(() => { void refresh(); }, [refresh]);
