@@ -226,3 +226,13 @@ export async function getPinProtectedE2EEVault(userId) {
     const record = await readRecord(name);
     return record ? createPinProtectedE2EEVault(userId) : null;
 }
+
+/** Cleans up an unfinished PIN setup without touching an already-wrapped key. */
+export async function cancelPinProtectedE2EEVaultSetup(userId) {
+    const name = databaseNameForUser(userId);
+    const record = await readRecord(name);
+    if (!record?.ciphertext) {
+        await deleteRecord(name);
+        activeWrappingKeys.delete(name);
+    }
+}
