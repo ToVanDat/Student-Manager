@@ -23,8 +23,7 @@ const e2eeRelayRouter = require('../router/e2eeRelayRouter');
 const app = express();
 app.disable('x-powered-by');
 
-// Baseline security headers for API responses. HSTS is intentionally left to
-// the TLS-terminating reverse proxy so local HTTP development keeps working.
+// Baseline security headers. TLS/HSTS belongs to the reverse proxy.
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
@@ -33,10 +32,17 @@ app.use((req, res, next) => {
     next();
 });
 
+// Explicit allowlist supports both Vite HTTP and local Nginx HTTPS.
+// Do not use wildcard origins with credentialed requests.
+const configuredOrigins = (process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 const allowedOrigins = new Set([
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     process.env.FRONTEND_URL,
+    ...configuredOrigins,
 ].filter(Boolean));
 
 app.use(express.json({ limit: '1mb' }));
@@ -71,14 +77,11 @@ app.use('/api/messages', messageRouter);
 app.use('/api/calls', callRouter);
 app.use('/api', messageFileRouter);
 
-// Serve only normalized avatar images publicly. Chat attachments stay behind
-// their authenticated download endpoint and are not exposed by static hosting.
 app.use('/media/avatars', express.static(
     path.resolve(__dirname, '../storage/uploads/avatars'),
     { fallthrough: false, immutable: true, maxAge: '7d', index: false }
 ));
 
-// Keep API errors JSON-shaped and avoid returning internal stack traces.
 app.use((error, req, res, next) => {
     if (res.headersSent) return next(error);
 
