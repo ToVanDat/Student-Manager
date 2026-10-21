@@ -222,9 +222,16 @@ export async function removePinProtectionFromE2EEVault(userId) {
 
 /** Returns the PIN vault only when this account has opted into PIN protection. */
 export async function getPinProtectedE2EEVault(userId) {
+    // Preserve the existing E2EE startup path when chat PIN protection is not enabled.
+    if (!globalThis.localStorage?.getItem('student-manager:chat-lock:v1')) return null;
     const name = databaseNameForUser(userId);
     const record = await readRecord(name);
-    return record ? createPinProtectedE2EEVault(userId) : null;
+    if (!record) {
+        const error = new Error('PIN đã bật nhưng kho khóa E2EE chưa được mở bằng PIN.');
+        error.code = 'E2EE_PIN_VAULT_NOT_PROVISIONED';
+        throw error;
+    }
+    return createPinProtectedE2EEVault(userId);
 }
 
 /** Cancels PIN setup safely; if a key was already wrapped, restore it first. */
