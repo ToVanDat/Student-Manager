@@ -103,3 +103,18 @@ export const resetPasswordApi = async (resetToken, newPassword) => {
 
   return response.data;
 };
+
+export const googleLoginApi = async (idToken) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/google/login`, { idToken }, { withCredentials: true });
+  return response.data;
+};
+
+export const beginPasskeyLoginApi = async (username) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/login/options`, { username }, { withCredentials: true });
+  return response.data;
+};
+
+export const finishPasskeyLoginApi = async (challengeId, responsePayload) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/login/verify`, { challengeId, response: responsePayload }, { withCredentials: true });
+  return response.data;
+};
