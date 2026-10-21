@@ -92,11 +92,14 @@ export default function ChatLockGate({ children }) {
             if (document.visibilityState === 'hidden') lock();
             else scheduleIdleLock();
         };
-        const events = ['pointerdown', 'keydown', 'touchstart', 'visibilitychange'];
+        const events = ['pointerdown', 'keydown', 'touchstart'];
         events.forEach(event => window.addEventListener(event, activity, { passive: true }));
+        // visibilitychange is dispatched on document, not window.
+        document.addEventListener('visibilitychange', activity);
         scheduleIdleLock();
         return () => {
             events.forEach(event => window.removeEventListener(event, activity));
+            document.removeEventListener('visibilitychange', activity);
             window.clearTimeout(idleTimer.current);
         };
     }, [record, locked, scheduleIdleLock, lock]);
