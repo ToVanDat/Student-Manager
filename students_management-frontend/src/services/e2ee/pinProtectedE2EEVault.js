@@ -85,20 +85,20 @@ async function deriveWrappingKey(pin, salt) {
     );
 }
 
-async function encryptSecret(secret, key, salt) {
+async function encryptSecret(secret, key, salt, context) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const ciphertext = await crypto.subtle.encrypt(
-        { name: 'AES-GCM', iv },
+        { name: 'AES-GCM', iv, additionalData: new TextEncoder().encode(context) },
         key,
         new Uint8Array(secret)
     );
     return { version: 1, salt: encode(salt), iv: encode(iv), ciphertext: encode(ciphertext) };
 }
 
-async function decryptSecret(record, key) {
+async function decryptSecret(record, key, context) {
     if (!record?.iv || !record?.ciphertext) return null;
     const plaintext = await crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: decode(record.iv) },
+        { name: 'AES-GCM', iv: decode(record.iv), additionalData: new TextEncoder().encode(context) },
         key,
         decode(record.ciphertext)
     );
@@ -140,7 +140,7 @@ export async function unlockPinProtectedE2EEVault(userId, pin) {
     const wrappingKey = await deriveWrappingKey(pin, decode(record.salt));
     if (record.ciphertext) {
         try {
-            await decryptSecret(record, wrappingKey);
+            await decryptSecret(record, wrappingKey, name);
         } catch {
             throw new Error('PIN không thể mở khóa kho E2EE này.');
         }
@@ -152,7 +152,7 @@ export async function unlockPinProtectedE2EEVault(userId, pin) {
         const legacyKey = await legacyVault.getSecret(name);
         if (legacyKey) {
             if (!record.ciphertext) {
-                const wrapped = await encryptSecret(legacyKey, wrappingKey, decode(record.salt));
+                const wrapped = await encryptSecret(legacyKey, wrappingKey, decode(record.salt), name);
                 await writeRecord(name, wrapped);
             }
             // Delete the unwrapped copy only after the wrapped copy is durable.
@@ -179,7 +179,7 @@ export function createPinProtectedE2EEVault(userId) {
             if (secretName !== name) throw new Error('Tên khóa kho E2EE không khớp tài khoản.');
             const wrappingKey = requireWrappingKey(name);
             let record = await readRecord(name);
-            if (record?.ciphertext) return decryptSecret(record, wrappingKey);
+            if (record?.ciphertext) return decryptSecret(record, wrappingKey, name);
 
             // Migration path for a pre-PIN installation whose SDK key is still
             // in the legacy vault. This does not reset or recreate the database.
@@ -187,7 +187,7 @@ export function createPinProtectedE2EEVault(userId) {
             const legacyKey = await legacyVault.getSecret(name);
             if (!legacyKey) return null;
             const salt = record?.salt ? decode(record.salt) : crypto.getRandomValues(new Uint8Array(16));
-            const wrapped = await encryptSecret(legacyKey, wrappingKey, salt);
+            const wrapped = await encryptSecret(legacyKey, wrappingKey, salt, name);
             await writeRecord(name, wrapped);
             await legacyVault.deleteSecret(name);
             return legacyKey;
@@ -197,7 +197,7 @@ export function createPinProtectedE2EEVault(userId) {
             const wrappingKey = requireWrappingKey(name);
             const current = await readRecord(name);
             const salt = current?.salt ? decode(current.salt) : crypto.getRandomValues(new Uint8Array(16));
-            await writeRecord(name, await encryptSecret(secret, wrappingKey, salt));
+            await writeRecord(name, await encryptSecret(secret, wrappingKey, salt, name));
         },
         async deleteSecret(secretName) {
             if (secretName !== name) throw new Error('Tên khóa kho E2EE không khớp tài khoản.');
