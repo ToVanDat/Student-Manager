@@ -5,6 +5,7 @@ import { googleLoginApi } from '@/api/authApi.js';
 export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     const googleButtonRef = useRef(null);
     const [googleReady, setGoogleReady] = useState(false);
+    const [googleLoadError, setGoogleLoadError] = useState('');
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
@@ -14,6 +15,10 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
         let cancelled = false;
         let script = document.querySelector('script[data-google-identity]');
         let createdScript = false;
+
+        const handleScriptError = () => {
+            if (!cancelled) setGoogleLoadError('Không tải được dịch vụ Google. Hãy kiểm tra kết nối mạng hoặc thử lại sau.');
+        };
 
         const initialize = () => {
             if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
@@ -52,6 +57,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 width: Math.min(320, Math.max(200, googleButtonRef.current.parentElement?.clientWidth || 320)),
                 logo_alignment: 'left'
             });
+            setGoogleLoadError('');
             setGoogleReady(true);
         };
 
@@ -68,11 +74,13 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 createdScript = true;
             }
             script.addEventListener('load', initialize);
+            script.addEventListener('error', handleScriptError);
         }
 
         return () => {
             cancelled = true;
             script?.removeEventListener('load', initialize);
+            script?.removeEventListener('error', handleScriptError);
             // Do not remove a shared Google Identity Services script; other
             // authenticated pages may rely on it.
             if (createdScript && script && !script.isConnected) script = null;
@@ -97,8 +105,13 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                     Cần cấu hình VITE_GOOGLE_CLIENT_ID để bật Google Login.
                 </p>
             )}
-            {!googleReady && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                <p className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
+            {googleLoadError && (
+                <p role="status" aria-live="polite" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-xs leading-5 text-amber-800">
+                    {googleLoadError}
+                </p>
+            )}
+            {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
             )}
         </div>
     );
