@@ -99,6 +99,17 @@ CREATE TABLE IF NOT EXISTS conversation_e2ee_settings (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Keep the migration aligned with the relay repository's conversation-state
+-- queries. These additive columns preserve existing conversation settings.
+ALTER TABLE conversation_e2ee_settings
+    ADD COLUMN IF NOT EXISTS e2ee_state TEXT NOT NULL DEFAULT 'active';
+
+ALTER TABLE conversation_e2ee_settings
+    ADD COLUMN IF NOT EXISTS paused_at TIMESTAMPTZ;
+
+ALTER TABLE conversation_e2ee_settings
+    ADD COLUMN IF NOT EXISTS paused_by BIGINT REFERENCES users(id) ON DELETE SET NULL;
+
 
 -- SDK v11 numeric device slots and key inventory. Kept separate from the
 -- earlier UUID device registry until an explicit compatibility migration is
