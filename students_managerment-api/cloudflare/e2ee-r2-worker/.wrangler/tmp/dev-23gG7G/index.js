@@ -67,6 +67,15 @@ var src_default = {
       if (request.headers.get("origin") && !cors["access-control-allow-origin"]) return json(403, "Origin kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p");
       return new Response(null, { status: 204, headers: cors });
     }
+    if (request.method === "GET" && url.pathname === "/") {
+      return withCors(new Response(JSON.stringify({
+        service: "student-manager-e2ee-r2",
+        status: "ok"
+      }), {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8" }
+      }), cors);
+    }
     if (!["PUT", "GET", "HEAD", "DELETE"].includes(request.method) || !/^\/v1\/objects\/[0-9a-f-]{36}$/i.test(url.pathname)) {
       return withCors(json(404, "Kh\xF4ng t\xECm th\u1EA5y endpoint"), cors);
     }
@@ -201,7 +210,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// .wrangler/tmp/bundle-5tshfV/middleware-insertion-facade.js
+// .wrangler/tmp/bundle-tGMesE/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -233,7 +242,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// .wrangler/tmp/bundle-5tshfV/middleware-loader.entry.ts
+// .wrangler/tmp/bundle-tGMesE/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class ___Facade_ScheduledController__ {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
