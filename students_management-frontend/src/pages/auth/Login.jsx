@@ -6,6 +6,7 @@ import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
 import AdvancedLoginMethods from '@/components/auth/AdvancedLoginMethods.jsx';
+import QrLoginPanel from '@/components/auth/QrLoginPanel.jsx';
 import RegisterForm from '@/components/auth/RegisterForm.jsx';
 import AuthBanner from '@/components/auth/AuthBanner.jsx';
 
@@ -624,6 +625,7 @@ function Login() {
                                     onError={reportAdvancedLoginError}
                                     onLoading={setAdvancedLoading}
                                 />
+                                <QrLoginPanel onLogin={handleAdvancedLogin} />
                             </>
                         )}
 
