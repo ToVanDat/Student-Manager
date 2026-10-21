@@ -77,7 +77,10 @@ export default function ChatLockGate({ children }) {
 
     useEffect(() => {
         if (!record || locked) return undefined;
-        const activity = () => scheduleIdleLock();
+        const activity = () => {
+            if (document.visibilityState === 'hidden') lock();
+            else scheduleIdleLock();
+        };
         const events = ['pointerdown', 'keydown', 'touchstart', 'visibilitychange'];
         events.forEach(event => window.addEventListener(event, activity, { passive: true }));
         scheduleIdleLock();
@@ -85,12 +88,20 @@ export default function ChatLockGate({ children }) {
             events.forEach(event => window.removeEventListener(event, activity));
             window.clearTimeout(idleTimer.current);
         };
-    }, [record, locked, scheduleIdleLock]);
+    }, [record, locked, scheduleIdleLock, lock]);
 
     useEffect(() => () => {
         window.clearTimeout(idleTimer.current);
         window.clearInterval(cooldownTimer.current);
     }, []);
+
+    useEffect(() => {
+        if (remainingMs <= 0) return undefined;
+        cooldownTimer.current = window.setInterval(() => {
+            setRemainingMs(value => Math.max(0, value - 1000));
+        }, 1000);
+        return () => window.clearInterval(cooldownTimer.current);
+    }, [remainingMs > 0]);
 
     const submit = async event => {
         event.preventDefault();
