@@ -144,3 +144,20 @@ export const linkGoogleApi = async idToken => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken }, authenticatedAuthConfig());
   return response.data;
 };
+
+export const createQrLoginApi = async () => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login`, {}, { withCredentials: true });
+  return response.data;
+};
+export const pollQrLoginApi = async (requestId, secret) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/poll`, { requestId, secret }, { withCredentials: true });
+  return response.data;
+};
+export const approveQrLoginApi = async (requestId, secret) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/approve`, { requestId, secret }, authenticatedAuthConfig());
+  return response.data;
+};
+export const denyQrLoginApi = async (requestId, secret) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/deny`, { requestId, secret, status: 'denied' }, { withCredentials: true });
+  return response.data;
+};
