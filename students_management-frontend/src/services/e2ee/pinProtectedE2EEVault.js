@@ -6,6 +6,14 @@ const activeWrappingKeys = new Map();
 const databaseNameForUser = userId => `student-manager-e2ee-user-${String(userId)}.db`;
 const encode = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
 const decode = value => Uint8Array.from(atob(value), char => char.charCodeAt(0));
+const bytesEqual = (left, right) => {
+    const a = new Uint8Array(left);
+    const b = new Uint8Array(right);
+    if (a.length !== b.length) return false;
+    let difference = 0;
+    for (let index = 0; index < a.length; index += 1) difference |= a[index] ^ b[index];
+    return difference === 0;
+};
 
 function openDatabase() {
     if (!globalThis.indexedDB) throw new Error('IndexedDB không khả dụng trong trình duyệt này.');
@@ -223,8 +231,14 @@ export async function unlockPinProtectedE2EEVault(userId, pin) {
             if (!record.ciphertext) {
                 const wrapped = await encryptSecret(legacyKey, wrappingKey, decode(record.salt), name);
                 await writeRecord(name, wrapped);
+                record = wrapped;
+            } else {
+                const wrappedKey = await decryptSecret(record, wrappingKey, name);
+                if (!bytesEqual(wrappedKey, legacyKey)) {
+                    throw new Error('Khóa trong kho cũ khác khóa đã bọc; giữ nguyên bản gốc để tránh mất lịch sử E2EE.');
+                }
             }
-            // Delete the unwrapped copy only after the wrapped copy is durable.
+            // Delete the unwrapped copy only after the wrapped copy is durable and verified.
             await legacyVault.deleteSecret(name);
         }
     } catch (error) {
@@ -252,7 +266,7 @@ export function createPinProtectedE2EEVault(userId) {
 
             // Migration path for a pre-PIN installation whose SDK key is still
             // in the legacy vault. This does not reset or recreate the database.
-                    const legacyKey = await legacyVault.getSecret(name);
+            const legacyKey = await legacyVault.getSecret(name);
             if (!legacyKey) return null;
             const salt = record?.salt ? decode(record.salt) : crypto.getRandomValues(new Uint8Array(16));
             const wrapped = await encryptSecret(legacyKey, wrappingKey, salt, name);
@@ -281,7 +295,7 @@ export async function removePinProtectionFromE2EEVault(userId) {
     if (record?.ciphertext) {
         const wrappingKey = requireWrappingKey(name);
         const key = await decryptSecret(record, wrappingKey, name);
-            await legacyVault.setSecret(name, key);
+        await legacyVault.setSecret(name, key);
     }
     await deleteRecord(name);
     activeWrappingKeys.delete(name);
