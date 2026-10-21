@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LockKeyhole, ShieldCheck, UnlockKeyhole } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth.js';
+import { shutdownE2EEClient } from '@/services/e2ee/e2eeClient.js';
+import {
+    lockPinProtectedE2EEVault,
+    unlockPinProtectedE2EEVault,
+    removePinProtectionFromE2EEVault
+} from '@/services/e2ee/pinProtectedE2EEVault.js';
 
 const PIN_KEY = 'student-manager:chat-lock:v1';
 const LOCK_KEY = 'student-manager:chat-lock:locked';
@@ -46,6 +53,8 @@ async function matchesPin(pin, record) {
 }
 
 export default function ChatLockGate({ children }) {
+    const { user } = useAuth();
+    const userId = user?.id == null ? null : String(user.id);
     const [record, setRecord] = useState(() => readJson(PIN_KEY, null));
     const [locked, setLocked] = useState(() => Boolean(readJson(PIN_KEY, null)));
     const [mode, setMode] = useState('unlock');
@@ -61,13 +70,14 @@ export default function ChatLockGate({ children }) {
 
     const lock = useCallback(() => {
         if (!record) return;
+        void shutdownE2EEClient().finally(() => lockPinProtectedE2EEVault(userId));
         sessionStorage.setItem(LOCK_KEY, 'true');
         setLocked(true);
         setMode('unlock');
         setPin('');
         setConfirmPin('');
         setError('');
-    }, [record]);
+    }, [record, userId]);
 
     const scheduleIdleLock = useCallback(() => {
         if (!record || locked) return;
@@ -117,6 +127,11 @@ export default function ChatLockGate({ children }) {
                     setError('Hai lần nhập PIN không khớp.');
                     return;
                 }
+                if (!userId) {
+                    setError('Đăng nhập lại để thiết lập PIN bảo vệ khóa E2EE trên tài khoản này.');
+                    return;
+                }
+                await unlockPinProtectedE2EEVault(userId, pin);
                 const next = await makePinRecord(pin);
                 localStorage.setItem(PIN_KEY, JSON.stringify(next));
                 sessionStorage.removeItem(LOCK_KEY);
@@ -145,6 +160,11 @@ export default function ChatLockGate({ children }) {
                 setError(delay ? 'Đã vượt quá số lần thử. Hãy đợi rồi thử lại.' : 'PIN không đúng.');
                 return;
             }
+            if (!userId) {
+                setError('Đăng nhập lại để mở khóa kho E2EE của tài khoản này.');
+                return;
+            }
+            await unlockPinProtectedE2EEVault(userId, pin);
             localStorage.removeItem(FAILURE_KEY);
             sessionStorage.removeItem(LOCK_KEY);
             setLocked(false);
@@ -158,8 +178,22 @@ export default function ChatLockGate({ children }) {
         }
     };
 
-    const removePin = () => {
-        if (!window.confirm('Tắt PIN khóa chat trên trình duyệt này?')) return;
+    const removePin = async () => {
+        if (!window.confirm('Tắt PIN khóa chat và chuyển khóa E2EE về kho mặc định của trình duyệt này?')) return;
+        if (!userId) {
+            setError('Không xác định được tài khoản hiện tại.');
+            return;
+        }
+        setBusy(true);
+        try {
+            await shutdownE2EEClient();
+            await removePinProtectionFromE2EEVault(userId);
+            lockPinProtectedE2EEVault(userId);
+        } catch (error) {
+            setError(error?.message || 'Không thể gỡ bảo vệ PIN khỏi kho khóa E2EE.');
+            setBusy(false);
+            return;
+        }
         localStorage.removeItem(PIN_KEY);
         localStorage.removeItem(FAILURE_KEY);
         sessionStorage.removeItem(LOCK_KEY);
@@ -168,9 +202,20 @@ export default function ChatLockGate({ children }) {
         setMode('unlock');
         setPin('');
         setConfirmPin('');
+        setBusy(false);
     };
 
-    const openSetup = () => {
+    const openSetup = async () => {
+        setBusy(true);
+        try {
+            await shutdownE2EEClient();
+            lockPinProtectedE2EEVault(userId);
+        } catch (error) {
+            setError(error?.message || 'Không thể khóa kho E2EE trước khi thiết lập PIN.');
+            setBusy(false);
+            return;
+        }
+        setBusy(false);
         setMode('setup');
         setPin('');
         setConfirmPin('');
@@ -231,7 +276,7 @@ export default function ChatLockGate({ children }) {
                 </h2>
                 <p className="mb-5 mt-2 text-center text-sm text-slate-500 dark:text-slate-400">
                     {mode === 'setup'
-                        ? 'PIN chỉ khóa giao diện chat trên trình duyệt này; không thay thế mật khẩu tài khoản.'
+                        ? 'PIN dẫn xuất khóa PBKDF2 để bọc khóa cơ sở dữ liệu E2EE bằng AES-GCM. PIN không thay thế mật khẩu tài khoản.'
                         : 'Nhập PIN để mở lại nội dung chat. Phiên đăng nhập và lịch sử tin nhắn vẫn được giữ nguyên.'}
                 </p>
                 <label htmlFor="chat-lock-pin" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">PIN (6–12 chữ số)</label>
