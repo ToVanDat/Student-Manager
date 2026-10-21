@@ -304,10 +304,17 @@ async function pollQrLogin(requestId, secret, req) {
         if (issuedSession?.sessionId) {
             try {
                 await authRepository.revokeSession(issuedSession.sessionId);
+            } catch {
+                console.error('[AdvancedAuth] QR session revocation failed', {
+                    code: 'QR_SESSION_REVOCATION_FAILED',
+                    sessionId: issuedSession.sessionId
+                });
+            }
+            try {
                 await authRepository.revokeRefreshTokensBySessionId(issuedSession.sessionId);
             } catch {
-                console.error('[AdvancedAuth] QR session cleanup failed', {
-                    code: 'QR_SESSION_CLEANUP_FAILED',
+                console.error('[AdvancedAuth] QR refresh-token cleanup failed', {
+                    code: 'QR_REFRESH_TOKEN_CLEANUP_FAILED',
                     sessionId: issuedSession.sessionId
                 });
             }
