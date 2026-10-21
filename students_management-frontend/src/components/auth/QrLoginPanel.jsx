@@ -138,9 +138,9 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     }) : '';
 
     return (
-        <section className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-[0_12px_36px_-24px_rgba(15,23,42,0.35)] sm:p-5" aria-label="Đăng nhập bằng mã QR">
+        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Đăng nhập bằng mã QR">
             <div className="mb-4 flex items-start gap-3">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-700 ring-1 ring-blue-100">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
                     <QrCode size={20} aria-hidden="true" />
                 </div>
                 <div className="min-w-0">
@@ -160,7 +160,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
 
             {mode === 'login' && !approvalOnly && (
                 <div className="space-y-4">
-                    <div className="rounded-2xl border border-slate-100 bg-gradient-to-br from-slate-50 to-blue-50/60 px-4 py-4">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4">
                         <ol className="space-y-2 text-xs leading-5 text-slate-600">
                             <li className="flex gap-2"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">1</span><span>Tạo mã QR trên máy tính.</span></li>
                             <li className="flex gap-2"><span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-[10px] font-bold text-blue-700">2</span><span>Mở Student Manager trên điện thoại đã đăng nhập và quét mã.</span></li>
@@ -168,10 +168,10 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                         </ol>
                     </div>
 
-                    <div className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-blue-200 bg-gradient-to-b from-white to-blue-50/40 p-4">
+                    <div className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
                         {request ? (
                             <>
-                                <div className="rounded-2xl border border-slate-100 bg-white p-3 shadow-[0_10px_30px_-18px_rgba(30,64,175,0.45)] ring-1 ring-blue-50">
+                                <div className="rounded-xl border border-slate-200 bg-white p-3">
                                     <QRCodeSVG value={qrValue} size={196} level="M" includeMargin />
                                 </div>
                                 <p className="m-0 text-center text-xs font-medium text-slate-600">Đang chờ xác nhận từ điện thoại</p>
@@ -182,7 +182,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                                     <QrCode size={27} aria-hidden="true" />
                                 </div>
                                 <p className="m-0 max-w-[240px] text-center text-xs leading-5 text-slate-500">Mã QR chỉ được tạo khi bạn yêu cầu và có thời hạn sử dụng.</p>
-                                <button type="button" onClick={createRequest} disabled={busy} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-600 px-5 text-xs font-bold text-white shadow-lg shadow-blue-700/20 transition hover:-translate-y-0.5 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                                <button type="button" onClick={createRequest} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
                                     <QrCode size={16} aria-hidden="true" /> {busy ? 'Đang tạo mã…' : 'Tạo mã QR'}
                                 </button>
                             </>
