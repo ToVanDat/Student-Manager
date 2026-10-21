@@ -1,10 +1,11 @@
-import {useEffect, useState} from 'react';
+import {useCallback, useEffect, useState} from 'react';
 import { Languages } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
 import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
+import AdvancedLoginMethods from '@/components/auth/AdvancedLoginMethods.jsx';
 import RegisterForm from '@/components/auth/RegisterForm.jsx';
 import AuthBanner from '@/components/auth/AuthBanner.jsx';
 
@@ -464,6 +465,19 @@ function Login() {
     );
 
 
+    const handleAdvancedLogin = useCallback((data) => {
+        loginUser(data);
+        navigate('/students?view=dashboard', { replace: true });
+    }, [loginUser, navigate]);
+
+    const reportAdvancedLoginError = useCallback((message) => {
+        setError(message);
+    }, []);
+
+    const setAdvancedLoading = useCallback((value) => {
+        setLoading(value);
+    }, []);
+
     // =================================================
     // REGISTER FORM
     // =================================================
@@ -601,8 +615,17 @@ function Login() {
 
                         {/* LOGIN */}
 
-                        {mode === 'login' &&
-                            renderLogin()}
+                        {mode === 'login' && (
+                            <>
+                                {renderLogin()}
+                                <AdvancedLoginMethods
+                                    username={username}
+                                    onLogin={handleAdvancedLogin}
+                                    onError={reportAdvancedLoginError}
+                                    onLoading={setAdvancedLoading}
+                                />
+                            </>
+                        )}
 
 
                         {/* REGISTER */}
