@@ -47,7 +47,7 @@ async function matchesPin(pin, record) {
 
 export default function ChatLockGate({ children }) {
     const [record, setRecord] = useState(() => readJson(PIN_KEY, null));
-    const [locked, setLocked] = useState(() => Boolean(readJson(PIN_KEY, null)) && sessionStorage.getItem(LOCK_KEY) === 'true');
+    const [locked, setLocked] = useState(() => Boolean(readJson(PIN_KEY, null)));
     const [mode, setMode] = useState('unlock');
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -258,9 +258,6 @@ export default function ChatLockGate({ children }) {
                 </button>
                 {mode === 'setup' && (
                     <button type="button" onClick={() => setMode('unlock')} className="mt-2 h-10 w-full rounded-xl text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Hủy</button>
-                )}
-                {mode === 'unlock' && (
-                    <button type="button" onClick={() => { setMode('setup'); setPin(''); setConfirmPin(''); setError(''); }} className="mt-3 w-full text-sm text-slate-500 underline">Đặt lại PIN (cần quyền truy cập trình duyệt)</button>
                 )}
             </form>
         </div>
