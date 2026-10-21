@@ -20,11 +20,11 @@ function LoginForm({
     const { t } = useLanguage();
 
     return (
-        <form className="flex w-full flex-col gap-4 min-[451px]:gap-[18px]" onSubmit={onSubmit}>
+        <form className="flex w-full flex-col gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
-                <label htmlFor="login-username" className="text-xs leading-[1.4] font-semibold text-slate-700 dark:text-slate-200">{t('username')}</label>
+                <label htmlFor="login-username" className="text-[12px] font-bold tracking-wide text-slate-700 dark:text-slate-200">{t('username')}</label>
                 <input
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-900"
+                    className="h-[50px] w-full rounded-[14px] border border-slate-200 bg-slate-50/70 px-4 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-200 placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-900"
                     id="login-username"
                     name="username"
                     type="text"
@@ -41,7 +41,7 @@ function LoginForm({
                 <label htmlFor="login-password" className="text-xs leading-[1.4] font-semibold text-slate-700">{t('password')}</label>
                 <div className="relative w-full">
                     <input
-                        className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-4 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-900"
+                        className="h-[50px] w-full rounded-[14px] border border-slate-200 bg-slate-50/70 px-4 pr-12 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-200 placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-900"
                         id="login-password"
                         name="password"
                         type={showPassword ? 'text' : 'password'}
@@ -70,12 +70,12 @@ function LoginForm({
             </div>
             {error && <div id="login-error" role="alert" aria-live="polite" className="w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm leading-relaxed text-red-700">{error}</div>}
             {success && <div role="status" aria-live="polite" className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-800">{success}</div>}
-            <button className="mt-0.5 flex min-h-12 w-full items-center justify-center rounded-xl bg-linear-to-r from-brand-600 to-brand-500 px-4 text-sm font-bold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none" type="submit" disabled={loading} aria-describedby={error ? "login-error" : undefined}>
+            <button className="mt-0.5 flex min-h-[50px] w-full items-center justify-center rounded-[14px] bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 px-4 text-sm font-bold text-white shadow-lg shadow-blue-700/20 transition duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-700/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none" type="submit" disabled={loading} aria-describedby={error ? "login-error" : undefined}>
                 {loading ? t('loading') : t('login')}
             </button>
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <span>{t('noAccountYet')}</span>
-                <button className="rounded border-0 bg-transparent px-1 py-1 text-xs font-semibold text-brand-600 hover:bg-brand-50 hover:text-brand-700" type="button" onClick={onOpenRegister}>{t('registerNow')}</button>
+                <button className="rounded-lg border-0 bg-transparent px-2 py-1.5 text-xs font-bold text-blue-700 transition hover:bg-blue-50 hover:text-blue-800" type="button" onClick={onOpenRegister}>{t('registerNow')}</button>
             </div>
         </form>
     );
