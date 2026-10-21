@@ -219,3 +219,10 @@ export async function removePinProtectionFromE2EEVault(userId) {
     await deleteRecord(name);
     activeWrappingKeys.delete(name);
 }
+
+/** Returns the PIN vault only when this account has opted into PIN protection. */
+export async function getPinProtectedE2EEVault(userId) {
+    const name = databaseNameForUser(userId);
+    const record = await readRecord(name);
+    return record ? createPinProtectedE2EEVault(userId) : null;
+}
