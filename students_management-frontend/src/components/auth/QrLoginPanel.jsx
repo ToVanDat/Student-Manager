@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { QrCode, Camera, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { approveQrLoginApi, createQrLoginApi, pollQrLoginApi } from '@/api/authApi.js';
+import { approveQrLoginApi, cancelQrLoginApi, createQrLoginApi, pollQrLoginApi } from '@/api/authApi.js';
 
 function parsePayload(value) {
     try {
@@ -32,11 +32,26 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
         setBusy(true);
         setStatus('');
         try {
+            if (request) {
+                try { await cancelQrLoginApi(request.requestId, request.secret); } catch {}
+            }
             const result = await createQrLoginApi();
             setRequest(result);
             setStatus('Đang chờ xác nhận trên thiết bị đã đăng nhập.');
         } catch (error) {
             setStatus(error.response?.data?.message || 'Không tạo được yêu cầu QR.');
+        } finally { setBusy(false); }
+    };
+
+    const cancelRequest = async () => {
+        if (!request) return;
+        setBusy(true);
+        try {
+            await cancelQrLoginApi(request.requestId, request.secret);
+            setRequest(null);
+            setStatus('Đã hủy yêu cầu đăng nhập QR.');
+        } catch (error) {
+            setStatus(error.response?.data?.message || 'Không thể hủy yêu cầu QR.');
         } finally { setBusy(false); }
     };
 
@@ -190,9 +205,12 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                     </div>
 
                     {request && (
-                        <button type="button" onClick={createRequest} disabled={busy} className="flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50">
-                            <RefreshCw size={14} aria-hidden="true" /> Tạo mã QR mới
-                        </button>
+                        <div className="flex flex-wrap justify-center gap-2">
+                            <button type="button" onClick={cancelRequest} disabled={busy} className="flex min-h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50">Hủy yêu cầu</button>
+                            <button type="button" onClick={createRequest} disabled={busy} className="flex min-h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50">
+                                <RefreshCw size={14} aria-hidden="true" /> Tạo mã QR mới
+                            </button>
+                        </div>
                     )}
                     <p role="status" aria-live="polite" className="m-0 text-center text-xs leading-5 text-slate-500">
                         {status || 'Không chia sẻ ảnh QR với người khác. QR hết hạn sau 2 phút hoặc khi được sử dụng.'}
