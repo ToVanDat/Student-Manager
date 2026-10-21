@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const {
@@ -91,23 +92,66 @@ async function verifyGoogleIdToken(idToken) {
 
 async function linkGoogle(userId, idToken) {
     const google = await verifyGoogleIdToken(idToken);
-    const userResult = await pool.query('SELECT id, is_active FROM users WHERE id = $1', [userId]);
+    const userResult = await pool.query(
+        'SELECT id, is_active FROM users WHERE id = $1',
+        [userId]
+    );
     if (!userResult.rows[0]?.is_active) throw new Error('Tài khoản không hoạt động');
-    const existing = await pool.query(
+
+    const bySubject = await pool.query(
         'SELECT user_id FROM user_oauth_accounts WHERE provider = $1 AND provider_subject = $2',
         ['google', google.sub]
     );
-    if (existing.rows[0] && String(existing.rows[0].user_id) !== String(userId)) {
+    if (bySubject.rows[0] && String(bySubject.rows[0].user_id) !== String(userId)) {
         throw new Error('Tài khoản Google này đã liên kết với tài khoản khác');
     }
+
+    const byUser = await pool.query(
+        'SELECT provider_subject, provider_email FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2',
+        [userId, 'google']
+    );
+    if (byUser.rows[0]) {
+        if (byUser.rows[0].provider_subject !== google.sub) {
+            throw new Error('Tài khoản này đã liên kết Google khác. Hãy gỡ liên kết trước khi thay đổi.');
+        }
+        return { provider: 'google', email: byUser.rows[0].provider_email || google.email, linked: true };
+    }
+
     await pool.query(
         `INSERT INTO user_oauth_accounts (user_id, provider, provider_subject, provider_email)
-         VALUES ($1, 'google', $2, $3)
-         ON CONFLICT (user_id, provider) DO UPDATE
-         SET provider_subject = EXCLUDED.provider_subject, provider_email = EXCLUDED.provider_email, linked_at = CURRENT_TIMESTAMP`,
+         VALUES ($1, 'google', $2, $3)`,
         [userId, google.sub, google.email]
     );
-    return { provider: 'google', email: google.email };
+    return { provider: 'google', email: google.email, linked: true };
+}
+
+async function getGoogleLink(userId) {
+    const result = await pool.query(
+        'SELECT provider, provider_email, linked_at FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2',
+        [userId, 'google']
+    );
+    return result.rows[0] || null;
+}
+
+async function unlinkGoogle(userId, currentPassword) {
+    if (typeof currentPassword !== 'string' || !currentPassword) {
+        throw new Error('Nhập mật khẩu Student Manager để xác nhận gỡ liên kết');
+    }
+    const userResult = await pool.query(
+        'SELECT password_hash, is_active FROM users WHERE id = $1',
+        [userId]
+    );
+    const user = userResult.rows[0];
+    if (!user?.is_active) throw new Error('Tài khoản không hoạt động');
+    if (!user.password_hash || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+        throw new Error('Mật khẩu hiện tại không đúng');
+    }
+    const result = await pool.query(
+        'DELETE FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2 RETURNING id',
+        [userId, 'google']
+    );
+    if (!result.rows[0]) throw new Error('Tài khoản chưa liên kết Google');
+    return true;
 }
 
 async function loginGoogle(idToken, req) {
@@ -133,7 +177,7 @@ async function beginPasskeyRegistration(userId) {
         userID: Buffer.from(String(user.id)),
         attestationType: 'none',
         excludeCredentials: credentials.rows.map(row => ({ id: row.credential_id, transports: row.transports })),
-        authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' }
+        authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' }
     });
     const challengeId = randomToken(18);
     await saveChallenge('passkey-register', challengeId, { userId: String(userId), challenge: options.challenge });
@@ -146,7 +190,7 @@ async function finishPasskeyRegistration(userId, challengeId, response, deviceNa
     const { expectedOrigin, rpID } = rpConfig();
     const verification = await verifyRegistrationResponse({
         response, expectedChallenge: state.challenge, expectedOrigin, expectedRPID: rpID,
-        requireUserVerification: false
+        requireUserVerification: true
     });
     if (!verification.verified || !verification.registrationInfo) throw new Error('Không xác minh được passkey');
     const info = verification.registrationInfo;
@@ -175,7 +219,7 @@ async function beginPasskeyLogin(username) {
     const { rpID } = rpConfig();
     const options = await generateAuthenticationOptions({
         rpID, allowCredentials: rows.rows.map(row => ({ id: row.credential_id, transports: row.transports })),
-        userVerification: 'preferred'
+        userVerification: 'required'
     });
     const challengeId = randomToken(18);
     await saveChallenge('passkey-login', challengeId, { userId: String(userId), challenge: options.challenge });
@@ -336,7 +380,7 @@ async function pollQrLogin(requestId, secret, req) {
 }
 
 module.exports = {
-    linkGoogle, loginGoogle,
+    linkGoogle, getGoogleLink, unlinkGoogle, loginGoogle,
     beginPasskeyRegistration, finishPasskeyRegistration,
     beginPasskeyLogin, finishPasskeyLogin, listPasskeys, deletePasskey,
     createQrLogin, approveQrLogin, denyQrLogin, pollQrLogin
