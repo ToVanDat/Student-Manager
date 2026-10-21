@@ -514,16 +514,14 @@ function Login() {
     // =================================================
 
     return (
-        <main className="relative min-h-screen overflow-hidden bg-[#f5f7fc] text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-[minmax(0,1.05fr)_minmax(460px,0.95fr)]">
-            <div aria-hidden="true" className="pointer-events-none absolute -left-32 top-[-8rem] size-[28rem] rounded-full bg-blue-300/25 blur-3xl" />
-            <div aria-hidden="true" className="pointer-events-none absolute bottom-[-10rem] right-[-6rem] size-[30rem] rounded-full bg-indigo-300/20 blur-3xl" />
-            <div className="relative z-10 min-h-[220px] overflow-hidden p-3 sm:p-5 lg:min-h-screen lg:p-7">
+        <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-2">
+            <div className="min-h-[190px] overflow-hidden p-3 sm:p-5 lg:min-h-screen lg:p-6">
                 <AuthBanner />
             </div>
 
-            <section className="relative z-10 flex min-h-[calc(100vh-220px)] items-center justify-center px-4 py-7 sm:px-8 sm:py-10 lg:min-h-screen lg:px-10 xl:px-14">
+            <section className="flex min-h-[calc(100vh-190px)] items-center justify-center px-4 py-8 sm:px-8 sm:py-10 lg:min-h-screen lg:px-10 xl:px-14">
                 <div className="absolute right-4 top-4 z-10 sm:right-8 sm:top-7 lg:right-10">
-                    <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur" role="group" aria-label={t('language')}>
+                    <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label={t('language')}>
                         <Languages size={15} aria-hidden="true" className="ml-2 text-slate-500" />
                         {[
                             { value: 'vi', label: 'Tiếng Việt', shortLabel: 'VI', Flag: VN },
@@ -545,9 +543,9 @@ function Login() {
                     </div>
                 </div>
 
-                <div className="w-full max-w-[460px] rounded-[28px] border border-white/80 bg-white/90 px-5 py-6 shadow-[0_24px_80px_-32px_rgba(30,64,175,0.28)] backdrop-blur-xl sm:px-8 sm:py-9 lg:px-9">
+                <div className="w-full max-w-[440px] rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-9">
                     <div className="mb-8 flex items-center gap-3">
-                        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-sm font-extrabold tracking-wide text-white shadow-lg shadow-blue-600/25 ring-4 ring-blue-50">
+                        <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold tracking-wide text-white">
                             SM
                         </div>
                         <div>
@@ -556,8 +554,8 @@ function Login() {
                         </div>
                     </div>
 
-                    <div className="mb-7">
-                        <p className="mb-2 inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-blue-700">
+                    <div className="mb-6">
+                        <p className="mb-2 inline-flex text-xs font-semibold text-blue-700">
                             {mode === 'login' ? 'STUDENT MANAGER' : mode === 'register' ? 'CREATE ACCOUNT' : 'ACCOUNT RECOVERY'}
                         </p>
                         <h2 className="mb-2 text-[30px] font-extrabold tracking-[-0.04em] text-slate-950 sm:text-[36px]">
