@@ -262,6 +262,7 @@ async function denyQrLogin(requestId, secret, status = 'denied') {
 }
 async function pollQrLogin(requestId, secret, req) {
     const client = await pool.connect();
+    let issuedSession = null;
     try {
         await client.query('BEGIN');
         const found = await client.query(
@@ -286,6 +287,7 @@ async function pollQrLogin(requestId, secret, req) {
             [request.approved_user_id]
         );
         const session = await issueSession(userResult.rows[0], req);
+        issuedSession = session;
         const consumed = await client.query(
             `UPDATE qr_login_requests SET status = 'consumed', consumed_at = CURRENT_TIMESTAMP
              WHERE id = $1 AND status = 'approved' RETURNING id`,
@@ -296,6 +298,30 @@ async function pollQrLogin(requestId, secret, req) {
         return { status: 'consumed', ...session };
     } catch (error) {
         try { await client.query('ROLLBACK'); } catch {}
+        // Session issuance uses the shared auth repository/Redis rather than this
+        // PostgreSQL transaction. Compensate if QR consumption/COMMIT then fails,
+        // so a retry cannot leave multiple live sessions from one QR request.
+        if (issuedSession?.sessionId) {
+            try {
+                await authRepository.revokeSession(issuedSession.sessionId);
+                await authRepository.revokeRefreshTokensBySessionId(issuedSession.sessionId);
+            } catch {
+                console.error('[AdvancedAuth] QR session cleanup failed', {
+                    code: 'QR_SESSION_CLEANUP_FAILED',
+                    sessionId: issuedSession.sessionId
+                });
+            }
+            try {
+                if (issuedSession.accessToken) {
+                    await redisClient.del(`access_token:${hash(issuedSession.accessToken)}`);
+                }
+            } catch {
+                console.error('[AdvancedAuth] QR access-token cleanup failed', {
+                    code: 'QR_ACCESS_TOKEN_CLEANUP_FAILED',
+                    sessionId: issuedSession.sessionId
+                });
+            }
+        }
         throw error;
     } finally {
         client.release();
