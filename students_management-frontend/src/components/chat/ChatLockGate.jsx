@@ -5,7 +5,8 @@ import { shutdownE2EEClient } from '@/services/e2ee/e2eeClient.js';
 import {
     lockPinProtectedE2EEVault,
     unlockPinProtectedE2EEVault,
-    removePinProtectionFromE2EEVault
+    removePinProtectionFromE2EEVault,
+    cancelPinProtectedE2EEVaultSetup
 } from '@/services/e2ee/pinProtectedE2EEVault.js';
 
 const PIN_KEY = 'student-manager:chat-lock:v1';
@@ -205,6 +206,21 @@ export default function ChatLockGate({ children }) {
         setBusy(false);
     };
 
+    const cancelSetup = async () => {
+        setBusy(true);
+        try {
+            if (userId) await cancelPinProtectedE2EEVaultSetup(userId);
+            setMode('unlock');
+            setPin('');
+            setConfirmPin('');
+            setError('');
+        } catch (error) {
+            setError(error?.message || 'Không thể hủy thiết lập PIN an toàn.');
+        } finally {
+            setBusy(false);
+        }
+    };
+
     const openSetup = async () => {
         setBusy(true);
         try {
@@ -313,7 +329,7 @@ export default function ChatLockGate({ children }) {
                     {busy ? 'Đang xác minh…' : mode === 'setup' ? 'Lưu PIN' : 'Mở khóa chat'}
                 </button>
                 {mode === 'setup' && (
-                    <button type="button" onClick={() => setMode('unlock')} className="mt-2 h-10 w-full rounded-xl text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Hủy</button>
+                    <button type="button" onClick={cancelSetup} disabled={busy} className="mt-2 h-10 w-full rounded-xl text-sm text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800">Hủy</button>
                 )}
             </form>
         </div>
