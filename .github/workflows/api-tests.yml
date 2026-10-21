@@ -75,7 +75,7 @@ jobs:
         with:
           node-version: 22
       - name: Install API dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run API unit tests
         run: npm test
       - name: Run Cloudflare R2 Worker tests
@@ -94,7 +94,7 @@ jobs:
         with:
           node-version: 22
       - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Lint frontend
         run: npm run lint
       - name: E2EE protocol round-trip tests
@@ -138,6 +138,6 @@ jobs:
         with:
           node-version: 22
       - name: Install API dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run live PostgreSQL relay integration test
         run: node --test test/e2eeRelayPostgres.integration.test.js
