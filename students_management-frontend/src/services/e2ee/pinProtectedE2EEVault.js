@@ -227,12 +227,16 @@ export async function getPinProtectedE2EEVault(userId) {
     return record ? createPinProtectedE2EEVault(userId) : null;
 }
 
-/** Cleans up an unfinished PIN setup without touching an already-wrapped key. */
+/** Cancels PIN setup safely; if a key was already wrapped, restore it first. */
 export async function cancelPinProtectedE2EEVaultSetup(userId) {
     const name = databaseNameForUser(userId);
     const record = await readRecord(name);
-    if (!record?.ciphertext) {
-        await deleteRecord(name);
-        activeWrappingKeys.delete(name);
+    if (record?.ciphertext) {
+        const wrappingKey = requireWrappingKey(name);
+        const key = await decryptSecret(record, wrappingKey);
+        const legacyVault = new IndexedDbSignalProtocolSecretVault();
+        await legacyVault.setSecret(name, key);
     }
+    await deleteRecord(name);
+    activeWrappingKeys.delete(name);
 }
