@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { inMemoryStore } from '@open-e2ee/signal-protocol-sdk/local/store/memory';
+import { generateCompositeSafetyNumber } from '@open-e2ee/signal-protocol-sdk/safety';
 
 const memoryStore = () => inMemoryStore();
 
@@ -189,9 +190,10 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
     const receivedPrimary = [];
     const receivedLinked = [];
     await relay.registerDevice('alice', { deviceId: 1 });
+    const aliceStorage = memoryStore();
     const alice = await createSignalProtocolClient({
         identity: { userId: 'alice', deviceId: 1 },
-        adapters: { storage: memoryStore(), relay }
+        adapters: { storage: aliceStorage, relay }
     });
 
     await relay.registerDevice('bob', { deviceId: 1 });
@@ -243,6 +245,30 @@ test('Signal Protocol encrypts for two accounts and fans out to multiple recipie
         assert.equal(primaryContent.body, 'e2ee multi-device round-trip');
         assert.equal(linkedContent.body, 'e2ee multi-device round-trip');
         assert.equal(primaryContent.appMessageId, 'test-message-multi-device');
+
+        // Safety Number / QR regression: two independently created accounts must
+        // compute the same numeric code, and scanning the other side's SDK QR
+        // protobuf must compare as a match. No project-defined hash is used.
+        const [aliceVerified, bobVerified] = await Promise.all([
+            alice.verify('bob'),
+            bobPrimary.verify('alice')
+        ]);
+        assert.equal(
+            aliceVerified.numeric.replaceAll(' ', ''),
+            bobVerified.numeric.replaceAll(' ', '')
+        );
+        const [aliceRelayIdentity, bobRelayIdentity] = await Promise.all([
+            relay.getIdentityKey('alice'),
+            relay.getIdentityKey('bob')
+        ]);
+        const aliceIdentity = aliceRelayIdentity?.identity_public ?? aliceRelayIdentity;
+        const bobIdentity = bobRelayIdentity?.identity_public ?? bobRelayIdentity;
+        const aliceSafety = generateCompositeSafetyNumber(aliceIdentity, bobIdentity, 'alice', 'bob');
+        const bobSafety = generateCompositeSafetyNumber(bobIdentity, aliceIdentity, 'bob', 'alice');
+        assert.equal(aliceSafety.numeric.replaceAll(' ', ''), bobSafety.numeric.replaceAll(' ', ''));
+        const decodeQr = value => Uint8Array.from(atob(value), character => character.charCodeAt(0));
+        assert.equal(aliceSafety.scannable.compare(decodeQr(bobSafety.qrData)), 'match');
+        assert.equal(bobSafety.scannable.compare(decodeQr(aliceSafety.qrData)), 'match');
         assert.equal(linkedContent.appMessageId, 'test-message-multi-device');
 
         const controls = [
