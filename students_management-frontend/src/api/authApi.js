@@ -144,6 +144,17 @@ export const linkGoogleApi = async idToken => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken }, authenticatedAuthConfig());
   return response.data;
 };
+export const getGoogleLinkApi = async () => {
+  const response = await axios.get(`${API_BASE_URL}/api/auth/google/link`, authenticatedAuthConfig());
+  return response.data.account || null;
+};
+export const unlinkGoogleApi = async currentPassword => {
+  const response = await axios.delete(`${API_BASE_URL}/api/auth/google/link`, {
+    ...authenticatedAuthConfig(),
+    data: { currentPassword }
+  });
+  return response.data;
+};
 
 export const createQrLoginApi = async () => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login`, {}, { withCredentials: true });
