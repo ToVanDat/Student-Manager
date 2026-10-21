@@ -34,7 +34,7 @@ jobs:
         with:
           node-version: 22
       - name: Install backend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run backend test suite
         run: npm test
 
@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: 22
       - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run Signal Protocol encryption/decryption round-trip
         run: npm run test:e2ee
       - name: Run lint

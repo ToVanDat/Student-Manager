@@ -44,7 +44,12 @@ export default function AdvancedSecurityMethods() {
     useEffect(() => {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         if (!clientId || !googleButtonRef.current) return undefined;
+
         let cancelled = false;
+        let script = document.querySelector('script[data-google-identity]');
+        const handleScriptError = () => {
+            if (!cancelled) setMessage('Không tải được dịch vụ Google. Hãy kiểm tra kết nối mạng hoặc thử lại sau.');
+        };
         const initialize = () => {
             if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
             window.google.accounts.id.initialize({
@@ -63,14 +68,15 @@ export default function AdvancedSecurityMethods() {
                     } finally { setBusy(false); }
                 }
             });
+            const availableWidth = googleButtonRef.current.parentElement?.clientWidth || 320;
             window.google.accounts.id.renderButton(googleButtonRef.current, {
                 type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
-                shape: 'rectangular', width: 300
+                shape: 'rectangular', width: Math.min(320, Math.max(180, availableWidth))
             });
         };
+
         if (window.google?.accounts?.id) initialize();
         else {
-            let script = document.querySelector('script[data-google-identity]');
             if (!script) {
                 script = document.createElement('script');
                 script.src = 'https://accounts.google.com/gsi/client';
@@ -80,9 +86,14 @@ export default function AdvancedSecurityMethods() {
                 document.head.appendChild(script);
             }
             script.addEventListener('load', initialize);
+            script.addEventListener('error', handleScriptError);
         }
-        return () => { cancelled = true; };
-    }, []);
+        return () => {
+            cancelled = true;
+            script?.removeEventListener('load', initialize);
+            script?.removeEventListener('error', handleScriptError);
+        };
+    }, [refresh]);
 
     const registerPasskey = async () => {
         setBusy(true);
@@ -176,7 +187,7 @@ export default function AdvancedSecurityMethods() {
                 {!credentials.length && <p className="text-xs text-slate-400">Chưa có passkey hoặc chưa tải được danh sách.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
-            <div ref={googleButtonRef} className={googleLink ? 'hidden' : ''} />
+            <div ref={googleButtonRef} className={googleLink ? 'hidden' : 'w-full max-w-full overflow-hidden'} />
             {googleLink ? (
                 <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">Đã liên kết Google</p>
