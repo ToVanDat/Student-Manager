@@ -15,6 +15,24 @@ const requireRole = require('../middleware/roleMiddleware.js');
 const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
 const avatarController = require('../controller/avatarController');
 const userPreferencesController = require('../controller/userPreferencesController.js');
+const advancedAuthController = require('../controller/advancedAuthController.js');
+
+
+// Advanced account authentication. These routes reuse the existing JWT/session middleware.
+router.post('/google/login', authRateLimiter, advancedAuthController.loginGoogle);
+router.post('/google/link', authMiddleware, authRateLimiter, advancedAuthController.linkGoogle);
+
+router.post('/passkeys/registration/options', authMiddleware, authRateLimiter, advancedAuthController.beginPasskeyRegistration);
+router.post('/passkeys/registration/verify', authMiddleware, authRateLimiter, advancedAuthController.finishPasskeyRegistration);
+router.get('/passkeys', authMiddleware, advancedAuthController.listPasskeys);
+router.delete('/passkeys/:id', authMiddleware, authRateLimiter, advancedAuthController.deletePasskey);
+router.post('/passkeys/login/options', authRateLimiter, advancedAuthController.beginPasskeyLogin);
+router.post('/passkeys/login/verify', authRateLimiter, advancedAuthController.finishPasskeyLogin);
+
+router.post('/qr-login', authRateLimiter, advancedAuthController.createQrLogin);
+router.post('/qr-login/approve', authMiddleware, authRateLimiter, advancedAuthController.approveQrLogin);
+router.post('/qr-login/deny', authRateLimiter, advancedAuthController.denyQrLogin);
+router.post('/qr-login/poll', authRateLimiter, advancedAuthController.pollQrLogin);
 
 // REGISTER
 router.post('/register', authRateLimiter, authController.register);

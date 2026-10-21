@@ -1,5 +1,7 @@
 import { Clock3, Globe, KeyRound, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
+import AdvancedSecurityMethods from '@/components/settings/AdvancedSecurityMethods.jsx';
+import QrLoginPanel from '@/components/auth/QrLoginPanel.jsx';
 
 function SecuritySettings({ onOpenSessions }) {
     const { t } = useLanguage();
@@ -94,6 +96,8 @@ function SecuritySettings({ onOpenSessions }) {
                     </button>
                 </div>
             </div>
+            <AdvancedSecurityMethods />
+            <QrLoginPanel allowApprove approvalOnly />
         </div>
     );
 }

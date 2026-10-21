@@ -1,10 +1,12 @@
-import {useEffect, useState} from 'react';
-import { Languages } from 'lucide-react';
+import {useCallback, useEffect, useState} from 'react';
+import { Languages, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
 import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
+import AdvancedLoginMethods from '@/components/auth/AdvancedLoginMethods.jsx';
+import QrLoginPanel from '@/components/auth/QrLoginPanel.jsx';
 import RegisterForm from '@/components/auth/RegisterForm.jsx';
 import AuthBanner from '@/components/auth/AuthBanner.jsx';
 
@@ -28,6 +30,7 @@ function Login() {
     const navigate = useNavigate();
 
     const [mode, setMode] = useState('login');
+    const [showQrLogin, setShowQrLogin] = useState(false);
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -103,6 +106,8 @@ function Login() {
     const changeMode = (newMode) => {
 
         setMode(newMode);
+
+        setShowQrLogin(false);
 
         setError('');
 
@@ -464,6 +469,19 @@ function Login() {
     );
 
 
+    const handleAdvancedLogin = useCallback((data) => {
+        loginUser(data);
+        navigate('/students?view=dashboard', { replace: true });
+    }, [loginUser, navigate]);
+
+    const reportAdvancedLoginError = useCallback((message) => {
+        setError(message);
+    }, []);
+
+    const setAdvancedLoading = useCallback((value) => {
+        setLoading(value);
+    }, []);
+
     // =================================================
     // REGISTER FORM
     // =================================================
@@ -601,8 +619,37 @@ function Login() {
 
                         {/* LOGIN */}
 
-                        {mode === 'login' &&
-                            renderLogin()}
+                        {mode === 'login' && (
+                            <>
+                                {renderLogin()}
+                                <AdvancedLoginMethods
+                                    username={username}
+                                    onLogin={handleAdvancedLogin}
+                                    onError={reportAdvancedLoginError}
+                                    onLoading={setAdvancedLoading}
+                                />
+                                <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        aria-expanded={showQrLogin}
+                                        aria-controls="qr-login-panel"
+                                        onClick={() => setShowQrLogin((visible) => !visible)}
+                                        className="group flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    >
+                                        <span className="flex items-center gap-2.5">
+                                            <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-100 dark:bg-blue-950 dark:text-blue-300"><QrCode size={17} aria-hidden="true" /></span>
+                                            <span className="text-left">Đăng nhập bằng mã QR</span>
+                                        </span>
+                                        {showQrLogin ? <ChevronUp size={17} aria-hidden="true" className="text-slate-400" /> : <ChevronDown size={17} aria-hidden="true" className="text-slate-400" />}
+                                    </button>
+                                    {showQrLogin && (
+                                        <div id="qr-login-panel" className="mt-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                                            <QrLoginPanel onLogin={handleAdvancedLogin} />
+                                        </div>
+                                    )}
+                                </div>
+                            </>
+                        )}
 
 
                         {/* REGISTER */}

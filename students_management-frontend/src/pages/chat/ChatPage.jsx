@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import ChatLockGate from '@/components/chat/ChatLockGate.jsx';
 import { useNavigate } from 'react-router-dom';
 import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
@@ -18,7 +19,7 @@ import { useChat } from '@/hooks/useChat.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
-export default function ChatPage() {
+function ChatPageContent() {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const { user, logoutUser, webRTCCall } = useAuth();
@@ -502,4 +503,9 @@ export default function ChatPage() {
             </main>
         </div>
     );
+}
+
+
+export default function ChatPage() {
+    return <ChatLockGate><ChatPageContent /></ChatLockGate>;
 }
