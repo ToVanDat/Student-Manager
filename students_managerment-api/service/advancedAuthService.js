@@ -42,9 +42,14 @@ async function saveChallenge(kind, id, payload) {
 }
 async function consumeChallenge(kind, id) {
     const key = challengeKey(kind, id);
-    const raw = await redisClient.get(key);
+    const raw = typeof redisClient.getDel === 'function'
+        ? await redisClient.getDel(key)
+        : await redisClient.get(key);
     if (!raw) return null;
-    await redisClient.del(key);
+    if (typeof redisClient.getDel !== 'function') {
+        // Redis deployments without GETDEL must be upgraded before relying on strict one-time challenge consumption.
+        await redisClient.del(key);
+    }
     try { return JSON.parse(raw); } catch { return null; }
 }
 function publicUser(user) {
@@ -267,7 +272,7 @@ async function pollQrLogin(requestId, secret, req) {
         );
         const request = found.rows[0];
         if (!request) throw new Error('Yêu cầu QR không hợp lệ');
-        if (request.expires_at <= new Date() && request.status === 'pending') {
+        if (request.expires_at <= new Date() && ['pending', 'approved'].includes(request.status)) {
             await client.query("UPDATE qr_login_requests SET status = 'expired' WHERE id = $1", [requestId]);
             await client.query('COMMIT');
             return { status: 'expired' };
