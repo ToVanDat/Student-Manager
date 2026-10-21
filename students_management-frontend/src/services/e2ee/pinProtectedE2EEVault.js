@@ -217,7 +217,6 @@ export async function unlockPinProtectedE2EEVault(userId, pin) {
     }
     activeWrappingKeys.set(name, wrappingKey);
 
-    const legacyVault = legacyVault;
     try {
         const legacyKey = await legacyVault.getSecret(name);
         if (legacyKey) {
@@ -253,8 +252,7 @@ export function createPinProtectedE2EEVault(userId) {
 
             // Migration path for a pre-PIN installation whose SDK key is still
             // in the legacy vault. This does not reset or recreate the database.
-            const legacyVault = legacyVault;
-            const legacyKey = await legacyVault.getSecret(name);
+                    const legacyKey = await legacyVault.getSecret(name);
             if (!legacyKey) return null;
             const salt = record?.salt ? decode(record.salt) : crypto.getRandomValues(new Uint8Array(16));
             const wrapped = await encryptSecret(legacyKey, wrappingKey, salt, name);
@@ -282,9 +280,8 @@ export async function removePinProtectionFromE2EEVault(userId) {
     const record = await readRecord(name);
     if (record?.ciphertext) {
         const wrappingKey = requireWrappingKey(name);
-        const key = await decryptSecret(record, wrappingKey);
-        const legacyVault = legacyVault;
-        await legacyVault.setSecret(name, key);
+        const key = await decryptSecret(record, wrappingKey, name);
+            await legacyVault.setSecret(name, key);
     }
     await deleteRecord(name);
     activeWrappingKeys.delete(name);
@@ -310,9 +307,8 @@ export async function cancelPinProtectedE2EEVaultSetup(userId) {
     const record = await readRecord(name);
     if (record?.ciphertext) {
         const wrappingKey = requireWrappingKey(name);
-        const key = await decryptSecret(record, wrappingKey);
-        const legacyVault = legacyVault;
-        await legacyVault.setSecret(name, key);
+        const key = await decryptSecret(record, wrappingKey, name);
+            await legacyVault.setSecret(name, key);
     }
     await deleteRecord(name);
     activeWrappingKeys.delete(name);
