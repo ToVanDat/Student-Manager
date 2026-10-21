@@ -30,6 +30,17 @@ exports.linkGoogle = async (req, res) => {
         return res.json({ message: 'Đã liên kết Google với tài khoản hiện tại', account: result });
     } catch (error) { return fail(res, error); }
 };
+exports.getGoogleLink = async (req, res) => {
+    try {
+        return res.json({ account: await advancedAuth.getGoogleLink(req.user.sub) });
+    } catch (error) { return fail(res, error); }
+};
+exports.unlinkGoogle = async (req, res) => {
+    try {
+        await advancedAuth.unlinkGoogle(req.user.sub, req.body?.currentPassword);
+        return res.status(200).json({ message: 'Đã gỡ liên kết Google' });
+    } catch (error) { return fail(res, error); }
+};
 exports.loginGoogle = async (req, res) => {
     try { return sendSession(res, await advancedAuth.loginGoogle(req.body?.idToken, req)); }
     catch (error) { return fail(res, error); }
