@@ -21,6 +21,8 @@ const advancedAuthController = require('../controller/advancedAuthController.js'
 // Advanced account authentication. These routes reuse the existing JWT/session middleware.
 router.post('/google/login', authRateLimiter, advancedAuthController.loginGoogle);
 router.post('/google/link', authMiddleware, authRateLimiter, advancedAuthController.linkGoogle);
+router.get('/google/link', authMiddleware, advancedAuthController.getGoogleLink);
+router.delete('/google/link', authMiddleware, authRateLimiter, advancedAuthController.unlinkGoogle);
 
 router.post('/passkeys/registration/options', authMiddleware, authRateLimiter, advancedAuthController.beginPasskeyRegistration);
 router.post('/passkeys/registration/verify', authMiddleware, authRateLimiter, advancedAuthController.finishPasskeyRegistration);
