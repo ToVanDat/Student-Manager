@@ -118,3 +118,29 @@ export const finishPasskeyLoginApi = async (challengeId, responsePayload) => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/login/verify`, { challengeId, response: responsePayload }, { withCredentials: true });
   return response.data;
 };
+
+const authenticatedAuthConfig = () => ({
+  withCredentials: true,
+  headers: { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` }
+});
+
+export const beginPasskeyRegistrationApi = async () => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/registration/options`, {}, authenticatedAuthConfig());
+  return response.data;
+};
+export const finishPasskeyRegistrationApi = async (challengeId, responsePayload, deviceName) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/registration/verify`, { challengeId, response: responsePayload, deviceName }, authenticatedAuthConfig());
+  return response.data;
+};
+export const listPasskeysApi = async () => {
+  const response = await axios.get(`${API_BASE_URL}/api/auth/passkeys`, authenticatedAuthConfig());
+  return response.data.credentials || [];
+};
+export const deletePasskeyApi = async id => {
+  const response = await axios.delete(`${API_BASE_URL}/api/auth/passkeys/${encodeURIComponent(id)}`, authenticatedAuthConfig());
+  return response.data;
+};
+export const linkGoogleApi = async idToken => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken }, authenticatedAuthConfig());
+  return response.data;
+};
