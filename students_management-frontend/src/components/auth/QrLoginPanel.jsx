@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { QrCode, Camera, RefreshCw } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { approveQrLoginApi, createQrLoginApi, pollQrLoginApi } from '@/api/authApi.js';
+import { approveQrLoginApi, cancelQrLoginApi, createQrLoginApi, pollQrLoginApi } from '@/api/authApi.js';
 
 function parsePayload(value) {
     try {
@@ -37,6 +37,18 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
             setStatus('Đang chờ xác nhận trên thiết bị đã đăng nhập.');
         } catch (error) {
             setStatus(error.response?.data?.message || 'Không tạo được yêu cầu QR.');
+        } finally { setBusy(false); }
+    };
+
+    const cancelRequest = async () => {
+        if (!request) return;
+        setBusy(true);
+        try {
+            await cancelQrLoginApi(request.requestId, request.secret);
+            setRequest(null);
+            setStatus('Đã hủy yêu cầu đăng nhập QR.');
+        } catch (error) {
+            setStatus(error.response?.data?.message || 'Không thể hủy yêu cầu QR.');
         } finally { setBusy(false); }
     };
 
@@ -156,7 +168,12 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                             <QrCode size={16} /> Tạo mã QR
                         </button>
                     )}
-                    {request && <button type="button" onClick={createRequest} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"><RefreshCw size={14} /> Tạo QR mới</button>}
+                    {request && (
+                        <div className="flex flex-wrap justify-center gap-2">
+                            <button type="button" onClick={cancelRequest} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300">Hủy yêu cầu</button>
+                            <button type="button" onClick={createRequest} disabled={busy} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300"><RefreshCw size={14} /> Tạo QR mới</button>
+                        </div>
+                    )}
                     <p className="m-0 text-center text-xs text-slate-500">{status || 'Mã QR chỉ dùng một lần và hết hạn sau 2 phút.'}</p>
                 </div>
             )}
