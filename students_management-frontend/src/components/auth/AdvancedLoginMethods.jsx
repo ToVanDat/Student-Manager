@@ -4,6 +4,8 @@ import { googleLoginApi } from '@/api/authApi.js';
 
 export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     const googleButtonRef = useRef(null);
+    const callbacksRef = useRef({ onLogin, onError, onLoading });
+    callbacksRef.current = { onLogin, onError, onLoading };
     const [googleReady, setGoogleReady] = useState(false);
     const [googleLoadError, setGoogleLoadError] = useState('');
     const [busy, setBusy] = useState(false);
@@ -27,22 +29,22 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 client_id: clientId,
                 callback: async result => {
                     if (!result?.credential) {
-                        onError('Google không trả về ID token.');
+                        callbacksRef.current.onError('Google không trả về ID token.');
                         return;
                     }
 
                     setBusy(true);
-                    onLoading(true);
-                    onError('');
+                    callbacksRef.current.onLoading(true);
+                    callbacksRef.current.onError('');
 
                     try {
                         const data = await googleLoginApi(result.credential);
-                        onLogin(data);
+                        callbacksRef.current.onLogin(data);
                     } catch (error) {
-                        onError(error.response?.data?.message || 'Đăng nhập Google thất bại.');
+                        callbacksRef.current.onError(error.response?.data?.message || 'Đăng nhập Google thất bại.');
                     } finally {
                         setBusy(false);
-                        onLoading(false);
+                        callbacksRef.current.onLoading(false);
                     }
                 },
                 auto_select: false
@@ -85,13 +87,13 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
             // authenticated pages may rely on it.
             if (createdScript && script && !script.isConnected) script = null;
         };
-    }, [onError, onLoading, onLogin]);
+    }, []);
 
     return (
         <div className="mt-5 space-y-3.5">
             <div className="relative flex items-center gap-3 text-[11px] text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
-                <span className="whitespace-nowrap">Hoặc đăng nhập bằng</span>
+                <span className="whitespace-nowrap">Hoặc tiếp tục bằng</span>
                 <span className="h-px flex-1 bg-slate-200" />
             </div>
 
@@ -102,7 +104,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                 <p className="text-center text-xs text-slate-400">
                     <ShieldCheck className="mr-1 inline" size={14} />
-                    Cần cấu hình VITE_GOOGLE_CLIENT_ID để bật Google Login.
+                    Đăng nhập Google chỉ dùng được khi ứng dụng đã được cấu hình OAuth.
                 </p>
             )}
             {googleLoadError && (
@@ -113,6 +115,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
             {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                 <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
             )}
+            <p className="text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật.</p>
         </div>
     );
 }
