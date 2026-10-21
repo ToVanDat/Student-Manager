@@ -1,5 +1,6 @@
 import { createSignalProtocolClient } from '@open-e2ee/signal-protocol-sdk';
 import { webSqliteStore } from '@open-e2ee/signal-protocol-sdk/local/store/web-sqlite';
+import { getPinProtectedE2EEVault } from './pinProtectedE2EEVault';
 import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { createE2EER2ObjectStore } from './e2eeR2ObjectStore';
@@ -145,8 +146,11 @@ export const initializeE2EEClient = async (userId) => {
                 throw error;
             }
 
+            const storeName = `student-manager-e2ee-user-${normalizedUserId}.db`;
+            const pinVault = await getPinProtectedE2EEVault(normalizedUserId);
             storage = await webSqliteStore({
-                name: `student-manager-e2ee-user-${normalizedUserId}.db`
+                name: storeName,
+                ...(pinVault ? { vault: pinVault } : {})
             });
             if (token !== generation) {
                 await closeResources(null, storage, null, relay);
