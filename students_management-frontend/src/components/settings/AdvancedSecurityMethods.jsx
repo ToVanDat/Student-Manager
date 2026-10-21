@@ -160,6 +160,7 @@ export default function AdvancedSecurityMethods() {
                 {!credentials.length && <p className="text-xs text-slate-400">Chưa có passkey hoặc chưa tải được danh sách.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
+            <div ref={googleButtonRef} className={googleLink ? 'hidden' : ''} />
             {googleLink ? (
                 <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">Đã liên kết Google</p>
@@ -168,12 +169,8 @@ export default function AdvancedSecurityMethods() {
                     <input id="unlink-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
                     <button type="button" disabled={busy || !currentPassword} onClick={unlinkGoogle} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30"><Unlink size={14} /> Gỡ liên kết Google</button>
                 </div>
-            ) : (
-                <>
-                    <div ref={googleButtonRef} />
-                    {!import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
-                </>
-            )}
+            ) : null}
+            {!googleLink && !import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
             {message && <p role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message}</p>}
         </section>
     );
