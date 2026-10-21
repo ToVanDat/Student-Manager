@@ -244,7 +244,7 @@ async function finishPasskeyLogin(challengeId, response, req) {
             counter: Number(stored.counter),
             transports: stored.transports || []
         },
-        requireUserVerification: false
+        requireUserVerification: true
     });
     if (!verification.verified) throw new Error('Xác minh passkey thất bại');
     await pool.query(
