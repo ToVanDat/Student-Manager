@@ -42,14 +42,12 @@ async function saveChallenge(kind, id, payload) {
 }
 async function consumeChallenge(kind, id) {
     const key = challengeKey(kind, id);
-    const raw = typeof redisClient.getDel === 'function'
-        ? await redisClient.getDel(key)
-        : await redisClient.get(key);
+    // Atomic one-time read/delete: concurrent verification requests cannot both consume the same challenge.
+    const raw = await redisClient.eval(
+        "local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value",
+        { keys: [key], arguments: [] }
+    );
     if (!raw) return null;
-    if (typeof redisClient.getDel !== 'function') {
-        // Redis deployments without GETDEL must be upgraded before relying on strict one-time challenge consumption.
-        await redisClient.del(key);
-    }
     try { return JSON.parse(raw); } catch { return null; }
 }
 function publicUser(user) {
