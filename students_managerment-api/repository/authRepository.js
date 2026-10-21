@@ -782,6 +782,35 @@ const saveResetTokenHash = async (
 
 
 // tim password reset token
+// Atomically bind the one-time reset token and consume OTP verification.
+// A concurrent correct-OTP request cannot overwrite the reset token after another request succeeds.
+const saveVerifiedPasswordResetToken = async (
+    id,
+    resetTokenHash
+) => {
+    const result = await pool.query(
+        `
+        UPDATE password_reset_tokens
+        SET
+            reset_token_hash = $1,
+            verified_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+          AND used_at IS NULL
+          AND verified_at IS NULL
+          AND attempt_count < 5
+          AND expires_at > CURRENT_TIMESTAMP
+        RETURNING
+            id,
+            user_id,
+            reset_token_hash,
+            verified_at
+        `,
+        [resetTokenHash, id]
+    );
+
+    return result.rows[0] || null;
+};
+
 const findActivePasswordResetToken = async (
     userId
 ) => {
@@ -820,6 +849,10 @@ const incrementPasswordResetAttempt = async (
             UPDATE password_reset_tokens
             SET attempt_count = attempt_count + 1
             WHERE id = $1
+              AND attempt_count < 5
+              AND used_at IS NULL
+              AND verified_at IS NULL
+              AND expires_at > CURRENT_TIMESTAMP
             RETURNING
                 id,
                 attempt_count
@@ -884,6 +917,9 @@ const markPasswordResetVerified = async (
         SET verified_at = CURRENT_TIMESTAMP
         WHERE id = $1
           AND used_at IS NULL
+          AND verified_at IS NULL
+          AND attempt_count < 5
+          AND expires_at > CURRENT_TIMESTAMP
         RETURNING
             id,
             user_id,
@@ -974,6 +1010,8 @@ module.exports = {
 
     saveResetTokenHash,
 
-    markPasswordResetVerified
+    markPasswordResetVerified,
+
+    saveVerifiedPasswordResetToken
 
 };
