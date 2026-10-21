@@ -820,6 +820,10 @@ const incrementPasswordResetAttempt = async (
             UPDATE password_reset_tokens
             SET attempt_count = attempt_count + 1
             WHERE id = $1
+              AND attempt_count < 5
+              AND used_at IS NULL
+              AND verified_at IS NULL
+              AND expires_at > CURRENT_TIMESTAMP
             RETURNING
                 id,
                 attempt_count
@@ -884,6 +888,9 @@ const markPasswordResetVerified = async (
         SET verified_at = CURRENT_TIMESTAMP
         WHERE id = $1
           AND used_at IS NULL
+          AND verified_at IS NULL
+          AND attempt_count < 5
+          AND expires_at > CURRENT_TIMESTAMP
         RETURNING
             id,
             user_id,
