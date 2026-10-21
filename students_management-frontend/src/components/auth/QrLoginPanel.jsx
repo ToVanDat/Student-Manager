@@ -32,6 +32,9 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
         setBusy(true);
         setStatus('');
         try {
+            if (request) {
+                try { await cancelQrLoginApi(request.requestId, request.secret); } catch {}
+            }
             const result = await createQrLoginApi();
             setRequest(result);
             setStatus('Đang chờ xác nhận trên thiết bị đã đăng nhập.');
