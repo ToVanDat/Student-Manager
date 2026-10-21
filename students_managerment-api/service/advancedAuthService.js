@@ -279,17 +279,20 @@ async function pollQrLogin(requestId, secret, req) {
             await client.query('COMMIT');
             return { status: request.status };
         }
-        const consumed = await client.query(
-            `UPDATE qr_login_requests SET status = 'consumed', consumed_at = CURRENT_TIMESTAMP
-             WHERE id = $1 AND status = 'approved' RETURNING approved_user_id`,
-            [requestId]
-        );
-        await client.query('COMMIT');
+        // Keep the request row locked until session issuance succeeds. If issuing the
+        // session fails, ROLLBACK leaves the QR request approved so the client can retry.
         const userResult = await pool.query(
             'SELECT id, username, email, role, avatar_url, is_active FROM users WHERE id = $1',
-            [consumed.rows[0].approved_user_id]
+            [request.approved_user_id]
         );
         const session = await issueSession(userResult.rows[0], req);
+        const consumed = await client.query(
+            `UPDATE qr_login_requests SET status = 'consumed', consumed_at = CURRENT_TIMESTAMP
+             WHERE id = $1 AND status = 'approved' RETURNING id`,
+            [requestId]
+        );
+        if (!consumed.rows[0]) throw new Error('Yêu cầu QR đã được xử lý đồng thời');
+        await client.query('COMMIT');
         return { status: 'consumed', ...session };
     } catch (error) {
         try { await client.query('ROLLBACK'); } catch {}
