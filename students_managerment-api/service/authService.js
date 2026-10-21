@@ -1341,10 +1341,14 @@ const verifyResetOtp = async (
 
     if (otpHash !== resetToken.token_hash) {
 
-        await authRepository
+        const attempt = await authRepository
             .incrementPasswordResetAttempt(
                 resetToken.id
             );
+
+        if (!attempt || attempt.attempt_count >= 5) {
+            throw new Error('OTP đã vượt quá số lần thử');
+        }
 
         throw new Error(
             'OTP không đúng'
@@ -1366,16 +1370,15 @@ const resetTokenHash =
         .update(newResetToken)
         .digest('hex');
 
-// Lưu hash của reset token
-await authRepository.saveResetTokenHash(
+// Atomically save the reset-token hash and consume OTP verification.
+// This prevents parallel valid-OTP requests from overwriting each other's token.
+const verifiedReset = await authRepository.saveVerifiedPasswordResetToken(
     resetToken.id,
     resetTokenHash
 );
-
-// Đánh dấu OTP đã được xác thực
-await authRepository.markPasswordResetVerified(
-    resetToken.id
-);
+if (!verifiedReset) {
+    throw new Error('OTP đã hết hạn, đã được xác thực hoặc vượt quá số lần thử');
+}
 
 // Trả reset token gốc cho client
 return {
