@@ -46,6 +46,7 @@ const findUserById = async (userId) => {
             username,
             email,
             role,
+            avatar_url,
             is_active,
             created_at,
             updated_at
@@ -75,6 +76,7 @@ const findUserByUsername = async (username) => {
             email,
             password_hash,
             role,
+            avatar_url,
             is_active
         FROM users
         WHERE username = $1
@@ -102,6 +104,7 @@ const findUserByEmail = async (email) => {
             email,
             password_hash,
             role,
+            avatar_url,
             is_active
         FROM users
         WHERE email = $1
@@ -241,6 +244,7 @@ const updateUserProfile = async (
             username,
             email,
             role,
+            avatar_url,
             is_active,
             created_at,
             updated_at
@@ -566,6 +570,88 @@ const findRefreshToken = async (
 };
 
 
+
+// Atomically consume one refresh token and issue its replacement.
+// A concurrent refresh using the same token can win only once.
+const rotateRefreshToken = async (
+    oldTokenId,
+    userId,
+    sessionId,
+    newTokenHash,
+    expiresAt
+) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const consumed = await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND session_id = $3
+              AND revoked_at IS NULL
+              AND expires_at > CURRENT_TIMESTAMP
+              AND EXISTS (
+                  SELECT 1
+                  FROM sessions
+                  WHERE id = $3
+                    AND user_id = $2
+                    AND revoked_at IS NULL
+              )
+            RETURNING id
+            `,
+            [oldTokenId, userId, sessionId]
+        );
+
+        if (consumed.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const inserted = await client.query(
+            `
+            INSERT INTO refresh_tokens (
+                user_id,
+                session_id,
+                token_hash,
+                expires_at
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, session_id, expires_at
+            `,
+            [userId, sessionId, newTokenHash, expiresAt]
+        );
+
+        const updatedSession = await client.query(
+            `
+            UPDATE sessions
+            SET last_used_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [sessionId, userId]
+        );
+
+        if (updatedSession.rowCount !== 1) {
+            throw new Error('Session đã bị thu hồi trong lúc refresh token');
+        }
+
+        await client.query('COMMIT');
+        return inserted.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+
 // ======================================================
 // REVOKE REFRESH TOKEN BY ID
 // ======================================================
@@ -777,6 +863,8 @@ const markPasswordResetUsed = async (
         SET used_at = CURRENT_TIMESTAMP
         WHERE id = $1
           AND used_at IS NULL
+          AND verified_at IS NOT NULL
+          AND expires_at > CURRENT_TIMESTAMP
         RETURNING id, used_at
         `,
         [id]
@@ -859,6 +947,8 @@ module.exports = {
     // ==================================================
 
     saveRefreshToken,
+
+    rotateRefreshToken,
 
     findRefreshToken,
 

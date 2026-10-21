@@ -10,12 +10,17 @@ const authMiddleware =
 
 const requireRole =
     require('../middleware/roleMiddleware.js');
+const requirePermission = require('../middleware/permissionMiddleware.js');
+
+const validateStudent = require('../middleware/studentValidation.js');
 
 
-// User + Admin
+// Admin only: list responses include personal student data.
 router.get(
     '/',
     authMiddleware,
+    requireRole('admin'),
+    requirePermission('students.view'),
     studentController.getAllStudents
 );
 
@@ -25,6 +30,8 @@ router.post(
     '/',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.manage'),
+    validateStudent,
     studentController.createStudent
 );
 
@@ -32,6 +39,8 @@ router.patch(
     '/:id',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.manage'),
+    validateStudent.partial,
     studentController.updateStudent
 );
 
@@ -39,14 +48,17 @@ router.delete(
     '/:id',
     authMiddleware,
     requireRole('admin'),
+    requirePermission('students.manage'),
     studentController.deleteStudent
 );
 
 
-// User + Admin
+// Admin only: student records are not yet linked to user accounts for self-service access.
 router.get(
     '/:id',
     authMiddleware,
+    requireRole('admin'),
+    requirePermission('students.view'),
     studentController.getStudentById
 );
 

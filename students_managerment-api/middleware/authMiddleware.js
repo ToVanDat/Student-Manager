@@ -211,20 +211,40 @@ const authMiddleware = async (
 
 
         // ==================================================
-        // 11. SAVE USER INTO REQUEST
+        // 11. LOAD CURRENT USER STATE
+        // Never authorize from a potentially stale JWT role.
+        // ==================================================
+
+        const currentUser =
+            await authRepository.findUserById(decoded.sub);
+
+        if (!currentUser) {
+            return res.status(401).json({
+                message: 'Tài khoản không còn tồn tại'
+            });
+        }
+
+        if (!currentUser.is_active) {
+            return res.status(403).json({
+                message: 'Tài khoản đã bị khóa'
+            });
+        }
+
+        // ==================================================
+        // 12. SAVE CURRENT USER INTO REQUEST
         // ==================================================
 
         req.user = {
-            id: decoded.sub,
-            sub: decoded.sub,
-            username: decoded.username,
-            role: decoded.role,
+            id: currentUser.id,
+            sub: currentUser.id,
+            username: currentUser.username,
+            role: currentUser.role,
             sessionId: decoded.sessionId
         };
 
 
         // ==================================================
-        // 12. NEXT
+        // 13. NEXT
         // ==================================================
 
         next();

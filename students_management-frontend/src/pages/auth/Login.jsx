@@ -1,4 +1,6 @@
 import {useEffect, useState} from 'react';
+import { Languages } from 'lucide-react';
+import { VN, GB } from 'country-flag-icons/react/3x2';
 
 import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
@@ -9,6 +11,7 @@ import AuthBanner from '@/components/auth/AuthBanner.jsx';
 import { useNavigate } from 'react-router-dom';
 
 import { useAuth } from '@/hooks/useAuth.js';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 import ForgotPasswordForm
     from '@/components/auth/forgot-password/ForgotPasswordForm.jsx';
@@ -21,6 +24,7 @@ import ForgotPasswordForm
 function Login() {
 
     const { loginUser } = useAuth();
+    const { language, setLanguage, t } = useLanguage();
     const navigate = useNavigate();
 
     const [mode, setMode] = useState('login');
@@ -132,7 +136,7 @@ function Login() {
         if (!username.trim()) {
 
             setError(
-                'Vui lòng nhập username'
+                t('enterUsername')
             );
 
             return;
@@ -143,7 +147,7 @@ function Login() {
         if (!password) {
 
             setError(
-                'Vui lòng nhập password'
+                t('enterPassword')
             );
 
             return;
@@ -152,7 +156,10 @@ function Login() {
 
 
         setLoading(true);
-
+        // Mark this tab as intentionally replacing its previous session.
+        // sessionStorage is tab-scoped, unlike localStorage, so other devices
+        // and tabs still process their own session-revoked event.
+        sessionStorage.setItem('auth:login-in-progress', 'true');
 
         try {
 
@@ -209,7 +216,7 @@ function Login() {
 
             setSuccess(
                 data.message ||
-                'Đăng nhập thành công'
+                t('loginSuccess')
             );
 
 
@@ -217,7 +224,7 @@ function Login() {
             // GO STUDENTS
             // -----------------------------------------
 
-            navigate('/students');
+            navigate(data.user?.role === 'admin' ? '/students?view=dashboard' : '/students?view=dashboard', { replace: true });
 
 
         } catch (error) {
@@ -231,14 +238,13 @@ function Login() {
             setError(
                 error.response?.data?.message ||
                 error.message ||
-                'Đăng nhập thất bại'
+                t('loginFailed')
             );
 
 
         } finally {
-
+            sessionStorage.removeItem('auth:login-in-progress');
             setLoading(false);
-
         }
 
     };
@@ -265,7 +271,7 @@ function Login() {
         if (!username.trim()) {
 
             setError(
-                'Vui lòng nhập username'
+                t('enterUsername')
             );
 
             return;
@@ -276,7 +282,7 @@ function Login() {
         if (!email.trim()) {
 
             setError(
-                'Vui lòng nhập email'
+                t('enterEmail')
             );
 
             return;
@@ -287,7 +293,7 @@ function Login() {
         if (!password) {
 
             setError(
-                'Vui lòng nhập password'
+                t('enterPassword')
             );
 
             return;
@@ -298,7 +304,7 @@ function Login() {
         if (!confirmPassword) {
 
             setError(
-                'Vui lòng xác nhận password'
+                t('confirmPasswordRequired')
             );
 
             return;
@@ -312,7 +318,7 @@ function Login() {
         ) {
 
             setError(
-                'Mật khẩu xác nhận không khớp'
+                t('passwordMismatch')
             );
 
             return;
@@ -365,7 +371,7 @@ function Login() {
 
                 throw new Error(
                     data.message ||
-                    'Đăng ký thất bại'
+                    t('registerFailed')
                 );
 
             }
@@ -377,7 +383,7 @@ function Login() {
 
             setSuccess(
                 data.message ||
-                'Đăng ký thành công'
+                t('registerSuccess')
             );
 
 
@@ -421,7 +427,7 @@ function Login() {
 
             setError(
                 error.message ||
-                'Đăng ký thất bại'
+                t('registerFailed')
             );
 
 
@@ -511,6 +517,29 @@ function Login() {
 
                     <div className="w-full max-w-[460px] px-5 py-7 min-[451px]:px-6 min-[451px]:py-8 min-[601px]:px-[30px] min-[601px]:py-[35px] min-[901px]:px-10 min-[901px]:py-[45px] min-[1101px]:p-[55px] max-[800px]:max-w-[520px]">
 
+                        {/* LANGUAGE: grouped at the top of the form, separate from the banner */}
+                        <div className="mb-6 flex items-center justify-end min-[601px]:mb-7">
+                            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white p-1 shadow-sm" role="group" aria-label={t('language')}>
+                                <Languages size={16} aria-hidden="true" className="ml-2 mr-1 text-slate-500" />
+                                {[
+                                    { value: 'vi', label: 'Tiếng Việt', shortLabel: 'VI', Flag: VN },
+                                    { value: 'en', label: 'English', shortLabel: 'EN', Flag: GB },
+                                ].map(option => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => setLanguage(option.value)}
+                                        aria-pressed={language === option.value}
+                                        aria-label={option.label}
+                                        title={option.label}
+                                        className={"inline-flex min-h-9 items-center gap-2 rounded-full px-3 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 " + (language === option.value ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100')}
+                                    >
+                                        <option.Flag aria-hidden="true" className="shrink-0 rounded-[2px] shadow-sm" style={{ width: 18, height: 12, display: 'inline-block' }} />
+                                        <span>{option.shortLabel}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
                         {/* BRAND */}
 
@@ -524,11 +553,11 @@ function Login() {
                             <div>
 
                                 <h1 className="m-0 text-[15px] leading-[1.3] font-bold text-slate-900 min-[451px]:text-[17px]">
-                                    Student Management
+                                    {t('authBrandTitle')}
                                 </h1>
 
                                 <p className="mt-[3px] mb-0 text-[9px] leading-[1.3] font-medium text-slate-400 min-[451px]:text-[11px]">
-                                    School Management System
+                                    {t('authBrandSubtitle')}
                                 </p>
 
                             </div>
@@ -543,13 +572,13 @@ function Login() {
                             <h2 className="mb-2 text-2xl leading-tight font-bold text-slate-900 min-[451px]:text-[26px] min-[601px]:text-[28px] min-[901px]:text-[31px]">
 
                                 {mode === 'login' &&
-                                    'Đăng nhập'}
+                                    t('loginHeading')}
 
                                 {mode === 'register' &&
-                                    'Tạo tài khoản'}
+                                    t('registerHeading')}
 
                                 {mode === 'forgot' &&
-                                    'Khôi phục mật khẩu'}
+                                    t('forgotHeading')}
 
                             </h2>
 
@@ -557,13 +586,13 @@ function Login() {
                             <p className="m-0 text-xs leading-relaxed text-slate-500 min-[451px]:text-[13px]">
 
                                 {mode === 'login' &&
-                                    'Đăng nhập vào hệ thống quản lý sinh viên'}
+                                    t('loginSubtitle')}
 
                                 {mode === 'register' &&
-                                    'Đăng ký tài khoản mới để sử dụng hệ thống'}
+                                    t('registerSubtitle')}
 
                                 {mode === 'forgot' &&
-                                    'Xác thực email để đặt lại mật khẩu'}
+                                    t('forgotSubtitle')}
 
                             </p>
 

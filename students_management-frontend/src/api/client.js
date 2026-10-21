@@ -32,6 +32,16 @@ export const setAccessToken = (token) => {
   } else {
     localStorage.removeItem("accessToken");
   }
+
+  // Đồng bộ token mới cho AuthContext/Socket ngay cả khi token
+  // được refresh bởi Axios interceptor thay vì bởi AuthContext.
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("auth:access-token-changed", {
+        detail: { accessToken: token || null },
+      }),
+    );
+  }
 };
 
 // ==========================================
@@ -65,6 +75,51 @@ apiClient.interceptors.request.use(
 // ==========================================
 
 let refreshPromise = null;
+
+// ==========================================
+// REFRESH ACCESS TOKEN
+// ==========================================
+
+export const refreshAccessToken = async () => {
+  if (!refreshPromise) {
+    const performRefresh = async () => {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/refresh`,
+        {},
+        { withCredentials: true },
+      );
+      const newAccessToken = response.data?.accessToken;
+
+      if (!newAccessToken) {
+        throw new Error("Refresh response không có accessToken");
+      }
+
+      setAccessToken(newAccessToken);
+      return newAccessToken;
+    };
+
+    // A module-level promise prevents duplicate refreshes in this tab.
+    // Web Locks extends that protection across tabs sharing the same cookie,
+    // avoiding two tabs rotating the same single-use refresh token at once.
+    const refreshAcrossTabs = () => {
+      if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+        return navigator.locks.request('student-management-auth-refresh', async () => {
+          // Another tab may have refreshed while this tab waited. The refresh
+          // cookie is shared by the origin, so refresh only after acquiring lock.
+          return performRefresh();
+        });
+      }
+
+      return performRefresh();
+    };
+
+    refreshPromise = refreshAcrossTabs().finally(() => {
+      refreshPromise = null;
+    });
+  }
+
+  return refreshPromise;
+};
 
 // ==========================================
 // RESPONSE INTERCEPTOR
@@ -109,43 +164,20 @@ apiClient.interceptors.response.use(
     // CHỈ CHO 1 REFRESH CHẠY
     // ==========================================
 
-    if (!refreshPromise) {
-      refreshPromise = axios
-        .post(
-          `${API_BASE_URL}/api/auth/refresh`,
-          {},
-          {
-            withCredentials: true,
-          },
-        )
-        .then((response) => {
-          const newAccessToken = response.data.accessToken;
-
-          setAccessToken(newAccessToken);
-
-          return newAccessToken;
-        })
-        .catch((refreshError) => {
-          setAccessToken(null);
-
-          localStorage.removeItem("user");
-
-          window.location.href = "/login";
-
-          throw refreshError;
-        })
-        .finally(() => {
-          refreshPromise = null;
-        });
-    }
-
     try {
-      const newAccessToken = await refreshPromise;
+      const newAccessToken = await refreshAccessToken();
 
       originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
 
       return apiClient(originalRequest);
     } catch (refreshError) {
+      // A rejected/expired refresh token requires re-authentication. Network
+      // and server errors are transient and must not destroy a valid session.
+      if (refreshError.response?.status === 401) {
+        setAccessToken(null);
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
       return Promise.reject(refreshError);
     }
   },

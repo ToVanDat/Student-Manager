@@ -1,0 +1,61 @@
+name: Quality checks
+
+on:
+  push:
+    branches:
+      - feature/chat-1to1-complete
+      - feature/e2ee-foundation
+  pull_request:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+      - feature/e2ee-foundation
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-tests:
+    name: Backend tests (Node.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: students_managerment-api
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install backend dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run backend test suite
+        run: npm test
+
+  frontend-quality:
+    name: Frontend lint and production build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: students_management-frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install frontend dependencies
+        run: npm install --no-audit --no-fund
+      - name: Run Signal Protocol encryption/decryption round-trip
+        run: npm run test:e2ee
+      - name: Run lint
+        run: npm run lint
+      - name: Build production bundle
+        run: npm run build

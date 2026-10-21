@@ -1,4 +1,7 @@
 const enrollmentService = require('../service/enrollmentService.js');
+const { validateEnrollment } = require('../middleware/enrollmentValidation.js');
+
+const isValidId = (value) => /^\d+$/.test(String(value)) && Number(value) > 0 && Number.isSafeInteger(Number(value));
 
 
 // GET tất cả đăng ký môn học
@@ -27,6 +30,7 @@ const getEnrollmentById = async (req, res) => {
     try {
 
         const { id } = req.params;
+        if (!isValidId(id)) return res.status(400).json({ message: 'ID đăng ký môn học không hợp lệ' });
 
         const enrollment =
             await enrollmentService.getEnrollmentById(id);
@@ -55,19 +59,20 @@ const getEnrollmentById = async (req, res) => {
 const createEnrollment = async (req, res) => {
     try {
 
-        const enrollment =
-            await enrollmentService.createEnrollment(req.body);
+        const validation = validateEnrollment(req.body);
+        if (!validation.valid) {
+            return res.status(400).json({ message: 'Dữ liệu đăng ký môn học không hợp lệ', errors: validation.errors });
+        }
+        const enrollment = await enrollmentService.createEnrollment(validation.data);
 
         res.status(201).json(enrollment);
 
     } catch (error) {
 
+        if (error.code === '23505') return res.status(409).json({ message: 'Đăng ký môn học này đã tồn tại' });
+        if (error.code === '23503') return res.status(400).json({ message: 'Sinh viên, môn học hoặc học kỳ không tồn tại' });
         console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm đăng ký môn học',
-            error: error.message
-        });
+        return res.status(500).json({ message: 'Không thể thêm đăng ký môn học' });
     }
 };
 
@@ -77,12 +82,14 @@ const updateEnrollment = async (req, res) => {
     try {
 
         const { id } = req.params;
-
-        const enrollment =
-            await enrollmentService.updateEnrollment(
-                id,
-                req.body
-            );
+        if (!isValidId(id)) {
+            return res.status(400).json({ message: 'ID đăng ký môn học không hợp lệ' });
+        }
+        const validation = validateEnrollment(req.body, { partial: true });
+        if (!validation.valid) {
+            return res.status(400).json({ message: 'Dữ liệu cập nhật không hợp lệ', errors: validation.errors });
+        }
+        const enrollment = await enrollmentService.updateEnrollment(id, validation.data);
 
         if (!enrollment) {
             return res.status(404).json({
@@ -94,12 +101,10 @@ const updateEnrollment = async (req, res) => {
 
     } catch (error) {
 
+        if (error.code === '23505') return res.status(409).json({ message: 'Đăng ký môn học này đã tồn tại' });
+        if (error.code === '23503') return res.status(400).json({ message: 'Sinh viên, môn học hoặc học kỳ không tồn tại' });
         console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật đăng ký môn học',
-            error: error.message
-        });
+        return res.status(500).json({ message: 'Không thể cập nhật đăng ký môn học' });
     }
 };
 
@@ -109,6 +114,7 @@ const deleteEnrollment = async (req, res) => {
     try {
 
         const { id } = req.params;
+        if (!isValidId(id)) return res.status(400).json({ message: 'ID đăng ký môn học không hợp lệ' });
 
         const enrollment =
             await enrollmentService.deleteEnrollment(id);

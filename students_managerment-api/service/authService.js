@@ -160,23 +160,10 @@ const emitSessionRevoked = (
 
     try {
 
-        const { getIO } =
-            require('../socket/socket');
+        const { emitSessionRevoked: revokeSocketSession } =
+            require('../src/socket/socket.js');
 
-        const io = getIO();
-
-        if (!io) {
-            return;
-        }
-
-        io.to(`session:${sessionId}`)
-            .emit(
-                'session:revoked',
-                {
-                    sessionId,
-                    reason
-                }
-            );
+        revokeSocketSession(sessionId, reason);
 
     } catch (error) {
 
@@ -191,6 +178,16 @@ const emitSessionRevoked = (
 // =====================================================
 // GET CURRENT USER
 // =====================================================
+
+// Revoke all sessions after a credential change and disconnect their sockets.
+const revokeUserSessions = async (userId, reason = 'CREDENTIALS_CHANGED') => {
+    const sessions = await authRepository.revokeAllSessions(userId);
+
+    for (const session of sessions || []) {
+        await authRepository.revokeRefreshTokensBySessionId(session.id);
+        emitSessionRevoked(session.id, reason);
+    }
+};
 
 const getMe = async (userId) => {
 
@@ -463,6 +460,8 @@ const changePassword = async (
         );
     }
 
+    // A password change invalidates every existing login, including this one.
+    await revokeUserSessions(userId, 'PASSWORD_CHANGED');
 
     return true;
 };
@@ -750,6 +749,14 @@ const login = async (
 
 
     // =================================================
+    // MULTIPLE ACTIVE SESSIONS PER USER
+    // =================================================
+    // Keep existing sessions active when the same account signs in on another
+    // browser or device. Each login receives its own session ID and refresh
+    // token; explicit session revocation and credential changes still revoke
+    // sessions through the dedicated session/security flows.
+
+    // =================================================
     // CREATE SESSION
     // =================================================
 
@@ -847,7 +854,8 @@ const login = async (
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role
+            role: user.role,
+            avatar_url: user.avatar_url || null
         },
 
         sessionId: session.id,
@@ -966,15 +974,10 @@ const logout = async (
             );
 
 
-        // =============================================
-        // SOCKET NOTIFICATION
-        // =============================================
-
-        emitSessionRevoked(
-            sessionId,
-            'LOGOUT'
-        );
-
+        // Do not emit session:revoked for an explicit logout. The current
+        // browser initiated the logout and will disconnect its own socket;
+        // emitting a revoke event here incorrectly triggers the "logged in on
+        // another device" warning in the same browser.
 
         return {
             success: true
@@ -1190,43 +1193,33 @@ const refresh = async (
 
 
     // =================================================
-    // REVOKE OLD REFRESH TOKEN
+    // ATOMIC ROTATION
+    // Only one concurrent request can consume this token.
     // =================================================
 
-    await authRepository
-        .revokeRefreshToken(
-            tokenRecord.id
-        );
+    let rotatedToken;
 
-
-    // =================================================
-    // SAVE NEW REFRESH TOKEN
-    //
-    // IMPORTANT:
-    //
-    // userId
-    // sessionId
-    // tokenHash
-    // expiresAt
-    // =================================================
-
-    await authRepository
-        .saveRefreshToken(
+    try {
+        rotatedToken = await authRepository.rotateRefreshToken(
+            tokenRecord.id,
             user.id,
             session.id,
             newRefreshTokenHash,
             newRefreshTokenExpiresAt
         );
+    } catch (error) {
+        // The Redis access-token entry is not useful if DB rotation failed.
+        await removeAccessTokenFromRedis(newAccessToken).catch(() => {});
+        throw error;
+    }
 
-
-    // =================================================
-    // UPDATE SESSION LAST USED
-    // =================================================
-
-    await authRepository
-        .updateSessionLastUsed(
-            session.id
+    if (!rotatedToken) {
+        // Do not return an access token if rotation lost a race.
+        await removeAccessTokenFromRedis(newAccessToken);
+        throw new Error(
+            'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
         );
+    }
 
 
     // =================================================
@@ -1497,6 +1490,22 @@ const resetPassword = async (
 
 
     // =============================================
+    // CONSUME RESET TOKEN ONCE BEFORE PASSWORD UPDATE
+    // The conditional DB update makes concurrent reset attempts race-safe.
+    // =============================================
+
+    const consumedResetToken =
+        await authRepository.markPasswordResetUsed(
+            resetRequest.id
+        );
+
+    if (!consumedResetToken) {
+        throw new Error(
+            'Reset token đã được sử dụng hoặc hết hạn'
+        );
+    }
+
+    // =============================================
     // UPDATE PASSWORD
     // =============================================
 
@@ -1506,9 +1515,7 @@ const resetPassword = async (
             passwordHash
         );
 
-
     if (!user) {
-
         throw new Error(
             'Không thể cập nhật mật khẩu'
         );
@@ -1516,20 +1523,12 @@ const resetPassword = async (
 
 
     // =============================================
-    // MARK RESET TOKEN USED
+    // REVOKE ALL SESSIONS AND REFRESH TOKENS
     // =============================================
 
-    await authRepository.markPasswordResetUsed(
-        resetRequest.id
-    );
-
-
-    // =============================================
-    // REVOKE ALL SESSIONS
-    // =============================================
-
-    await authRepository.revokeAllSessions(
-        resetRequest.user_id
+    await revokeUserSessions(
+        resetRequest.user_id,
+        'PASSWORD_RESET'
     );
 
 

@@ -60,24 +60,25 @@ const createDepartment = async (data) => {
 
 // Cập nhật khoa
 const updateDepartment = async (id, data) => {
-
-    const {
-        department_code,
-        department_name
-    } = data;
-
-    const result = await pool.query(`
-        UPDATE departments
-        SET
-            department_code = $1,
-            department_name = $2
-        WHERE id = $3
-        RETURNING *
-    `, [
-        department_code,
-        department_name,
-        id
+    const allowedColumns = new Set([
+        'department_code',
+        'department_name'
     ]);
+    const entries = Object.entries(data || {}).filter(([key]) => allowedColumns.has(key));
+
+    if (entries.length === 0) return null;
+
+    const values = entries.map(([, value]) => value);
+    const assignments = entries.map(([key], index) => `${key} = $${index + 1}`);
+    values.push(id);
+
+    const result = await pool.query(
+        `UPDATE departments
+         SET ${assignments.join(', ')}
+         WHERE id = $${values.length}
+         RETURNING *`,
+        values
+    );
 
     return result.rows[0];
 };

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Paperclip, Smile, Send } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function MessageInput({ onSendMessage }) {
+    const { t } = useLanguage();
     const [input, setInput] = useState('');
 
     const handleSubmit = (e) => {
@@ -21,7 +23,7 @@ export default function MessageInput({ onSendMessage }) {
             </button>
             <input
                 type="text"
-                placeholder="Nhập tin nhắn..."
+                placeholder={t("typeMessage")}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 className="flex-1 bg-slate-50 border border-slate-100 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-slate-400"

@@ -5,7 +5,13 @@ import {
 } from 'react';
 
 import { logoutApi } from '@/api/authApi.js';
+import {
+    refreshAccessToken,
+    setAccessToken as setApiAccessToken
+} from '@/api/client.js';
 import socket from '@/socket/socket.js';
+import useWebRTCCall from '@/hooks/useWebRTCCall.js';
+import { shutdownE2EEClient } from '@/services/e2ee/e2eeClient';
 
 const AuthContext = createContext(null);
 
@@ -21,21 +27,53 @@ const getStoredUser = () => {
 
 export const AuthProvider = ({ children }) => {
 
+    // Call state must live above route pages so an incoming call is received
+    // even when the user is on Dashboard/Home instead of ChatPage.
+    const webRTCCall = useWebRTCCall();
+
     const [accessToken, setAccessToken] = useState(
         localStorage.getItem('accessToken')
     );
 
     const [user, setUser] = useState(getStoredUser);
 
-//login
+    // Đồng bộ khi Axios interceptor refresh token sau một request 401.
+    useEffect(() => {
+        const handleTokenChanged = (event) => {
+            const nextToken = event.detail?.accessToken || null;
+            setAccessToken(nextToken);
+
+            if (!nextToken) {
+                void shutdownE2EEClient().catch(() => {});
+                setUser(null);
+            }
+        };
+
+        window.addEventListener(
+            'auth:access-token-changed',
+            handleTokenChanged
+        );
+
+        return () => {
+            window.removeEventListener(
+                'auth:access-token-changed',
+                handleTokenChanged
+            );
+        };
+    }, []);
+
+const updateUser = (partialUser) => {
+        setUser(previous => {
+            const nextUser = { ...(previous || {}), ...(partialUser || {}) };
+            localStorage.setItem('user', JSON.stringify(nextUser));
+            return nextUser;
+        });
+    };
+
+    //login
     const loginUser = (data) => {
 
-        console.log('LOGIN DATA:', data);
-
-        localStorage.setItem(
-            'accessToken',
-            data.accessToken
-        );
+        setApiAccessToken(data.accessToken);
 
         localStorage.setItem(
             'user',
@@ -63,11 +101,17 @@ export const AuthProvider = ({ children }) => {
 
         } finally {
 
+            // Close the active protocol client and relay listeners before clearing
+            // authentication state. The local key store is intentionally preserved.
+            try {
+                await shutdownE2EEClient();
+            } catch {
+                console.warn('[E2EE] Could not cleanly shut down the local client.');
+            }
+
             socket.disconnect();
 
-            localStorage.removeItem(
-                'accessToken'
-            );
+            setApiAccessToken(null);
 
             localStorage.removeItem(
                 'user'
@@ -79,114 +123,285 @@ export const AuthProvider = ({ children }) => {
     };
 
     // =========================
+    // PROACTIVE ACCESS TOKEN REFRESH
+    // =========================
+    useEffect(() => {
+        if (!accessToken) return;
+
+        let timerId;
+
+        const scheduleRefresh = (token) => {
+            try {
+                const payload = JSON.parse(
+                    atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+                );
+
+                if (!payload.exp) {
+                    console.warn('Access token không có exp');
+                    return;
+                }
+
+                // Refresh trước khi hết hạn 60 giây.
+                const delay = Math.max(
+                    (payload.exp * 1000) - Date.now() - 60_000,
+                    5_000
+                );
+
+                timerId = window.setTimeout(async () => {
+                    try {
+                        const newToken = await refreshAccessToken();
+                        setAccessToken(newToken);
+                    } catch (error) {
+                        console.warn('Không thể tự refresh Access Token:', error.message);
+
+                        // Only a definitive 401 means the refresh credential is
+                        // invalid/revoked. A temporary network/5xx failure should
+                        // retry later rather than logging the user out.
+                        if (error.response?.status !== 401) {
+                            timerId = window.setTimeout(async () => {
+                                try {
+                                    setAccessToken(await refreshAccessToken());
+                                } catch (retryError) {
+                                    if (retryError.response?.status === 401) {
+                                        void shutdownE2EEClient().catch(() => {});
+                                        socket.disconnect();
+                                        setApiAccessToken(null);
+                                        localStorage.removeItem('user');
+                                        setAccessToken(null);
+                                        setUser(null);
+                                        window.location.href = '/login';
+                                    } else {
+                                        console.warn('Refresh vẫn tạm thời thất bại:', retryError.message);
+                                    }
+                                }
+                            }, 10_000);
+                            return;
+                        }
+
+                        void shutdownE2EEClient().catch(() => {});
+                        socket.disconnect();
+                        setApiAccessToken(null);
+                        localStorage.removeItem('user');
+                        setAccessToken(null);
+                        setUser(null);
+                        window.location.href = '/login';
+                    }
+                }, delay);
+            } catch (error) {
+                console.error('Không thể đọc exp của Access Token:', error);
+            }
+        };
+
+        scheduleRefresh(accessToken);
+
+        return () => {
+            if (timerId) window.clearTimeout(timerId);
+        };
+    }, [accessToken]);
+
+    // Global notification toast and sound, available on every authenticated route.
+    useEffect(() => {
+        if (!accessToken || !user?.id) return undefined;
+        let active = true;
+
+        const handleNotification = async notification => {
+            if (!active || !notification) return;
+            const isAwayFromChat = document.visibilityState === 'hidden' || window.location.pathname !== '/chat';
+            if (isAwayFromChat) {
+                const { toast } = await import('sonner');
+                toast(notification.title || 'Tin nhắn mới', {
+                    description: notification.body || 'Bạn có tin nhắn mới.',
+                    duration: 4500,
+                    id: `notification-${notification.id}`
+                });
+            }
+            if (isAwayFromChat && notification.soundEnabled !== false) {
+                const { playSound } = await import('@/services/soundService.js');
+                await playSound('notification', { volume: 0.55 });
+            }
+        };
+
+        socket.on('notification:new', handleNotification);
+        return () => {
+            active = false;
+            socket.off('notification:new', handleNotification);
+        };
+    }, [accessToken, user?.id]);
+
+    useEffect(() => {
+        if (!accessToken || !user?.id) return undefined;
+        const handleProfileUpdated = profile => {
+            if (Number(profile?.userId) !== Number(user.id)) return;
+            setUser(previous => {
+                if (!previous) return previous;
+                const nextUser = {
+                    ...previous,
+                    username: profile.username || previous.username,
+                    avatar_url: profile.avatarUrl || null
+                };
+                localStorage.setItem('user', JSON.stringify(nextUser));
+                return nextUser;
+            });
+        };
+        socket.on('user:profile-updated', handleProfileUpdated);
+        return () => socket.off('user:profile-updated', handleProfileUpdated);
+    }, [accessToken, user?.id]);
+
+    // =========================
     // SOCKET CONNECTION
     // =========================
     useEffect(() => {
-
         if (!accessToken) {
             socket.disconnect();
             return;
         }
 
-        // Gửi access token đến backend
-        socket.auth = {
-            accessToken
+        // Keep the socket lifecycle independent from access-token state.
+        // Updating the JWT must not force a disconnect during an active call.
+        socket.auth = { accessToken };
+
+        const syncSocketToken = () => {
+            if (!socket.connected || !accessToken) return;
+
+            socket.emit('auth:token-refresh', { accessToken }, (result) => {
+                if (!result?.ok) {
+                    console.warn('[SOCKET][token refresh rejected]', result?.message || 'Unknown error');
+                } else {
+                    console.log('[SOCKET][token refreshed]', socket.id);
+                }
+            });
         };
 
-        // Kết nối Socket.IO
-        socket.connect();
-
-        // =========================
-        // CONNECT
-        // =========================
         const handleConnect = () => {
-
-            console.log(
-                'Socket connected:',
-                socket.id
-            );
+            console.log('[SOCKET][connect]', socket.id);
+            syncSocketToken();
         };
 
-        // =========================
-        // SESSION REVOKED
-        // =========================
         const handleSessionRevoked = (data) => {
+            console.log('[SOCKET][session revoked]', data);
 
-            console.log(
-                'Session revoked:',
-                data
-            );
+            // Logging out is initiated by this client; it must never be reported as
+            // a forced logout caused by a login on another device.
+            if (String(data?.reason || '').toUpperCase() === 'LOGOUT') return;
+
+            // A login in this same tab intentionally replaces its previous
+            // session. Do not let the old socket event clear the new login.
+            if (sessionStorage.getItem('auth:login-in-progress') === 'true') {
+                return;
+            }
+
+            // Ignore delayed revoke events for a session that is no longer
+            // the one represented by the currently stored access token.
+            const currentToken = localStorage.getItem('accessToken');
+            let currentSessionId = null;
+            try {
+                const payload = currentToken?.split('.')?.[1];
+                if (payload) {
+                    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+                    currentSessionId = JSON.parse(
+                        decodeURIComponent(
+                            atob(normalized).split('').map(char =>
+                                '%' + char.charCodeAt(0).toString(16).padStart(2, '0')
+                            ).join('')
+                        )
+                    )?.sessionId;
+                }
+            } catch {
+                currentSessionId = null;
+            }
+
+            if (
+                data?.sessionId != null &&
+                currentSessionId != null &&
+                String(data.sessionId) !== String(currentSessionId)
+            ) {
+                return;
+            }
 
             alert(
                 'Phiên đăng nhập của bạn đã kết thúc. ' +
                 'Tài khoản vừa được đăng nhập trên một thiết bị khác.'
             );
 
-            localStorage.removeItem(
-                'accessToken'
-            );
-
-            localStorage.removeItem(
-                'user'
-            );
-
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('user');
+            setApiAccessToken(null);
             setAccessToken(null);
             setUser(null);
-
             socket.disconnect();
-
             window.location.href = '/login';
         };
 
-        // =========================
-        // CONNECTION ERROR
-        // =========================
         const handleConnectError = (error) => {
+            // The old socket can fail authentication while this tab is
+            // replacing its session. Do not refresh the old refresh cookie or
+            // clear the newly-authenticating state during that race.
+            if (sessionStorage.getItem('auth:login-in-progress') === 'true') {
+                console.warn('[SOCKET][connect error ignored during login]', error.message);
+                return;
+            }
 
-            console.error(
-                'Socket connection error:',
-                error.message
-            );
+            console.error('[SOCKET][connect error]', error.message);
+
+            // Only refresh the token here when the server explicitly rejects
+            // the socket authentication. Normal call/WebRTC errors must not
+            // trigger an auth refresh.
+            if (/Access Token|token|Session/i.test(error.message || '')) {
+                refreshAccessToken()
+                    .then((newToken) => {
+                        // Update auth for the next socket handshake.
+                        socket.auth = { accessToken: newToken };
+                        setAccessToken(newToken);
+                    })
+                    .catch((refreshError) => {
+                        if (refreshError.response?.status !== 401) {
+                            console.warn('[SOCKET][refresh deferred]', refreshError.message);
+                            return;
+                        }
+                        setApiAccessToken(null);
+                        localStorage.removeItem('user');
+                        setAccessToken(null);
+                        setUser(null);
+                        socket.disconnect();
+                        window.location.href = '/login';
+                    });
+            }
         };
 
-        socket.on(
-            'connect',
-            handleConnect
-        );
+        const handleSocketDisconnect = (reason) => {
+            console.warn('[SOCKET][disconnect]', {
+                reason,
+                socketId: socket.id
+            });
 
-        socket.on(
-            'session:revoked',
-            handleSessionRevoked
-        );
+            // Do not manually disconnect/reconnect here for ordinary
+            // transport/network disconnects. Socket.IO handles automatic
+            // reconnection. Server namespace disconnect is an auth/session
+            // decision and is handled by connect_error/session:revoked.
+        };
 
-        socket.on(
-            'connect_error',
-            handleConnectError
-        );
+        socket.on('connect', handleConnect);
+        socket.on('session:revoked', handleSessionRevoked);
+        socket.on('connect_error', handleConnectError);
+        socket.on('disconnect', handleSocketDisconnect);
 
-        // =========================
-        // CLEANUP
-        // =========================
+        if (socket.connected) {
+            syncSocketToken();
+        } else {
+            socket.connect();
+        }
+
         return () => {
+            socket.off('connect', handleConnect);
+            socket.off('session:revoked', handleSessionRevoked);
+            socket.off('connect_error', handleConnectError);
+            socket.off('disconnect', handleSocketDisconnect);
 
-            socket.off(
-                'connect',
-                handleConnect
-            );
-
-            socket.off(
-                'session:revoked',
-                handleSessionRevoked
-            );
-
-            socket.off(
-                'connect_error',
-                handleConnectError
-            );
-
-            socket.disconnect();
+            // IMPORTANT:
+            // Do not disconnect here merely because accessToken changed.
+            // The next render updates socket.auth and Socket.IO can reconnect
+            // without destroying the active call lifecycle.
         };
-
     }, [accessToken]);
 
     return (
@@ -196,10 +411,13 @@ export const AuthProvider = ({ children }) => {
                 user,
                 loginUser,
                 logoutUser,
-                isAuthenticated: !!accessToken
+                updateUser,
+                isAuthenticated: !!accessToken,
+                webRTCCall
             }}
         >
             {children}
+
         </AuthContext.Provider>
     );
 };

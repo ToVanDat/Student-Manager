@@ -565,7 +565,7 @@ const login = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
@@ -692,7 +692,7 @@ const refresh = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
@@ -721,28 +721,32 @@ const refresh = async (req, res) => {
         });
 
     } catch (error) {
+        // Do not keep sending a known-invalid HttpOnly cookie on every
+        // subsequent refresh attempt. Match the cookie attributes used by
+        // login/refresh so the browser removes the same cookie.
+        const message = error.message || 'Refresh Token không hợp lệ';
+        const invalidRefreshToken =
+            /refresh token|session đã bị revoke|session không tồn tại|session đã bị thu hồi/i.test(message);
 
-        console.error(
-            'LỖI REFRESH:',
-            error
-        );
+        if (invalidRefreshToken) {
+            res.clearCookie('refreshToken', {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/api/auth'
+            });
+        }
 
-
-        /*
-            Refresh Token không hợp lệ,
-            hết hạn,
-            đã revoke,
-            hoặc session đã revoke.
-        */
-
-        return res.status(401).json({
-
-            message:
-                error.message ||
-                'Refresh Token không hợp lệ'
-
+        console.warn('[AUTH][refresh failed]', {
+            message,
+            hasRefreshCookie: Boolean(req.cookies?.refreshToken)
         });
 
+        return res.status(invalidRefreshToken ? 401 : 500).json({
+            message: invalidRefreshToken
+                ? message
+                : 'Không thể làm mới phiên đăng nhập lúc này. Vui lòng thử lại.'
+        });
     }
 
 };
@@ -808,7 +812,7 @@ const logout = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 
@@ -848,7 +852,7 @@ const logout = async (req, res) => {
 
                 httpOnly: true,
 
-                secure: false,
+                secure: process.env.NODE_ENV === 'production',
 
                 sameSite: 'lax',
 

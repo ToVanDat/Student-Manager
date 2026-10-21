@@ -1,19 +1,32 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { apiClient } from "@/api/client.js";
+import { useLanguage } from "@/context/LanguageContext.jsx";
 
 import { useAuth } from "@/hooks/useAuth.js";
+import { useTheme } from "@/context/ThemeContext.jsx";
 import { useStudents } from "@/hooks/useStudents.js";
 import { useStudentSettings } from "@/hooks/useStudentSettings.js";
 
 import StudentHeader from "@/components/layout/StudentHeader.jsx";
 import StudentSidebar from "@/components/layout/StudentSidebar.jsx";
 import StudentDashboard from "@/components/students/StudentDashboard.jsx";
+import AdminOverview from "@/components/students/AdminOverview.jsx";
+import StudentPortalOverview from "@/components/students/StudentPortalOverview.jsx";
+import ClassManagement from "@/components/management/ClassManagement.jsx";
+import CatalogManagement from "@/components/management/CatalogManagement.jsx";
+import UserManagement from "@/components/management/UserManagement.jsx";
+import PermissionsOverview from "@/components/management/PermissionsOverview.jsx";
+import EnrollmentManagement from "@/components/management/EnrollmentManagement.jsx";
 import SettingsPage from "@/components/settings/SettingsPage.jsx";
 import AccountSettings from "@/components/settings/AccountSettings.jsx";
 import SecuritySettings from "@/components/settings/SecuritySettings.jsx";
 import SessionSettings from "@/components/settings/SessionSettings.jsx";
 import PasswordSettings from "@/components/settings/PasswordSettings.jsx";
+import NotificationSettings from "@/components/settings/NotificationSettings.jsx";
+import AppearanceSettings from "@/components/settings/AppearanceSettings.jsx";
+import LanguageSettings from "@/components/settings/LanguageSettings.jsx";
 
 import {
   createStudent,
@@ -30,7 +43,41 @@ function Students() {
 
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { user, logoutUser } = useAuth();
+  const { user, logoutUser, updateUser } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
+  const { t } = useLanguage();
+  const isAdmin = user?.role === "admin";
+  const [classes, setClasses] = useState([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [classesError, setClassesError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    if (!isAdmin) {
+      setClasses([]);
+      setClassesLoading(false);
+      setClassesError("");
+      return () => { active = false; };
+    }
+
+    setClassesLoading(true);
+    setClassesError("");
+    apiClient.get("/api/classes")
+      .then(({ data }) => {
+        if (active) setClasses(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error("[STUDENTS] Could not load class filter options:", error?.message);
+        setClasses([]);
+        setClassesError(error?.response?.data?.message || t("classesLoadFailed"));
+      })
+      .finally(() => {
+        if (active) setClassesLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [isAdmin, t]);
 
   // =====================================================
   // READ PAGINATION FROM URL
@@ -49,6 +96,25 @@ function Students() {
     : 10;
 
   const search = searchParams.get("search") || "";
+  const sortableColumns = [
+    "id",
+    "student_code",
+    "name",
+    "email",
+    "date_of_birth",
+    "gender",
+    "class_code",
+    "class_name",
+  ];
+  const requestedSortBy = searchParams.get("sortBy") || "id";
+  const sortBy = sortableColumns.includes(requestedSortBy) ? requestedSortBy : "id";
+  const sortOrder = searchParams.get("sortOrder") === "desc" ? "desc" : "asc";
+  const rawClassFilter = searchParams.get("classId") || "";
+  const classFilter = Number.isSafeInteger(Number(rawClassFilter)) && Number(rawClassFilter) > 0
+    ? rawClassFilter
+    : "";
+  const rawGenderFilter = searchParams.get("gender") || "";
+  const genderFilter = ["Nam", "Nữ"].includes(rawGenderFilter) ? rawGenderFilter : "";
 
   // =====================================================
   // STUDENT STATE
@@ -60,7 +126,26 @@ function Students() {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const [darkMode, setDarkMode] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("studentos-sidebar-collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleDesktopSidebar = () => {
+    setSidebarCollapsed((collapsed) => {
+      const next = !collapsed;
+      try {
+        localStorage.setItem("studentos-sidebar-collapsed", String(next));
+      } catch {
+        // Keep the UI functional when storage is unavailable.
+      }
+      return next;
+    });
+  };
+
 
   // =====================================================
   // STUDENTS HOOK
@@ -68,13 +153,15 @@ function Students() {
 
   const {
     students,
+    recentStudents,
     loading,
     error,
     loadStudents,
     filteredStudents,
+    totalCount,
     statistics,
     classStatistics,
-  } = useStudents(search);
+  } = useStudents(search, isAdmin, currentPage, pageSize, sortBy, sortOrder, classFilter, genderFilter);
 
   // =====================================================
   // PAGINATION
@@ -82,7 +169,7 @@ function Students() {
 
   const pageCount = Math.max(
     1,
-    Math.ceil(filteredStudents.length / pageSize)
+    Math.ceil(totalCount / pageSize)
   );
 
   /*
@@ -100,19 +187,17 @@ function Students() {
     Math.min(currentPage, pageCount)
   );
 
-  const firstStudentIndex = filteredStudents.length
+  const firstStudentIndex = totalCount
     ? (visiblePage - 1) * pageSize + 1
     : 0;
 
   const lastStudentIndex = Math.min(
     visiblePage * pageSize,
-    filteredStudents.length
+    totalCount
   );
 
-  const paginatedStudents = filteredStudents.slice(
-    firstStudentIndex - 1,
-    lastStudentIndex
-  );
+  // The API already returns exactly the requested page. Do not paginate the page again.
+  const paginatedStudents = filteredStudents;
 
   // =====================================================
   // FIX INVALID PAGE IN URL
@@ -166,7 +251,12 @@ function Students() {
   // =====================================================
 
   const handleSearchChange = (value) => {
+    if (isAdmin && value.trim()) {
+      setActivePage("students");
+    }
+
     const params = new URLSearchParams(searchParams);
+    if (isAdmin && value.trim()) params.set("view", "students");
 
     if (value.trim()) {
       params.set("search", value);
@@ -213,6 +303,45 @@ function Students() {
   };
 
   // =====================================================
+  // SERVER-SIDE FILTERS
+  // =====================================================
+
+  const handleRosterFilterChange = (key, value) => {
+    if (!["classId", "gender"].includes(key)) return;
+    const params = new URLSearchParams(searchParams);
+    if (value) params.set(key, value);
+    else params.delete(key);
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
+    setSearchParams(params);
+  };
+
+  const handleClearRosterFilters = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete("classId");
+    params.delete("gender");
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
+    setSearchParams(params);
+  };
+
+  // =====================================================
+  // SORT
+  // =====================================================
+
+  const handleSortChange = (column) => {
+    if (!sortableColumns.includes(column)) return;
+
+    const nextSortOrder = sortBy === column && sortOrder === "asc" ? "desc" : "asc";
+    const params = new URLSearchParams(searchParams);
+    params.set("sortBy", column);
+    params.set("sortOrder", nextSortOrder);
+    params.set("page", "1");
+    params.set("pageSize", String(pageSize));
+    setSearchParams(params);
+  };
+
+  // =====================================================
   // PAGE SIZE CHANGE
   // =====================================================
 
@@ -248,7 +377,13 @@ function Students() {
   // PAGE / SETTINGS STATE
   // =====================================================
 
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState(() => {
+    const requestedView = searchParams.get("view");
+    if (requestedView === "settings") return "settings";
+    if (["students", "classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"].includes(requestedView) && isAdmin) return requestedView;
+    if (requestedView === "students" || (isAdmin && searchParams.has("search"))) return "students";
+    return "dashboard";
+  });
 
   const {
     settingsTab,
@@ -280,22 +415,38 @@ function Students() {
   // =====================================================
 
   const openSettings = (tab = "account") => {
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance", "language"];
+    const nextTab = allowedTabs.includes(tab) ? tab : "account";
     setActivePage("settings");
-
-    setSettingsTab(tab);
-
+    setSettingsTab(nextTab);
     setSidebarOpen(false);
 
-    if (tab === "sessions") {
+    const params = new URLSearchParams(searchParams);
+    params.set("view", "settings");
+    params.set("tab", nextTab);
+    setSearchParams(params);
+
+    if (nextTab === "sessions") {
       loadSessions();
     }
   };
+
+  useEffect(() => {
+    if (searchParams.get("view") !== "settings") return;
+    const requestedTab = searchParams.get("tab");
+    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance", "language"];
+    if (allowedTabs.includes(requestedTab) && requestedTab !== settingsTab) {
+      setSettingsTab(requestedTab);
+      if (requestedTab === "sessions") loadSessions();
+    }
+  }, [searchParams]);
 
   // =====================================================
   // ADD STUDENT
   // =====================================================
 
   const handleAdd = () => {
+    if (!isAdmin) return;
     setSelectedStudent(null);
 
     setShowForm(true);
@@ -306,6 +457,7 @@ function Students() {
   // =====================================================
 
   const handleEdit = (student) => {
+    if (!isAdmin) return;
     setSelectedStudent(student);
 
     setShowForm(true);
@@ -316,6 +468,11 @@ function Students() {
   // =====================================================
 
   const handleDelete = async (id) => {
+    if (!isAdmin) {
+      toast.error("Bạn không có quyền quản lý sinh viên");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Bạn có chắc muốn xóa sinh viên này?"
     );
@@ -345,6 +502,11 @@ function Students() {
   // =====================================================
 
   const handleSubmit = async (studentData) => {
+    if (!isAdmin) {
+      toast.error("Bạn không có quyền quản lý sinh viên");
+      return;
+    }
+
     try {
       if (selectedStudent) {
         await updateStudent(
@@ -414,8 +576,8 @@ function Students() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 text-slate-600">
-        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600"></div>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+        <div className="size-8 animate-spin rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-blue-600"></div>
 
         <p>Đang tải dữ liệu...</p>
       </div>
@@ -428,9 +590,7 @@ function Students() {
 
   return (
     <div
-      className={`${
-        darkMode ? "dark" : ""
-      } flex min-h-screen bg-[#f5f7fb] font-sans text-[#17233c] dark:bg-slate-950 dark:text-slate-100`}
+      className="flex min-h-screen bg-[#f5f8ff] dark:bg-slate-950 font-sans text-[#203754] dark:text-slate-100"
     >
       {/* =================================================
           SIDEBAR
@@ -442,6 +602,7 @@ function Students() {
         totalStudents={statistics.totalStudents}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
+        collapsed={sidebarCollapsed}
         onNavigate={(page) => {
           setSidebarOpen(false);
 
@@ -449,8 +610,20 @@ function Students() {
             navigate("/chat");
             return;
           }
+          const adminViews = ["dashboard", "students", "classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"];
+          if (!adminViews.includes(page) || (!isAdmin && page !== "dashboard")) return;
 
           setActivePage(page);
+          const params = new URLSearchParams(searchParams);
+          params.set("view", page);
+          params.delete("tab");
+          if (page !== "students") params.delete("search");
+          if (page === "dashboard") {
+            params.delete("search");
+            params.delete("page");
+            params.delete("pageSize");
+          }
+          setSearchParams(params, { replace: true });
         }}
         onOpenSettings={() =>
           openSettings("account")
@@ -461,7 +634,7 @@ function Students() {
           MAIN
       ================================================= */}
 
-      <main className="ml-[250px] min-h-screen min-w-0 flex-1 max-[1100px]:ml-[220px] max-[800px]:ml-0">
+      <main className={`min-h-screen min-w-0 flex-1 transition-[margin] duration-200 ${sidebarCollapsed ? "ml-[72px] max-[800px]:ml-0" : "ml-[250px] max-[1100px]:ml-[220px] max-[800px]:ml-0"}`}>
         {/* =================================================
             HEADER
         ================================================= */}
@@ -470,14 +643,11 @@ function Students() {
           user={user}
           search={search}
           onSearchChange={handleSearchChange}
-          darkMode={darkMode}
-          onToggleDarkMode={() =>
-            setDarkMode(
-              (current) => !current
-            )
-          }
-          onOpenSettings={() =>
-            openSettings("account")
+          showSearch={isAdmin && activePage !== "students" && activePage !== "settings"}
+          darkMode={isDarkMode}
+          onToggleDarkMode={toggleTheme}
+          onOpenSettings={(tab = "account") =>
+            openSettings(tab)
           }
           onLogout={handleLogout}
           onToggleSidebar={() =>
@@ -485,6 +655,8 @@ function Students() {
               (open) => !open
             )
           }
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleDesktopSidebar={toggleDesktopSidebar}
         />
 
         {/* =================================================
@@ -496,14 +668,60 @@ function Students() {
               DASHBOARD
           ================================================= */}
 
-          {activePage === "dashboard" && (
-            <StudentDashboard
+          {activePage === "dashboard" && isAdmin && (
+            <AdminOverview
               user={user}
               statistics={statistics}
+              classStatistics={classStatistics}
+              students={recentStudents}
+              onOpenStudents={() => {
+                setActivePage("students");
+                const params = new URLSearchParams(searchParams);
+                params.set("view", "students");
+                setSearchParams(params, { replace: true });
+              }}
+            />
+          )}
 
-              filteredCount={
-                filteredStudents.length
-              }
+          {activePage === "dashboard" && !isAdmin && (
+            <StudentPortalOverview
+              user={user}
+              onOpenChat={() => navigate("/chat")}
+              onOpenSettings={() => openSettings("account")}
+              onOpenCalls={() => navigate("/chat?calls=1")}
+            />
+          )}
+
+          {isAdmin && activePage === "classes" && <ClassManagement />}
+
+          {isAdmin && ["departments", "subjects", "semesters"].includes(activePage) && <CatalogManagement resource={activePage} />}
+
+          {isAdmin && activePage === "enrollments" && <EnrollmentManagement />}
+
+          {isAdmin && activePage === "results" && <EnrollmentManagement view="results" />}
+
+          {isAdmin && activePage === "users" && <UserManagement />}
+
+          {isAdmin && activePage === "permissions" && <PermissionsOverview />}
+
+          {activePage === "students" && isAdmin && (
+            <StudentDashboard
+              user={user}
+              isAdmin={isAdmin}
+              statistics={statistics}
+
+              filteredCount={totalCount}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
+              classFilter={classFilter}
+              genderFilter={genderFilter}
+              classes={classes}
+              classesLoading={classesLoading}
+              classesError={classesError}
+              onClassFilterChange={value => handleRosterFilterChange("classId", value)}
+              onGenderFilterChange={value => handleRosterFilterChange("gender", value)}
+              onClearRosterFilters={handleClearRosterFilters}
 
               students={students}
 
@@ -538,7 +756,8 @@ function Students() {
               }
 
               error={error}
-
+              loading={loading}
+              onRetry={loadStudents}
               search={search}
 
               onSearchChange={
@@ -580,6 +799,10 @@ function Students() {
 
               onTabChange={(tab) => {
                 setSettingsTab(tab);
+                const params = new URLSearchParams(searchParams);
+                params.set("view", "settings");
+                params.set("tab", tab);
+                setSearchParams(params);
 
                 if (tab === "sessions") {
                   loadSessions();
@@ -614,8 +837,14 @@ function Students() {
                     message={
                       accountMessage
                     }
+                    onAvatarUpdated={updateUser}
                   />
                 )}
+
+                {settingsTab === "notifications" && <NotificationSettings />}
+
+                {settingsTab === "appearance" && <AppearanceSettings />}
+                {settingsTab === "language" && <LanguageSettings />}
 
                 {/* =========================================
                     SECURITY

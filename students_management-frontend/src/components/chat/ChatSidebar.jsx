@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Search, SquarePen, X } from 'lucide-react';
+import { Search, X, Users, Check } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 import ConversationItem from './ConversationItem';
 import AvatarFallback from './AvatarFallback';
 
@@ -9,17 +10,24 @@ export default function ChatSidebar({
     onSelectConversation,
     searchUsers,
     searchResults,
-    onStartConversation
+    onStartConversation,
+    onStartGroupConversation,
+    onlineUserIds = new Set(),
+    mobileHidden = false
 }) {
     const [filter, setFilter] = useState('all');
+    const { t } = useLanguage();
     const [searchTerm, setSearchTerm] = useState('');
     const [showNewChat, setShowNewChat] = useState(false);
+    const [mode, setMode] = useState('direct');
     const [userSearch, setUserSearch] = useState('');
+    const [groupName, setGroupName] = useState('');
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [creatingGroup, setCreatingGroup] = useState(false);
+    const [startingDirectId, setStartingDirectId] = useState(null);
+    const [newChatError, setNewChatError] = useState('');
 
-    const unreadTotal = conversations.reduce(
-        (acc, curr) => acc + (curr.unreadCount || 0),
-        0
-    );
+    const unreadTotal = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
 
     useEffect(() => {
         if (!showNewChat) return;
@@ -27,101 +35,275 @@ export default function ChatSidebar({
         return () => clearTimeout(timer);
     }, [showNewChat, userSearch, searchUsers]);
 
+    useEffect(() => {
+        if (!showNewChat) return undefined;
+        const handleDialogKeyDown = event => {
+            if (event.key !== 'Escape' || creatingGroup || startingDirectId) return;
+            setShowNewChat(false);
+            setNewChatError('');
+            setStartingDirectId(null);
+            setMode('direct');
+            setUserSearch('');
+            setGroupName('');
+            setSelectedIds([]);
+        };
+        window.addEventListener('keydown', handleDialogKeyDown);
+        return () => window.removeEventListener('keydown', handleDialogKeyDown);
+    }, [showNewChat, creatingGroup, startingDirectId]);
+
+    const getIsOnline = conversation => conversation.type === 'direct'
+        && onlineUserIds.has(Number(conversation.userId));
+
     const filteredConversations = conversations.filter(item => {
         const name = item.name || '';
         return name.toLowerCase().includes(searchTerm.toLowerCase()) &&
             (filter === 'all' || item.unreadCount > 0);
     });
 
+    const closeNewChat = () => {
+        setShowNewChat(false);
+        setNewChatError('');
+        setStartingDirectId(null);
+        setMode('direct');
+        setUserSearch('');
+        setGroupName('');
+        setSelectedIds([]);
+    };
+
+    const toggleMember = (userId) => {
+        const id = Number(userId);
+        setSelectedIds(prev => prev.includes(id)
+            ? prev.filter(item => item !== id)
+            : [...prev, id]
+        );
+    };
+
+    const handleStartDirectConversation = async (userId) => {
+        if (!userId || !onStartConversation || startingDirectId) return;
+
+        try {
+            setNewChatError('');
+            setStartingDirectId(Number(userId));
+            const conversation = await onStartConversation(Number(userId));
+
+            if (!conversation?.id) {
+                throw new Error('Không nhận được conversation từ server');
+            }
+
+            closeNewChat();
+        } catch (error) {
+            console.error('Không thể mở cuộc trò chuyện:', error);
+            setNewChatError(
+                error?.response?.data?.message ||
+                error?.message ||
+                'Không thể bắt đầu cuộc trò chuyện'
+            );
+        } finally {
+            setStartingDirectId(null);
+        }
+    };
+
+    const handleCreateGroup = async () => {
+        if (!groupName.trim() || selectedIds.length < 1 || !onStartGroupConversation) return;
+
+        try {
+            setNewChatError('');
+            setCreatingGroup(true);
+            await onStartGroupConversation(groupName.trim(), selectedIds);
+            closeNewChat();
+        } catch (error) {
+            console.error('Không thể tạo group:', error);
+            setNewChatError(error?.response?.data?.message || error?.message || 'Không thể tạo nhóm. Vui lòng thử lại.');
+        } finally {
+            setCreatingGroup(false);
+        }
+    };
+
     return (
-        <div className="w-[360px] min-w-[360px] bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 flex flex-col h-full p-5 relative">
-            <div className="flex items-center justify-between mb-5">
-                <h2 className="text-[24px] leading-8 font-bold tracking-[-0.02em] text-slate-900 dark:text-slate-100">Tin nhắn</h2>
-                <button
-                    onClick={() => setShowNewChat(true)}
-                    className="w-10 h-10 flex items-center justify-center text-white bg-[#4b63f5] hover:bg-[#3f56e8] rounded-xl shadow-sm"
-                    title="Tin nhắn mới"
-                >
-                    <SquarePen size={18} />
-                </button>
+        <div className={`chat-conversation-rail relative flex h-full w-full min-w-0 max-w-full flex-col border-r border-[#e5eaf2] bg-[#f7f9fc] p-3 text-slate-800 sm:p-4 dark:border-slate-800 dark:bg-[#0b1220] dark:text-slate-100 lg:w-[320px] lg:min-w-[290px] lg:max-w-[36vw] ${mobileHidden ? 'max-[767px]:hidden' : ''}`}>
+            <div className="mb-4 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0"><h2 className="text-xl font-semibold tracking-tight text-[#172b4d] dark:text-slate-100">{t('chat')}</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('recentConversations')}</p></div>
+                <div className="flex items-center gap-2">
+                    <button
+                        data-create-group
+                        onClick={() => { setShowNewChat(true); setMode('group'); }}
+                        className="flex size-9 items-center justify-center rounded-lg border border-[#e3eaf4] bg-white text-[#60708a] transition hover:bg-slate-50 hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                        title={t("createGroup")}
+                        aria-label={t("createGroup")}
+                        type="button"
+                    >
+                        <Users size={18} />
+                    </button>
+                    <button
+                        data-new-chat
+                        onClick={() => { setShowNewChat(true); setMode('direct'); }}
+                        className="flex size-9 items-center justify-center rounded-lg bg-[#174a7e] text-white transition hover:bg-[#123b66]"
+                        title={t("searchUsers")}
+                        aria-label={t("searchUsers")}
+                        type="button"
+                    >
+                        <Search size={18} />
+                    </button>
+                </div>
             </div>
 
             {showNewChat && (
-                <div className="absolute z-30 left-5 right-5 top-20 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-base text-slate-800 dark:text-slate-100">Tin nhắn mới</span>
-                        <button onClick={() => setShowNewChat(false)}>
-                            <X size={16} />
-                        </button>
+                <div
+                    className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[3px]"
+                    onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
+                >
+                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
+                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-6">
+                        <div className="min-w-0">
+                            <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                                {mode === 'group' ? t('newGroup') : t('newMessage')}
+                            </h3>
+                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{mode === 'group' ? t('setGroupNameAndMembers') : t('findUserToChat')}</p>
+                        </div>
+                        <button type="button" aria-label={t("close")} title={t("close")} onClick={closeNewChat} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-100"><X size={18} /></button>
                     </div>
+                    <div className="space-y-3 overflow-y-auto px-5 py-4 sm:px-6">
+
+                    {mode === 'group' && (
+                        <input
+                            autoFocus
+                            value={groupName}
+                            onChange={e => setGroupName(e.target.value)}
+                            placeholder={t("groupNamePlaceholder")}
+                            className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
+                        />
+                    )}
 
                     <input
-                        autoFocus
+                        autoFocus={mode === 'direct'}
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
-                        placeholder="Tìm username, email..."
-                        className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-lg outline-none"
+                        placeholder={mode === 'group' ? t('findSelectMembers') : t('findUsernameEmail')}
+                        className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                     />
 
-                    <div className="mt-2 max-h-52 overflow-y-auto">
-                        {searchResults.map(user => (
-                            <button
-                                key={user.id}
-                                onClick={async () => {
-                                    await onStartConversation(user.id);
-                                    setShowNewChat(false);
-                                    setUserSearch('');
-                                }}
-                                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-left"
-                            >
-                                <AvatarFallback name={user.username} src={user.avatar} size="md" />
-                                <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.username}</span>
-                            </button>
-                        ))}
-                        {userSearch && searchResults.length === 0 && (
-                            <p className="text-xs text-slate-400 text-center py-3">
-                                Không tìm thấy người dùng
-                            </p>
+                    {mode === 'group' && selectedIds.length > 0 && (
+                        <p className="text-xs text-blue-500 mt-2">{t('selectedMembers')} {selectedIds.length} {t('user')}</p>
+                    )}
+                    {newChatError && (
+                        <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600 dark:bg-red-950/40 dark:text-red-300">
+                            {newChatError}
+                        </p>
+                    )}
+
+                    <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-100 bg-white p-1 dark:border-slate-800 dark:bg-slate-900" aria-live="polite">
+                        {searchResults.map(user => {
+                            const selected = selectedIds.includes(Number(user.id));
+                            return (
+                                <button
+                                    key={user.id}
+                                    onClick={async () => {
+                                        if (mode === 'group') {
+                                            toggleMember(user.id);
+                                            return;
+                                        }
+                                        await handleStartDirectConversation(user.id);
+                                    }}
+                                    type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-slate-50 dark:hover:bg-slate-800"
+                                >
+                                    <AvatarFallback name={user.username} src={user.avatar_url || user.avatarUrl || user.avatar} size="md" />
+                                    <span className="text-sm font-medium text-slate-800 dark:text-slate-100 flex-1">{user.username}</span>
+                                    {mode === 'group' && selected && <Check size={16} className="text-blue-500" />}
+                                    {mode === 'direct' && startingDirectId === Number(user.id) && (
+                                        <span className="text-xs text-blue-500">{t('opening')}</span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                        {userSearch.trim() && searchResults.length === 0 && (
+                            <p className="px-3 py-6 text-center text-xs text-slate-400 dark:text-slate-500">{t('noUsersFound')}</p>
+                        )}
+                        {!userSearch.trim() && searchResults.length === 0 && (
+                            <p className="px-3 py-6 text-center text-xs text-slate-400 dark:text-slate-500">{t('findUserToChat')}</p>
                         )}
                     </div>
+
+                    {mode === 'group' && (
+                        <button
+                            type="button"
+                            disabled={!groupName.trim() || selectedIds.length < 1 || creatingGroup}
+                            onClick={handleCreateGroup}
+                            className="mt-1 h-11 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
+                        >
+                            {creatingGroup ? t('creating') : t('createGroup')}
+                        </button>
+                    )}
+                    </div>
+                    </section>
                 </div>
             )}
 
             <div className="relative mb-4">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                    type="text"
-                    placeholder="Tìm kiếm cuộc trò chuyện..."
+                    type="search"
+                    aria-label={t('searchConversations')}
+                    placeholder={t("searchConversations")}
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full h-11 pl-10 pr-4 bg-[#f4f7fb] dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-transparent rounded-xl text-sm outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-blue-200 focus:ring-4 focus:ring-blue-50"
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 pl-10 pr-10 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-blue-700 dark:focus:bg-slate-900 dark:focus:ring-blue-950/50"
                 />
+                {searchTerm && (
+                    <button type="button" onClick={() => setSearchTerm('')} aria-label={t('close')} title={t('close')} className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-200/70 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                        <X size={14} />
+                    </button>
+                )}
             </div>
 
-            <div className="flex mt-4 mb-3 bg-[#f5f7fb] p-1 rounded-xl">
+            <div className="mb-3 mt-1 flex gap-1 rounded-xl border border-slate-200/80 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/70">
                 <button
+                    type="button"
+                    aria-pressed={filter === 'all'}
                     onClick={() => setFilter('all')}
-                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'all' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${filter === 'all' ? 'bg-white text-blue-800 shadow-sm dark:bg-slate-800 dark:text-blue-200' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
-                    Tất cả <span className="ml-1">{conversations.length}</span>
+                    {t('allConversations')} <span className="ml-1">{conversations.length}</span>
                 </button>
                 <button
+                    type="button"
+                    aria-pressed={filter === 'unread'}
                     onClick={() => setFilter('unread')}
-                    className={`flex-1 h-9 text-sm font-semibold rounded-lg ${filter === 'unread' ? 'bg-[#4b63f5] text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    className={`flex-1 rounded-lg px-2 py-2 text-sm font-medium transition-colors ${filter === 'unread' ? 'bg-white text-blue-800 shadow-sm dark:bg-slate-800 dark:text-blue-200' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100'}`}
                 >
-                    Chưa đọc {unreadTotal > 0 && <span className="ml-1">{unreadTotal}</span>}
+                    {t('unreadOnly')} {unreadTotal > 0 && <span className="ml-1">{unreadTotal}</span>}
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1 pr-1" aria-label={t('recentConversations')}>
                 {filteredConversations.map(item => (
                     <ConversationItem
                         key={item.id}
-                        conversation={item}
+                        conversation={{
+                            ...item,
+                            isOnline: getIsOnline(item)
+                        }}
                         isSelected={Number(item.id) === Number(activeId)}
                         onClick={() => onSelectConversation(item.id)}
                     />
                 ))}
+                {filteredConversations.length === 0 && (
+                    <div className="flex min-h-40 flex-col items-center justify-center px-5 py-8 text-center">
+                        <span className="mb-3 flex size-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500">
+                            <Search size={19} aria-hidden="true" />
+                        </span>
+                        <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {filter === 'unread' ? t('unreadOnly') : t('searchConversations')}
+                        </p>
+                        <p className="mt-1 max-w-[220px] text-xs leading-5 text-slate-500 dark:text-slate-400">
+                            {filter === 'unread' ? t('noMessagesYet') : t('noUsersFound')}
+                        </p>
+                        {(searchTerm || filter === 'unread') && (
+                            <button type="button" onClick={() => { setSearchTerm(''); setFilter('all'); }} className="mt-3 rounded-lg px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-blue-300 dark:hover:bg-blue-950/40">
+                                {t('allConversations')}
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
