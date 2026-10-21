@@ -41,12 +41,25 @@ function AuthBanner() {
     ];
     const banner = localizedBanners[currentIndex];
 
+    const [isPaused, setIsPaused] = useState(false);
+    const [reducedMotion, setReducedMotion] = useState(false);
+
     useEffect(() => {
-        const timer = setInterval(() => {
+        const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const updatePreference = () => setReducedMotion(media.matches);
+        updatePreference();
+        media.addEventListener('change', updatePreference);
+        return () => media.removeEventListener('change', updatePreference);
+    }, []);
+
+    useEffect(() => {
+        if (isPaused || reducedMotion) return undefined;
+
+        const timer = window.setInterval(() => {
             setCurrentIndex((current) => (current + 1) % banners.length);
         }, 5000);
-        return () => clearInterval(timer);
-    }, []);
+        return () => window.clearInterval(timer);
+    }, [currentIndex, isPaused, reducedMotion]);
 
     const goNext = () => setCurrentIndex((current) => (current + 1) % banners.length);
     const goPrevious = () => setCurrentIndex((current) => (current - 1 + banners.length) % banners.length);
@@ -68,6 +81,13 @@ function AuthBanner() {
     return (
         <div
             className="relative min-h-[42vh] select-none overflow-hidden bg-slate-950 [touch-action:pan-y] min-[801px]:min-h-screen"
+            aria-roledescription="carousel"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onFocusCapture={() => setIsPaused(true)}
+            onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
+            }}
             onTouchStart={(event) => { touchStartX.current = event.touches[0].clientX; touchEndX.current = null; }}
             onTouchMove={(event) => { touchEndX.current = event.touches[0].clientX; }}
             onTouchEnd={handleTouchEnd}
@@ -92,11 +112,20 @@ function AuthBanner() {
                     <div className="flex flex-col gap-1"><strong className="text-xs leading-none font-extrabold text-white min-[451px]:text-sm min-[601px]:text-xl">03</strong><span className="text-[7px] leading-[1.4] text-white/70 min-[451px]:text-[8px] min-[601px]:text-[11px]">{t("authFeatureAcademics")}</span></div>
                 </div>
             </div>
-            <button type="button" className="absolute left-2.5 top-1/2 z-[5] flex size-[34px] -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/30 text-white opacity-100 backdrop-blur transition hover:scale-105 hover:bg-white/15 min-[451px]:left-[15px] min-[451px]:size-[38px] min-[801px]:left-[25px] min-[801px]:size-[46px] min-[801px]:opacity-0 min-[801px]:hover:opacity-100" onClick={goPrevious} aria-label={t("previousBanner")}><ChevronLeft size={24} /></button>
-            <button type="button" className="absolute right-2.5 top-1/2 z-[5] flex size-[34px] -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/30 text-white opacity-100 backdrop-blur transition hover:scale-105 hover:bg-white/15 min-[451px]:right-[15px] min-[451px]:size-[38px] min-[451px]:size-[38px] min-[801px]:right-[25px] min-[801px]:size-[46px] min-[801px]:opacity-0 min-[801px]:hover:opacity-100" onClick={goNext} aria-label={t("nextBanner")}><ChevronRight size={24} /></button>
+            <button type="button" className="absolute left-2.5 top-1/2 z-[5] flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/30 text-white opacity-100 backdrop-blur transition hover:scale-105 hover:bg-white/15 min-[451px]:left-[15px] min-[451px]:size-[38px] min-[801px]:left-[25px] min-[801px]:size-[46px] min-[801px]:opacity-0 min-[801px]:hover:opacity-100" onClick={goPrevious} aria-label={t("previousBanner")}><ChevronLeft size={24} /></button>
+            <button type="button" className="absolute right-2.5 top-1/2 z-[5] flex size-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/30 text-white opacity-100 backdrop-blur transition hover:scale-105 hover:bg-white/15 min-[451px]:right-[15px] min-[451px]:size-[38px] min-[451px]:size-[38px] min-[801px]:right-[25px] min-[801px]:size-[46px] min-[801px]:opacity-0 min-[801px]:hover:opacity-100" onClick={goNext} aria-label={t("nextBanner")}><ChevronRight size={24} /></button>
             <div className="absolute bottom-[13px] left-1/2 z-[6] flex -translate-x-1/2 items-center gap-2 min-[601px]:bottom-8">
                 {banners.map((item, index) => (
-                    <button key={item.id} type="button" className={`h-[3px] rounded-full bg-white/35 transition-all hover:bg-white/70 min-[601px]:h-1 ${index === currentIndex ? 'w-[34px] bg-white min-[601px]:w-12' : 'w-[18px] min-[601px]:w-6'}`} onClick={() => setCurrentIndex(index)} aria-label={t("goToBanner", { number: index + 1 })} />
+                    <button
+                        key={item.id}
+                        type="button"
+                        className="flex size-11 items-center justify-center rounded-full focus-visible:outline-white"
+                        onClick={() => setCurrentIndex(index)}
+                        aria-label={t("goToBanner", { number: index + 1 })}
+                        aria-pressed={index === currentIndex}
+                    >
+                        <span className={`h-[3px] rounded-full transition-all min-[601px]:h-1 ${index === currentIndex ? 'w-[34px] bg-white min-[601px]:w-12' : 'w-[18px] bg-white/35 hover:bg-white/70 min-[601px]:w-6'}`} />
+                    </button>
                 ))}
             </div>
             <div className="pointer-events-none absolute right-7 bottom-7 z-[5] hidden text-[10px] text-white/45 min-[801px]:block">{t("swipeToChange")}</div>
