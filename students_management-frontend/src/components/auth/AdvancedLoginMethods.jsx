@@ -49,7 +49,7 @@ export default function AdvancedLoginMethods({ username, onLogin, onError, onLoa
             });
             window.google.accounts.id.renderButton(googleButtonRef.current, {
                 type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
-                shape: 'rectangular', width: 320, logo_alignment: 'left'
+                shape: 'rectangular', width: Math.min(320, Math.max(200, googleButtonRef.current.parentElement?.clientWidth || 320)), logo_alignment: 'left'
             });
             setGoogleReady(true);
         };
@@ -107,16 +107,16 @@ export default function AdvancedLoginMethods({ username, onLogin, onError, onLoa
     };
 
     return (
-        <div className="mt-4 space-y-3">
+        <div className="mt-5 space-y-3.5">
             <div className="relative flex items-center gap-3 text-[11px] text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
-                <span>Hoặc đăng nhập bằng</span>
+                <span className="whitespace-nowrap">Hoặc đăng nhập bằng</span>
                 <span className="h-px flex-1 bg-slate-200" />
             </div>
-            <button type="button" onClick={loginWithPasskey} disabled={busy} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <button type="button" onClick={loginWithPasskey} disabled={busy} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
                 <Fingerprint size={18} /> Đăng nhập bằng passkey
             </button>
-            <div className="flex justify-center" aria-label="Đăng nhập bằng Google">
+            <div className="flex w-full justify-center overflow-hidden" aria-label="Đăng nhập bằng Google">
                 <div ref={googleButtonRef} />
             </div>
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
