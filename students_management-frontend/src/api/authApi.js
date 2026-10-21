@@ -172,3 +172,10 @@ export const denyQrLoginApi = async (requestId, secret) => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/deny`, { requestId, secret, status: 'denied' }, { withCredentials: true });
   return response.data;
 };
+
+export const cancelQrLoginApi = async (requestId, secret) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/deny`, {
+    requestId, secret, status: 'cancelled'
+  }, { withCredentials: true });
+  return response.data;
+};
