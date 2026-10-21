@@ -33,10 +33,18 @@ app.use((req, res, next) => {
     next();
 });
 
+// Support multiple explicit origins so HTTP Vite development and the local
+// HTTPS Nginx hostname can both be used without weakening CORS to "*".
+const configuredOrigins = (process.env.FRONTEND_URLS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
 const allowedOrigins = new Set([
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     process.env.FRONTEND_URL,
+    ...configuredOrigins,
 ].filter(Boolean));
 
 app.use(express.json({ limit: '1mb' }));
