@@ -328,7 +328,8 @@ const createSession = async (
         [
             sessionId,
             userId,
-            deviceName,
+            // device_name is VARCHAR(100); user_agent is TEXT and should be preserved.
+            typeof deviceName === 'string' ? deviceName.slice(0, 100) : deviceName,
             userAgent,
             ipAddress
         ]

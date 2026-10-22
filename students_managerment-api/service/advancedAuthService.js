@@ -55,12 +55,20 @@ function publicUser(user) {
     return { id: user.id, username: user.username, email: user.email, role: user.role, avatar_url: user.avatar_url || null };
 }
 
+function getSessionDeviceName(userAgent) {
+    const ua = String(userAgent || '');
+    const browser = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) && !/Chrome\//.test(ua) ? 'Safari' : 'Trình duyệt';
+    const platform = /Windows/i.test(ua) ? 'Windows' : /Android/i.test(ua) ? 'Android' : /iPhone|iPad|iPod/i.test(ua) ? 'iOS' : /Mac OS|Macintosh/i.test(ua) ? 'macOS' : /Linux/i.test(ua) ? 'Linux' : 'thiết bị';
+    return `${browser} trên ${platform}`.slice(0, 100);
+}
+
 async function issueSession(user, req) {
     if (!user || !user.is_active) throw new Error('Tài khoản đã bị khóa hoặc không tồn tại');
+    const userAgent = String(req.get('user-agent') || '');
     const session = await authRepository.createSession(
         user.id,
-        req.get('user-agent')?.slice(0, 500) || 'Passkey/Google/QR',
-        req.get('user-agent') || null,
+        getSessionDeviceName(userAgent),
+        userAgent.slice(0, 100) || null,
         req.ip || null
     );
     const accessToken = jwt.sign({
