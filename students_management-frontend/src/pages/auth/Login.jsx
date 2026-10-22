@@ -515,12 +515,14 @@ function Login() {
 
     return (
         <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-2">
-            <div className="min-h-[190px] overflow-hidden p-3 sm:p-5 lg:min-h-screen lg:p-6">
-                <AuthBanner />
+            <div className="overflow-hidden p-3 sm:p-5 lg:min-h-screen lg:p-6">
+                <div className="min-h-[240px] overflow-hidden rounded-2xl sm:min-h-[280px] lg:min-h-screen lg:rounded-none">
+                    <AuthBanner />
+                </div>
             </div>
 
-            <section className="flex min-h-[calc(100vh-190px)] items-center justify-center px-4 py-8 sm:px-8 sm:py-10 lg:min-h-screen lg:px-10 xl:px-14">
-                <div className="absolute right-4 top-4 z-10 sm:right-8 sm:top-7 lg:right-10">
+            <section className="relative flex min-h-[calc(100vh-280px)] items-center justify-center px-4 pb-8 pt-16 sm:px-8 sm:py-10 lg:min-h-screen lg:px-10 lg:pt-10 xl:px-14">
+                <div className="absolute right-4 top-4 z-10 sm:right-8 sm:top-6 lg:right-10">
                     <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label={t('language')}>
                         <Languages size={15} aria-hidden="true" className="ml-2 text-slate-500" />
                         {[
