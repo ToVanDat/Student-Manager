@@ -1,4 +1,4 @@
-import { Bell, KeyRound, LogOut, Monitor, Moon, ShieldCheck, UserRound } from 'lucide-react';
+import { Bell, KeyRound, Languages, LogOut, Monitor, Moon, ShieldCheck, UserRound } from 'lucide-react';
 import E2EEDeviceLinkPanel from '@/components/chat/E2EEDeviceLinkPanel.jsx';
 import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -12,7 +12,7 @@ export default function GlobalMoreMenu({ user, e2eeUser, e2eeClientState, onSele
         { id: 'sessions', label: t('sessions'), Icon: Monitor },
         { id: 'password', label: t('password'), Icon: KeyRound },
         { id: 'appearance', label: t('appearance'), Icon: Moon },
-        { id: 'language', label: t('language'), Icon: Monitor },
+        { id: 'language', label: t('language'), Icon: Languages },
     ];
     return (
         <div role="menu" aria-label={t("globalMenu")} className="absolute right-0 top-full z-[190] mt-2 w-64 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2 shadow-xl">
@@ -30,7 +30,7 @@ export default function GlobalMoreMenu({ user, e2eeUser, e2eeClientState, onSele
             </div>
             <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
             {ITEMS.map(({ id, label, Icon }) => (
-                <button key={id} type="button" role="menuitem" onClick={() => onSelectSettings?.(id)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 transition hover:bg-slate-100 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                <button key={id} type="button" role="menuitem" onClick={() => onSelectSettings?.(id)} className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-slate-700 dark:text-slate-200 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                     <Icon size={17} className="shrink-0 text-slate-500 dark:text-slate-400" /><span>{label}</span>
                 </button>
             ))}
