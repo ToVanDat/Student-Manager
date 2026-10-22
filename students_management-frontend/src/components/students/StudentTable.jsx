@@ -1,5 +1,5 @@
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Trash2, GraduationCap } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Pencil, Trash2, GraduationCap, LoaderCircle, UsersRound } from 'lucide-react';
 
 function StudentTable({
     students,
@@ -66,7 +66,7 @@ function StudentTable({
             </div>
             <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 lg:hidden">
                 {loading || students.length === 0 ? (
-                    <div className="app-card col-span-full border-dashed px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">{emptyMessage}</div>
+                    <div role="status" aria-live="polite" className="app-card col-span-full flex min-h-36 flex-col items-center justify-center gap-3 border-dashed px-4 py-10 text-center text-sm text-slate-500 dark:text-slate-400">{loading ? <LoaderCircle size={22} className="animate-spin text-blue-600" aria-hidden="true" /> : <UsersRound size={25} className="text-slate-400" aria-hidden="true" />}<span>{emptyMessage}</span></div>
                 ) : students.map((student, index) => (
                     <article key={student.id} className="app-card min-w-0 p-4 sm:p-5">
                         <div className="flex items-start gap-3">
@@ -108,9 +108,9 @@ function StudentTable({
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={(canManage || onView) ? 8 : 7} className="px-4 py-10 text-center text-slate-400">{t('loadingStudents')}</td></tr>
+                            <tr><td colSpan={(canManage || onView) ? 8 : 7} className="px-4 py-10 text-center text-slate-500 dark:text-slate-400"><span role="status" aria-live="polite" className="inline-flex items-center justify-center gap-2"><LoaderCircle size={17} className="animate-spin text-blue-600" aria-hidden="true" />{t('loadingStudents')}</span></td></tr>
                         ) : students.length === 0 ? (
-                            <tr><td colSpan={canManage ? 8 : 7} className="px-4 py-10 text-center text-slate-400">{t('noStudentsShort')}</td></tr>
+                            <tr><td colSpan={(canManage || onView) ? 8 : 7} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400"><span className="inline-flex flex-col items-center justify-center gap-2"><UsersRound size={25} className="text-slate-400" aria-hidden="true" /><span>{t('noStudentsShort')}</span></span></td></tr>
                         ) : students.map((student, index) => (
                             <tr className="border-t border-slate-100 transition-colors hover:bg-blue-50/50 dark:border-slate-800 dark:hover:bg-slate-800/60" key={student.id}>
                                 <td className="truncate px-3 py-3.5 text-slate-500">{firstRowNumber + index}</td>
