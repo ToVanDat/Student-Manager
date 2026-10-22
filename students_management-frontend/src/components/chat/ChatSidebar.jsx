@@ -37,6 +37,9 @@ export default function ChatSidebar({
 
     useEffect(() => {
         if (!showNewChat) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
         const handleDialogKeyDown = event => {
             if (event.key !== 'Escape' || creatingGroup || startingDirectId) return;
             setShowNewChat(false);
@@ -48,7 +51,10 @@ export default function ChatSidebar({
             setSelectedIds([]);
         };
         window.addEventListener('keydown', handleDialogKeyDown);
-        return () => window.removeEventListener('keydown', handleDialogKeyDown);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleDialogKeyDown);
+        };
     }, [showNewChat, creatingGroup, startingDirectId]);
 
     const getIsOnline = conversation => conversation.type === 'direct'
@@ -149,10 +155,10 @@ export default function ChatSidebar({
 
             {showNewChat && (
                 <div
-                    className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/25 p-4 backdrop-blur-[3px]"
+                    className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto overscroll-contain bg-slate-950/40 p-3 backdrop-blur-[3px] sm:p-4"
                     onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
                 >
-                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="max-h-[min(680px,90vh)] w-full max-w-md overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-[0_24px_80px_rgba(15,23,42,.24)]">
+                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="my-auto max-h-[min(680px,90dvh)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)] dark:border-slate-700 dark:bg-slate-900">
                     <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-6">
                         <div className="min-w-0">
                             <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
