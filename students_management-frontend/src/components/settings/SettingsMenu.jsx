@@ -18,7 +18,9 @@ function SettingsMenu({ activeTab, onChange, activeSessions }) {
             {items.map(({ id, label, Icon }) => (
                 <button
                     key={id}
-                    className={`relative flex min-h-[42px] items-center gap-2.5 rounded-md px-3 text-left text-xs font-medium transition ${activeTab === id ? 'bg-brand-50 text-brand-700 before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-brand-600 dark:bg-blue-950/60 dark:text-blue-200' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                    type="button"
+                    aria-current={activeTab === id ? 'page' : undefined}
+                    className={`relative flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 text-left text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-900 ${activeTab === id ? 'bg-brand-50 text-brand-700 before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-brand-600 dark:bg-blue-950/60 dark:text-blue-200' : 'text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
                     onClick={() => onChange(id)}
                 >
                     <Icon size={18} />
