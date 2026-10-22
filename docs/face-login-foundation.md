@@ -35,6 +35,7 @@ The accompanying SQL migration creates `user_face_credentials` with encrypted te
 - `GET /api/auth/face/credential` — returns metadata only, never template bytes.
 - `DELETE /api/auth/face/credential` — revokes the active credential.
 - Frontend API wrapper: `students_management-frontend/src/api/faceAuthApi.js`.
+- Protected account page at `/security/face`: shows credential metadata, refreshes status, and allows revocation. It explicitly states that biometric login is not enabled and does not request camera access.
 
 The enrollment endpoints require `FACE_TEMPLATE_ENCRYPTION_KEY` (base64 encoding of exactly 32 random bytes), `FACE_EMBEDDING_MODEL`, `FACE_EMBEDDING_MODEL_VERSION`, and optionally `FACE_EMBEDDING_DIMENSIONS` (default 512) plus `FACE_TEMPLATE_ENCRYPTION_KEY_VERSION`. Keep the encryption key in the backend secret manager/environment, never Vite variables or source control. Example key generation: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
 
