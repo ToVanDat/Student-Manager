@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, GraduationCap, Plus } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import StudentForm from '@/components/students/StudentForm.jsx';
@@ -70,10 +70,27 @@ function StudentDashboard({
 
     const { t } = useLanguage();
     const [viewingStudent, setViewingStudent] = useState(null);
+
+    useEffect(() => {
+        if (!isAdmin || !showForm) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') onCloseForm?.();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isAdmin, showForm, onCloseForm]);
+
     return (
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
-            <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1440px]:grid-cols-[minmax(0,1fr)_300px]">
                 <div className="app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/80 px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900/70">
                         <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-50 text-blue-800 ring-1 ring-inset ring-blue-200/70 dark:from-blue-950/80 dark:to-cyan-950/50 dark:text-blue-200 dark:ring-blue-900"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
@@ -122,7 +139,7 @@ function StudentDashboard({
                         </div>
                         {classesError && <p role="status" className="mt-2 text-xs text-rose-600 dark:text-rose-300">{classesError}</p>}
                     </div>
-                    {error && <div role="alert" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700"><span>{error}</span><button type="button" onClick={onRetry} disabled={loading} className="rounded border border-red-300 px-3 py-1.5 font-semibold hover:bg-red-100 disabled:opacity-50">{t('retry')}</button></div>}
+                    {error && <div role="alert" className="mx-4 mb-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs leading-5 text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200 sm:mx-6"><span className="min-w-0 flex-1">{error}</span><button type="button" onClick={onRetry} disabled={loading} className="min-h-9 shrink-0 rounded-lg border border-red-300 px-3 py-1.5 font-semibold transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:hover:bg-red-900/50">{t('retry')}</button></div>}
                     {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />{t('loadingStudentsData')}</div>}
                     <div className="w-full min-w-0">
                         <StudentTable
@@ -216,10 +233,10 @@ function StudentDashboard({
                 />
             )}
             {isAdmin && showForm && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                    <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
-                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
+                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 id="student-form-dialog-title" className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
                             <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
                         </div>
                         <div className="px-5 py-5 sm:px-8">
