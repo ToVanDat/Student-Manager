@@ -44,12 +44,12 @@ Google Identity Services uses the browser ID-token flow here; do not invent a re
 
 The API routes are:
 
-- `POST /api/auth/google/login` — verifies the ID token and resolves the existing linked account.
+- `POST /api/auth/google/login` — verifies the ID token, signs in an already-linked Google identity, or creates a new `user` account if the verified email is not already used.
 - `POST /api/auth/google/link` — links Google while the user is authenticated.
 - `GET /api/auth/google/link` — reads link status.
 - `DELETE /api/auth/google/link` — unlinks after current-password confirmation.
 
-The backend uses `user_oauth_accounts` with `provider`, `provider_subject`, `provider_email`, and `user_id`. A narrow, additive migration is included at `students_managerment-api/sql/google_oauth_accounts_migration.sql`. It creates only the OAuth-link table and index; it does not modify `users` or existing user data. The broader `advanced_auth_features_migration.sql` also creates this table but additionally creates passkey and QR-login tables. Do not run both migrations just for Google Login. First confirm the target database and back it up, then apply the narrow Google migration if the table is absent. The migration uses `IF NOT EXISTS` and uniqueness constraints to avoid duplicate provider links.
+The backend uses `user_oauth_accounts` with `provider`, `provider_subject`, `provider_email`, and `user_id`. A narrow, additive migration is included at `students_managerment-api/sql/google_oauth_accounts_migration.sql`. It creates only the OAuth-link table and index; it does not modify `users` or existing user data. The broader `advanced_auth_features_migration.sql` also creates this table but additionally creates passkey and QR-login tables; its OAuth `user_id` is declared `BIGINT`, which does not match this project's verified `users.id INTEGER`. Do not run that broader migration against this database. Use only the narrow Google migration whose `user_id` is `INTEGER`. First confirm the target database and back it up, then apply the narrow Google migration if the table is absent. The migration uses `IF NOT EXISTS` and uniqueness constraints to avoid duplicate provider links.
 
 Google identity is keyed by Google's stable `sub`, not by email alone. If the Google `sub` is already linked, login returns the mapped Student Manager account and preserves its existing role. If this is a new Google identity and the verified email is not in `users`, the API creates a new internal account with role `user`, an automatically generated username, and a random unguessable password hash (the Google password is never stored). If the email already belongs to a Student Manager account, login is rejected with instructions to sign in to that existing account and explicitly link Google in **Settings → Security**. It never auto-links based on email and never grants `admin` from Google.
 
