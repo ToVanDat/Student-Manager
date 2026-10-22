@@ -28,15 +28,17 @@ The accompanying SQL migration creates `user_face_credentials` with encrypted te
 7. Provide credential revoke/delete, audit events without biometric values, fallback login, and a retention/consent policy.
 8. Never log, return, or include face images/templates in analytics/errors.
 
-## Proposed API shape (not implemented in this foundation)
+## Implemented API foundation on this branch
 
-- `POST /api/auth/face/enrollment/challenge` — authenticated user only.
-- `POST /api/auth/face/enrollment/complete` — authenticated user only, explicit confirmation, challenge consumed once.
-- `POST /api/auth/face/login/challenge` — rate-limited, short-lived challenge.
-- `POST /api/auth/face/login/verify` — server validates challenge/proof and only then reuses existing session issuance.
-- `GET /api/auth/face/credential` and `DELETE /api/auth/face/credential` — authenticated management/revocation.
+- `POST /api/auth/face/enrollment/challenge` — authenticated, short-lived Redis challenge.
+- `POST /api/auth/face/enrollment/complete` — authenticated, consumes challenge once, validates embedding shape and stores AES-256-GCM ciphertext.
+- `GET /api/auth/face/credential` — returns metadata only, never template bytes.
+- `DELETE /api/auth/face/credential` — revokes the active credential.
+- Frontend API wrapper: `students_management-frontend/src/api/faceAuthApi.js`.
 
-Do not add these routes until the verification trust model is settled; a route accepting `faceMatched: true` would be insecure.
+The enrollment endpoints require `FACE_TEMPLATE_ENCRYPTION_KEY` (base64 encoding of exactly 32 random bytes), `FACE_EMBEDDING_MODEL`, `FACE_EMBEDDING_MODEL_VERSION`, and optionally `FACE_EMBEDDING_DIMENSIONS` (default 512) plus `FACE_TEMPLATE_ENCRYPTION_KEY_VERSION`. Keep the encryption key in the backend secret manager/environment, never Vite variables or source control. Example key generation: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`.
+
+**Not implemented / intentionally not enabled:** camera UI, a selected embedding runtime/model, liveness, and `/face/login/challenge` or `/face/login/verify`. Do not expose login endpoints that trust a browser-supplied embedding or `faceMatched: true`; that would allow a modified client to bypass biometric checks. The current enrollment API is a backend foundation, not a complete user-facing Face Login feature.
 
 ## Verification checklist
 
