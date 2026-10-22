@@ -49,7 +49,7 @@ The API routes are:
 - `GET /api/auth/google/link` — reads link status.
 - `DELETE /api/auth/google/link` — unlinks after current-password confirmation.
 
-The backend uses `user_oauth_accounts` with `provider`, `provider_subject`, `provider_email`, and `user_id`. Before testing, verify that the additive migration creating this table and its uniqueness constraints has already been applied to the target database. Do not run an unreviewed migration against an existing database. If the table is missing, linking and Google login will fail even when OAuth variables are correct.
+The backend uses `user_oauth_accounts` with `provider`, `provider_subject`, `provider_email`, and `user_id`. A narrow, additive migration is included at `students_managerment-api/sql/google_oauth_accounts_migration.sql`. It creates only the OAuth-link table and index; it does not modify `users` or existing user data. The broader `advanced_auth_features_migration.sql` also creates this table but additionally creates passkey and QR-login tables. Do not run both migrations just for Google Login. First confirm the target database and back it up, then apply the narrow Google migration if the table is absent. The migration uses `IF NOT EXISTS` and uniqueness constraints to avoid duplicate provider links.
 
 Google identity is keyed by Google's stable `sub`, not by email alone. A Google account must first be linked from **Settings → Security** while signed in with the intended Student Manager account. The existing Student Manager role, username and data remain unchanged.
 
