@@ -1,6 +1,6 @@
 # Google Login setup
 
-Google Login uses Google Identity Services in the browser and verifies the returned ID token in the API. It signs in only to a Student Manager account that has already linked that Google identity. It does not create or merge accounts based on email.
+Google Login uses Google Identity Services in the browser and verifies the returned ID token in the API. On first sign-in, it creates a Student Manager account with the default `user` role only when the Google identity is not linked and the verified email is not already used by an internal account. It never links or merges accounts based on matching email alone.
 
 ## 1. Environment variables
 
@@ -51,16 +51,17 @@ The API routes are:
 
 The backend uses `user_oauth_accounts` with `provider`, `provider_subject`, `provider_email`, and `user_id`. A narrow, additive migration is included at `students_managerment-api/sql/google_oauth_accounts_migration.sql`. It creates only the OAuth-link table and index; it does not modify `users` or existing user data. The broader `advanced_auth_features_migration.sql` also creates this table but additionally creates passkey and QR-login tables. Do not run both migrations just for Google Login. First confirm the target database and back it up, then apply the narrow Google migration if the table is absent. The migration uses `IF NOT EXISTS` and uniqueness constraints to avoid duplicate provider links.
 
-Google identity is keyed by Google's stable `sub`, not by email alone. A Google account must first be linked from **Settings → Security** while signed in with the intended Student Manager account. The existing Student Manager role, username and data remain unchanged.
+Google identity is keyed by Google's stable `sub`, not by email alone. If the Google `sub` is already linked, login returns the mapped Student Manager account and preserves its existing role. If this is a new Google identity and the verified email is not in `users`, the API creates a new internal account with role `user`, an automatically generated username, and a random unguessable password hash (the Google password is never stored). If the email already belongs to a Student Manager account, login is rejected with instructions to sign in to that existing account and explicitly link Google in **Settings → Security**. It never auto-links based on email and never grants `admin` from Google.
 
 ## 4. Verification checklist
 
 1. Restart frontend and API; confirm the Google button renders without a GIS script-loading error.
-2. Attempt Google login with an unlinked Google account: it should show the link-first guidance and must not create a new Student Manager account.
-3. Sign in with username/password, link that Google account in Settings → Security, and confirm the link status/email appears.
-4. Sign out, use Google Login, and confirm the same Student Manager user ID/role/data is returned.
-5. Attempt to link the same Google identity to a different Student Manager account: it must be rejected.
-6. Test a disabled Student Manager account and an invalid/expired ID token; neither may establish a session.
-7. Test both `http://localhost:5173` and `https://student-manager.local` only after their matching Google origins, API URL, and CORS allowlist are configured.
+2. First-time Google sign-in with a verified email not used by any internal account: it should create one `user` account and sign in.
+3. Repeat the same Google sign-in: it must reuse the same internal user ID and must not create a duplicate.
+4. Google sign-in with an email already used by a password account but an unlinked Google `sub`: it must be rejected without auto-linking; sign in with the existing password and link explicitly in Settings → Security.
+5. Sign out, use the linked Google identity, and confirm the same Student Manager user ID/role/data is returned.
+6. Attempt to link the same Google identity to a different Student Manager account: it must be rejected.
+7. Test a disabled Student Manager account and an invalid/expired ID token; neither may establish a session.
+8. Test both `http://localhost:5173` and `https://student-manager.local` only after their matching Google origins, API URL, and CORS allowlist are configured.
 
 A configured Client ID alone does not prove the browser-to-API flow works. Real end-to-end verification requires the Google Cloud OAuth settings and a database with the required linking table.
