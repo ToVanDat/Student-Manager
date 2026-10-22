@@ -7,7 +7,8 @@ import {
 
 import Login from '@/pages/auth/Login.jsx';
 import Students from '@/pages/students/Students.jsx';
-import ChatPage from '@/pages/chat/ChatPage.jsx'; 
+import ChatPage from '@/pages/chat/ChatPage.jsx';
+import FaceSecurity from '@/pages/security/FaceSecurity.jsx'; 
 import ProtectedRoute from '@/routes/ProtectedRoute.jsx';
 
 function AppRoutes() {
@@ -15,6 +16,14 @@ function AppRoutes() {
         <BrowserRouter>
             <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route
+                    path="/security/face"
+                    element={
+                        <ProtectedRoute>
+                            <FaceSecurity />
+                        </ProtectedRoute>
+                    }
+                />
                 <Route
                     path="/students"
                     element={
