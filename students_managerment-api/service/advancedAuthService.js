@@ -214,10 +214,22 @@ async function loginGoogle(idToken, req) {
                 const inserted = await client.query(
                     `INSERT INTO users (username, email, password_hash, role)
                      VALUES ($1, $2, $3, 'user')
+                     ON CONFLICT DO NOTHING
                      RETURNING id, username, email, role, avatar_url, is_active`,
                     [username, email, passwordHash]
                 );
-                created = inserted.rows[0];
+                created = inserted.rows[0] || null;
+                if (!created) {
+                    const emailRace = await client.query(
+                        'SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1',
+                        [email]
+                    );
+                    if (emailRace.rows[0]) {
+                        throw new Error(
+                            'Email Google này đã có tài khoản Student Manager. Hãy đăng nhập tài khoản hiện có bằng username/mật khẩu rồi liên kết Google trong Cài đặt bảo mật.'
+                        );
+                    }
+                }
             }
 
             if (!created) {
