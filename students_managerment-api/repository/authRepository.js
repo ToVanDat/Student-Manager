@@ -328,9 +328,11 @@ const createSession = async (
         [
             sessionId,
             userId,
-            deviceName,
-            userAgent,
-            ipAddress
+            // Enforce storage bounds at the repository boundary so every auth
+            // flow (password, Google, passkey, QR) follows the same contract.
+            typeof deviceName === 'string' ? deviceName.slice(0, 100) : deviceName,
+            typeof userAgent === 'string' ? userAgent.slice(0, 100) : userAgent,
+            typeof ipAddress === 'string' ? ipAddress.slice(0, 45) : ipAddress
         ]
     );
 
