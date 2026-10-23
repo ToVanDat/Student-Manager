@@ -27,6 +27,8 @@ import PasswordSettings from "@/components/settings/PasswordSettings.jsx";
 import NotificationSettings from "@/components/settings/NotificationSettings.jsx";
 import AppearanceSettings from "@/components/settings/AppearanceSettings.jsx";
 import LanguageSettings from "@/components/settings/LanguageSettings.jsx";
+import ChatCallsSettings from "@/components/settings/ChatCallsSettings.jsx";
+import DataSupportSettings from "@/components/settings/DataSupportSettings.jsx";
 
 import {
   createStudent,
@@ -415,7 +417,7 @@ function Students() {
   // =====================================================
 
   const openSettings = (tab = "account") => {
-    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance", "language"];
+    const allowedTabs = ["account", "security", "chat", "notifications", "appearance", "data", "sessions", "password", "language"];
     const nextTab = allowedTabs.includes(tab) ? tab : "account";
     setActivePage("settings");
     setSettingsTab(nextTab);
@@ -434,7 +436,7 @@ function Students() {
   useEffect(() => {
     if (searchParams.get("view") !== "settings") return;
     const requestedTab = searchParams.get("tab");
-    const allowedTabs = ["account", "notifications", "security", "sessions", "password", "appearance", "language"];
+    const allowedTabs = ["account", "security", "chat", "notifications", "appearance", "data", "sessions", "password", "language"];
     if (allowedTabs.includes(requestedTab) && requestedTab !== settingsTab) {
       setSettingsTab(requestedTab);
       if (requestedTab === "sessions") loadSessions();
@@ -826,24 +828,41 @@ function Students() {
                 ========================================= */}
 
                 {settingsTab === "account" && (
-                  <AccountSettings
-                    user={user}
-                    form={accountForm}
-                    onChange={setAccountForm}
-                    onSubmit={
-                      handleUpdateAccount
-                    }
-                    saving={accountSaving}
-                    message={
-                      accountMessage
-                    }
-                    onAvatarUpdated={updateUser}
-                  />
+                  <div className="grid min-w-0 gap-4">
+                    <AccountSettings
+                      user={user}
+                      form={accountForm}
+                      onChange={setAccountForm}
+                      onSubmit={handleUpdateAccount}
+                      saving={accountSaving}
+                      message={accountMessage}
+                      onAvatarUpdated={updateUser}
+                    />
+                    <PasswordSettings
+                      form={passwordForm}
+                      onChange={setPasswordForm}
+                      onSubmit={handleChangePassword}
+                      saving={passwordSaving}
+                      message={passwordMessage}
+                      error={passwordError}
+                    />
+                  </div>
                 )}
 
                 {settingsTab === "notifications" && <NotificationSettings />}
 
-                {settingsTab === "appearance" && <AppearanceSettings />}
+                {settingsTab === "chat" && (
+                  <ChatCallsSettings onOpenChat={() => navigate("/chat")} />
+                )}
+
+                {settingsTab === "data" && <DataSupportSettings />}
+
+                {settingsTab === "appearance" && (
+                  <div className="grid min-w-0 gap-4">
+                    <AppearanceSettings />
+                    <LanguageSettings />
+                  </div>
+                )}
                 {settingsTab === "language" && <LanguageSettings />}
 
                 {/* =========================================
@@ -852,11 +871,14 @@ function Students() {
 
                 {settingsTab === "security" && (
                   <SecuritySettings
-                    onOpenSessions={() =>
-                      setSettingsTab(
-                        "sessions"
-                      )
-                    }
+                    onOpenSessions={() => {
+                      setSettingsTab("sessions");
+                      const params = new URLSearchParams(searchParams);
+                      params.set("view", "settings");
+                      params.set("tab", "sessions");
+                      setSearchParams(params);
+                      loadSessions();
+                    }}
                   />
                 )}
 
