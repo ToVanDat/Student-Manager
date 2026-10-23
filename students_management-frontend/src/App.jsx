@@ -22,7 +22,16 @@ function App() {
 
     return (
         <>
-            <Toaster position="top-right" reverseOrder={false} />
+            {/* Keep transient feedback short and dismissible. Persistent
+                notifications belong in the Notification Center, not in Toasts. */}
+            <Toaster
+                position="top-right"
+                reverseOrder={false}
+                duration={4000}
+                closeButton
+                visibleToasts={3}
+                expand={false}
+            />
             <AppRoutes />
             <GlobalCallPanel />
         </>
