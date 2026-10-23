@@ -27,7 +27,6 @@ function SettingsMenu({ activeTab, onChange, activeSessions }) {
                     key={id}
                     type="button"
                     aria-current={activeCategory === id ? 'page' : undefined}
-                    aria-pressed={activeCategory === id}
                     className={`group flex min-h-[64px] min-w-0 items-center gap-3 rounded-xl border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${activeCategory === id ? 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-100' : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:bg-slate-800'}`}
                     onClick={() => onChange(id)}
                 >
