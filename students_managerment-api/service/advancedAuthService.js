@@ -57,10 +57,16 @@ function publicUser(user) {
 
 async function issueSession(user, req) {
     if (!user || !user.is_active) throw new Error('Tài khoản đã bị khóa hoặc không tồn tại');
+
+    // sessions.device_name is VARCHAR(100), while user_agent is TEXT.
+    // Keep the display name within the database limit and preserve the full
+    // User-Agent in the dedicated TEXT column.
+    const userAgent = req.get('user-agent') || null;
+    const deviceName = userAgent ? userAgent.slice(0, 100) : 'Passkey/Google/QR';
     const session = await authRepository.createSession(
         user.id,
-        req.get('user-agent')?.slice(0, 500) || 'Passkey/Google/QR',
-        req.get('user-agent') || null,
+        deviceName,
+        userAgent,
         req.ip || null
     );
     const accessToken = jwt.sign({
