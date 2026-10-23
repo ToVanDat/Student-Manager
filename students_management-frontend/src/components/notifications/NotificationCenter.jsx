@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Bell, CheckCheck, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationApi } from '@/api/notificationApi.js';
+import socket from '@/socket/socket.js';
 
 const formatDate = value => {
     const date = new Date(value);
@@ -16,7 +17,7 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
     const [loading, setLoading] = useState(false);
     const [busyIds, setBusyIds] = useState(() => new Set());
 
-    const loadNotifications = async () => {
+    const loadNotifications = useCallback(async () => {
         if (!userId) return;
         setLoading(true);
         try {
@@ -28,11 +29,37 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
+
+    useEffect(() => {
+        void loadNotifications();
+
+        const handleNewNotification = notification => {
+            if (!notification?.id || Number(notification.user_id) !== Number(userId)) return;
+            const id = String(notification.id);
+            setItems(previous => previous.some(item => String(item.id) === id)
+                ? previous
+                : (open ? [notification, ...previous].slice(0, 30) : previous));
+            setUnreadCount(previous => {
+                // Socket retries and multi-tab delivery must not increment twice.
+                // The event is only emitted for a newly persisted notification.
+                if (notification.is_read) return previous;
+                return previous + 1;
+            });
+        };
+        const handleWindowFocus = () => void loadNotifications();
+
+        socket.on('notification:new', handleNewNotification);
+        window.addEventListener('focus', handleWindowFocus);
+        return () => {
+            socket.off('notification:new', handleNewNotification);
+            window.removeEventListener('focus', handleWindowFocus);
+        };
+    }, [loadNotifications, userId]);
 
     useEffect(() => {
         if (open) void loadNotifications();
-    }, [open, userId]);
+    }, [open, loadNotifications]);
 
     const markRead = async (item) => {
         if (item.is_read) return true;
