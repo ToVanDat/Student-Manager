@@ -24,6 +24,9 @@ router.post('/google/link', authMiddleware, authRateLimiter, advancedAuthControl
 router.get('/google/link', authMiddleware, advancedAuthController.getGoogleLink);
 router.delete('/google/link', authMiddleware, authRateLimiter, advancedAuthController.unlinkGoogle);
 
+router.post('/passkeys/reauth/options', authMiddleware, authRateLimiter, advancedAuthController.beginSensitiveReauth);
+router.post('/passkeys/reauth/verify', authMiddleware, authRateLimiter, advancedAuthController.finishSensitiveReauth);
+
 router.post('/passkeys/registration/options', authMiddleware, authRateLimiter, advancedAuthController.beginPasskeyRegistration);
 router.post('/passkeys/registration/verify', authMiddleware, authRateLimiter, advancedAuthController.finishPasskeyRegistration);
 router.get('/passkeys', authMiddleware, advancedAuthController.listPasskeys);
