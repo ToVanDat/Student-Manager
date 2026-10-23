@@ -9,9 +9,12 @@ import {
     cancelPinProtectedE2EEVaultSetup
 } from '@/services/e2ee/pinProtectedE2EEVault.js';
 
-const PIN_KEY = 'student-manager:chat-lock:v1';
-const LOCK_KEY = 'student-manager:chat-lock:locked';
-const FAILURE_KEY = 'student-manager:chat-lock:failures';
+const LEGACY_PIN_KEY = 'student-manager:chat-lock:v1';
+const LEGACY_LOCK_KEY = 'student-manager:chat-lock:locked';
+const LEGACY_FAILURE_KEY = 'student-manager:chat-lock:failures';
+const pinKeyForUser = userId => `student-manager:chat-lock:v2:${userId}`;
+const lockKeyForUser = userId => `student-manager:chat-lock:locked:v2:${userId}`;
+const failureKeyForUser = userId => `student-manager:chat-lock:failures:v2:${userId}`;
 const IDLE_MS = 5 * 60 * 1000;
 const MIN_PIN = 6;
 const MAX_PIN = 12;
@@ -56,8 +59,11 @@ async function matchesPin(pin, record) {
 export default function ChatLockGate({ children }) {
     const { user } = useAuth();
     const userId = user?.id == null ? null : String(user.id);
-    const [record, setRecord] = useState(() => readJson(PIN_KEY, null));
-    const [locked, setLocked] = useState(() => Boolean(readJson(PIN_KEY, null)));
+    const [record, setRecord] = useState(null);
+    const [recordOwnerId, setRecordOwnerId] = useState(null);
+    const [legacyRecord, setLegacyRecord] = useState(null);
+    const [confirmLegacyOwnership, setConfirmLegacyOwnership] = useState(false);
+    const [locked, setLocked] = useState(false);
     const [mode, setMode] = useState('unlock');
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
@@ -67,27 +73,41 @@ export default function ChatLockGate({ children }) {
     const idleTimer = useRef(null);
     const cooldownTimer = useRef(null);
 
-    const failures = () => readJson(FAILURE_KEY, { count: 0, until: 0 });
+    const ownsCurrentRecord = Boolean(userId && recordOwnerId === userId);
+    const currentRecord = ownsCurrentRecord ? record : null;
+    const failures = () => readJson(failureKeyForUser(userId), { count: 0, until: 0 });
+
+    useEffect(() => {
+        if (!userId) {
+            setRecord(null); setRecordOwnerId(null); setLegacyRecord(null); setLocked(false); setMode('unlock');
+            return;
+        }
+        const scopedRecord = readJson(pinKeyForUser(userId), null);
+        setRecord(scopedRecord); setRecordOwnerId(userId);
+        setLocked(Boolean(scopedRecord && sessionStorage.getItem(lockKeyForUser(userId)) === 'true'));
+        setLegacyRecord(scopedRecord ? null : readJson(LEGACY_PIN_KEY, null));
+        setConfirmLegacyOwnership(false); setPin(''); setConfirmPin(''); setError(''); setRemainingMs(0); setMode('unlock');
+    }, [userId]);
 
     const lock = useCallback(() => {
-        if (!record) return;
+        if (!currentRecord || !userId) return;
         void shutdownE2EEClient().finally(() => lockPinProtectedE2EEVault(userId));
-        sessionStorage.setItem(LOCK_KEY, 'true');
+        sessionStorage.setItem(lockKeyForUser(userId), 'true');
         setLocked(true);
         setMode('unlock');
         setPin('');
         setConfirmPin('');
         setError('');
-    }, [record, userId]);
+    }, [currentRecord, userId]);
 
     const scheduleIdleLock = useCallback(() => {
-        if (!record || locked) return;
+        if (!currentRecord || locked) return;
         window.clearTimeout(idleTimer.current);
         idleTimer.current = window.setTimeout(lock, IDLE_MS);
-    }, [record, locked, lock]);
+    }, [currentRecord, locked, lock]);
 
     useEffect(() => {
-        if (!record || locked) return undefined;
+        if (!currentRecord || locked) return undefined;
         const activity = () => {
             if (document.visibilityState === 'hidden') lock();
             else scheduleIdleLock();
@@ -102,7 +122,7 @@ export default function ChatLockGate({ children }) {
             document.removeEventListener('visibilitychange', activity);
             window.clearTimeout(idleTimer.current);
         };
-    }, [record, locked, scheduleIdleLock, lock]);
+    }, [currentRecord, locked, scheduleIdleLock, lock]);
 
     useEffect(() => () => {
         window.clearTimeout(idleTimer.current);
@@ -137,9 +157,9 @@ export default function ChatLockGate({ children }) {
                 }
                 await unlockPinProtectedE2EEVault(userId, pin);
                 const next = await makePinRecord(pin);
-                localStorage.setItem(PIN_KEY, JSON.stringify(next));
-                sessionStorage.removeItem(LOCK_KEY);
-                setRecord(next);
+                localStorage.setItem(pinKeyForUser(userId), JSON.stringify(next));
+                sessionStorage.removeItem(lockKeyForUser(userId));
+                setRecord(next); setRecordOwnerId(userId); setLegacyRecord(null);
                 setLocked(false);
                 setMode('unlock');
                 setPin('');
@@ -147,19 +167,31 @@ export default function ChatLockGate({ children }) {
                 return;
             }
 
+            if (mode === 'migrateLegacy') {
+                if (!legacyRecord || !confirmLegacyOwnership) { setError('Xác nhận tài khoản sở hữu PIN cũ trước khi chuyển.'); return; }
+                if (!(await matchesPin(pin, legacyRecord))) { setError('PIN cũ không đúng. Cấu hình cũ vẫn được giữ nguyên.'); return; }
+                if (!userId) { setError('Hãy đăng nhập vào đúng tài khoản sở hữu PIN cũ.'); return; }
+                // Prove this PIN opens existing E2EE material before claiming the legacy PIN.
+                await unlockPinProtectedE2EEVault(userId, pin);
+                localStorage.setItem(pinKeyForUser(userId), JSON.stringify(legacyRecord));
+                localStorage.removeItem(LEGACY_PIN_KEY); localStorage.removeItem(LEGACY_FAILURE_KEY);
+                sessionStorage.removeItem(LEGACY_LOCK_KEY); sessionStorage.removeItem(lockKeyForUser(userId));
+                setRecord(legacyRecord); setRecordOwnerId(userId); setLegacyRecord(null); setLocked(false);
+                setMode('unlock'); setPin(''); setConfirmLegacyOwnership(false); setRemainingMs(0); return;
+            }
             const failure = failures();
             if (failure.until > Date.now()) {
                 setRemainingMs(failure.until - Date.now());
                 setError('Bạn đã nhập sai quá nhiều lần. Vui lòng chờ trước khi thử lại.');
                 return;
             }
-            if (!record || !(await matchesPin(pin, record))) {
+            if (!currentRecord || !(await matchesPin(pin, currentRecord))) {
                 const nextCount = failure.count + 1;
                 const delay = nextCount >= 10 ? 15 * 60_000
                     : nextCount >= 7 ? 5 * 60_000
                     : nextCount >= 5 ? 60_000 : 0;
                 const next = { count: nextCount, until: delay ? Date.now() + delay : 0 };
-                localStorage.setItem(FAILURE_KEY, JSON.stringify(next));
+                localStorage.setItem(failureKeyForUser(userId), JSON.stringify(next));
                 setRemainingMs(delay);
                 setError(delay ? 'Đã vượt quá số lần thử. Hãy đợi rồi thử lại.' : 'PIN không đúng.');
                 return;
@@ -169,8 +201,8 @@ export default function ChatLockGate({ children }) {
                 return;
             }
             await unlockPinProtectedE2EEVault(userId, pin);
-            localStorage.removeItem(FAILURE_KEY);
-            sessionStorage.removeItem(LOCK_KEY);
+            localStorage.removeItem(failureKeyForUser(userId));
+            sessionStorage.removeItem(lockKeyForUser(userId));
             setLocked(false);
             setPin('');
             setRemainingMs(0);
@@ -198,10 +230,10 @@ export default function ChatLockGate({ children }) {
             setBusy(false);
             return;
         }
-        localStorage.removeItem(PIN_KEY);
-        localStorage.removeItem(FAILURE_KEY);
-        sessionStorage.removeItem(LOCK_KEY);
-        setRecord(null);
+        localStorage.removeItem(pinKeyForUser(userId));
+        localStorage.removeItem(failureKeyForUser(userId));
+        sessionStorage.removeItem(lockKeyForUser(userId));
+        setRecord(null); setRecordOwnerId(null);
         setLocked(false);
         setMode('unlock');
         setPin('');
@@ -241,7 +273,9 @@ export default function ChatLockGate({ children }) {
         setError('');
     };
 
-    if (record && !locked) {
+    if (!userId) return children;
+
+    if (currentRecord && !locked) {
         return (
             <div className="relative min-h-0 h-full">
                 {children}
@@ -267,7 +301,7 @@ export default function ChatLockGate({ children }) {
         );
     }
 
-    if (!record && mode !== 'setup') {
+    if (!currentRecord && mode !== 'setup' && mode !== 'migrateLegacy') {
         return (
             <>
                 {children}
@@ -291,12 +325,14 @@ export default function ChatLockGate({ children }) {
                     {mode === 'setup' ? <ShieldCheck size={26} /> : <LockKeyhole size={26} />}
                 </div>
                 <h2 id="chat-lock-title" className="text-center text-xl font-bold text-slate-900 dark:text-white">
-                    {mode === 'setup' ? 'Thiết lập PIN khóa chat' : 'Chat đang được khóa'}
+                    {mode === 'setup' ? 'Thiết lập PIN khóa chat' : mode === 'migrateLegacy' ? 'Chuyển PIN cũ sang tài khoản này' : 'Chat đang được khóa'}
                 </h2>
                 <p className="mb-5 mt-2 text-center text-sm text-slate-500 dark:text-slate-400">
                     {mode === 'setup'
                         ? 'PIN dẫn xuất khóa PBKDF2 để bọc khóa cơ sở dữ liệu E2EE bằng AES-GCM. PIN không thay thế mật khẩu tài khoản.'
-                        : 'Nhập PIN để mở lại nội dung chat. Phiên đăng nhập và lịch sử tin nhắn vẫn được giữ nguyên.'}
+                        : mode === 'migrateLegacy'
+                            ? 'Chỉ chuyển PIN nếu đây đúng là tài khoản đã thiết lập PIN cũ. PIN chỉ được chuyển sau khi xác minh và mở được kho E2EE hiện có.'
+                            : 'Nhập PIN để mở lại nội dung chat. Phiên đăng nhập và lịch sử tin nhắn vẫn được giữ nguyên.'}
                 </p>
                 <label htmlFor="chat-lock-pin" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">PIN (6–12 chữ số)</label>
                 <input
@@ -313,6 +349,12 @@ export default function ChatLockGate({ children }) {
                     onChange={event => setPin(event.target.value.replace(/\D/g, '').slice(0, MAX_PIN))}
                     className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-center text-xl tracking-[0.4em] text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
                 />
+                {mode === 'migrateLegacy' && (
+                    <label className="mt-3 flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                        <input type="checkbox" checked={confirmLegacyOwnership} onChange={event => setConfirmLegacyOwnership(event.target.checked)} className="mt-1" />
+                        <span>Tôi xác nhận đây là tài khoản đã sở hữu PIN cũ và kho khóa E2EE liên quan.</span>
+                    </label>
+                )}
                 {mode === 'setup' && (
                     <label className="mt-3 block text-sm font-medium text-slate-700 dark:text-slate-200">
                         Nhập lại PIN
@@ -329,10 +371,16 @@ export default function ChatLockGate({ children }) {
                 )}
                 {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{error}{remainingMs > 0 ? ` (còn ${Math.ceil(remainingMs / 1000)} giây)` : ''}</p>}
                 <button type="submit" disabled={busy} className="mt-4 h-11 w-full rounded-xl bg-blue-600 font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
-                    {busy ? 'Đang xác minh…' : mode === 'setup' ? 'Lưu PIN' : 'Mở khóa chat'}
+                    {busy ? 'Đang xác minh…' : mode === 'setup' ? 'Lưu PIN' : mode === 'migrateLegacy' ? 'Xác minh và chuyển PIN cũ' : 'Mở khóa chat'}
                 </button>
+                {mode === 'migrateLegacy' && (
+                    <button type="button" onClick={() => { setMode('unlock'); setPin(''); setConfirmLegacyOwnership(false); setError(''); }} disabled={busy} className="mt-2 h-10 w-full rounded-xl text-sm text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">Hủy chuyển PIN cũ</button>
+                )}
                 {mode === 'setup' && (
                     <button type="button" onClick={cancelSetup} disabled={busy} className="mt-2 h-10 w-full rounded-xl text-sm text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800">Hủy</button>
+                )}
+                {legacyRecord && !currentRecord && mode === 'unlock' && (
+                    <button type="button" onClick={() => { setMode('migrateLegacy'); setPin(''); setError(''); }} className="mt-2 h-10 w-full rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-slate-800">Chuyển PIN cũ sang tài khoản này…</button>
                 )}
             </form>
         </div>
