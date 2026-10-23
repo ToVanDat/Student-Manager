@@ -10,12 +10,20 @@ const encode = value => btoa(String.fromCharCode(...new Uint8Array(value))).repl
 
 export default function AdvancedSecurityMethods() {
     const [credentials, setCredentials] = useState([]);
+    const [passkeysLoading, setPasskeysLoading] = useState(true);
+    const [passkeysError, setPasskeysError] = useState('');
+    const [googleStatusLoading, setGoogleStatusLoading] = useState(true);
+    const [googleStatusError, setGoogleStatusError] = useState('');
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState('');
     const [googleLink, setGoogleLink] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
     const googleButtonRef = useRef(null);
     const refresh = useCallback(async () => {
+        setPasskeysLoading(true);
+        setGoogleStatusLoading(true);
+        setPasskeysError('');
+        setGoogleStatusError('');
         const [passkeysResult, googleResult] = await Promise.allSettled([
             listPasskeysApi(),
             getGoogleLinkApi()
@@ -25,18 +33,17 @@ export default function AdvancedSecurityMethods() {
         if (passkeysResult.status === 'fulfilled') {
             setCredentials(passkeysResult.value);
         } else {
-            errors.push('Không tải được danh sách passkey.');
+            setPasskeysError(passkeysResult.reason?.response?.data?.message || 'Không tải được danh sách passkey. Kiểm tra đăng nhập và bảng user_webauthn_credentials.');
         }
 
         if (googleResult.status === 'fulfilled') {
             setGoogleLink(googleResult.value);
         } else {
-            errors.push('Không tải được trạng thái liên kết Google.');
+            setGoogleStatusError(googleResult.reason?.response?.data?.message || 'Không tải được trạng thái liên kết Google.');
         }
 
-        if (errors.length) {
-            setMessage(errors.join(' '));
-        }
+        setPasskeysLoading(false);
+        setGoogleStatusLoading(false);
     }, []);
 
     useEffect(() => { void refresh(); }, [refresh]);
@@ -130,9 +137,9 @@ export default function AdvancedSecurityMethods() {
         setMessage('');
         try {
             await unlinkGoogleApi(currentPassword);
-            setGoogleLink(null);
             setCurrentPassword('');
-            setMessage('Đã gỡ liên kết Google. Bạn vẫn có thể đăng nhập bằng username và mật khẩu.');
+            setMessage('Đã gỡ liên kết Google.');
+            await refresh();
         } catch (error) {
             setMessage(error.response?.data?.message || 'Không thể gỡ liên kết Google.');
         } finally { setBusy(false); }
@@ -173,11 +180,15 @@ export default function AdvancedSecurityMethods() {
                         <button type="button" disabled={busy} onClick={() => removePasskey(item.id)} aria-label="Xóa passkey" className="rounded-lg p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:hover:bg-rose-950/30"><Trash2 size={16} /></button>
                     </div>
                 ))}
-                {!credentials.length && <p className="text-xs text-slate-400">Chưa có passkey hoặc chưa tải được danh sách.</p>}
+                {passkeysLoading && <p role="status" className="text-xs text-slate-500">Đang tải danh sách passkey…</p>}
+                {!passkeysLoading && passkeysError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{passkeysError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">Thử lại</button></div>}
+                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa đăng ký passkey trên tài khoản này.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
-            <div ref={googleButtonRef} className={googleLink ? 'hidden' : ''} />
-            {googleLink ? (
+            {googleStatusLoading && <p role="status" className="text-xs text-slate-500">Đang kiểm tra trạng thái Google…</p>}
+            {!googleStatusLoading && googleStatusError && <div role="alert" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{googleStatusError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">Thử lại</button></div>}
+            {!googleStatusLoading && !googleStatusError && !googleLink && <div ref={googleButtonRef} />}
+            {!googleStatusLoading && !googleStatusError && googleLink ? (
                 <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">Đã liên kết Google</p>
                     <p className="m-0 text-xs text-slate-500 dark:text-slate-400">{googleLink.provider_email || 'Tài khoản Google đã liên kết'}</p>
@@ -186,7 +197,7 @@ export default function AdvancedSecurityMethods() {
                     <button type="button" disabled={busy || !currentPassword} onClick={unlinkGoogle} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30"><Unlink size={14} /> Gỡ liên kết Google</button>
                 </div>
             ) : null}
-            {!googleLink && !import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
+            {!googleStatusLoading && !googleStatusError && !googleLink && !import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
             {message && <p role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message}</p>}
         </section>
     );
