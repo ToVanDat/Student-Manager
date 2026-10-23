@@ -167,6 +167,12 @@ export default function CallPanel({
         }
     }, [localStream, remoteStream]);
 
+    useEffect(() => {
+        const volume = Math.max(0, Math.min(1, remoteVolume));
+        if (remoteAudioRef.current) remoteAudioRef.current.volume = volume;
+        if (remoteVideoRef.current) remoteVideoRef.current.volume = volume;
+    }, [remoteVolume, localStream, remoteStream]);
+
     const displayName =
         call?.remoteUsername ||
         targetUsername ||
