@@ -593,5 +593,6 @@
   "loginWithGoogle": "Sign in with Google",
   "googleOAuthNotConfigured": "Google sign-in is available only after OAuth is configured for this application.",
   "googleServiceLoading": "Loading Google services…",
-  "googleLoginLinkingHelp": "Google can sign in only to a Student Manager account that is already linked. If it is not linked, sign in with your username and password, then link Google in Security Settings."
+  "googleLoginLinkingHelp": "Google can sign in only to a Student Manager account that is already linked. If it is not linked, sign in with your username and password, then link Google in Security Settings.",
+  "scoreRangeInvalid": "Scores must be between 0 and 10."
 }
