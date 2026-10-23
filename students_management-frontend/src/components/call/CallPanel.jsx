@@ -174,6 +174,19 @@ export default function CallPanel({
         if (remoteVideoRef.current) remoteVideoRef.current.volume = volume;
     }, [remoteVolume, localStream, remoteStream]);
 
+    useEffect(() => {
+        let outputId = '';
+        try { outputId = localStorage.getItem('student-manager-preferred-audio-output') || ''; } catch {}
+        if (!outputId) return;
+        [remoteAudioRef.current, remoteVideoRef.current].filter(Boolean).forEach(media => {
+            if (typeof media.setSinkId === 'function') {
+                void media.setSinkId(outputId).catch(() => {
+                    // Unsupported or unavailable output devices fall back to the system default.
+                });
+            }
+        });
+    }, [localStream, remoteStream]);
+
     const displayName =
         call?.remoteUsername ||
         targetUsername ||
