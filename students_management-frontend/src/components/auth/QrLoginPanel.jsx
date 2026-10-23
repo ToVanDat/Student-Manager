@@ -234,12 +234,20 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                             <button type="button" onClick={() => { setCameraError(''); setScannerEnabled(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-xs font-semibold text-white hover:bg-blue-800"><Camera size={15} /> Quét QR để xác nhận</button>
                         </div>
                     )}
-                    {cameraError && <p role="status" className="m-0 text-xs leading-5 text-amber-700">{cameraError}</p>}
-                    <form onSubmit={submitManual} className="space-y-2">
-                        <label className="block text-xs font-semibold text-slate-700" htmlFor="qr-login-manual-payload">Nhập nội dung QR thủ công</label>
-                        <textarea id="qr-login-manual-payload" value={manualPayload} onChange={event => setManualPayload(event.target.value)} rows={2} placeholder="Dán nội dung QR nếu camera không hoạt động" className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10" />
-                        <button type="submit" disabled={busy || !manualPayload.trim()} className="min-h-10 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang xác nhận…' : 'Xác nhận yêu cầu'}</button>
-                    </form>
+                    {cameraError && <p role="status" aria-live="polite" className="m-0 rounded-lg bg-amber-50 p-3 text-xs leading-5 text-amber-800">{cameraError}</p>}
+                    <details open={Boolean(cameraError)} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <summary className="cursor-pointer select-none text-xs font-semibold text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-200">
+                            Không quét được? Dán nội dung QR
+                        </summary>
+                        <p className="mb-2 mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                            Đây là phương án dự phòng khi trình duyệt không hỗ trợ quét trực tiếp hoặc camera không khả dụng. Chỉ dán mã từ yêu cầu đăng nhập do chính bạn khởi tạo.
+                        </p>
+                        <form onSubmit={submitManual} className="space-y-2">
+                            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="qr-login-manual-payload">Nội dung QR</label>
+                            <textarea id="qr-login-manual-payload" value={manualPayload} onChange={event => setManualPayload(event.target.value)} rows={2} autoComplete="off" spellCheck={false} placeholder="Dán nội dung QR tại đây" className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950" />
+                            <button type="submit" disabled={busy || !manualPayload.trim()} className="min-h-10 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang xác nhận…' : 'Xác nhận yêu cầu'}</button>
+                        </form>
+                    </details>
                     {status && <p role="status" aria-live="polite" className="m-0 text-xs leading-5 text-slate-600">{status}</p>}
                 </div>
             )}
