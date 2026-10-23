@@ -63,11 +63,11 @@ exports.loginGoogle = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.beginSensitiveReauth = async (req, res) => {
-    try { return res.json(await advancedAuth.beginSensitiveReauth(req.user.sub)); }
+    try { return res.json(await advancedAuth.beginSensitiveReauth(req.user.sub, req.body?.purpose)); }
     catch (error) { return fail(res, error); }
 };
 exports.finishSensitiveReauth = async (req, res) => {
-    try { return res.json(await advancedAuth.finishSensitiveReauth(req.user.sub, req.body?.challengeId, req.body?.response)); }
+    try { return res.json(await advancedAuth.finishSensitiveReauth(req.user.sub, req.body?.challengeId, req.body?.response, req.body?.purpose)); }
     catch (error) { return fail(res, error); }
 };
 exports.beginPasskeyRegistration = async (req, res) => {
