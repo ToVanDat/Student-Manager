@@ -367,9 +367,18 @@ export default function useWebRTCCall() {
             releaseLocalMedia();
         }
 
+        let preferredCameraId = '';
+        try {
+            preferredCameraId = localStorage.getItem('student-manager-preferred-camera') || '';
+        } catch {
+            // Private browsing/storage restrictions should not prevent calls.
+        }
+
         const constraints = {
             audio: true,
             video: callType === 'video'
+                ? (preferredCameraId ? { deviceId: { ideal: preferredCameraId } } : true)
+                : false
         };
 
         try {
