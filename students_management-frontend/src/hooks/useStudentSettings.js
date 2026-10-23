@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Monitor, Smartphone } from 'lucide-react';
+import { apiClient } from '@/api/client.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import {
     getSessionsApi,
     revokeOtherSessionsApi,
     revokeSessionApi,
 } from '@/api/sessionApi.js';
-import { API_BASE_URL } from '@/utils/constants.js';
 
 function getCurrentSessionFromToken() {
     try {
@@ -47,6 +49,8 @@ function getCurrentSessionFromToken() {
 }
 
 export function useStudentSettings(user) {
+    const navigate = useNavigate();
+    const { logoutUser } = useAuth();
     const [settingsTab, setSettingsTab] = useState('account');
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -138,18 +142,10 @@ export function useStudentSettings(user) {
         setAccountMessage('');
 
         try {
-            const accessToken = localStorage.getItem('accessToken');
-            await axios.patch(
-                `${API_BASE_URL}/api/auth/me`,
-                {
-                    username: accountForm.username,
-                    email: accountForm.email,
-                },
-                {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                },
-            );
+            await apiClient.patch('/api/auth/me', {
+                username: accountForm.username,
+                email: accountForm.email,
+            });
 
             setAccountMessage('Cập nhật thông tin tài khoản thành công.');
         } catch (error) {
@@ -188,26 +184,24 @@ export function useStudentSettings(user) {
 
         try {
             setPasswordSaving(true);
-            const accessToken = localStorage.getItem('accessToken');
 
-            await axios.post(
-                `${API_BASE_URL}/api/auth/change-password`,
-                {
-                    currentPassword: passwordForm.currentPassword,
-                    newPassword: passwordForm.newPassword,
-                },
-                {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                },
-            );
+            await apiClient.post('/api/auth/change-password', {
+                currentPassword: passwordForm.currentPassword,
+                newPassword: passwordForm.newPassword,
+            });
 
-            setPasswordMessage('Đổi mật khẩu thành công.');
+            setPasswordMessage('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
             setPasswordForm({
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: '',
             });
+
+            // The backend revokes every session after a password change. Clear
+            // this browser's auth/E2EE runtime state too, then return to login.
+            toast.success('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
+            await logoutUser();
+            navigate('/login', { replace: true });
         } catch (error) {
             console.error('CHANGE PASSWORD ERROR:', error);
             setPasswordError(
