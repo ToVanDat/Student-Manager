@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming, RefreshCw } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Video, VideoOff, MonitorUp, PhoneIncoming, RefreshCw, Volume2 } from 'lucide-react';
 import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
 import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { playSound, stopSound } from '@/services/soundService.js';
@@ -88,7 +88,7 @@ export default function CallPanel({
 
     const [ringRemainingMs, setRingRemainingMs] = useState(30_000);
     const [showNotice, setShowNotice] = useState(false);
-    const [incomingActionBusy, setIncomingActionBusy] = useState(false);
+    const [incomingActionBusy, setIncomingActionBusy] = useState(false);\n    const [remoteVolume, setRemoteVolume] = useState(0.8);
 
     const previousCallStateRef = useRef('idle');
     const lastEndedCallIdRef = useRef(null);
@@ -415,6 +415,23 @@ export default function CallPanel({
                                     </button>
                                 </>
                             )}
+
+                            <div className="flex min-h-11 items-center gap-2 rounded-full bg-slate-100 px-3 text-slate-700 dark:bg-slate-800 dark:text-slate-100" title="Âm lượng người nghe">
+                                <Volume2 size={17} aria-hidden="true" />
+                                <label htmlFor="call-remote-volume" className="sr-only">Âm lượng cuộc gọi</label>
+                                <input
+                                    id="call-remote-volume"
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    value={Math.round(remoteVolume * 100)}
+                                    onChange={(event) => setRemoteVolume(Number(event.target.value) / 100)}
+                                    aria-label="Điều chỉnh âm lượng người nghe"
+                                    className="w-20 cursor-pointer accent-blue-600 sm:w-28"
+                                />
+                                <span className="w-8 text-right text-xs tabular-nums">{Math.round(remoteVolume * 100)}%</span>
+                            </div>
 
                             <button
                                 type="button"
