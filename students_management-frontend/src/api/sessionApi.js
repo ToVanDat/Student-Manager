@@ -1,30 +1,11 @@
-import axios from "axios";
-
-import { API_BASE_URL } from '@/utils/constants.js';
-
-
-const getAuthConfig = () => {
-  const accessToken = localStorage.getItem("accessToken");
-
-  return {
-    withCredentials: true,
-
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  };
-};
+import { apiClient } from '@/api/client.js';
 
 // ======================================================
 // GET SESSIONS
 // ======================================================
 
 export const getSessionsApi = async () => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/auth/sessions`,
-    getAuthConfig(),
-  );
-
+  const response = await apiClient.get('/api/auth/sessions');
   return response.data;
 };
 
@@ -33,11 +14,7 @@ export const getSessionsApi = async () => {
 // ======================================================
 
 export const revokeSessionApi = async (sessionId) => {
-  const response = await axios.delete(
-    `${API_BASE_URL}/api/auth/sessions/${sessionId}`,
-    getAuthConfig(),
-  );
-
+  const response = await apiClient.delete(`/api/auth/sessions/${encodeURIComponent(sessionId)}`);
   return response.data;
 };
 
@@ -46,11 +23,6 @@ export const revokeSessionApi = async (sessionId) => {
 // ======================================================
 
 export const revokeOtherSessionsApi = async () => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/auth/sessions/revoke-others`,
-    {},
-    getAuthConfig(),
-  );
-
+  const response = await apiClient.post('/api/auth/sessions/revoke-others', {});
   return response.data;
 };
