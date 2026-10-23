@@ -85,7 +85,7 @@ export default function ChatLockGate({ children }) {
         }
         const scopedRecord = readJson(pinKeyForUser(userId), null);
         setRecord(scopedRecord); setRecordOwnerId(userId);
-        setLocked(Boolean(scopedRecord && sessionStorage.getItem(lockKeyForUser(userId)) === 'true'));
+        setLocked(Boolean(scopedRecord));
         setLegacyRecord(scopedRecord ? null : readJson(LEGACY_PIN_KEY, null));
         setConfirmLegacyOwnership(false); setPin(''); setConfirmPin(''); setError(''); setRemainingMs(0); setMode('unlock');
     }, [userId]);
