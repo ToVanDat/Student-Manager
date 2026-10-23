@@ -180,11 +180,11 @@ export const cancelQrLoginApi = async (requestId, secret) => {
   return response.data;
 };
 
-export const beginSensitiveReauthApi = async () => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/options`, {}, authenticatedAuthConfig());
+export const beginSensitiveReauthApi = async purpose => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/options`, { purpose }, authenticatedAuthConfig());
   return response.data;
 };
-export const finishSensitiveReauthApi = async (challengeId, responsePayload) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/verify`, { challengeId, response: responsePayload }, authenticatedAuthConfig());
+export const finishSensitiveReauthApi = async (challengeId, responsePayload, purpose) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/verify`, { challengeId, response: responsePayload, purpose }, authenticatedAuthConfig());
   return response.data;
 };
