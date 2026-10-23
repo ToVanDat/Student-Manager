@@ -43,7 +43,7 @@ function sendSession(res, result) {
 
 exports.linkGoogle = async (req, res) => {
     try {
-        const result = await advancedAuth.linkGoogle(req.user.sub, req.body?.idToken);
+        const result = await advancedAuth.linkGoogle(req.user.sub, req.body?.idToken, req.body?.currentPassword, req.body?.verificationToken);
         return res.json({ message: 'Đã liên kết Google với tài khoản hiện tại', account: result });
     } catch (error) { return fail(res, error); }
 };
@@ -54,12 +54,20 @@ exports.getGoogleLink = async (req, res) => {
 };
 exports.unlinkGoogle = async (req, res) => {
     try {
-        await advancedAuth.unlinkGoogle(req.user.sub, req.body?.currentPassword);
+        await advancedAuth.unlinkGoogle(req.user.sub, req.body?.currentPassword, req.body?.verificationToken);
         return res.status(200).json({ message: 'Đã gỡ liên kết Google' });
     } catch (error) { return fail(res, error); }
 };
 exports.loginGoogle = async (req, res) => {
     try { return sendSession(res, await advancedAuth.loginGoogle(req.body?.idToken, req)); }
+    catch (error) { return fail(res, error); }
+};
+exports.beginSensitiveReauth = async (req, res) => {
+    try { return res.json(await advancedAuth.beginSensitiveReauth(req.user.sub, req.body?.purpose)); }
+    catch (error) { return fail(res, error); }
+};
+exports.finishSensitiveReauth = async (req, res) => {
+    try { return res.json(await advancedAuth.finishSensitiveReauth(req.user.sub, req.body?.challengeId, req.body?.response, req.body?.purpose)); }
     catch (error) { return fail(res, error); }
 };
 exports.beginPasskeyRegistration = async (req, res) => {

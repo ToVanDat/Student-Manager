@@ -24,6 +24,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     const [busy, setBusy] = useState(false);
     const [manualPayload, setManualPayload] = useState('');
     const [cameraError, setCameraError] = useState('');
+    const [scannerEnabled, setScannerEnabled] = useState(false);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const frameRef = useRef(null);
@@ -82,13 +83,14 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     }, [mode, request, onLogin]);
 
     useEffect(() => {
-        if (mode !== 'approve' || !allowApprove || !videoRef.current) return undefined;
+        if (mode !== 'approve' || !allowApprove || !scannerEnabled || !videoRef.current) return undefined;
         let active = true;
         const scan = async () => {
             if (!active || !videoRef.current) return;
             try {
                 if (!('BarcodeDetector' in window)) {
                     setCameraError('Trình duyệt này chưa hỗ trợ quét QR trực tiếp. Hãy dán nội dung QR vào ô bên dưới.');
+                    setScannerEnabled(false);
                     return;
                 }
                 const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
@@ -102,7 +104,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                     }
                 }
             } catch {
-                if (active) setCameraError('Không thể đọc QR. Hãy kiểm tra quyền camera hoặc nhập thủ công.');
+                if (active) { setCameraError('Không thể đọc QR. Hãy kiểm tra quyền camera hoặc nhập thủ công.'); setScannerEnabled(false); }
             }
             if (active) frameRef.current = window.requestAnimationFrame(scan);
         };
@@ -116,14 +118,14 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                 return videoRef.current?.play();
             })
             .then(() => { if (active) void scan(); })
-            .catch(() => setCameraError('Không truy cập được camera. Hãy cho phép quyền camera hoặc nhập thủ công.'));
+            .catch(() => { setCameraError('Không truy cập được camera. Hãy cho phép quyền camera hoặc nhập thủ công.'); setScannerEnabled(false); });
         return () => {
             active = false;
             if (frameRef.current) window.cancelAnimationFrame(frameRef.current);
             (stream || streamRef.current)?.getTracks().forEach(track => track.stop());
             streamRef.current = null;
         };
-    }, [mode, allowApprove]);
+    }, [mode, allowApprove, scannerEnabled]);
 
     const approvePayload = async payload => {
         if (!window.confirm('Bạn có chắc muốn cấp quyền đăng nhập cho thiết bị đang hiển thị QR này? Chỉ xác nhận nếu bạn tự khởi tạo yêu cầu.')) return;
@@ -168,8 +170,8 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
 
             {allowApprove && !approvalOnly && (
                 <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-100 p-1">
-                    <button type="button" onClick={() => { setMode('login'); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Hiển thị QR</button>
-                    <button type="button" onClick={() => { setMode('approve'); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${mode === 'approve' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Quét để xác nhận</button>
+                    <button type="button" onClick={() => { setMode('login'); setScannerEnabled(false); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${mode === 'login' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Hiển thị QR</button>
+                    <button type="button" onClick={() => { setMode('approve'); setScannerEnabled(false); setCameraError(''); }} className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${mode === 'approve' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>Quét để xác nhận</button>
                 </div>
             )}
 
@@ -223,7 +225,15 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                     <div className="rounded-xl bg-blue-50 p-3 text-xs leading-5 text-blue-900">
                         Quét mã trên máy tính chỉ khi bạn tự yêu cầu đăng nhập. Kiểm tra yêu cầu trước khi cho phép.
                     </div>
-                    <video ref={videoRef} muted playsInline className="max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
+                    {scannerEnabled ? (
+                        <video ref={videoRef} muted playsInline className="max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
+                    ) : (
+                        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
+                            <Camera size={24} className="text-slate-500" aria-hidden="true" />
+                            <p className="m-0 text-xs leading-5 text-slate-600">Camera chỉ bật khi bạn chủ động chọn quét QR. Bạn cũng có thể dán nội dung QR bên dưới.</p>
+                            <button type="button" onClick={() => { setCameraError(''); setScannerEnabled(true); }} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-700 px-4 text-xs font-semibold text-white hover:bg-blue-800"><Camera size={15} /> Quét QR để xác nhận</button>
+                        </div>
+                    )}
                     {cameraError && <p role="status" className="m-0 text-xs leading-5 text-amber-700">{cameraError}</p>}
                     <form onSubmit={submitManual} className="space-y-2">
                         <label className="block text-xs font-semibold text-slate-700" htmlFor="qr-login-manual-payload">Nhập nội dung QR thủ công</label>

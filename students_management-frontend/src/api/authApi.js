@@ -140,18 +140,18 @@ export const deletePasskeyApi = async id => {
   const response = await axios.delete(`${API_BASE_URL}/api/auth/passkeys/${encodeURIComponent(id)}`, authenticatedAuthConfig());
   return response.data;
 };
-export const linkGoogleApi = async idToken => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken }, authenticatedAuthConfig());
+export const linkGoogleApi = async (idToken, currentPassword, verificationToken) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken, currentPassword, verificationToken }, authenticatedAuthConfig());
   return response.data;
 };
 export const getGoogleLinkApi = async () => {
   const response = await axios.get(`${API_BASE_URL}/api/auth/google/link`, authenticatedAuthConfig());
   return response.data.account || null;
 };
-export const unlinkGoogleApi = async currentPassword => {
+export const unlinkGoogleApi = async (currentPassword, verificationToken) => {
   const response = await axios.delete(`${API_BASE_URL}/api/auth/google/link`, {
     ...authenticatedAuthConfig(),
-    data: { currentPassword }
+    data: { currentPassword, verificationToken }
   });
   return response.data;
 };
@@ -177,5 +177,14 @@ export const cancelQrLoginApi = async (requestId, secret) => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/deny`, {
     requestId, secret, status: 'cancelled'
   }, { withCredentials: true });
+  return response.data;
+};
+
+export const beginSensitiveReauthApi = async purpose => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/options`, { purpose }, authenticatedAuthConfig());
+  return response.data;
+};
+export const finishSensitiveReauthApi = async (challengeId, responsePayload, purpose) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/verify`, { challengeId, response: responsePayload, purpose }, authenticatedAuthConfig());
   return response.data;
 };
