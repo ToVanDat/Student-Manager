@@ -11,9 +11,26 @@ function setRefreshCookie(res, token) {
 }
 function fail(res, error) {
     const message = error?.message || 'Yêu cầu xác thực thất bại';
-    const status = /chưa được cấu hình/.test(message) ? 503
-        : /hết hạn|không hợp lệ|không đúng|không thuộc|không được liên kết|đã liên kết|chưa đăng ký|không tìm thấy|đã xử lý|không hoạt động|đã được sử dụng/.test(message) ? 400 : 401;
-    return res.status(status).json({ message });
+
+    if (/chưa được cấu hình/.test(message)) {
+        return res.status(503).json({ message });
+    }
+
+    // Known, expected authentication/business-rule failures can be returned to the client.
+    const isExpectedFailure =
+        /hết hạn|không hợp lệ|không đúng|không thuộc|không được liên kết|đã liên kết|chưa đăng ký|không tìm thấy|đã xử lý|không hoạt động|đã được sử dụng|chưa xác minh|đã bị khóa|gỡ liên kết|mật khẩu/i.test(message);
+    if (isExpectedFailure) {
+        const status = /đã bị khóa|không hoạt động/.test(message) ? 403 : 400;
+        return res.status(status).json({ message });
+    }
+
+    // Database/infrastructure exceptions must not be misreported as HTTP 401 or
+    // expose SQL/schema details to clients. Log only non-secret diagnostics.
+    console.error('[AdvancedAuth] Unexpected authentication failure', {
+        name: error?.name || 'Error',
+        code: typeof error?.code === 'string' ? error.code : undefined
+    });
+    return res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi xác thực. Vui lòng thử lại.' });
 }
 function sendSession(res, result) {
     setRefreshCookie(res, result.refreshToken);
