@@ -59,11 +59,16 @@ export default function AdvancedSecurityMethods() {
                 auto_select: false,
                 callback: async response => {
                     if (!response?.credential) return;
+                    if (!currentPassword) {
+                        setMessage('Nhập mật khẩu Student Manager trước khi liên kết Google. Hãy thử lại sau khi nhập mật khẩu.');
+                        return;
+                    }
                     setBusy(true);
                     setMessage('');
                     try {
-                        await linkGoogleApi(response.credential);
-                        setMessage('Đã liên kết Google với tài khoản hiện tại.');
+                        await linkGoogleApi(response.credential, currentPassword);
+                        setCurrentPassword('');
+                        setMessage('Đã xác minh tài khoản và liên kết Google thành công.');
                         await refresh();
                     } catch (error) {
                         setMessage(error.response?.data?.message || 'Không thể liên kết Google.');
@@ -191,7 +196,12 @@ export default function AdvancedSecurityMethods() {
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
             {googleStatusLoading && <p role="status" className="text-xs text-slate-500">Đang kiểm tra trạng thái Google…</p>}
             {!googleStatusLoading && googleStatusError && <div role="alert" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{googleStatusError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">Thử lại</button></div>}
-            {!googleStatusLoading && !googleStatusError && !googleLink && <div ref={googleButtonRef} />}
+            {!googleStatusLoading && !googleStatusError && !googleLink && <div className="mb-3 space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-200" htmlFor="link-google-password">Xác minh bằng mật khẩu Student Manager</label>
+                <input id="link-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} placeholder="Mật khẩu tài khoản hiện tại" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+                <p className="m-0 text-xs leading-5 text-slate-500 dark:text-slate-400">Sau đó, xác minh danh tính Google trong cửa sổ Google để hoàn tất liên kết.</p>
+                <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-50' : ''} />
+            </div>}
             {!googleStatusLoading && !googleStatusError && googleLink ? (
                 <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">Đã liên kết Google</p>
