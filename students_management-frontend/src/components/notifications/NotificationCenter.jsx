@@ -35,7 +35,7 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
     }, [open, userId]);
 
     const markRead = async (item) => {
-        if (item.is_read) return;
+        if (item.is_read) return true;
         setBusyIds(previous => new Set(previous).add(String(item.id)));
         try {
             await notificationApi.markRead(item.id);
@@ -43,8 +43,10 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
                 ? { ...current, is_read: true, read_at: current.read_at || new Date().toISOString() }
                 : current));
             setUnreadCount(count => Math.max(0, count - 1));
+            return true;
         } catch (error) {
             toast.error(error?.response?.data?.message || 'Không thể đánh dấu đã đọc.', { duration: 8000 });
+            return false;
         } finally {
             setBusyIds(previous => {
                 const next = new Set(previous);
@@ -118,7 +120,7 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
                                 <button
                                     type="button"
                                     onClick={async () => {
-                                        if (!item.is_read) await markRead(item);
+                                        if (!item.is_read && !(await markRead(item))) return;
                                         if (item.conversation_id) {
                                             onOpenConversation?.(item.conversation_id);
                                             setOpen(false);
