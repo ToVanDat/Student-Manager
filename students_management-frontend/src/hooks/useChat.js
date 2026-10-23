@@ -192,7 +192,7 @@ export const useChat = () => {
                     setE2EEHistoryIssue(null);
                 } catch (historyError) {
                     setE2EEHistoryIssue({ conversationId: Number(activeId), code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE' });
-                    toast.error('Không thể mở lịch sử E2EE trên thiết bị này. Có thể kho khóa cục bộ đã mất.');
+                    toast.error('Không thể mở lịch sử E2EE trên thiết bị này. Có thể kho khóa cục bộ đã mất.', { duration: 8000 });
                     console.warn('[E2EE] local history unavailable', {
                         code: historyError?.code || 'E2EE_HISTORY_UNAVAILABLE'
                     });
@@ -246,7 +246,7 @@ export const useChat = () => {
                     setMessages([]);
                     setConversationMembers([]);
                     setActiveId(null);
-                    toast.error('Bạn không còn quyền truy cập nhóm này');
+                    toast.error('Bạn không còn quyền truy cập nhóm này', { duration: 8000 });
                 }
             } finally {
                 if (!cancelled) setLoading(false);
@@ -285,11 +285,11 @@ export const useChat = () => {
             setCallHistory(previous => previous.filter(call => String(call.call_id) !== String(callId)));
             // Hiding a call is per-user, so recalculate this user's sidebar preview.
             await fetchConversations();
-            toast.success('Đã xóa cuộc gọi khỏi lịch sử của bạn');
+            toast.success('Đã xóa cuộc gọi khỏi lịch sử của bạn', { duration: 3000 });
             return true;
         } catch (error) {
             console.error('Lỗi ẩn cuộc gọi khỏi lịch sử:', error);
-            toast.error(error?.response?.data?.message || 'Không thể xóa cuộc gọi khỏi lịch sử');
+            toast.error(error?.response?.data?.message || 'Không thể xóa cuộc gọi khỏi lịch sử', { duration: 8000 });
             return false;
         }
     }, []);
@@ -714,7 +714,7 @@ export const useChat = () => {
             setConversationMembers([]);
             setIsTyping(false);
             setActiveId(null);
-            toast.error(message || 'Bạn không còn quyền truy cập nhóm');
+            toast.error(message || 'Bạn không còn quyền truy cập nhóm', { duration: 8000 });
             return true;
         };
 
@@ -1011,7 +1011,7 @@ export const useChat = () => {
         const existing = messages.find(item => String(item.id) === String(messageId));
         if (existing?._e2ee) {
             if (Number(existing.sender_id) !== currentUserId) {
-                toast.error('Chỉ người gửi mới có thể chỉnh sửa tin nhắn E2EE.');
+                toast.error('Chỉ người gửi mới có thể chỉnh sửa tin nhắn E2EE.', { duration: 8000 });
                 return;
             }
             const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
@@ -1030,7 +1030,7 @@ export const useChat = () => {
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId)
                     ? updatedLocal : item));
             } catch (error) {
-                toast.error('Không thể gửi thay đổi E2EE tới thiết bị người nhận.');
+                toast.error('Không thể gửi thay đổi E2EE tới thiết bị người nhận.', { duration: 8000 });
                 console.warn('[E2EE] edit control send failed', { code: error?.code || 'E2EE_EDIT_FAILED' });
             }
             return;
@@ -1057,7 +1057,7 @@ export const useChat = () => {
         const existing = messages.find(item => String(item.id) === String(messageId));
         if (existing?._e2ee) {
             if (Number(existing.sender_id) !== currentUserId) {
-                toast.error('Chỉ người gửi mới có thể thu hồi tin nhắn E2EE.');
+                toast.error('Chỉ người gửi mới có thể thu hồi tin nhắn E2EE.', { duration: 8000 });
                 return;
             }
             const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
@@ -1074,7 +1074,7 @@ export const useChat = () => {
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId)
                     ? recalledLocal : item));
             } catch (error) {
-                toast.error('Không thể gửi yêu cầu thu hồi E2EE tới thiết bị người nhận.');
+                toast.error('Không thể gửi yêu cầu thu hồi E2EE tới thiết bị người nhận.', { duration: 8000 });
                 console.warn('[E2EE] recall control send failed', { code: error?.code || 'E2EE_RECALL_FAILED' });
             }
             return;
@@ -1093,7 +1093,7 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Không thể thu hồi message:', error);
-            toast.error(error?.response?.data?.message || 'Không thể thu hồi tin nhắn');
+            toast.error(error?.response?.data?.message || 'Không thể thu hồi tin nhắn', { duration: 8000 });
         }
     }, [messages, conversations, currentUserId]);
 
@@ -1113,7 +1113,7 @@ export const useChat = () => {
             );
         } catch (error) {
             console.error('Không thể xoá message cho tôi:', error);
-            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn');
+            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn', { duration: 8000 });
         }
     }, [messages, currentUserId]);
 
@@ -1122,7 +1122,7 @@ export const useChat = () => {
         const existing = messages.find(item => String(item.id) === String(messageId));
         if (existing?._e2ee) {
             if (Number(existing.sender_id) !== currentUserId) {
-                toast.error('Chỉ người gửi mới có thể xóa tin nhắn E2EE cho mọi người.');
+                toast.error('Chỉ người gửi mới có thể xóa tin nhắn E2EE cho mọi người.', { duration: 8000 });
                 return;
             }
             const conversation = conversations.find(item => Number(item.id) === Number(existing.conversation_id));
@@ -1139,7 +1139,7 @@ export const useChat = () => {
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId)
                     ? recalledLocal : item));
             } catch (error) {
-                toast.error('Không thể gửi yêu cầu xóa E2EE tới thiết bị người nhận.');
+                toast.error('Không thể gửi yêu cầu xóa E2EE tới thiết bị người nhận.', { duration: 8000 });
                 console.warn('[E2EE] delete-for-everyone send failed', { code: error?.code || 'E2EE_DELETE_FAILED' });
             }
             return;
@@ -1158,7 +1158,7 @@ export const useChat = () => {
             }
         } catch (error) {
             console.error('Không thể xoá message cho tất cả:', error);
-            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn cho mọi người');
+            toast.error(error?.response?.data?.message || 'Không thể xoá tin nhắn cho mọi người', { duration: 8000 });
         }
     }, [messages, conversations, currentUserId]);
 
@@ -1174,7 +1174,7 @@ export const useChat = () => {
         if (e2eeStatus?.enabled && e2eeStatus?.mode !== 'paused') {
             const conversation = conversations.find(item => Number(item.id) === Number(activeId));
             if (conversation?.type !== 'direct' || !conversation?.userId) {
-                toast.error('Tệp E2EE hiện chỉ hỗ trợ chat 1-1. Tệp chưa được gửi.');
+                toast.error('Tệp E2EE hiện chỉ hỗ trợ chat 1-1. Tệp chưa được gửi.', { duration: 8000 });
                 return;
             }
             const tempId = `e2ee-file-${crypto.randomUUID()}`;
@@ -1190,7 +1190,7 @@ export const useChat = () => {
                 return finalMessage.files[0];
             } catch (error) {
                 setMessages(prev => prev.map(item => item.tempId === tempId ? { ...item, status: 'failed' } : item));
-                toast.error(error?.message || 'Không thể gửi tệp E2EE.');
+                toast.error(error?.message || 'Không thể gửi tệp E2EE.', { duration: 8000 });
                 throw error;
             }
         }
@@ -1339,7 +1339,7 @@ export const useChat = () => {
                 try {
                     await saveE2EEHistoryMessage(currentUserId, finalMessage);
                 } catch (historyError) {
-                    toast.error('Tin nhắn đã gửi nhưng không thể lưu lịch sử E2EE cục bộ.');
+                    toast.error('Tin nhắn đã gửi nhưng không thể lưu lịch sử E2EE cục bộ.', { duration: 8000 });
                     console.warn('[E2EE] sent message history save failed', {
                         code: historyError?.code || 'E2EE_HISTORY_SAVE_FAILED'
                     });
@@ -1420,7 +1420,7 @@ export const useChat = () => {
                 await saveE2EEHistoryMessage(currentUserId, updated);
                 setMessages(previous => previous.map(item => String(item.id) === String(messageId) ? updated : item));
             } catch (error) {
-                toast.error('Không thể gửi phản ứng E2EE.');
+                toast.error('Không thể gửi phản ứng E2EE.', { duration: 8000 });
             }
             return;
         }
