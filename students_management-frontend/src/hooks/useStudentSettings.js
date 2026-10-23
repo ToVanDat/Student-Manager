@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Monitor, Smartphone } from 'lucide-react';
 import { apiClient } from '@/api/client.js';
+import { useAuth } from '@/hooks/useAuth.js';
 import {
     getSessionsApi,
     revokeOtherSessionsApi,
@@ -46,6 +49,8 @@ function getCurrentSessionFromToken() {
 }
 
 export function useStudentSettings(user) {
+    const navigate = useNavigate();
+    const { logoutUser } = useAuth();
     const [settingsTab, setSettingsTab] = useState('account');
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -185,12 +190,18 @@ export function useStudentSettings(user) {
                 newPassword: passwordForm.newPassword,
             });
 
-            setPasswordMessage('Đổi mật khẩu thành công.');
+            setPasswordMessage('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
             setPasswordForm({
                 currentPassword: '',
                 newPassword: '',
                 confirmPassword: '',
             });
+
+            // The backend revokes every session after a password change. Clear
+            // this browser's auth/E2EE runtime state too, then return to login.
+            toast.success('Đổi mật khẩu thành công. Vui lòng đăng nhập lại.');
+            await logoutUser();
+            navigate('/login', { replace: true });
         } catch (error) {
             console.error('CHANGE PASSWORD ERROR:', error);
             setPasswordError(
