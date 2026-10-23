@@ -140,18 +140,18 @@ export const deletePasskeyApi = async id => {
   const response = await axios.delete(`${API_BASE_URL}/api/auth/passkeys/${encodeURIComponent(id)}`, authenticatedAuthConfig());
   return response.data;
 };
-export const linkGoogleApi = async (idToken, currentPassword) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken, currentPassword }, authenticatedAuthConfig());
+export const linkGoogleApi = async (idToken, currentPassword, verificationToken) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken, currentPassword, verificationToken }, authenticatedAuthConfig());
   return response.data;
 };
 export const getGoogleLinkApi = async () => {
   const response = await axios.get(`${API_BASE_URL}/api/auth/google/link`, authenticatedAuthConfig());
   return response.data.account || null;
 };
-export const unlinkGoogleApi = async currentPassword => {
+export const unlinkGoogleApi = async (currentPassword, verificationToken) => {
   const response = await axios.delete(`${API_BASE_URL}/api/auth/google/link`, {
     ...authenticatedAuthConfig(),
-    data: { currentPassword }
+    data: { currentPassword, verificationToken }
   });
   return response.data;
 };
