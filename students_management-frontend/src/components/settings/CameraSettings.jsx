@@ -124,7 +124,7 @@ export default function CameraSettings() {
 
                 <div className="min-w-0">
                     <label htmlFor="preferred-camera" className="mb-2 block text-sm font-semibold text-slate-800 dark:text-slate-100">Camera mặc định</label>
-                    <select id="preferred-camera" value={selectedDeviceId} onChange={(event) => setSelectedDeviceId(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
+                    <select id="preferred-camera" value={selectedDeviceId} onChange={(event) => { const nextId = event.target.value; if (previewing) { stopPreview(); setNotice('Đã đổi lựa chọn camera. Nhấn “Bật xem trước” để kiểm tra thiết bị mới.'); } setSelectedDeviceId(nextId); }} className="min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
                         <option value="">Tự động chọn camera</option>
                         {devices.map((device, index) => <option key={device.deviceId || index} value={device.deviceId}>{device.label || `Camera ${index + 1}`}</option>)}
                     </select>
