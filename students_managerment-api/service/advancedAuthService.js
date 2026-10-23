@@ -96,13 +96,20 @@ async function verifyGoogleIdToken(idToken) {
     return payload;
 }
 
-async function linkGoogle(userId, idToken) {
+async function linkGoogle(userId, idToken, currentPassword) {
+    if (typeof currentPassword !== 'string' || !currentPassword) {
+        throw new Error('Nhập mật khẩu Student Manager để xác minh trước khi liên kết Google');
+    }
     const google = await verifyGoogleIdToken(idToken);
     const userResult = await pool.query(
-        'SELECT id, is_active FROM users WHERE id = $1',
+        'SELECT id, password_hash, is_active FROM users WHERE id = $1',
         [userId]
     );
-    if (!userResult.rows[0]?.is_active) throw new Error('Tài khoản không hoạt động');
+    const user = userResult.rows[0];
+    if (!user?.is_active) throw new Error('Tài khoản không hoạt động');
+    if (!user.password_hash || !(await bcrypt.compare(currentPassword, user.password_hash))) {
+        throw new Error('Mật khẩu Student Manager không đúng hoặc tài khoản chưa có mật khẩu để xác minh');
+    }
 
     const bySubject = await pool.query(
         'SELECT user_id FROM user_oauth_accounts WHERE provider = $1 AND provider_subject = $2',
