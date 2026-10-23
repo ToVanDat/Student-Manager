@@ -33,6 +33,7 @@ function ChatPageContent() {
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
     const callNotificationIdsRef = useRef(new Set());
+    const incomingToastIdsRef = useRef(new Set());
 
     const closeCallCenter = () => {
         setCallCenterOpen(false);
@@ -258,6 +259,41 @@ function ChatPageContent() {
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
     );
+
+    // Show a short, actionable toast only for messages outside the open conversation.
+    // The body is intentionally generic so E2EE ciphertext/plaintext is never exposed here.
+    useEffect(() => {
+        if (!user?.id) return undefined;
+        const handleIncomingMessageToast = message => {
+            const conversationId = Number(message?.conversation_id ?? message?.conversationId);
+            const senderId = Number(message?.sender_id ?? message?.senderId);
+            if (!Number.isSafeInteger(conversationId) || conversationId <= 0) return;
+            if (!Number.isSafeInteger(senderId) || senderId === Number(user.id)) return;
+            if (conversationId === Number(activeId)) return;
+
+            const eventId = message?.id == null ? null : String(message.id);
+            if (eventId && incomingToastIdsRef.current.has(eventId)) return;
+            if (eventId) {
+                incomingToastIdsRef.current.add(eventId);
+                if (incomingToastIdsRef.current.size > 500) {
+                    incomingToastIdsRef.current.delete(incomingToastIdsRef.current.values().next().value);
+                }
+            }
+
+            const conversation = conversations.find(item => Number(item.id) === conversationId);
+            toast('Tin nhắn mới', {
+                description: conversation?.name || 'Bạn vừa nhận được một tin nhắn.',
+                duration: 5000,
+                action: {
+                    label: 'Mở chat',
+                    onClick: () => navigate(`/chat?conversationId=${conversationId}`)
+                }
+            });
+        };
+
+        socket.on('message:new', handleIncomingMessageToast);
+        return () => socket.off('message:new', handleIncomingMessageToast);
+    }, [user?.id, activeId, conversations, navigate]);
     useEffect(() => {
         if (!activeId || !user?.id) {
             setE2eeStatus(null);
