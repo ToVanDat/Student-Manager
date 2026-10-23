@@ -15,6 +15,7 @@ export default function AdvancedSecurityMethods() {
     const [passkeysError, setPasskeysError] = useState('');
     const [googleStatusLoading, setGoogleStatusLoading] = useState(true);
     const [googleStatusError, setGoogleStatusError] = useState('');
+    const [googleScriptError, setGoogleScriptError] = useState('');
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState('');
     const [googleLink, setGoogleLink] = useState(null);
@@ -56,7 +57,12 @@ export default function AdvancedSecurityMethods() {
 
     useEffect(() => {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (googleStatusLoading || googleStatusError || googleLink || !clientId || !googleButtonRef.current) return undefined;
+        setGoogleScriptError('');
+        if (googleStatusLoading || googleStatusError || googleLink || !googleButtonRef.current) return undefined;
+        if (!clientId) {
+            setGoogleScriptError('Thiếu VITE_GOOGLE_CLIENT_ID trong frontend. Hãy kiểm tra .env.local và khởi động lại Vite.');
+            return undefined;
+        }
         let cancelled = false;
         const initialize = () => {
             if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
@@ -87,24 +93,37 @@ export default function AdvancedSecurityMethods() {
                 shape: 'rectangular', width: 300
             });
         };
-        if (window.google?.accounts?.id) initialize();
-        else {
+        if (window.google?.accounts?.id) {
+            initialize();
+        } else {
             let script = document.querySelector('script[data-google-identity]');
+            const onLoad = () => {
+                if (window.google?.accounts?.id) initialize();
+                else setGoogleScriptError('Google Identity Services đã tải nhưng không khởi tạo được. Kiểm tra Console/CSP và thử tải lại trang.');
+            };
+            const onError = () => setGoogleScriptError('Không tải được Google Identity Services. Kiểm tra kết nối mạng, tiện ích chặn quảng cáo/CSP và thử lại.');
             if (!script) {
                 script = document.createElement('script');
                 script.src = 'https://accounts.google.com/gsi/client';
                 script.async = true;
                 script.defer = true;
                 script.dataset.googleIdentity = 'true';
+                script.addEventListener('load', onLoad, { once: true });
+                script.addEventListener('error', onError, { once: true });
                 document.head.appendChild(script);
+            } else {
+                script.addEventListener('load', onLoad, { once: true });
+                script.addEventListener('error', onError, { once: true });
+                // Existing script may have completed before this component mounted.
+                if (window.google?.accounts?.id) initialize();
             }
-            script.addEventListener('load', initialize);
+            return () => {
+                cancelled = true;
+                script?.removeEventListener('load', onLoad);
+                script?.removeEventListener('error', onError);
+            };
         }
-        return () => {
-            cancelled = true;
-            const script = document.querySelector('script[data-google-identity]');
-            script?.removeEventListener('load', initialize);
-        };
+        return () => { cancelled = true; };
     }, [googleStatusLoading, googleStatusError, googleLink, refresh]);
 
     const registerPasskey = async () => {
@@ -257,7 +276,7 @@ export default function AdvancedSecurityMethods() {
                     {verificationToken && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Đã xác minh bằng passkey.</p>}
                 </div>
             ) : null}
-            {!googleStatusLoading && !googleStatusError && !googleLink && !import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
+            {!googleStatusLoading && !googleStatusError && !googleLink && googleScriptError && <div role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{googleScriptError}<button type="button" onClick={() => { setGoogleScriptError(''); void refresh(); }} className="ml-2 font-semibold underline">Kiểm tra lại trạng thái</button></div>}
             {message && <p role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message}</p>}
         </section>
     );
