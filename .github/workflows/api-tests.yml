@@ -6,11 +6,13 @@ on:
       - main
       - feature/chat-1to1-complete
       - feature/e2ee-foundation
+      - feat/settings-six-groups
   pull_request:
     branches:
       - main
       - feature/chat-1to1-complete
       - feature/e2ee-foundation
+      - feat/settings-six-groups
   workflow_dispatch:
 
 jobs:
