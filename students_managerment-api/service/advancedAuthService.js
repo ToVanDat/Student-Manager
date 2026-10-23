@@ -208,14 +208,103 @@ async function unlinkGoogle(userId, currentPassword, verificationToken) {
 
 async function loginGoogle(idToken, req) {
     const google = await verifyGoogleIdToken(idToken);
-    const result = await pool.query(
-        `SELECT u.id, u.username, u.email, u.role, u.avatar_url, u.is_active
-         FROM user_oauth_accounts a JOIN users u ON u.id = a.user_id
-         WHERE a.provider = 'google' AND a.provider_subject = $1`,
-        [google.sub]
-    );
-    if (!result.rows[0]) throw new Error('Google chưa được liên kết. Hãy đăng nhập bằng mật khẩu rồi liên kết Google trong cài đặt bảo mật.');
-    return issueSession(result.rows[0], req);
+    const email = String(google.email).trim().toLowerCase();
+    const client = await pool.connect();
+    let user;
+
+    try {
+        await client.query('BEGIN');
+
+        // Serialize first-time sign-ins for this Google identity and email so
+        // concurrent callbacks cannot create duplicate internal accounts.
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`google-sub:${google.sub}`]);
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`google-email:${email}`]);
+
+        const linked = await client.query(
+            `SELECT u.id, u.username, u.email, u.role, u.avatar_url, u.is_active
+             FROM user_oauth_accounts a
+             JOIN users u ON u.id = a.user_id
+             WHERE a.provider = 'google' AND a.provider_subject = $1
+             LIMIT 1`,
+            [google.sub]
+        );
+
+        if (linked.rows[0]) {
+            user = linked.rows[0];
+            await client.query('COMMIT');
+        } else {
+            // An email collision is NOT proof that the caller owns the existing
+            // Student Manager account. Require password login + explicit linking.
+            const existingEmail = await client.query(
+                'SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1',
+                [email]
+            );
+            if (existingEmail.rows[0]) {
+                throw new Error(
+                    'Email Google này đã có tài khoản Student Manager. Hãy đăng nhập tài khoản hiện có bằng username/mật khẩu rồi liên kết Google trong Cài đặt bảo mật.'
+                );
+            }
+
+            // Existing registration requires a password_hash. Generate an
+            // unguessable random credential so the Google-only account cannot
+            // be accessed by password guessing; never store Google's password.
+            const randomPassword = crypto.randomBytes(48).toString('base64url');
+            const passwordHash = await bcrypt.hash(randomPassword, 12);
+            const baseUsername = `google_${String(google.sub).slice(-12).replace(/[^a-zA-Z0-9_]/g, '')}`;
+            let created = null;
+
+            for (let attempt = 0; attempt < 8 && !created; attempt += 1) {
+                const username = attempt === 0
+                    ? baseUsername
+                    : `${baseUsername}_${crypto.randomBytes(3).toString('hex')}`;
+                const duplicate = await client.query(
+                    'SELECT 1 FROM users WHERE LOWER(username) = LOWER($1) LIMIT 1',
+                    [username]
+                );
+                if (duplicate.rows[0]) continue;
+
+                const inserted = await client.query(
+                    `INSERT INTO users (username, email, password_hash, role)
+                     VALUES ($1, $2, $3, 'user')
+                     ON CONFLICT DO NOTHING
+                     RETURNING id, username, email, role, avatar_url, is_active`,
+                    [username, email, passwordHash]
+                );
+                created = inserted.rows[0] || null;
+                if (!created) {
+                    const emailRace = await client.query(
+                        'SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1',
+                        [email]
+                    );
+                    if (emailRace.rows[0]) {
+                        throw new Error(
+                            'Email Google này đã có tài khoản Student Manager. Hãy đăng nhập tài khoản hiện có bằng username/mật khẩu rồi liên kết Google trong Cài đặt bảo mật.'
+                        );
+                    }
+                }
+            }
+
+            if (!created) {
+                throw new Error('Không thể tạo username tự động. Vui lòng đăng ký tài khoản rồi liên kết Google.');
+            }
+
+            await client.query(
+                `INSERT INTO user_oauth_accounts
+                    (user_id, provider, provider_subject, provider_email)
+                 VALUES ($1, 'google', $2, $3)`,
+                [created.id, google.sub, email]
+            );
+            user = created;
+            await client.query('COMMIT');
+        }
+    } catch (error) {
+        try { await client.query('ROLLBACK'); } catch {}
+        throw error;
+    } finally {
+        client.release();
+    }
+
+    return issueSession(user, req);
 }
 
 async function beginPasskeyRegistration(userId) {
