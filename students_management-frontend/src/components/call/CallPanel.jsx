@@ -88,7 +88,8 @@ export default function CallPanel({
 
     const [ringRemainingMs, setRingRemainingMs] = useState(30_000);
     const [showNotice, setShowNotice] = useState(false);
-    const [incomingActionBusy, setIncomingActionBusy] = useState(false);\n    const [remoteVolume, setRemoteVolume] = useState(0.8);
+    const [incomingActionBusy, setIncomingActionBusy] = useState(false);
+    const [remoteVolume, setRemoteVolume] = useState(0.8);
 
     const previousCallStateRef = useRef('idle');
     const lastEndedCallIdRef = useRef(null);
