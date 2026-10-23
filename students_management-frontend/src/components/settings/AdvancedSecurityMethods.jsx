@@ -19,6 +19,8 @@ export default function AdvancedSecurityMethods() {
     const [googleLink, setGoogleLink] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
     const googleButtonRef = useRef(null);
+    const currentPasswordRef = useRef('');
+    useEffect(() => { currentPasswordRef.current = currentPassword; }, [currentPassword]);
     const refresh = useCallback(async () => {
         setPasskeysLoading(true);
         setGoogleStatusLoading(true);
@@ -59,14 +61,14 @@ export default function AdvancedSecurityMethods() {
                 auto_select: false,
                 callback: async response => {
                     if (!response?.credential) return;
-                    if (!currentPassword) {
+                    if (!currentPasswordRef.current) {
                         setMessage('Nhập mật khẩu Student Manager trước khi liên kết Google. Hãy thử lại sau khi nhập mật khẩu.');
                         return;
                     }
                     setBusy(true);
                     setMessage('');
                     try {
-                        await linkGoogleApi(response.credential, currentPassword);
+                        await linkGoogleApi(response.credential, currentPasswordRef.current);
                         setCurrentPassword('');
                         setMessage('Đã xác minh tài khoản và liên kết Google thành công.');
                         await refresh();
