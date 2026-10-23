@@ -8,6 +8,7 @@ import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
+import NotificationCenter from '@/components/notifications/NotificationCenter.jsx';
 import { callApi } from '@/api/callApi.js';
 import socket from '@/socket/socket.js';
 import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
@@ -386,6 +387,10 @@ function ChatPageContent() {
                     {chatNavCollapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
                 </button>
                 <div className="ml-auto flex items-center gap-2">
+                    <NotificationCenter
+                        userId={user?.id}
+                        onOpenConversation={conversationId => navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`)}
+                    />
                     <button
                         type="button"
                         onClick={() => setCallCenterOpen(true)}
