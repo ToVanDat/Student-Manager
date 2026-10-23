@@ -325,9 +325,9 @@ function ChatPageContent() {
         try {
             const response = await e2eeRelayApi.pauseConversation(activeId);
             setE2eeStatus(previous => ({ ...previous, ...(response.data?.data || {}), enabled: true, mode: 'paused' }));
-            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.');
+            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.', { duration: 3000 });
         } catch (error) {
-            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.');
+            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.', { duration: 8000 });
         } finally {
             setEnablingE2EE(false);
         }
@@ -345,11 +345,11 @@ function ChatPageContent() {
     const enableActiveConversationE2EE = async () => {
         if (!activeId || enablingE2EE) return;
         if (!e2eeClient.isLocalStoreReady || e2eeClient.relayState !== 'connected') {
-            toast.error('Thiết bị này chưa sẵn sàng cho E2EE. Hãy kiểm tra kho khóa và kết nối relay.');
+            toast.error('Thiết bị này chưa sẵn sàng cho E2EE. Hãy kiểm tra kho khóa và kết nối relay.', { duration: 8000 });
             return;
         }
         if (!e2eeStatus?.canEnable) {
-            toast.error('Cần đăng ký khóa cho tất cả thiết bị của cả hai người trước khi bật E2EE.');
+            toast.error('Cần đăng ký khóa cho tất cả thiết bị của cả hai người trước khi bật E2EE.', { duration: 8000 });
             return;
         }
         const confirmed = window.confirm(
@@ -360,9 +360,9 @@ function ChatPageContent() {
         try {
             const response = await e2eeRelayApi.enableConversation(activeId);
             setE2eeStatus(response.data?.data || { ...e2eeStatus, enabled: true });
-            toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.');
+            toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.', { duration: 3000 });
         } catch (error) {
-            toast.error(error?.response?.data?.message || 'Không thể bật E2EE.');
+            toast.error(error?.response?.data?.message || 'Không thể bật E2EE.', { duration: 8000 });
         } finally {
             setEnablingE2EE(false);
         }
