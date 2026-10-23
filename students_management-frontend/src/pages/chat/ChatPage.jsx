@@ -8,6 +8,7 @@ import AvatarFallback from '@/components/chat/AvatarFallback.jsx';
 import ChatWindow from '@/components/chat/ChatWindow.jsx';
 import EmptyChat from '@/components/chat/EmptyChat.jsx';
 import CallCenterPanel from '@/components/call/CallCenterPanel.jsx';
+import NotificationCenter from '@/components/notifications/NotificationCenter.jsx';
 import { callApi } from '@/api/callApi.js';
 import socket from '@/socket/socket.js';
 import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
@@ -33,6 +34,7 @@ function ChatPageContent() {
     const [callNotifications, setCallNotifications] = useState([]);
     const [unreadCallNotificationCount, setUnreadCallNotificationCount] = useState(0);
     const callNotificationIdsRef = useRef(new Set());
+    const incomingToastIdsRef = useRef(new Set());
 
     const closeCallCenter = () => {
         setCallCenterOpen(false);
@@ -258,6 +260,41 @@ function ChatPageContent() {
     const activeConversation = conversations.find(
         conversation => Number(conversation.id) === Number(activeId)
     );
+
+    // Show a short, actionable toast only for messages outside the open conversation.
+    // The body is intentionally generic so E2EE ciphertext/plaintext is never exposed here.
+    useEffect(() => {
+        if (!user?.id) return undefined;
+        const handleIncomingMessageToast = message => {
+            const conversationId = Number(message?.conversation_id ?? message?.conversationId);
+            const senderId = Number(message?.sender_id ?? message?.senderId);
+            if (!Number.isSafeInteger(conversationId) || conversationId <= 0) return;
+            if (!Number.isSafeInteger(senderId) || senderId === Number(user.id)) return;
+            if (conversationId === Number(activeId)) return;
+
+            const eventId = message?.id == null ? null : String(message.id);
+            if (eventId && incomingToastIdsRef.current.has(eventId)) return;
+            if (eventId) {
+                incomingToastIdsRef.current.add(eventId);
+                if (incomingToastIdsRef.current.size > 500) {
+                    incomingToastIdsRef.current.delete(incomingToastIdsRef.current.values().next().value);
+                }
+            }
+
+            const conversation = conversations.find(item => Number(item.id) === conversationId);
+            toast('Tin nhắn mới', {
+                description: conversation?.name || 'Bạn vừa nhận được một tin nhắn.',
+                duration: 5000,
+                action: {
+                    label: 'Mở chat',
+                    onClick: () => navigate(`/chat?conversationId=${conversationId}`)
+                }
+            });
+        };
+
+        socket.on('message:new', handleIncomingMessageToast);
+        return () => socket.off('message:new', handleIncomingMessageToast);
+    }, [user?.id, activeId, conversations, navigate]);
     useEffect(() => {
         if (!activeId || !user?.id) {
             setE2eeStatus(null);
@@ -289,9 +326,9 @@ function ChatPageContent() {
         try {
             const response = await e2eeRelayApi.pauseConversation(activeId);
             setE2eeStatus(previous => ({ ...previous, ...(response.data?.data || {}), enabled: true, mode: 'paused' }));
-            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.');
+            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.', { duration: 3000 });
         } catch (error) {
-            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.');
+            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.', { duration: 8000 });
         } finally {
             setEnablingE2EE(false);
         }
@@ -309,11 +346,11 @@ function ChatPageContent() {
     const enableActiveConversationE2EE = async () => {
         if (!activeId || enablingE2EE) return;
         if (!e2eeClient.isLocalStoreReady || e2eeClient.relayState !== 'connected') {
-            toast.error('Thiết bị này chưa sẵn sàng cho E2EE. Hãy kiểm tra kho khóa và kết nối relay.');
+            toast.error('Thiết bị này chưa sẵn sàng cho E2EE. Hãy kiểm tra kho khóa và kết nối relay.', { duration: 8000 });
             return;
         }
         if (!e2eeStatus?.canEnable) {
-            toast.error('Cần đăng ký khóa cho tất cả thiết bị của cả hai người trước khi bật E2EE.');
+            toast.error('Cần đăng ký khóa cho tất cả thiết bị của cả hai người trước khi bật E2EE.', { duration: 8000 });
             return;
         }
         const confirmed = window.confirm(
@@ -324,9 +361,9 @@ function ChatPageContent() {
         try {
             const response = await e2eeRelayApi.enableConversation(activeId);
             setE2eeStatus(response.data?.data || { ...e2eeStatus, enabled: true });
-            toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.');
+            toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.', { duration: 3000 });
         } catch (error) {
-            toast.error(error?.response?.data?.message || 'Không thể bật E2EE.');
+            toast.error(error?.response?.data?.message || 'Không thể bật E2EE.', { duration: 8000 });
         } finally {
             setEnablingE2EE(false);
         }
@@ -350,6 +387,10 @@ function ChatPageContent() {
                     {chatNavCollapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
                 </button>
                 <div className="ml-auto flex items-center gap-2">
+                    <NotificationCenter
+                        userId={user?.id}
+                        onOpenConversation={conversationId => navigate(`/chat?conversationId=${encodeURIComponent(conversationId)}`)}
+                    />
                     <button
                         type="button"
                         onClick={() => setCallCenterOpen(true)}

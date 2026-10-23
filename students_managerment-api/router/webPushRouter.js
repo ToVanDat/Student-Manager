@@ -10,6 +10,7 @@ router.get('/vapid-public-key', controller.getPublicKey);
 router.get('/history', notificationCenterController.list);
 router.patch('/history/read-all', notificationCenterController.markAllRead);
 router.patch('/history/:notificationId/read', notificationCenterController.markRead);
+router.delete('/history/:notificationId', notificationCenterController.deleteNotification);
 router.get('/preferences', controller.getPreferences);
 router.patch('/preferences', controller.updatePreferences);
 router.get('/conversations/:conversationId', controller.getConversationPreference);

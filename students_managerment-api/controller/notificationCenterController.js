@@ -23,6 +23,18 @@ const markRead = async (req, res, next) => {
     } catch (error) { next(error); }
 };
 
+const deleteNotification = async (req, res, next) => {
+    try {
+        const id = Number(req.params.notificationId);
+        if (!Number.isSafeInteger(id) || id <= 0) {
+            return res.status(400).json({ message: 'notificationId không hợp lệ' });
+        }
+        const item = await notificationCenterService.deleteForUser(Number(req.user.id), id);
+        if (!item) return res.status(404).json({ message: 'Không tìm thấy thông báo' });
+        res.status(200).json({ data: { id: item.id, deleted: true } });
+    } catch (error) { next(error); }
+};
+
 const markAllRead = async (req, res, next) => {
     try {
         const updated = await notificationCenterService.markAllRead(Number(req.user.id));
@@ -30,4 +42,4 @@ const markAllRead = async (req, res, next) => {
     } catch (error) { next(error); }
 };
 
-module.exports = { list, markRead, markAllRead };
+module.exports = { list, markRead, markAllRead, deleteNotification };
