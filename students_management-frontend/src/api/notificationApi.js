@@ -5,6 +5,7 @@ export const notificationApi = {
     getHistory: (limit = 30, offset = 0) => client.get('/api/notifications/history', { params: { limit, offset } }),
     markRead: notificationId => client.patch(`/api/notifications/history/${notificationId}/read`),
     markAllRead: () => client.patch('/api/notifications/history/read-all'),
+    deleteNotification: notificationId => client.delete(`/api/notifications/history/${notificationId}`),
     updatePreferences: preferences => client.patch('/api/notifications/preferences', preferences),
     getConversationPreference: conversationId =>
         client.get(`/api/notifications/conversations/${conversationId}`),
