@@ -10,6 +10,7 @@ export default function ChatCallsSettings({ onOpenChat }) {
         { Icon: PhoneCall, title: 'Cuộc gọi và thiết bị', detail: 'Quyền camera, micro và chia sẻ màn hình được trình duyệt hỏi khi bạn chủ động sử dụng tính năng.' },
     ];
     return (
+        <>
         <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-5">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('chatAndCalls') === 'chatAndCalls' ? 'Chat và cuộc gọi' : t('chatAndCalls')}</h2>
@@ -28,5 +29,6 @@ export default function ChatCallsSettings({ onOpenChat }) {
             </button>
         </section>
         <CameraSettings />
+        </>
     );
 }
