@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bell, CheckCheck, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { notificationApi } from '@/api/notificationApi.js';
+import socket from '@/socket/socket.js';
 
 const formatDate = value => {
     const date = new Date(value);
@@ -15,24 +16,48 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [busyIds, setBusyIds] = useState(() => new Set());
+    const seenNotificationIdsRef = useRef(new Set());
 
-    const loadNotifications = async () => {
+    const loadNotifications = useCallback(async () => {
         if (!userId) return;
         setLoading(true);
         try {
             const response = await notificationApi.getHistory(30, 0);
-            setItems(Array.isArray(response.data?.data) ? response.data.data : []);
+            const loadedItems = Array.isArray(response.data?.data) ? response.data.data : [];
+            loadedItems.forEach(item => seenNotificationIdsRef.current.add(String(item.id)));
+            setItems(loadedItems);
             setUnreadCount(Math.max(0, Number(response.data?.unreadCount) || 0));
         } catch (error) {
             toast.error(error?.response?.data?.message || 'Không thể tải thông báo.', { duration: 8000 });
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
+
+    useEffect(() => {
+        void loadNotifications();
+
+        const handleNewNotification = notification => {
+            if (!notification?.id || Number(notification.user_id) !== Number(userId)) return;
+            const id = String(notification.id);
+            if (seenNotificationIdsRef.current.has(id)) return;
+            seenNotificationIdsRef.current.add(id);
+            setItems(previous => [notification, ...previous].slice(0, 30));
+            if (!notification.is_read) setUnreadCount(previous => previous + 1);
+        };
+        const handleWindowFocus = () => void loadNotifications();
+
+        socket.on('notification:new', handleNewNotification);
+        window.addEventListener('focus', handleWindowFocus);
+        return () => {
+            socket.off('notification:new', handleNewNotification);
+            window.removeEventListener('focus', handleWindowFocus);
+        };
+    }, [loadNotifications, userId]);
 
     useEffect(() => {
         if (open) void loadNotifications();
-    }, [open, userId]);
+    }, [open, loadNotifications]);
 
     const markRead = async (item) => {
         if (item.is_read) return true;
