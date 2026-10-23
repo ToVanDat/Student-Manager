@@ -121,7 +121,7 @@ export default function NotificationCenter({ userId, onOpenConversation }) {
                 title="Thông báo"
             >
                 <Bell size={18} />
-                {unreadCount > 0 && <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{unreadCount > 99 ? '99+' : unreadCount}</span>}
+                {unreadCount > 0 && <span className="absolute -right-1 -top-1 inline-flex min-w-5 max-w-none items-center justify-center whitespace-nowrap rounded-full bg-rose-500 px-1.5 text-center text-[10px] font-bold leading-5 tabular-nums text-white shadow-sm ring-2 ring-white dark:ring-slate-900" aria-label={`${unreadCount} thông báo chưa đọc`} title={`${unreadCount} thông báo chưa đọc`}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </button>
             {open && (
                 <section className="absolute right-0 top-12 z-[100] flex max-h-[min(75dvh,560px)] w-[min(92vw,390px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" aria-label="Trung tâm thông báo">

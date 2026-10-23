@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { googleLoginApi } from '@/api/authApi.js';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
+    const { t } = useLanguage();
     const googleButtonRef = useRef(null);
     const callbacksRef = useRef({ onLogin, onError, onLoading });
     callbacksRef.current = { onLogin, onError, onLoading };
@@ -19,7 +21,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
         let createdScript = false;
 
         const handleScriptError = () => {
-            if (!cancelled) setGoogleLoadError('Không tải được dịch vụ Google. Hãy kiểm tra kết nối mạng hoặc thử lại sau.');
+            if (!cancelled) setGoogleLoadError(t('googleServiceLoadFailed'));
         };
 
         const initialize = () => {
@@ -29,7 +31,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 client_id: clientId,
                 callback: async result => {
                     if (!result?.credential) {
-                        callbacksRef.current.onError('Google không trả về ID token.');
+                        callbacksRef.current.onError(t('googleMissingCredential'));
                         return;
                     }
 
@@ -41,7 +43,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                         const data = await googleLoginApi(result.credential);
                         callbacksRef.current.onLogin(data);
                     } catch (error) {
-                        callbacksRef.current.onError(error.response?.data?.message || 'Đăng nhập Google thất bại.');
+                        callbacksRef.current.onError(error.response?.data?.message || t('googleLoginFailed'));
                     } finally {
                         setBusy(false);
                         callbacksRef.current.onLoading(false);

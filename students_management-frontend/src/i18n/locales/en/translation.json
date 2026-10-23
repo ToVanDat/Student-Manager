@@ -585,5 +585,13 @@
   "modulePendingTitle": "Feature not implemented yet",
   "moduleUsersPending": "The current API only supports user search for chat. It does not provide admin endpoints to list, create, edit, disable, or assign roles to accounts. This page remains an explicit status notice instead of showing non-functional CRUD controls.",
   "modulePermissionsPending": "The backend does not provide a separate permissions-management API. The current admin/user roles are enforced by middleware; this UI cannot safely edit permissions without a corresponding backend workflow.",
-  "resultsManagementDescription": "View and update grades for existing subject-enrollment records using the current enrollment and score APIs."
+  "resultsManagementDescription": "View and update grades for existing subject-enrollment records using the current enrollment and score APIs.",
+  "googleServiceLoadFailed": "Could not load Google services. Check your connection or try again later.",
+  "googleMissingCredential": "Google did not return a credential.",
+  "googleLoginFailed": "Google sign-in failed.",
+  "orContinueWith": "Or continue with",
+  "loginWithGoogle": "Sign in with Google",
+  "googleOAuthNotConfigured": "Google sign-in is available only after OAuth is configured for this application.",
+  "googleServiceLoading": "Loading Google services…",
+  "googleLoginLinkingHelp": "Google can sign in only to a Student Manager account that is already linked. If it is not linked, sign in with your username and password, then link Google in Security Settings."
 }

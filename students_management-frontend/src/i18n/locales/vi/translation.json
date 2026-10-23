@@ -585,5 +585,13 @@
   "modulePendingTitle": "Chức năng chưa được triển khai",
   "moduleUsersPending": "API hiện tại chỉ hỗ trợ tìm người dùng cho chat, chưa có API quản trị để liệt kê, tạo, sửa, khóa hoặc phân quyền tài khoản. Trang này được giữ ở trạng thái thông báo thay vì hiển thị giao diện CRUD chưa hoạt động.",
   "modulePermissionsPending": "Backend chưa có API quản lý quyền riêng biệt. Vai trò admin/user hiện được kiểm tra qua middleware; không thể chỉnh sửa quyền an toàn từ giao diện này khi chưa có quy trình backend tương ứng.",
-  "resultsManagementDescription": "Xem và cập nhật điểm theo từng bản ghi đăng ký môn học. Dữ liệu sử dụng API đăng ký và điểm hiện có."
+  "resultsManagementDescription": "Xem và cập nhật điểm theo từng bản ghi đăng ký môn học. Dữ liệu sử dụng API đăng ký và điểm hiện có.",
+  "googleServiceLoadFailed": "Không tải được dịch vụ Google. Hãy kiểm tra kết nối mạng hoặc thử lại sau.",
+  "googleMissingCredential": "Google không trả về thông tin xác thực.",
+  "googleLoginFailed": "Đăng nhập Google thất bại.",
+  "orContinueWith": "Hoặc tiếp tục bằng",
+  "loginWithGoogle": "Đăng nhập bằng Google",
+  "googleOAuthNotConfigured": "Đăng nhập Google chỉ dùng được khi ứng dụng đã được cấu hình OAuth.",
+  "googleServiceLoading": "Đang tải dịch vụ Google…",
+  "googleLoginLinkingHelp": "Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật."
 }

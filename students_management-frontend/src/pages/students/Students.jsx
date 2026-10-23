@@ -385,6 +385,20 @@ function Students() {
     return "dashboard";
   });
 
+  useEffect(() => {
+    const requestedView = searchParams.get("view");
+    const allowedViews = ["students", "classes", "departments", "subjects", "enrollments", "semesters", "results", "users", "permissions"];
+    let nextPage = "dashboard";
+    if (requestedView === "settings") {
+      nextPage = "settings";
+    } else if (allowedViews.includes(requestedView) && isAdmin) {
+      nextPage = requestedView;
+    } else if (requestedView === "students" || (isAdmin && searchParams.has("search"))) {
+      nextPage = "students";
+    }
+    setActivePage(current => current === nextPage ? current : nextPage);
+  }, [searchParams, isAdmin]);
+
   const {
     settingsTab,
     setSettingsTab,

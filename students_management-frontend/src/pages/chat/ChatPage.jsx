@@ -22,7 +22,7 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 
 function ChatPageContent() {
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const { user, logoutUser, webRTCCall } = useAuth();
     const e2eeClient = useE2EEClient();
     const [e2eeStatus, setE2eeStatus] = useState(null);
@@ -214,8 +214,8 @@ function ChatPageContent() {
                 a.getMonth() === b.getMonth() &&
                 a.getDate() === b.getDate();
 
-            if (sameDay(date, today)) return 'Hôm nay';
-            if (sameDay(date, yesterday)) return 'Hôm qua';
+            if (sameDay(date, today)) return language === 'en' ? 'Today' : 'Hôm nay';
+            if (sameDay(date, yesterday)) return language === 'en' ? 'Yesterday' : 'Hôm qua';
 
             return date.toLocaleDateString('vi-VN', {
                 day: '2-digit',

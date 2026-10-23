@@ -42,6 +42,7 @@ function StudentHeader({
     const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
     const menuRef = useRef(null);
+    const notificationIdsRef = useRef(new Set());
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -61,7 +62,15 @@ function StudentHeader({
             try {
                 const { data } = await notificationApi.getHistory(20, 0);
                 if (!active) return;
-                setNotificationItems(Array.isArray(data?.data) ? data.data : []);
+                const loadedItems = Array.isArray(data?.data) ? data.data : [];
+                loadedItems.forEach(item => {
+                    if (item?.id != null) notificationIdsRef.current.add(String(item.id));
+                });
+                setNotificationItems(previous => {
+                    const loadedIds = new Set(loadedItems.map(item => String(item.id)));
+                    const receivedWhileLoading = previous.filter(item => !loadedIds.has(String(item.id)));
+                    return [...receivedWhileLoading, ...loadedItems].slice(0, 20);
+                });
                 setNotificationUnreadCount(Number(data?.unreadCount) || 0);
             } catch (error) {
                 console.error('Không tải được lịch sử thông báo:', error?.message);
@@ -70,9 +79,12 @@ function StudentHeader({
             }
         };
         const handleNewNotification = item => {
-            if (!item?.id) return;
-            setNotificationItems(previous => [item, ...previous.filter(existing => existing.id !== item.id)].slice(0, 20));
-            setNotificationUnreadCount(count => count + (item.is_read ? 0 : 1));
+            if (item?.id == null) return;
+            const notificationId = String(item.id);
+            if (notificationIdsRef.current.has(notificationId)) return;
+            notificationIdsRef.current.add(notificationId);
+            setNotificationItems(previous => [item, ...previous.filter(existing => String(existing.id) !== notificationId)].slice(0, 20));
+            if (!item.is_read) setNotificationUnreadCount(count => count + 1);
         };
         loadNotifications();
         socket.on('notification:new', handleNewNotification);
