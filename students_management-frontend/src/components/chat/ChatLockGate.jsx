@@ -6,7 +6,8 @@ import {
     lockPinProtectedE2EEVault,
     unlockPinProtectedE2EEVault,
     removePinProtectionFromE2EEVault,
-    cancelPinProtectedE2EEVaultSetup
+    cancelPinProtectedE2EEVaultSetup,
+    hasExistingPinProtectedE2EEVaultMaterial
 } from '@/services/e2ee/pinProtectedE2EEVault.js';
 
 const LEGACY_PIN_KEY = 'student-manager:chat-lock:v1';
@@ -171,6 +172,11 @@ export default function ChatLockGate({ children }) {
                 if (!legacyRecord || !confirmLegacyOwnership) { setError('Xác nhận tài khoản sở hữu PIN cũ trước khi chuyển.'); return; }
                 if (!(await matchesPin(pin, legacyRecord))) { setError('PIN cũ không đúng. Cấu hình cũ vẫn được giữ nguyên.'); return; }
                 if (!userId) { setError('Hãy đăng nhập vào đúng tài khoản sở hữu PIN cũ.'); return; }
+                // Never create a fresh/empty vault while trying to identify the legacy PIN owner.
+                if (!(await hasExistingPinProtectedE2EEVaultMaterial(userId))) {
+                    setError('Không tìm thấy khóa E2EE hiện có cho tài khoản này. PIN cũ chưa được chuyển và dữ liệu cũ vẫn được giữ nguyên.');
+                    return;
+                }
                 // Prove this PIN opens existing E2EE material before claiming the legacy PIN.
                 await unlockPinProtectedE2EEVault(userId, pin);
                 localStorage.setItem(pinKeyForUser(userId), JSON.stringify(legacyRecord));
@@ -314,6 +320,17 @@ export default function ChatLockGate({ children }) {
                 >
                     <ShieldCheck size={18} />
                 </button>
+                {legacyRecord && (
+                    <button
+                        type="button"
+                        onClick={() => { setMode('migrateLegacy'); setPin(''); setError(''); }}
+                        title="Chuyển PIN cũ sang tài khoản này"
+                        aria-label="Chuyển PIN cũ sang tài khoản này"
+                        className="fixed bottom-4 right-16 z-[100] rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 shadow-lg hover:bg-blue-50 dark:border-blue-800 dark:bg-slate-900 dark:text-blue-300"
+                    >
+                        Chuyển PIN cũ
+                    </button>
+                )}
             </>
         );
     }
