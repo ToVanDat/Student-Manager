@@ -1,5 +1,6 @@
 import { ArrowUpRight, BellOff, LockKeyhole, PhoneCall } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
+import CameraSettings from '@/components/settings/CameraSettings.jsx';
 
 export default function ChatCallsSettings({ onOpenChat }) {
     const { t } = useLanguage();
@@ -26,5 +27,6 @@ export default function ChatCallsSettings({ onOpenChat }) {
                 Mở Chat và cuộc gọi <ArrowUpRight size={16} aria-hidden="true" />
             </button>
         </section>
+        <CameraSettings />
     );
 }
