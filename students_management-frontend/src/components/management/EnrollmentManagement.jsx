@@ -84,8 +84,14 @@ export default function EnrollmentManagement({ view = 'enrollments' }) {
             return;
         }
         for (const field of SCORE_FIELDS) {
-            if (form[field] !== '' && !Number.isFinite(Number(form[field]))) {
+            if (form[field] === '') continue;
+            const score = Number(form[field]);
+            if (!Number.isFinite(score)) {
                 setFormError(t('scoreMustBeNumber'));
+                return;
+            }
+            if (score < 0 || score > 10) {
+                setFormError(t('scoreRangeInvalid'));
                 return;
             }
         }

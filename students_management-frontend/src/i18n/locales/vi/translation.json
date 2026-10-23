@@ -593,5 +593,6 @@
   "loginWithGoogle": "Đăng nhập bằng Google",
   "googleOAuthNotConfigured": "Đăng nhập Google chỉ dùng được khi ứng dụng đã được cấu hình OAuth.",
   "googleServiceLoading": "Đang tải dịch vụ Google…",
-  "googleLoginLinkingHelp": "Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật."
+  "googleLoginLinkingHelp": "Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật.",
+  "scoreRangeInvalid": "Điểm phải nằm trong khoảng từ 0 đến 10."
 }
