@@ -140,8 +140,8 @@ export const deletePasskeyApi = async id => {
   const response = await axios.delete(`${API_BASE_URL}/api/auth/passkeys/${encodeURIComponent(id)}`, authenticatedAuthConfig());
   return response.data;
 };
-export const linkGoogleApi = async idToken => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken }, authenticatedAuthConfig());
+export const linkGoogleApi = async (idToken, currentPassword) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken, currentPassword }, authenticatedAuthConfig());
   return response.data;
 };
 export const getGoogleLinkApi = async () => {
