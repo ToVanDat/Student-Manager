@@ -96,7 +96,7 @@ async function verifyGoogleIdToken(idToken) {
     return payload;
 }
 
-async function verifySensitiveAction(userId, currentPassword, verificationToken) {
+async function verifySensitiveAction(userId, currentPassword, verificationToken, purpose) {
     if (typeof currentPassword === 'string' && currentPassword) {
         const userResult = await pool.query('SELECT password_hash, is_active FROM users WHERE id = $1', [userId]);
         const user = userResult.rows[0];
@@ -112,11 +112,12 @@ async function verifySensitiveAction(userId, currentPassword, verificationToken)
         "local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value",
         { keys: [key], arguments: [] }
     );
-    if (!raw || raw !== String(userId)) throw new Error('Xác minh đã hết hạn hoặc đã được sử dụng. Hãy xác minh lại.');
+    if (!raw || raw !== `${userId}:${purpose}`) throw new Error('Xác minh đã hết hạn, không đúng thao tác hoặc đã được sử dụng. Hãy xác minh lại.');
     return true;
 }
 
-async function beginSensitiveReauth(userId) {
+async function beginSensitiveReauth(userId, purpose) {
+    if (!['google-link', 'google-unlink'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
     const userResult = await pool.query('SELECT id, is_active FROM users WHERE id = $1', [userId]);
     if (!userResult.rows[0]?.is_active) throw new Error('Tài khoản không hoạt động');
     const rows = await pool.query('SELECT credential_id, transports FROM user_webauthn_credentials WHERE user_id = $1', [userId]);
@@ -127,13 +128,13 @@ async function beginSensitiveReauth(userId) {
         userVerification: 'required'
     });
     const challengeId = randomToken(18);
-    await saveChallenge('sensitive-reauth', challengeId, { userId: String(userId), challenge: options.challenge });
+    await saveChallenge('sensitive-reauth', challengeId, { userId: String(userId), purpose, challenge: options.challenge });
     return { challengeId, options };
 }
 
-async function finishSensitiveReauth(userId, challengeId, response) {
+async function finishSensitiveReauth(userId, challengeId, response, purpose) {
     const state = await consumeChallenge('sensitive-reauth', challengeId);
-    if (!state || state.userId !== String(userId)) throw new Error('Challenge xác minh đã hết hạn hoặc không hợp lệ');
+    if (!state || state.userId !== String(userId) || state.purpose !== purpose) throw new Error('Challenge xác minh đã hết hạn hoặc không hợp lệ');
     const storedResult = await pool.query('SELECT * FROM user_webauthn_credentials WHERE user_id = $1 AND credential_id = $2', [userId, response?.id]);
     const stored = storedResult.rows[0];
     if (!stored) throw new Error('Passkey không thuộc tài khoản này');
@@ -146,12 +147,12 @@ async function finishSensitiveReauth(userId, challengeId, response) {
     if (!verification.verified) throw new Error('Xác minh passkey thất bại');
     await pool.query('UPDATE user_webauthn_credentials SET counter = $1, last_used_at = CURRENT_TIMESTAMP WHERE id = $2', [verification.authenticationInfo.newCounter, stored.id]);
     const verificationToken = randomToken(32);
-    await redisClient.set(`advanced-auth:sensitive-verify:${hash(verificationToken)}`, String(userId), { EX: 300 });
+    await redisClient.set(`advanced-auth:sensitive-verify:${hash(verificationToken)}`, `${userId}:${purpose}`, { EX: 300 });
     return { verificationToken, expiresIn: 300 };
 }
 
 async function linkGoogle(userId, idToken, currentPassword, verificationToken) {
-    await verifySensitiveAction(userId, currentPassword, verificationToken);
+    await verifySensitiveAction(userId, currentPassword, verificationToken, 'google-link');
     const google = await verifyGoogleIdToken(idToken);
     const userResult = await pool.query(
         'SELECT id, is_active FROM users WHERE id = $1',
@@ -196,7 +197,7 @@ async function getGoogleLink(userId) {
 }
 
 async function unlinkGoogle(userId, currentPassword, verificationToken) {
-    await verifySensitiveAction(userId, currentPassword, verificationToken);
+    await verifySensitiveAction(userId, currentPassword, verificationToken, 'google-unlink');
     const result = await pool.query(
         'DELETE FROM user_oauth_accounts WHERE user_id = $1 AND provider = $2 RETURNING id',
         [userId, 'google']
