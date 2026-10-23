@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Fingerprint, Link2, Trash2, Unlink } from 'lucide-react';
 import {
     beginPasskeyRegistrationApi, finishPasskeyRegistrationApi, listPasskeysApi,
-    deletePasskeyApi, linkGoogleApi, getGoogleLinkApi, unlinkGoogleApi
+    deletePasskeyApi, linkGoogleApi, getGoogleLinkApi, unlinkGoogleApi,
+    beginSensitiveReauthApi, finishSensitiveReauthApi
 } from '@/api/authApi.js';
 
 const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), c => c.charCodeAt(0));
@@ -18,6 +19,9 @@ export default function AdvancedSecurityMethods() {
     const [message, setMessage] = useState('');
     const [googleLink, setGoogleLink] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
+    const [verificationToken, setVerificationToken] = useState('');
+    const verificationTokenRef = useRef('');
+    useEffect(() => { verificationTokenRef.current = verificationToken; }, [verificationToken]);
     const googleButtonRef = useRef(null);
     const currentPasswordRef = useRef('');
     useEffect(() => { currentPasswordRef.current = currentPassword; }, [currentPassword]);
@@ -61,15 +65,16 @@ export default function AdvancedSecurityMethods() {
                 auto_select: false,
                 callback: async response => {
                     if (!response?.credential) return;
-                    if (!currentPasswordRef.current) {
-                        setMessage('Nhập mật khẩu Student Manager trước khi liên kết Google. Hãy thử lại sau khi nhập mật khẩu.');
+                    if (!currentPasswordRef.current && !verificationTokenRef.current) {
+                        setMessage('Hãy xác minh bằng mật khẩu Student Manager hoặc nhấn “Xác minh bằng passkey” trước khi liên kết Google.');
                         return;
                     }
                     setBusy(true);
                     setMessage('');
                     try {
-                        await linkGoogleApi(response.credential, currentPasswordRef.current);
+                        await linkGoogleApi(response.credential, currentPasswordRef.current || undefined, verificationTokenRef.current || undefined);
                         setCurrentPassword('');
+                        setVerificationToken('');
                         setMessage('Đã xác minh tài khoản và liên kết Google thành công.');
                         await refresh();
                     } catch (error) {
@@ -138,17 +143,52 @@ export default function AdvancedSecurityMethods() {
         } finally { setBusy(false); }
     };
 
+    const verifyWithPasskey = async () => {
+        setBusy(true);
+        setMessage('');
+        try {
+            if (!window.isSecureContext || !navigator.credentials?.get) throw new Error('Passkey cần trình duyệt hỗ trợ và HTTPS (localhost được phép khi phát triển).');
+            const { challengeId, options } = await beginSensitiveReauthApi();
+            const publicKey = {
+                ...options,
+                challenge: decode(options.challenge),
+                allowCredentials: (options.allowCredentials || []).map(item => ({ ...item, id: decode(item.id) }))
+            };
+            const credential = await navigator.credentials.get({ publicKey });
+            if (!credential) throw new Error('Bạn đã hủy xác minh passkey.');
+            const response = {
+                id: credential.id,
+                rawId: encode(credential.rawId),
+                type: credential.type,
+                authenticatorAttachment: credential.authenticatorAttachment,
+                response: {
+                    clientDataJSON: encode(credential.response.clientDataJSON),
+                    authenticatorData: encode(credential.response.authenticatorData),
+                    signature: encode(credential.response.signature),
+                    userHandle: credential.response.userHandle ? encode(credential.response.userHandle) : null
+                },
+                clientExtensionResults: credential.getClientExtensionResults()
+            };
+            const result = await finishSensitiveReauthApi(challengeId, response);
+            setVerificationToken(result.verificationToken);
+            setMessage('Đã xác minh bằng passkey. Tiếp tục liên kết hoặc gỡ liên kết Google trong 5 phút.');
+        } catch (error) {
+            setMessage(error.response?.data?.message || error.message || 'Xác minh passkey thất bại.');
+        } finally { setBusy(false); }
+    };
+
     const unlinkGoogle = async () => {
-        if (!currentPassword) {
-            setMessage('Nhập mật khẩu Student Manager để xác nhận gỡ liên kết Google.');
+        if (!currentPassword && !verificationToken) {
+            setMessage('Hãy xác minh bằng mật khẩu Student Manager hoặc passkey trước khi gỡ liên kết Google.');
             return;
         }
         if (!window.confirm('Gỡ liên kết Google khỏi tài khoản hiện tại?')) return;
         setBusy(true);
         setMessage('');
         try {
-            await unlinkGoogleApi(currentPassword);
+            await unlinkGoogleApi(currentPassword || undefined, verificationToken || undefined);
             setCurrentPassword('');
+            setVerificationToken('');
             setMessage('Đã gỡ liên kết Google.');
             await refresh();
         } catch (error) {
@@ -201,16 +241,20 @@ export default function AdvancedSecurityMethods() {
             {!googleStatusLoading && !googleStatusError && !googleLink && <div className="mb-3 space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-200" htmlFor="link-google-password">Xác minh bằng mật khẩu Student Manager</label>
                 <input id="link-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} placeholder="Mật khẩu tài khoản hiện tại" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
-                <p className="m-0 text-xs leading-5 text-slate-500 dark:text-slate-400">Sau đó, xác minh danh tính Google trong cửa sổ Google để hoàn tất liên kết.</p>
+                <p className="m-0 text-xs leading-5 text-slate-500 dark:text-slate-400">Xác minh bằng mật khẩu hiện tại hoặc passkey. Sau đó, xác minh danh tính Google để hoàn tất liên kết.</p>
+                <button type="button" disabled={busy} onClick={verifyWithPasskey} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Fingerprint size={14} /> Xác minh bằng passkey</button>
+                {verificationToken && <p className="m-0 text-xs text-emerald-700 dark:text-emerald-300">Đã xác minh bằng passkey. Bây giờ hãy tiếp tục với Google.</p>}
                 <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-50' : ''} />
             </div>}
             {!googleStatusLoading && !googleStatusError && googleLink ? (
                 <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">Đã liên kết Google</p>
                     <p className="m-0 text-xs text-slate-500 dark:text-slate-400">{googleLink.provider_email || 'Tài khoản Google đã liên kết'}</p>
-                    <label className="block text-xs text-slate-600 dark:text-slate-300" htmlFor="unlink-google-password">Nhập mật khẩu Student Manager để gỡ liên kết</label>
+                    <label className="block text-xs text-slate-600 dark:text-slate-300" htmlFor="unlink-google-password">Xác minh bằng mật khẩu Student Manager hoặc passkey</label>
                     <input id="unlink-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
-                    <button type="button" disabled={busy || !currentPassword} onClick={unlinkGoogle} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30"><Unlink size={14} /> Gỡ liên kết Google</button>
+                    <button type="button" disabled={busy || (!currentPassword && !verificationToken)} onClick={unlinkGoogle} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30"><Unlink size={14} /> Gỡ liên kết Google</button>
+                    <button type="button" disabled={busy} onClick={verifyWithPasskey} className="ml-2 inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"><Fingerprint size={14} /> Xác minh bằng passkey</button>
+                    {verificationToken && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Đã xác minh bằng passkey.</p>}
                 </div>
             ) : null}
             {!googleStatusLoading && !googleStatusError && !googleLink && !import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
