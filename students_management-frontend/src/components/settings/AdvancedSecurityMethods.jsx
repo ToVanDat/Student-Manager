@@ -50,7 +50,7 @@ export default function AdvancedSecurityMethods() {
 
     useEffect(() => {
         const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        if (!clientId || !googleButtonRef.current) return undefined;
+        if (googleStatusLoading || googleStatusError || googleLink || !clientId || !googleButtonRef.current) return undefined;
         let cancelled = false;
         const initialize = () => {
             if (cancelled || !window.google?.accounts?.id || !googleButtonRef.current) return;
@@ -88,8 +88,12 @@ export default function AdvancedSecurityMethods() {
             }
             script.addEventListener('load', initialize);
         }
-        return () => { cancelled = true; };
-    }, []);
+        return () => {
+            cancelled = true;
+            const script = document.querySelector('script[data-google-identity]');
+            script?.removeEventListener('load', initialize);
+        };
+    }, [googleStatusLoading, googleStatusError, googleLink, refresh]);
 
     const registerPasskey = async () => {
         setBusy(true);
