@@ -34,6 +34,16 @@ function AppRoutes() {
                     }
                 />
 
+                {/* Keep the existing Settings implementation and its query-tab state. */}
+                <Route
+                    path="/settings"
+                    element={
+                        <ProtectedRoute>
+                            <Navigate to="/students?view=settings&tab=account" replace />
+                        </ProtectedRoute>
+                    }
+                />
+
                 <Route
                     path="*"
                     element={<Navigate to="/login" replace />}
