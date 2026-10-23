@@ -198,6 +198,15 @@ function requireWrappingKey(name) {
  * SDK database key from the default IndexedDB vault to this PIN-protected vault.
  * The SQLite database itself is never reset, so existing E2EE history is kept.
  */
+/** True only when this account already has PIN-wrapped or legacy E2EE key material. */
+export async function hasExistingPinProtectedE2EEVaultMaterial(userId) {
+    if (!/^[1-9][0-9]*$/.test(String(userId ?? ''))) return false;
+    const name = databaseNameForUser(userId);
+    const wrappedRecord = await readRecord(name);
+    if (wrappedRecord?.ciphertext) return true;
+    return Boolean(await legacyVault.getSecret(name));
+}
+
 export async function unlockPinProtectedE2EEVault(userId, pin) {
     if (!/^[1-9][0-9]*$/.test(String(userId ?? ''))) {
         throw new Error('Không xác định được tài khoản để mở kho khóa E2EE.');
