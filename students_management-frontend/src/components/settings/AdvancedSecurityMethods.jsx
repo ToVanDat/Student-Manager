@@ -143,12 +143,12 @@ export default function AdvancedSecurityMethods() {
         } finally { setBusy(false); }
     };
 
-    const verifyWithPasskey = async () => {
+    const verifyWithPasskey = async purpose => {
         setBusy(true);
         setMessage('');
         try {
             if (!window.isSecureContext || !navigator.credentials?.get) throw new Error('Passkey cần trình duyệt hỗ trợ và HTTPS (localhost được phép khi phát triển).');
-            const { challengeId, options } = await beginSensitiveReauthApi();
+            const { challengeId, options } = await beginSensitiveReauthApi(purpose);
             const publicKey = {
                 ...options,
                 challenge: decode(options.challenge),
@@ -169,7 +169,7 @@ export default function AdvancedSecurityMethods() {
                 },
                 clientExtensionResults: credential.getClientExtensionResults()
             };
-            const result = await finishSensitiveReauthApi(challengeId, response);
+            const result = await finishSensitiveReauthApi(challengeId, response, purpose);
             setVerificationToken(result.verificationToken);
             setMessage('Đã xác minh bằng passkey. Tiếp tục liên kết hoặc gỡ liên kết Google trong 5 phút.');
         } catch (error) {
@@ -242,7 +242,7 @@ export default function AdvancedSecurityMethods() {
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-200" htmlFor="link-google-password">Xác minh bằng mật khẩu Student Manager</label>
                 <input id="link-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} placeholder="Mật khẩu tài khoản hiện tại" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
                 <p className="m-0 text-xs leading-5 text-slate-500 dark:text-slate-400">Xác minh bằng mật khẩu hiện tại hoặc passkey. Sau đó, xác minh danh tính Google để hoàn tất liên kết.</p>
-                <button type="button" disabled={busy} onClick={verifyWithPasskey} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Fingerprint size={14} /> Xác minh bằng passkey</button>
+                <button type="button" disabled={busy} onClick={() => verifyWithPasskey('google-link')} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Fingerprint size={14} /> Xác minh bằng passkey</button>
                 {verificationToken && <p className="m-0 text-xs text-emerald-700 dark:text-emerald-300">Đã xác minh bằng passkey. Bây giờ hãy tiếp tục với Google.</p>}
                 <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-50' : ''} />
             </div>}
@@ -253,7 +253,7 @@ export default function AdvancedSecurityMethods() {
                     <label className="block text-xs text-slate-600 dark:text-slate-300" htmlFor="unlink-google-password">Xác minh bằng mật khẩu Student Manager hoặc passkey</label>
                     <input id="unlink-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
                     <button type="button" disabled={busy || (!currentPassword && !verificationToken)} onClick={unlinkGoogle} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30"><Unlink size={14} /> Gỡ liên kết Google</button>
-                    <button type="button" disabled={busy} onClick={verifyWithPasskey} className="ml-2 inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"><Fingerprint size={14} /> Xác minh bằng passkey</button>
+                    <button type="button" disabled={busy} onClick={() => verifyWithPasskey('google-unlink')} className="ml-2 inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"><Fingerprint size={14} /> Xác minh bằng passkey</button>
                     {verificationToken && <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">Đã xác minh bằng passkey.</p>}
                 </div>
             ) : null}
