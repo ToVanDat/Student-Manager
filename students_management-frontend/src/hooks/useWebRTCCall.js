@@ -368,14 +368,16 @@ export default function useWebRTCCall() {
         }
 
         let preferredCameraId = '';
+        let preferredMicrophoneId = '';
         try {
             preferredCameraId = localStorage.getItem('student-manager-preferred-camera') || '';
+            preferredMicrophoneId = localStorage.getItem('student-manager-preferred-microphone') || '';
         } catch {
             // Private browsing/storage restrictions should not prevent calls.
         }
 
         const constraints = {
-            audio: true,
+            audio: preferredMicrophoneId ? { deviceId: { ideal: preferredMicrophoneId } } : true,
             video: callType === 'video'
                 ? (preferredCameraId ? { deviceId: { ideal: preferredCameraId } } : true)
                 : false
