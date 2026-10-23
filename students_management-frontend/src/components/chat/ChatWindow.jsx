@@ -230,7 +230,7 @@ export default function ChatWindow({
                     // a missing database migration is not mistaken for a UI bug.
                     console.warn('[CHAT THEME] Could not load saved theme:', error?.response?.data?.message || error?.message);
                     if (active && error?.response?.status === 503) {
-                        toast.error(error.response.data?.message || t('chatThemeLoadFailed'));
+                        toast.error(error.response.data?.message || t('chatThemeLoadFailed'), { duration: 8000 });
                     }
                 });
         }
@@ -254,7 +254,7 @@ export default function ChatWindow({
         try {
             await updateConversationChatTheme(conversationId, nextTheme);
         } catch (error) {
-            toast.error(error.response?.data?.message || t('chatThemeSaveFailed'));
+            toast.error(error.response?.data?.message || t('chatThemeSaveFailed'), { duration: 8000 });
             // Roll back only if this request is still the newest choice for this conversation.
             const latestVersion = chatThemeRequestVersionsRef.current.get(conversationKey) || 0;
             if (latestVersion === requestVersion) {
@@ -295,9 +295,9 @@ export default function ChatWindow({
         try {
             await notificationApi.updateConversationPreference(activeConversation.id, next);
             setConversationNotificationsEnabled(next);
-            toast.success(next ? t('conversationNotificationsOn') : t('conversationNotificationsOff'));
+            toast.success(next ? t('conversationNotificationsOn') : t('conversationNotificationsOff'), { duration: 3000 });
         } catch (error) {
-            toast.error(error.response?.data?.message || t('conversationNotificationsUpdateFailed'));
+            toast.error(error.response?.data?.message || t('conversationNotificationsUpdateFailed'), { duration: 8000 });
         } finally {
             setSavingConversationNotifications(false);
         }
@@ -634,10 +634,10 @@ export default function ChatWindow({
         setShowMoreMenu(false);
         try {
             await action();
-            toast.success('Đã cập nhật cuộc trò chuyện.');
+            toast.success('Đã cập nhật cuộc trò chuyện.', { duration: 3000 });
         } catch (error) {
             console.error('Không thể thực hiện thao tác cuộc trò chuyện:', error);
-            toast.error(error?.response?.data?.message || error?.message || 'Thao tác thất bại. Vui lòng thử lại.');
+            toast.error(error?.response?.data?.message || error?.message || 'Thao tác thất bại. Vui lòng thử lại.', { duration: 8000 });
         }
     };
 
@@ -659,16 +659,16 @@ export default function ChatWindow({
 
     const submitConversationReport = async () => {
         if (typeof onReportConversation !== 'function') {
-            toast.error('Chức năng báo cáo chưa được kết nối.');
+            toast.error('Chức năng báo cáo chưa được kết nối.', { duration: 8000 });
             return;
         }
         try {
             await onReportConversation(activeConversation.userId, reportReason);
             setShowReportDialog(false);
-            toast.success('Đã gửi báo cáo.');
+            toast.success('Đã gửi báo cáo.', { duration: 3000 });
         } catch (error) {
             console.error('Không thể gửi báo cáo:', error);
-            toast.error(error?.response?.data?.message || error?.message || 'Không thể gửi báo cáo. Vui lòng thử lại.');
+            toast.error(error?.response?.data?.message || error?.message || 'Không thể gửi báo cáo. Vui lòng thử lại.', { duration: 8000 });
         }
     };
 
@@ -734,7 +734,7 @@ export default function ChatWindow({
                 }
             } catch (error) {
                 console.error('Lỗi gửi file:', error);
-                toast.error(error?.response?.data?.message || 'Không gửi được tệp. Vui lòng thử lại.');
+                toast.error(error?.response?.data?.message || 'Không gửi được tệp. Vui lòng thử lại.', { duration: 8000 });
             } finally {
                 setIsUploading(false);
                 setAttachmentProgress(0);
@@ -804,7 +804,7 @@ export default function ChatWindow({
             }
         } catch (error) {
             console.error('Lỗi gửi media:', error);
-            toast.error(error?.response?.data?.message || 'Không gửi được media. Vui lòng thử lại.');
+            toast.error(error?.response?.data?.message || 'Không gửi được media. Vui lòng thử lại.', { duration: 8000 });
         } finally {
             setIsUploading(false);
         }
