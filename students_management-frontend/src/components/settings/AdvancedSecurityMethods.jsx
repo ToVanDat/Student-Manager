@@ -189,6 +189,9 @@ export default function AdvancedSecurityMethods() {
                 clientExtensionResults: credential.getClientExtensionResults()
             };
             const result = await finishSensitiveReauthApi(challengeId, response, purpose);
+            // The backend validates the password first when both fields are sent.
+            // Clear any stale/incorrect password so the one-time passkey token is used alone.
+            setCurrentPassword('');
             setVerificationToken(result.verificationToken);
             setMessage('Đã xác minh bằng passkey. Tiếp tục liên kết hoặc gỡ liên kết Google trong 5 phút.');
         } catch (error) {
