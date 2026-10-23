@@ -43,7 +43,7 @@ function sendSession(res, result) {
 
 exports.linkGoogle = async (req, res) => {
     try {
-        const result = await advancedAuth.linkGoogle(req.user.sub, req.body?.idToken);
+        const result = await advancedAuth.linkGoogle(req.user.sub, req.body?.idToken, req.body?.currentPassword);
         return res.json({ message: 'Đã liên kết Google với tài khoản hiện tại', account: result });
     } catch (error) { return fail(res, error); }
 };
