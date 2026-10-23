@@ -25,7 +25,7 @@ function SettingsPage({ activeTab, onTabChange, activeSessions, loading, onRefre
             </header>
             <div className="grid min-w-0 grid-cols-[minmax(220px,280px)_minmax(0,1fr)] items-start gap-5 max-[900px]:grid-cols-1 max-[900px]:gap-4">
                 <SettingsMenu activeTab={activeTab} onChange={onTabChange} activeSessions={activeSessions} />
-                <main className="min-w-0">{children}</main>
+                <div className="min-w-0" role="region" aria-label={t('settingsTitle')}>{children}</div>
             </div>
         </div>
     );
