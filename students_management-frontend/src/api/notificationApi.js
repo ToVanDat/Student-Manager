@@ -25,6 +25,13 @@ const decodeBase64Url = value => {
     return Uint8Array.from(raw, char => char.charCodeAt(0));
 };
 
+const sameBytes = (left, right) => {
+    if (!left || !right || left.byteLength !== right.byteLength) return false;
+    const a = new Uint8Array(left);
+    const b = right instanceof Uint8Array ? right : new Uint8Array(right);
+    return a.every((value, index) => value === b[index]);
+};
+
 export async function enableWebPush() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
         throw new Error('Trình duyệt này chưa hỗ trợ Web Push');
@@ -36,17 +43,36 @@ export async function enableWebPush() {
     if (permission !== 'granted') throw new Error('Bạn chưa cấp quyền thông báo');
 
     const registration = await navigator.serviceWorker.register('/service-worker.js');
-    await navigator.serviceWorker.ready;
+    const readyRegistration = await navigator.serviceWorker.ready;
+    const activeRegistration = readyRegistration || registration;
     const { data } = await notificationApi.getVapidPublicKey();
     if (!data?.publicKey) throw new Error('Máy chủ chưa cấu hình VAPID');
 
-    let subscription = await registration.pushManager.getSubscription();
+    const expectedApplicationServerKey = decodeBase64Url(data.publicKey);
+    let subscription = await activeRegistration.pushManager.getSubscription();
+
+    // Existing subscriptions can survive a server-side VAPID key rotation. Reusing
+    // one created with a different public key can cause provider-side 403 responses.
+    const existingApplicationServerKey = subscription?.options?.applicationServerKey;
+    if (
+        subscription &&
+        existingApplicationServerKey &&
+        !sameBytes(existingApplicationServerKey, expectedApplicationServerKey)
+    ) {
+        // Remove the server record first. If that request fails, preserve the browser
+        // subscription rather than creating an untracked replacement.
+        await notificationApi.unsubscribe(subscription.endpoint);
+        await subscription.unsubscribe();
+        subscription = null;
+    }
+
     if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
+        subscription = await activeRegistration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: decodeBase64Url(data.publicKey)
+            applicationServerKey: expectedApplicationServerKey
         });
     }
+
     await notificationApi.subscribe(subscription.toJSON());
     return subscription;
 }
