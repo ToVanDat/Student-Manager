@@ -1,6 +1,7 @@
 import { ArrowUpRight, BellOff, LockKeyhole, PhoneCall } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import CameraSettings from '@/components/settings/CameraSettings.jsx';
+import AudioDeviceSettings from '@/components/settings/AudioDeviceSettings.jsx';
 
 export default function ChatCallsSettings({ onOpenChat }) {
     const { t } = useLanguage();
@@ -29,6 +30,7 @@ export default function ChatCallsSettings({ onOpenChat }) {
             </button>
         </section>
         <CameraSettings />
+        <AudioDeviceSettings />
         </>
     );
 }
