@@ -123,8 +123,23 @@ const removeSubscription = async (userId, endpoint) => {
     return rowCount > 0;
 };
 
+const getEndpointHost = (endpoint) => {
+    try {
+        return new URL(endpoint).host;
+    } catch {
+        return 'unknown';
+    }
+};
+
 const sendPushToUser = async (userId, payload, conversationId = null) => {
-    if (!configured) return { sent: 0, skipped: 'vapid_not_configured' };
+    if (!configured) {
+        console.error('[WEB PUSH] skipped: VAPID configuration is incomplete', {
+            hasPublicKey: Boolean(process.env.VAPID_PUBLIC_KEY),
+            hasPrivateKey: Boolean(process.env.VAPID_PRIVATE_KEY),
+            hasSubject: Boolean(process.env.VAPID_SUBJECT)
+        });
+        return { sent: 0, skipped: 'vapid_not_configured' };
+    }
 
     const account = await getAccountPreferences(userId);
     if (!account.notifications_enabled) return { sent: 0, skipped: 'account_notifications_disabled' };
@@ -151,6 +166,9 @@ const sendPushToUser = async (userId, payload, conversationId = null) => {
         [userId]
     );
     let sent = 0;
+    let failed = 0;
+    const failures = [];
+
     for (const row of rows) {
         try {
             await webpush.sendNotification({
@@ -159,17 +177,39 @@ const sendPushToUser = async (userId, payload, conversationId = null) => {
             }, JSON.stringify(payload), { TTL: 60, urgency: 'normal' });
             sent += 1;
         } catch (error) {
-            if (error.statusCode === 404 || error.statusCode === 410) {
+            failed += 1;
+            const statusCode = Number.isInteger(error.statusCode) ? error.statusCode : null;
+            const failure = {
+                subscriptionId: row.id,
+                endpointHost: getEndpointHost(row.endpoint),
+                statusCode,
+                message: String(error.message || 'Unknown Web Push error').slice(0, 240)
+            };
+
+            // Provider response text helps diagnose VAPID/auth failures. Keep it short
+            // and never log endpoint URLs, payloads, subscription keys, or VAPID secrets.
+            if (typeof error.body === 'string' && error.body) {
+                failure.providerResponse = error.body.replace(/[\r\n\t]+/g, ' ').slice(0, 400);
+            }
+            failures.push(failure);
+
+            if (statusCode === 404 || statusCode === 410) {
                 await pool.query('DELETE FROM web_push_subscriptions WHERE id = $1', [row.id]);
             } else {
-                console.error('[WEB PUSH] delivery failed', {
-                    statusCode: error.statusCode,
-                    message: error.message
-                });
+                console.error('[WEB PUSH] delivery failed', failure);
             }
         }
     }
-    return { sent };
+
+    if (rows.length > 0 && sent === 0) {
+        console.error('[WEB PUSH] no subscriptions delivered', {
+            userId,
+            subscriptionCount: rows.length,
+            failed,
+            statusCodes: [...new Set(failures.map(item => item.statusCode))]
+        });
+    }
+    return { sent, failed, subscriptions: rows.length };
 };
 
 module.exports = {
