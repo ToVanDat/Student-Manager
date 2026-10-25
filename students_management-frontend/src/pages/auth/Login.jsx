@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from 'react';
 import { Languages, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
-import { loginApi } from '@/api/authApi.js';
+import { loginApi, beginPasskeyLoginApi, finishPasskeyLoginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
 import AdvancedLoginMethods from '@/components/auth/AdvancedLoginMethods.jsx';
@@ -18,6 +18,9 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 import ForgotPasswordForm
     from '@/components/auth/forgot-password/ForgotPasswordForm.jsx';
 
+
+const decodeBase64Url = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), char => char.charCodeAt(0));
+const encodeBase64Url = value => btoa(String.fromCharCode(...new Uint8Array(value))).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');
 
 // =====================================================
 // LOGIN COMPONENT
@@ -255,6 +258,56 @@ function Login() {
     };
 
 
+    const handleFaceLogin = async () => {
+        setError('');
+        setSuccess('');
+        if (!username.trim()) {
+            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Face ID / sinh trắc học.' : 'Enter your username before using Face ID / device biometrics.');
+            return;
+        }
+        if (!window.isSecureContext || !navigator.credentials?.get) {
+            setError(language === 'vi' ? 'Đăng nhập sinh trắc học cần HTTPS và trình duyệt hỗ trợ Passkey.' : 'Biometric sign-in requires HTTPS and a browser that supports passkeys.');
+            return;
+        }
+
+        setLoading(true);
+        sessionStorage.setItem('auth:login-in-progress', 'true');
+        try {
+            const { challengeId, options } = await beginPasskeyLoginApi(username.trim());
+            const publicKey = {
+                ...options,
+                challenge: decodeBase64Url(options.challenge),
+                allowCredentials: (options.allowCredentials || []).map(item => ({
+                    ...item,
+                    id: decodeBase64Url(item.id)
+                }))
+            };
+            const credential = await navigator.credentials.get({ publicKey });
+            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh sinh trắc học.' : 'Biometric verification was cancelled.');
+            const response = {
+                id: credential.id,
+                rawId: encodeBase64Url(credential.rawId),
+                type: credential.type,
+                authenticatorAttachment: credential.authenticatorAttachment,
+                response: {
+                    clientDataJSON: encodeBase64Url(credential.response.clientDataJSON),
+                    authenticatorData: encodeBase64Url(credential.response.authenticatorData),
+                    signature: encodeBase64Url(credential.response.signature),
+                    userHandle: credential.response.userHandle ? encodeBase64Url(credential.response.userHandle) : null
+                },
+                clientExtensionResults: credential.getClientExtensionResults()
+            };
+            const data = await finishPasskeyLoginApi(challengeId, response);
+            loginUser(data);
+            navigate('/students?view=dashboard', { replace: true });
+        } catch (error) {
+            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập sinh trắc học thất bại.' : 'Biometric sign-in failed.'));
+        } finally {
+            sessionStorage.removeItem('auth:login-in-progress');
+            setLoading(false);
+        }
+    };
+
     // =================================================
     // REGISTER
     // =================================================
@@ -464,6 +517,7 @@ function Login() {
             success={success}
             loading={loading}
             onSubmit={handleLogin}
+            onFaceLogin={handleFaceLogin}
             onOpenRegister={() => changeMode('register')}
         />
     );
