@@ -107,6 +107,13 @@ async function issueSession(user, req) {
         if (session?.id) {
             try {
                 await authRepository.revokeRefreshTokensBySessionId(session.id);
+            } catch (cleanupError) {
+                console.error('[AdvancedAuth] Failed to revoke partial refresh tokens', {
+                    code: cleanupError.code || 'REFRESH_TOKEN_CLEANUP_FAILED',
+                    sessionId: session.id
+                });
+            }
+            try {
                 await authRepository.revokeSession(session.id);
             } catch (cleanupError) {
                 console.error('[AdvancedAuth] Failed to revoke incomplete session', {
