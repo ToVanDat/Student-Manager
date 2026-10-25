@@ -28,6 +28,8 @@ export const useChat = () => {
     const searchJumpIdRef = useRef(null);
     const messageSearchRequestRef = useRef(0);
     const seenMessageEventIdsRef = useRef(new Set());
+    const typingStateRef = useRef({ conversationId: null, lastSentAt: 0 });
+    const remoteTypingTimerRef = useRef(null);
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
     // Bind SDK object-storage requests to the currently selected conversation.
@@ -502,11 +504,19 @@ export const useChat = () => {
         };
 
         const handleTypingStart = ({ conversationId }) => {
-            if (Number(conversationId) === Number(activeId)) setIsTyping(true);
+            if (Number(conversationId) !== Number(activeId)) return;
+            setIsTyping(true);
+            clearTimeout(remoteTypingTimerRef.current);
+            // Recover the indicator if a typing:stop packet is lost during
+            // a network handoff or the sender disconnects unexpectedly.
+            remoteTypingTimerRef.current = setTimeout(() => setIsTyping(false), 5000);
         };
 
         const handleTypingStop = ({ conversationId }) => {
-            if (Number(conversationId) === Number(activeId)) setIsTyping(false);
+            if (Number(conversationId) !== Number(activeId)) return;
+            clearTimeout(remoteTypingTimerRef.current);
+            remoteTypingTimerRef.current = null;
+            setIsTyping(false);
         };
 
         const handleMessagesRead = ({ conversationId, readBy }) => {
@@ -1596,9 +1606,23 @@ export const useChat = () => {
     const setTyping = useCallback((typing) => {
         if (!activeId || !socket.connected) return;
 
-        socket.emit(typing ? 'typing:start' : 'typing:stop', {
-            conversationId: activeId
-        });
+        const conversationId = Number(activeId);
+        const state = typingStateRef.current;
+        if (typing) {
+            // MessageInput calls this on every keystroke. Send a start event
+            // immediately, then at most one heartbeat every 2 seconds so the
+            // server's per-event rate limit does not suppress active typing.
+            if (state.conversationId !== conversationId || Date.now() - state.lastSentAt >= 2000) {
+                socket.emit('typing:start', { conversationId: activeId });
+                typingStateRef.current = { conversationId, lastSentAt: Date.now() };
+            }
+            return;
+        }
+
+        if (state.conversationId === conversationId) {
+            socket.emit('typing:stop', { conversationId: activeId });
+        }
+        typingStateRef.current = { conversationId: null, lastSentAt: 0 };
     }, [activeId]);
 
     return {
