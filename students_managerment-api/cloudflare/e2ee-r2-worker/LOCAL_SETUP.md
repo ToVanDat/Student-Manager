@@ -39,7 +39,7 @@ Keep all existing variables. Restart both backend and Worker after editing envir
 
 ## Endpoint behavior
 
-- `GET /` is not an API endpoint and returns 404 by design.
+- `GET /` is a lightweight unauthenticated health check and returns only the Worker service name and `status: ok`; it does not access R2 or expose secrets.
 - Object operations use `/v1/objects/{attachmentId}` with `PUT`, `GET`, `HEAD`, or `DELETE`.
 - An unauthenticated request or a request with a made-up ticket should return 403. That is expected and does not test successful upload.
 - A successful upload requires a backend-issued ticket in `Authorization: Bearer <ticket>` and the exact ciphertext size and digest bound into that ticket.
