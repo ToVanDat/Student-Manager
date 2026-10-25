@@ -1532,48 +1532,26 @@ const resetPassword = async (
         );
 
 
-    // =============================================
-    // CONSUME RESET TOKEN ONCE BEFORE PASSWORD UPDATE
-    // The conditional DB update makes concurrent reset attempts race-safe.
-    // =============================================
-
-    const consumedResetToken =
-        await authRepository.markPasswordResetUsed(
-            resetRequest.id
-        );
-
-    if (!consumedResetToken) {
-        throw new Error(
-            'Reset token đã được sử dụng hoặc hết hạn'
-        );
-    }
-
-    // =============================================
-    // UPDATE PASSWORD
-    // =============================================
-
-    const user =
-        await authRepository.updateUserPassword(
-            resetRequest.user_id,
-            passwordHash
-        );
-
-    if (!user) {
-        throw new Error(
-            'Không thể cập nhật mật khẩu'
-        );
-    }
-
-
-    // =============================================
-    // REVOKE ALL SESSIONS AND REFRESH TOKENS
-    // =============================================
-
-    await revokeUserSessions(
+    // Consume the one-time token, update the password, and revoke every
+    // existing session/refresh token atomically in PostgreSQL.
+    const result = await authRepository.completePasswordResetAndRevokeSessions(
+        resetRequest.id,
         resetRequest.user_id,
-        'PASSWORD_RESET'
+        passwordHash
     );
 
+    if (!result) {
+        throw new Error('Reset token không hợp lệ, đã được sử dụng hoặc tài khoản không hoạt động');
+    }
+
+    // Session revocation is already committed. Socket delivery is best-effort.
+    for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            emitSessionRevoked(sessionId, 'PASSWORD_RESET');
+        } catch (error) {
+            console.warn('[AUTH] Không thể gửi thông báo revoke socket:', error.message);
+        }
+    }
 
     return {
         message:
