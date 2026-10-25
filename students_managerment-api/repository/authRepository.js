@@ -730,6 +730,100 @@ const findRefreshToken = async (
 
 
 
+// Find a historical refresh token by its hash. Used only to distinguish
+// a replayed token from a completely unknown/expired token; never returns
+// the raw token value.
+const findRefreshTokenByHash = async (tokenHash) => {
+    const result = await pool.query(
+        `
+        SELECT id, user_id, session_id, expires_at, revoked_at, created_at
+        FROM refresh_tokens
+        WHERE token_hash = $1
+        LIMIT 1
+        `,
+        [tokenHash]
+    );
+
+    return result.rows[0] || null;
+};
+
+// Revoke the session (the refresh-token family) when a previously rotated,
+// still-unexpired token is presented again. Lock order matches rotation and
+// credential-change transactions: session first, refresh_tokens second.
+const revokeSessionOnRefreshTokenReuse = async (tokenHash, userId, sessionId) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const session = await client.query(
+            `
+            SELECT id
+            FROM sessions
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            FOR UPDATE
+            `,
+            [sessionId, userId]
+        );
+
+        if (session.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const replayedToken = await client.query(
+            `
+            SELECT id
+            FROM refresh_tokens
+            WHERE token_hash = $1
+              AND user_id = $2
+              AND session_id = $3
+              AND revoked_at IS NOT NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            FOR UPDATE
+            `,
+            [tokenHash, userId, sessionId]
+        );
+
+        if (replayedToken.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const revokedSession = await client.query(
+            `
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [sessionId, userId]
+        );
+
+        await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
+            WHERE session_id = $1
+              AND user_id = $2
+            `,
+            [sessionId, userId]
+        );
+
+        await client.query('COMMIT');
+        return revokedSession.rows[0] || null;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 // Atomically consume one refresh token and issue its replacement.
 // A concurrent refresh using the same token can win only once.
 const rotateRefreshToken = async (
@@ -1157,6 +1251,8 @@ module.exports = {
     rotateRefreshToken,
 
     findRefreshToken,
+    findRefreshTokenByHash,
+    revokeSessionOnRefreshTokenReuse,
 
     revokeRefreshToken,
 
