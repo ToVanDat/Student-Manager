@@ -1336,7 +1336,7 @@ export const useChat = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
-        const sendStartedAt = Date.now();
+        let serverSendStartedAt = null;
         let serverSendAttempted = false;
 
         try {
@@ -1387,6 +1387,7 @@ export const useChat = () => {
             // A missing migration returns available=false, preserving legacy chat.
             // If the status request itself fails, the catch path prevents plaintext fallback.
             serverSendAttempted = true;
+            serverSendStartedAt = Date.now();
             const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
             const saved = res.data?.data;
             if (!saved?.id) throw new Error('Server không trả về message');
@@ -1408,13 +1409,13 @@ export const useChat = () => {
                             String(message.content ?? '') === text &&
                             String(messageReplyId ?? '') === String(replyToMessageId ?? '') &&
                             Number.isFinite(createdAt) &&
-                            createdAt >= sendStartedAt - 10_000 &&
+                            createdAt >= serverSendStartedAt - 10_000 &&
                             createdAt <= Date.now() + 10_000;
                     });
                     if (candidates.length) {
                         reconciledMessage = candidates.reduce((closest, candidate) => {
-                            const distance = Math.abs(Date.parse(candidate.created_at ?? candidate.createdAt) - sendStartedAt);
-                            const closestDistance = Math.abs(Date.parse(closest.created_at ?? closest.createdAt) - sendStartedAt);
+                            const distance = Math.abs(Date.parse(candidate.created_at ?? candidate.createdAt) - serverSendStartedAt);
+                            const closestDistance = Math.abs(Date.parse(closest.created_at ?? closest.createdAt) - serverSendStartedAt);
                             return distance < closestDistance ? candidate : closest;
                         });
                     }
