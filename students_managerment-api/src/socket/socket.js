@@ -17,6 +17,67 @@ const onlineUsers = new Map(); // userId -> Set<socketId>
 const callTimers = new Map(); // callId -> timeout
 const disconnectGraceTimers = new Map(); // userId -> timeout
 
+const SOCKET_EVENT_LIMITS = {
+    'auth:token-refresh': { limit: 5, windowMs: 60_000 },
+    'e2ee:subscribe': { limit: 10, windowMs: 60_000 },
+    'call:sync-pending': { limit: 5, windowMs: 30_000 },
+    'presence:sync': { limit: 10, windowMs: 10_000 },
+    'conversation:join': { limit: 20, windowMs: 10_000 },
+    'message:send': { limit: 15, windowMs: 10_000 },
+    'message:edit': { limit: 10, windowMs: 10_000 },
+    'message:recall': { limit: 10, windowMs: 10_000 },
+    'message:delete:me': { limit: 10, windowMs: 10_000 },
+    'message:delete:everyone': { limit: 10, windowMs: 10_000 },
+    'message:reaction:add': { limit: 20, windowMs: 10_000 },
+    'message:reaction:remove': { limit: 20, windowMs: 10_000 },
+    'message:read': { limit: 30, windowMs: 10_000 },
+    'typing:start': { limit: 8, windowMs: 5_000 },
+    'typing:stop': { limit: 15, windowMs: 5_000 },
+    'call:start': { limit: 3, windowMs: 60_000 },
+    'call:accept': { limit: 10, windowMs: 10_000 },
+    'call:reject': { limit: 10, windowMs: 10_000 },
+    'call:offer': { limit: 30, windowMs: 10_000 },
+    'call:answer': { limit: 30, windowMs: 10_000 },
+    'call:reconnect-request': { limit: 5, windowMs: 10_000 },
+    'call:connected': { limit: 10, windowMs: 10_000 },
+    'call:connection-failed': { limit: 10, windowMs: 10_000 },
+    'call:ice-candidate': { limit: 120, windowMs: 10_000 },
+    'call:end': { limit: 10, windowMs: 10_000 }
+};
+
+const consumeSocketRateLimit = async ({ userId, eventName, limit, windowMs }) => {
+    if (!redisClient.isReady) {
+        throw new Error('Redis is not ready; realtime rate limiting is unavailable');
+    }
+
+    const script = `
+        local hits = redis.call('INCR', KEYS[1])
+        local ttl = redis.call('PTTL', KEYS[1])
+        if ttl < 0 then
+            redis.call('PEXPIRE', KEYS[1], ARGV[1])
+            ttl = ARGV[1]
+        end
+        return { hits, ttl }
+    `;
+    const key = `rate-limit:socket:${userId}:${eventName}`;
+    const result = await redisClient.eval(script, {
+        keys: [key],
+        arguments: [String(windowMs)]
+    });
+    const totalHits = Number(result?.[0]);
+    const ttl = Number(result?.[1]);
+
+    if (!Number.isSafeInteger(totalHits) || totalHits < 1 || !Number.isFinite(ttl) || ttl < 0) {
+        throw new Error('Redis returned an invalid realtime rate-limit result');
+    }
+
+    return {
+        allowed: totalHits <= limit,
+        totalHits,
+        retryAfterMs: Math.max(1, ttl)
+    };
+};
+
 const isAccessTokenActive = async (accessToken, userId) => {
     if (!redisClient.isReady) return false;
     const tokenHash = crypto.createHash('sha256').update(accessToken).digest('hex');
@@ -108,6 +169,39 @@ const initSocket = (server) => {
         const userId = Number(socket.user.id);
         const sessionId = socket.user.sessionId;
 
+        // Limits are shared by every tab/socket for this account and backend
+        // instance through Redis. Redis failure is fail-closed for protected events.
+        const allowRealtimeEvent = async (eventName) => {
+            const policy = SOCKET_EVENT_LIMITS[eventName];
+            if (!policy) return true;
+
+            try {
+                const result = await consumeSocketRateLimit({
+                    userId,
+                    eventName,
+                    ...policy
+                });
+                if (result.allowed) return true;
+
+                socket.emit('socket:rate-limit', {
+                    event: eventName,
+                    retryAfterMs: result.retryAfterMs
+                });
+                return false;
+            } catch (error) {
+                console.error('[SOCKET][rate-limit unavailable]', {
+                    event: eventName,
+                    userId,
+                    message: error.message
+                });
+                socket.emit('socket:error', {
+                    code: 'REALTIME_TEMPORARILY_UNAVAILABLE',
+                    message: 'Dịch vụ realtime đang tạm thời không khả dụng'
+                });
+                return false;
+            }
+        };
+
         // Socket authentication is checked only when the connection is
         // established. Schedule a hard disconnect at JWT expiry so an
         // expired access token can never keep using realtime events.
@@ -139,7 +233,8 @@ const initSocket = (server) => {
 
         // Refresh the authenticated token in-place so an access-token expiry
         // does not forcibly drop signaling in the middle of an active call.
-        socket.on('auth:token-refresh', async ({ accessToken } = {}, acknowledge) => {
+        socket.on('auth:token-refresh', async ({
+            if (!await allowRealtimeEvent('auth:token-refresh')) return; accessToken } = {}, acknowledge) => {
             const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
 
             try {
@@ -204,7 +299,8 @@ const initSocket = (server) => {
         // A socket can subscribe only to a numeric device slot owned by the
         // authenticated account. On reconnect the client must pull its durable
         // mailbox; this room is only a wake-up signal and never carries plaintext.
-        socket.on('e2ee:subscribe', async ({ deviceId, deviceToken } = {}, acknowledge) => {
+        socket.on('e2ee:subscribe', async ({
+            if (!await allowRealtimeEvent('e2ee:subscribe')) return ack({ ok: false, code: 'RATE_LIMITED' }); deviceId, deviceToken } = {}, acknowledge) => {
             const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
             try {
                 const slot = Number(deviceId);
@@ -323,6 +419,7 @@ const initSocket = (server) => {
         void syncPendingCalls();
 
         socket.on('presence:sync', async () => {
+            if (!await allowRealtimeEvent('call:sync-pending')) return;
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
                 const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
@@ -332,7 +429,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('conversation:join', async ({ conversationId }) => {
+        socket.on('conversation:join', async ({
+            if (!await allowRealtimeEvent('conversation:join')) return; conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
                 return socket.emit('conversation:error', { message: 'conversationId không hợp lệ' });
@@ -369,7 +467,8 @@ const initSocket = (server) => {
             if (Number.isInteger(id) && id > 0) socket.leave(`conversation:${id}`);
         });
 
-        socket.on('message:send', async ({ conversationId, content, replyToMessageId = null }) => {
+        socket.on('message:send', async ({
+            if (!await allowRealtimeEvent('message:send')) return; conversationId, content, replyToMessageId = null }) => {
             const id = Number(conversationId);
             const text = typeof content === 'string' ? content.trim() : '';
 
@@ -443,7 +542,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:edit', async ({ messageId, content }) => {
+        socket.on('message:edit', async ({
+            if (!await allowRealtimeEvent('message:edit')) return; messageId, content }) => {
             const id = Number(messageId);
             const text = typeof content === 'string' ? content.trim() : '';
 
@@ -521,7 +621,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:recall', async ({ messageId }) => {
+        socket.on('message:recall', async ({
+            if (!await allowRealtimeEvent('message:recall')) return; messageId }) => {
             const id = Number(messageId);
 
             if (!Number.isInteger(id) || id <= 0) {
@@ -588,7 +689,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:delete:me', async ({ messageId }) => {
+        socket.on('message:delete:me', async ({
+            if (!await allowRealtimeEvent('message:delete:me')) return; messageId }) => {
             const id = Number(messageId);
 
             if (!Number.isInteger(id) || id <= 0) {
@@ -634,7 +736,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:delete:everyone', async ({ messageId }) => {
+        socket.on('message:delete:everyone', async ({
+            if (!await allowRealtimeEvent('message:delete:everyone')) return; messageId }) => {
             const id = Number(messageId);
 
             if (!Number.isInteger(id) || id <= 0) {
@@ -696,7 +799,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:reaction:add', async ({ messageId, emoji }) => {
+        socket.on('message:reaction:add', async ({
+            if (!await allowRealtimeEvent('message:reaction:add')) return; messageId, emoji }) => {
             const id = Number(messageId);
             const value = typeof emoji === 'string' ? emoji.trim() : '';
 
@@ -731,7 +835,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:reaction:remove', async ({ messageId, emoji }) => {
+        socket.on('message:reaction:remove', async ({
+            if (!await allowRealtimeEvent('message:reaction:remove')) return; messageId, emoji }) => {
             const id = Number(messageId);
             const value = typeof emoji === 'string' ? emoji.trim() : '';
 
@@ -764,7 +869,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:read', async ({ conversationId }) => {
+        socket.on('message:read', async ({
+            if (!await allowRealtimeEvent('message:read')) return; conversationId }) => {
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) return;
 
@@ -780,7 +886,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('typing:start', async ({ conversationId }) => {
+        socket.on('typing:start', async ({
+            if (!await allowRealtimeEvent('typing:start')) return; conversationId }) => {
             const id = Number(conversationId);
             try {
                 if (!Number.isInteger(id) || id <= 0) return;
@@ -796,7 +903,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('typing:stop', async ({ conversationId }) => {
+        socket.on('typing:stop', async ({
+            if (!await allowRealtimeEvent('typing:stop')) return; conversationId }) => {
             const id = Number(conversationId);
             try {
                 if (!Number.isInteger(id) || id <= 0) return;
@@ -879,7 +987,8 @@ const initSocket = (server) => {
             io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
         };
 
-        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
+        socket.on('call:start', async ({
+            if (!await allowRealtimeEvent('call:start')) return; callId, targetUserId, callType = 'voice' } = {}) => {
             const targetId = Number(targetUserId);
             const validCallId = isValidCallId(callId);
 
@@ -961,7 +1070,8 @@ const initSocket = (server) => {
             }, CALL_RING_TIMEOUT_MS));
         });
 
-        socket.on('call:accept', async ({ callId, targetUserId } = {}) => {
+        socket.on('call:accept', async ({
+            if (!await allowRealtimeEvent('call:accept')) return; callId, targetUserId } = {}) => {
             const targetId = Number(targetUserId);
             if (!isValidCallId(callId) || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
                 return socket.emit('call:error', {
@@ -1077,7 +1187,8 @@ const initSocket = (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
+        socket.on('call:reject', async ({
+            if (!await allowRealtimeEvent('call:reject')) return; callId, targetUserId } = {}) => {
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || Number(currentCall.receiver_id) !== userId || currentCall.status !== 'ringing') return;
@@ -1106,7 +1217,8 @@ const initSocket = (server) => {
             );
         });
 
-        socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
+        socket.on('call:offer', async ({
+            if (!await allowRealtimeEvent('call:offer')) return; callId, targetUserId, offer }) => {
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !offer || !['connecting', 'connected'].includes(call.status)) return;
@@ -1115,7 +1227,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
+        socket.on('call:answer', async ({
+            if (!await allowRealtimeEvent('call:answer')) return; callId, targetUserId, answer }) => {
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !answer || !['connecting', 'connected'].includes(call.status)) return;
@@ -1124,7 +1237,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:reconnect-request', async ({ callId, targetUserId }) => {
+        socket.on('call:reconnect-request', async ({
+            if (!await allowRealtimeEvent('call:reconnect-request')) return; callId, targetUserId }) => {
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || !currentCall.answered_at || ['rejected', 'missed', 'cancelled', 'failed', 'timeout'].includes(currentCall.status)) return;
@@ -1136,7 +1250,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:connected', async ({ callId, targetUserId }) => {
+        socket.on('call:connected', async ({
+            if (!await allowRealtimeEvent('call:connected')) return; callId, targetUserId }) => {
             const targetId = Number(targetUserId);
             const call = await getAuthorizedCall(callId, targetId);
             if (!call) {
@@ -1170,7 +1285,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:connection-failed', async ({ callId, targetUserId, reason = 'connection-timeout' }) => {
+        socket.on('call:connection-failed', async ({
+            if (!await allowRealtimeEvent('call:connection-failed')) return; callId, targetUserId, reason = 'connection-timeout' }) => {
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || currentCall.status !== 'connecting' || currentCall.ended_at) return;
@@ -1197,7 +1313,8 @@ const initSocket = (server) => {
             console.warn('[CALL][connection failed]', { callId, userId, targetId, reason });
         });
 
-        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
+        socket.on('call:ice-candidate', async ({
+            if (!await allowRealtimeEvent('call:ice-candidate')) return; callId, targetUserId, candidate }) => {
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !candidate || !['connecting', 'connected'].includes(call.status)) return;
@@ -1206,7 +1323,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {
+        socket.on('call:end', async ({
+            if (!await allowRealtimeEvent('call:end')) return; callId, targetUserId, reason = 'ended' } = {}) => {
             const targetId = Number(targetUserId);
             // Never persist arbitrary client-controlled reason strings.
             const safeReason = reason === 'cancelled' ? 'cancelled' : 'ended';
