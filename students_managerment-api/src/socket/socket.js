@@ -11,6 +11,7 @@ const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
+const { isValidSessionDescription, isValidIceCandidate } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 
 let io = null;
@@ -1158,7 +1159,14 @@ const initSocket = (server) => {
             if (!await allowRealtimeEvent('call:offer')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !offer || !['connecting', 'connected'].includes(call.status)) return;
+            if (!call || !['connecting', 'connected'].includes(call.status)) return;
+            if (!isValidSessionDescription(offer, 'offer')) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'INVALID_SIGNALING_PAYLOAD',
+                    message: 'Dữ liệu WebRTC offer không hợp lệ hoặc vượt quá giới hạn.'
+                });
+            }
             io.to(`user:${targetId}`).emit('call:offer', {
                 callId, fromUserId: userId, toUserId: targetId, offer
             });
@@ -1168,7 +1176,14 @@ const initSocket = (server) => {
             if (!await allowRealtimeEvent('call:answer')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !answer || !['connecting', 'connected'].includes(call.status)) return;
+            if (!call || !['connecting', 'connected'].includes(call.status)) return;
+            if (!isValidSessionDescription(answer, 'answer')) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'INVALID_SIGNALING_PAYLOAD',
+                    message: 'Dữ liệu WebRTC answer không hợp lệ hoặc vượt quá giới hạn.'
+                });
+            }
             io.to(`user:${targetId}`).emit('call:answer', {
                 callId, fromUserId: userId, toUserId: targetId, answer
             });
@@ -1254,7 +1269,14 @@ const initSocket = (server) => {
             if (!await allowRealtimeEvent('call:ice-candidate')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !candidate || !['connecting', 'connected'].includes(call.status)) return;
+            if (!call || !['connecting', 'connected'].includes(call.status)) return;
+            if (!isValidIceCandidate(candidate)) {
+                return socket.emit('call:error', {
+                    callId,
+                    code: 'INVALID_SIGNALING_PAYLOAD',
+                    message: 'Dữ liệu ICE candidate không hợp lệ hoặc vượt quá giới hạn.'
+                });
+            }
             io.to(`user:${targetId}`).emit('call:ice-candidate', {
                 callId, fromUserId: userId, toUserId: targetId, candidate
             });
