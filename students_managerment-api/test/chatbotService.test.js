@@ -137,3 +137,37 @@ test('loadAcademicContext performs parameterized lookups only for explicitly nam
         pool.query = originalQuery;
     }
 });
+
+
+test('admin academic context exposes aggregate counts only, not student rows or grades', async () => {
+    const originalQuery = pool.query;
+    const calls = [];
+    pool.query = async (sql, params) => {
+        calls.push({ sql, params });
+        if (sql.includes('COUNT(*)::int AS student_count')) {
+            return { rows: [{ student_count: 12, class_count: 3, subject_count: 20, enrollment_count: 80 }] };
+        }
+        if (sql.includes('FROM subjects')) return { rows: [] };
+        if (sql.includes('FROM semesters')) return { rows: [] };
+        if (sql.includes('FROM departments')) return { rows: [] };
+        if (sql.includes('FROM classes')) return { rows: [] };
+        throw new Error('Unexpected admin chatbot context query');
+    };
+
+    try {
+        const context = await loadAcademicContext('admin', 'Tổng quan hệ thống');
+        assert.deepEqual(context.adminOverview, {
+            student_count: 12,
+            class_count: 3,
+            subject_count: 20,
+            enrollment_count: 80
+        });
+        const aggregateQuery = calls.find(call => call.sql.includes('COUNT(*)::int AS student_count'));
+        assert.ok(aggregateQuery);
+        assert.match(aggregateQuery.sql, /SELECT\\s+COUNT\\(\\*\\)::int AS student_count/);
+        assert.doesNotMatch(aggregateQuery.sql, /SELECT\\s+(?:s\\.|e\\.)/i);
+        assert.equal(calls.length, 5);
+    } finally {
+        pool.query = originalQuery;
+    }
+});
