@@ -446,22 +446,25 @@ const changePassword = async (
     // UPDATE PASSWORD
     // =================================================
 
-    const updatedUser =
-        await authRepository
-            .updateUserPassword(
-                userId,
-                newPasswordHash
-            );
-
-    if (!updatedUser) {
-
-        throw new Error(
-            'Không thể cập nhật mật khẩu'
+    const result =
+        await authRepository.updatePasswordAndRevokeSessions(
+            userId,
+            newPasswordHash
         );
+
+    if (!result) {
+        throw new Error('Không thể cập nhật mật khẩu');
     }
 
-    // A password change invalidates every existing login, including this one.
-    await revokeUserSessions(userId, 'PASSWORD_CHANGED');
+    // Database revocation is already committed atomically. Socket notification
+    // is best-effort and must not turn a successful credential change into 500.
+    for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            emitSessionRevoked(sessionId, 'PASSWORD_CHANGED');
+        } catch (error) {
+            console.warn('[AUTH] Không thể gửi thông báo revoke socket:', error.message);
+        }
+    }
 
     return true;
 };
