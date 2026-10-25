@@ -77,6 +77,16 @@ async function loadAcademicContext(role) {
     return context;
 }
 
+async function clearHistory({ userId, sessionId }) {
+    if (!redisClient.isReady) {
+        const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
+        error.status = 503;
+        throw error;
+    }
+    const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
+    await redisClient.del(historyKey);
+    return true;
+}
 async function answer({ userId, sessionId, role, message }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
@@ -165,4 +175,4 @@ async function answer({ userId, sessionId, role, message }) {
     };
 }
 
-module.exports = { answer, normalizeHistory, loadAcademicContext };
+module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext };
