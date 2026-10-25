@@ -76,7 +76,7 @@ async function loadAcademicContext(role) {
     return context;
 }
 
-async function answer({ userId, role, message, history = [] }) {
+async function answer({ role, message, history = [] }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
         error.status = 400;
