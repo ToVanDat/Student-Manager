@@ -381,6 +381,7 @@ export default function MessageBubble({
     const [reactionPickerOpen, setReactionPickerOpen] = useState(false);
     const hoverCloseTimer = useRef(null);
     const [audioUrl, setAudioUrl] = useState(null);
+    const [deletingFileIds, setDeletingFileIds] = useState(() => new Set());
 
     const keepHovered = () => {
         if (hoverCloseTimer.current) {
@@ -437,6 +438,22 @@ export default function MessageBubble({
             />
         );
     }
+
+    const handleDeleteAttachment = async (file) => {
+        const fileId = Number(file?.id);
+        if (!isOwn || file?._e2ee || !Number.isSafeInteger(fileId) || fileId <= 0 || !onDeleteFile) return;
+
+        setDeletingFileIds(previous => new Set(previous).add(fileId));
+        try {
+            await onDeleteFile(file);
+        } finally {
+            setDeletingFileIds(previous => {
+                const next = new Set(previous);
+                next.delete(fileId);
+                return next;
+            });
+        }
+    };
 
     const submitEdit = () => {
         const next = editContent.trim();
@@ -617,6 +634,18 @@ export default function MessageBubble({
                                                     <button type="button" onClick={() => onDownloadFile?.(file)} className="p-1.5 rounded-lg hover:bg-black/10" title={t("download")} aria-label={t("downloadFile")}>
                                                         <Download size={15} />
                                                     </button>
+                                                    {isOwn && !file._e2ee && Number.isSafeInteger(Number(file.id)) && Number(file.id) > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteAttachment(file)}
+                                                            disabled={deletingFileIds.has(Number(file.id))}
+                                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                                                            title="Xóa tệp"
+                                                            aria-label={`Xóa tệp ${file.file_name || ''}`}
+                                                        >
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
