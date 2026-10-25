@@ -73,7 +73,7 @@ export default function GlobalChatbot() {
                         {messages.length === 0 && (
                             <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                 <p className="mb-2 font-semibold text-slate-900 dark:text-white">{language === 'vi' ? 'Xin chào! Tôi có thể giúp gì?' : 'Hello! How can I help?'}</p>
-                                <p className="m-0 text-xs leading-5">{language === 'vi' ? 'Hỏi về môn học, tín chỉ, học kỳ hoặc cách sử dụng Student Manager. Dữ liệu điểm cá nhân chưa được mở vì tài khoản sinh viên chưa có liên kết định danh đã xác minh.' : 'Ask about subjects, credits, semesters, or using Student Manager. Personal grades are not available until student-account identity linking is verified.'}</p>
+                                <p className="m-0 text-xs leading-5">{language === 'vi' ? 'Hỏi về môn học, tín chỉ, khoa, lớp, học kỳ hoặc cách sử dụng Student Manager. Dữ liệu điểm cá nhân chưa được mở vì tài khoản sinh viên chưa có liên kết định danh đã xác minh.' : 'Ask about subjects, credits, departments, classes, semesters, or using Student Manager. Personal grades are not available until student-account identity linking is verified.'}</p>
                             </div>
                         )}
                         {messages.map((item, index) => (
