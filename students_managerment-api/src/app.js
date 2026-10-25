@@ -38,9 +38,15 @@ const configuredOrigins = (process.env.FRONTEND_URLS || '')
     .split(',')
     .map((origin) => origin.trim())
     .filter(Boolean);
+const localDevelopmentOrigins = process.env.NODE_ENV === 'production'
+    ? []
+    : [
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ];
+
 const allowedOrigins = new Set([
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
+    ...localDevelopmentOrigins,
     process.env.FRONTEND_URL,
     ...configuredOrigins,
 ].filter(Boolean));
