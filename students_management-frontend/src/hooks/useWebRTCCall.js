@@ -937,6 +937,25 @@ export default function useWebRTCCall() {
                 'call:reconnect-request'
             ]);
             if (setupEvents.has(eventName)) {
+                // Keep the persisted call lifecycle in sync with the local UI.
+                // A rejected start was never created server-side; accept/SDP/
+                // recovery failures may already have a persisted call record.
+                if (socket.connected && eventName === 'call:accept') {
+                    socket.emit('call:reject', {
+                        callId: current.callId,
+                        targetUserId: current.targetUserId,
+                        reason: 'signaling-rate-limited'
+                    });
+                } else if (
+                    socket.connected &&
+                    ['call:offer', 'call:answer', 'call:reconnect-request'].includes(eventName)
+                ) {
+                    socket.emit('call:end', {
+                        callId: current.callId,
+                        targetUserId: current.targetUserId,
+                        reason: 'signaling-rate-limited'
+                    });
+                }
                 cleanup();
                 return;
             }
@@ -945,6 +964,13 @@ export default function useWebRTCCall() {
                 eventName === 'call:ice-candidate' &&
                 callConnectedAtRef.current === null
             ) {
+                if (socket.connected) {
+                    socket.emit('call:end', {
+                        callId: current.callId,
+                        targetUserId: current.targetUserId,
+                        reason: 'signaling-rate-limited'
+                    });
+                }
                 failConnection(message, false);
             }
         };
