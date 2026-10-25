@@ -355,6 +355,104 @@ const updatePasswordAndRevokeSessions = async (userId, passwordHash) => {
 };
 
 
+// Consume a verified password-reset token, update the password, and revoke all
+// existing sessions/refresh tokens as one PostgreSQL transaction.
+const completePasswordResetAndRevokeSessions = async (resetTokenId, userId, passwordHash) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const resetToken = await client.query(
+            `
+            SELECT id
+            FROM password_reset_tokens
+            WHERE id = $1
+              AND user_id = $2
+              AND used_at IS NULL
+              AND verified_at IS NOT NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            FOR UPDATE
+            `,
+            [resetTokenId, userId]
+        );
+
+        if (resetToken.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const consumed = await client.query(
+            `
+            UPDATE password_reset_tokens
+            SET used_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND used_at IS NULL
+              AND verified_at IS NOT NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            RETURNING id
+            `,
+            [resetTokenId]
+        );
+
+        if (consumed.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const updatedUser = await client.query(
+            `
+            UPDATE users
+            SET password_hash = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+              AND is_active = TRUE
+            RETURNING id, username, email, role, is_active, updated_at
+            `,
+            [passwordHash, userId]
+        );
+
+        if (updatedUser.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const revokedSessions = await client.query(
+            `
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [userId]
+        );
+
+        await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            `,
+            [userId]
+        );
+
+        await client.query('COMMIT');
+
+        return {
+            user: updatedUser.rows[0],
+            revokedSessionIds: revokedSessions.rows.map(row => row.id)
+        };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+
 
 // ======================================================
 // SESSION
@@ -1018,6 +1116,7 @@ module.exports = {
 
     updateUserPassword,
     updatePasswordAndRevokeSessions,
+    completePasswordResetAndRevokeSessions,
     
 
 
