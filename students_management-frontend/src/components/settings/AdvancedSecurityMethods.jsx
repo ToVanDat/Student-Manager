@@ -219,7 +219,7 @@ export default function AdvancedSecurityMethods() {
                 Passkey có thể dùng Face ID, Windows Hello, vân tay hoặc PIN tùy thiết bị. Hệ điều hành thực hiện xác minh; ứng dụng không nhận hay lưu ảnh khuôn mặt và máy chủ chỉ lưu khóa công khai. Google chỉ liên kết sau khi bạn xác thực trong phiên tài khoản hiện tại.
             </p>
             <button type="button" disabled={busy} onClick={registerPasskey} className="mb-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-                <Fingerprint size={16} /> Đăng ký Face ID / sinh trắc học (Passkey)
+                <Fingerprint size={16} /> Đăng ký Passkey (sinh trắc học trên thiết bị)
             </button>
             <div className="mb-4 space-y-2">
                 {credentials.map(item => (
