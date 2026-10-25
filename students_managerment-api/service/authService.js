@@ -868,7 +868,6 @@ const login = async (
 
         refreshToken
     };
-    };
     } catch (error) {
         // Password login spans PostgreSQL and Redis. Compensate partial writes
         // so a failed login cannot leave an active orphan session.
