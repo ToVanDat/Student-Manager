@@ -36,6 +36,29 @@ function extractSubjectSearchTerm(message) {
     return term.slice(0, 100);
 }
 
+
+function extractNamedCatalogTerm(message, labels, ignoredStarters) {
+    if (typeof message !== 'string') return null;
+    const labelPattern = labels.join('|');
+    const match = message.match(new RegExp('(?:' + labelPattern + ')\\s*[:：]?\\s+([^?.!,;\\n]{2,100})', 'i'));
+    if (!match) return null;
+    const term = match[1].trim().replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').trim();
+    if (!term || ignoredStarters.test(term)) return null;
+    return term.slice(0, 100);
+}
+
+function extractDepartmentSearchTerm(message) {
+    return extractNamedCatalogTerm(message, ['khoa', 'department'], /^(nào|gì|có|là|bao nhiêu|trong)\b/i);
+}
+
+function extractClassSearchTerm(message) {
+    return extractNamedCatalogTerm(message, ['lớp', 'class'], /^(nào|gì|có|là|bao nhiêu|trong)\b/i);
+}
+
+function extractSemesterSearchTerm(message) {
+    return extractNamedCatalogTerm(message, ['học kỳ', 'học kì', 'semester'], /^(nào|gì|có|là|bao nhiêu|trong)\b/i);
+}
+
 function normalizeHistory(history) {
     if (!Array.isArray(history)) return [];
     return history.slice(-MAX_HISTORY_MESSAGES).map(item => {
@@ -87,6 +110,50 @@ async function loadAcademicContext(role, question = '') {
         classes: classes.rows,
         semesters: semesters.rows
     };
+
+    const departmentTerm = extractDepartmentSearchTerm(question);
+    const classTerm = extractClassSearchTerm(question);
+    const semesterTerm = extractSemesterSearchTerm(question);
+    const targetedLookups = [];
+    if (departmentTerm) {
+        targetedLookups.push(
+            pool.query(
+                `SELECT department_code, department_name
+                 FROM departments
+                 WHERE department_code ILIKE $1 OR department_name ILIKE $1
+                 ORDER BY department_name
+                 LIMIT 20`,
+                [`%${departmentTerm}%`]
+            ).then(result => { context.departmentMatches = result.rows; })
+        );
+    }
+    if (classTerm) {
+        targetedLookups.push(
+            pool.query(
+                `SELECT c.class_code, c.class_name,
+                        d.department_code, d.department_name
+                 FROM classes c
+                 JOIN departments d ON d.id = c.department_id
+                 WHERE c.class_code ILIKE $1 OR c.class_name ILIKE $1
+                 ORDER BY c.class_name
+                 LIMIT 20`,
+                [`%${classTerm}%`]
+            ).then(result => { context.classMatches = result.rows; })
+        );
+    }
+    if (semesterTerm) {
+        targetedLookups.push(
+            pool.query(
+                `SELECT semester_name, academic_year
+                 FROM semesters
+                 WHERE semester_name ILIKE $1 OR academic_year::text ILIKE $1
+                 ORDER BY id DESC
+                 LIMIT 20`,
+                [`%${semesterTerm}%`]
+            ).then(result => { context.semesterMatches = result.rows; })
+        );
+    }
+    await Promise.all(targetedLookups);
 
     // Student records, grades, emails and personal details are deliberately
     // excluded until the schema has a verified user_id -> student_id mapping.
@@ -204,4 +271,4 @@ async function answer({ userId, sessionId, role, message }) {
     };
 }
 
-module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm };
+module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm };
