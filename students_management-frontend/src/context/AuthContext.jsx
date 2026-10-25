@@ -184,75 +184,82 @@ const updateUser = (partialUser) => {
     // PROACTIVE ACCESS TOKEN REFRESH
     // =========================
     useEffect(() => {
-        if (!accessToken) return;
+        if (!accessToken) return undefined;
 
-        let timerId;
+        let timerId = null;
+        let cancelled = false;
+        let retryAttempt = 0;
 
-        const scheduleRefresh = (token) => {
-            try {
-                const payload = JSON.parse(
-                    atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
-                );
-
-                if (!payload.exp) {
-                    console.warn('Access token không có exp');
-                    return;
-                }
-
-                // Refresh trước khi hết hạn 60 giây.
-                const delay = Math.max(
-                    (payload.exp * 1000) - Date.now() - 60_000,
-                    5_000
-                );
-
-                timerId = window.setTimeout(async () => {
-                    try {
-                        const newToken = await refreshAccessToken();
-                        setAccessToken(newToken);
-                    } catch (error) {
-                        console.warn('Không thể tự refresh Access Token:', error.message);
-
-                        // Only a definitive 401 means the refresh credential is
-                        // invalid/revoked. A temporary network/5xx failure should
-                        // retry later rather than logging the user out.
-                        if (error.response?.status !== 401) {
-                            timerId = window.setTimeout(async () => {
-                                try {
-                                    setAccessToken(await refreshAccessToken());
-                                } catch (retryError) {
-                                    if (retryError.response?.status === 401) {
-                                        void shutdownE2EEClient().catch(() => {});
-                                        socket.disconnect();
-                                        setApiAccessToken(null);
-                                        localStorage.removeItem('user');
-                                        setAccessToken(null);
-                                        setUser(null);
-                                        window.location.href = '/login';
-                                    } else {
-                                        console.warn('Refresh vẫn tạm thời thất bại:', retryError.message);
-                                    }
-                                }
-                            }, 10_000);
-                            return;
-                        }
-
-                        void shutdownE2EEClient().catch(() => {});
-                        socket.disconnect();
-                        setApiAccessToken(null);
-                        localStorage.removeItem('user');
-                        setAccessToken(null);
-                        setUser(null);
-                        window.location.href = '/login';
-                    }
-                }, delay);
-            } catch (error) {
-                console.error('Không thể đọc exp của Access Token:', error);
+        const clearLocalSession = () => {
+            if (cancelled) return;
+            void shutdownE2EEClient().catch(() => {});
+            socket.disconnect();
+            setApiAccessToken(null);
+            localStorage.removeItem('user');
+            setAccessToken(null);
+            setUser(null);
+            setAuthRestoreError('');
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
             }
         };
 
-        scheduleRefresh(accessToken);
+        const scheduleRetry = () => {
+            if (cancelled) return;
+            retryAttempt += 1;
+            // Retry transient network/5xx failures with a capped backoff.
+            // Do not abandon the session after a single failed retry.
+            const retryDelay = Math.min(5_000 * (2 ** (retryAttempt - 1)), 30_000);
+            timerId = window.setTimeout(refresh, retryDelay);
+        };
+
+        const refresh = async () => {
+            if (cancelled) return;
+
+            try {
+                const newToken = await refreshAccessToken();
+                if (cancelled) return;
+                retryAttempt = 0;
+                setAccessToken(newToken);
+            } catch (error) {
+                if (cancelled) return;
+
+                if (error.response?.status === 401) {
+                    clearLocalSession();
+                    return;
+                }
+
+                console.warn(
+                    '[AUTH] Access-token refresh temporarily failed; retrying:',
+                    error.message
+                );
+                scheduleRetry();
+            }
+        };
+
+        try {
+            const payload = JSON.parse(
+                atob(accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+            );
+
+            if (!payload.exp) {
+                console.warn('[AUTH] Access token không có exp');
+                return undefined;
+            }
+
+            // Refresh 60 seconds before expiry. A failed transient refresh is
+            // retried with backoff until the server confirms success or 401.
+            const delay = Math.max(
+                (payload.exp * 1000) - Date.now() - 60_000,
+                5_000
+            );
+            timerId = window.setTimeout(refresh, delay);
+        } catch (error) {
+            console.error('[AUTH] Không thể đọc exp của Access Token:', error);
+        }
 
         return () => {
+            cancelled = true;
             if (timerId) window.clearTimeout(timerId);
         };
     }, [accessToken]);
