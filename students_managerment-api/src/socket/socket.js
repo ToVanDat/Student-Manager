@@ -11,7 +11,7 @@ const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
-const { consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
+const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -109,7 +109,7 @@ const initSocket = (server) => {
                 const result = await consumeSocketRateLimit({
                     userId,
                     eventName,
-                    ...require('../../middleware/socketRateLimiter.js').SOCKET_EVENT_LIMITS[eventName]
+                    ...SOCKET_EVENT_LIMITS[eventName]
                 });
                 if (result.allowed) return true;
 
@@ -164,8 +164,10 @@ const initSocket = (server) => {
         // Refresh the authenticated token in-place so an access-token expiry
         // does not forcibly drop signaling in the middle of an active call.
         socket.on('auth:token-refresh', async ({ accessToken } = {}, acknowledge) => {
-            if (!await allowRealtimeEvent('auth:token-refresh')) return;
             const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
+            if (!await allowRealtimeEvent('auth:token-refresh')) {
+                return ack({ ok: false, code: 'RATE_LIMITED', message: 'Bạn thao tác quá nhanh, vui lòng thử lại sau' });
+            }
 
             try {
                 if (typeof accessToken !== 'string' || !accessToken) {
