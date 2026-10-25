@@ -54,14 +54,15 @@ const formatCallDate = value => {
 export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
     const containerRef = useRef(null);
     const [previewUrl, setPreviewUrl] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [failed, setFailed] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
     const isVideo = String(file.mime_type || '').startsWith('video/');
     const fileId = file?.id;
 
     useEffect(() => {
-        if (!fileId || !Number.isInteger(Number(fileId)) || !onPreviewFile) {
+        if (!fileId || !Number.isInteger(Number(fileId)) || !onPreviewFile || (isVideo && !shouldLoadVideo)) {
             setLoading(false);
             return undefined;
         }
@@ -108,13 +109,13 @@ export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
             active = false;
             if (createdUrl) URL.revokeObjectURL(createdUrl);
         };
-    }, [fileId, onPreviewFile]);
+    }, [fileId, onPreviewFile, isVideo, shouldLoadVideo]);
 
     return (
         <>
             <div ref={containerRef} className={`${compact ? 'size-12 shrink-0' : 'mt-2 w-[min(280px,70vw)]'} overflow-hidden rounded-xl bg-slate-100`}>
                 {compact ? (
-                    <button type="button" onClick={() => setExpanded(Boolean(previewUrl))} aria-label={`Xem ${isVideo ? 'video' : 'ảnh'} ${file.file_name}`} className="flex size-full items-center justify-center overflow-hidden text-blue-600">
+                    <button type="button" onClick={() => isVideo && !previewUrl ? setShouldLoadVideo(true) : setExpanded(Boolean(previewUrl))} aria-label={`${isVideo && !previewUrl ? 'Tải video' : 'Xem'} ${isVideo ? 'video' : 'ảnh'} ${file.file_name}`} className="flex size-full items-center justify-center overflow-hidden text-blue-600">
                         {previewUrl && !isVideo ? <img src={previewUrl} alt="" loading="lazy" className="size-full object-cover" /> : isVideo ? <Video size={18} /> : loading ? <span className="size-4 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600" /> : <FileText size={18} />}
                     </button>
                 ) : previewUrl ? (isVideo ? (
@@ -125,7 +126,11 @@ export function MessageMediaPreview({ file, onPreviewFile, compact = false }) {
                     </button>
                 )) : (
                     <div className={`flex ${compact ? 'size-full' : 'h-28'} items-center justify-center text-[11px] text-slate-400`}>
-                        {loading ? 'Đang tải bản xem trước…' : failed ? 'Không tải được bản xem trước' : 'Bản xem trước không khả dụng'}
+                        {loading ? 'Đang tải bản xem trước…' : failed ? 'Không tải được bản xem trước' : isVideo ? (
+                            <button type="button" onClick={() => setShouldLoadVideo(true)} className="rounded-lg bg-slate-900/10 px-3 py-2 font-medium text-slate-700 hover:bg-slate-900/20">
+                                Tải video để xem
+                            </button>
+                        ) : 'Bản xem trước không khả dụng'}
                     </div>
                 )}
             </div>
