@@ -97,6 +97,10 @@ test('catalog term extractors recognize explicit department, class and semester 
 test('catalog term extractors ignore generic questions and missing values', () => {
     assert.equal(extractDepartmentSearchTerm('Khoa nào có ngành công nghệ?'), null);
     assert.equal(extractClassSearchTerm('Lớp nào đang tuyển sinh?'), null);
+    assert.equal(extractClassSearchTerm('show me class information'), null);
+    assert.equal(extractDepartmentSearchTerm('department details'), null);
+    assert.equal(extractSubjectSearchTerm('subject information'), null);
+    assert.equal(extractSemesterSearchTerm('semester overview'), null);
     assert.equal(extractSemesterSearchTerm('Học kỳ nào mới nhất?'), null);
     assert.equal(extractClassSearchTerm(null), null);
 });
