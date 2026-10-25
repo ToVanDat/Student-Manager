@@ -13,6 +13,7 @@ const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
 const { isValidSessionDescription, isValidIceCandidate } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
+const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 
 let io = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
@@ -40,6 +41,14 @@ const initSocket = (server) => {
     ].filter(Boolean));
 
     io = new Server(server, {
+        // WebRTC SDP is capped at 64 KiB by payload validation; 256 KiB leaves
+        // room for protocol/event overhead while bounding unauthenticated frames.
+        maxHttpBufferSize: 256 * 1024,
+        allowRequest(request, callback) {
+            allowSocketHandshake(request)
+                .then((allowed) => callback(null, allowed))
+                .catch(() => callback(null, false));
+        },
         cors: {
             origin(origin, callback) {
                 if (!origin || allowedOrigins.has(origin)) {
