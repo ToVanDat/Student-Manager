@@ -29,6 +29,7 @@ export const useChat = () => {
     const messageSearchRequestRef = useRef(0);
     const seenMessageEventIdsRef = useRef(new Set());
     const typingStateRef = useRef({ conversationId: null, lastSentAt: 0 });
+    const readReceiptStateRef = useRef({ conversationId: null, lastSentAt: 0 });
     const remoteTypingTimerRef = useRef(null);
     const [searchJumpVersion, setSearchJumpVersion] = useState(0);
 
@@ -234,7 +235,10 @@ export const useChat = () => {
                 if (cancelled) return;
                 await chatApi.updateConversationSettings(activeId, 'unread', false);
                 if (cancelled) return;
-                if (socket.connected) socket.emit('message:read', { conversationId: activeId });
+                if (socket.connected) {
+                    socket.emit('message:read', { conversationId: activeId });
+                    readReceiptStateRef.current = { conversationId: Number(activeId), lastSentAt: Date.now() };
+                }
 
                 setConversations(prev => prev.map(c =>
                     Number(c.id) === Number(activeId)
@@ -383,7 +387,18 @@ export const useChat = () => {
 
                     return [...prev, message];
                 });
-                chatApi.markAsRead(conversationId).catch(() => {});
+                if (Number(message.sender_id ?? message.senderId) !== Number(currentUserId)) {
+                    chatApi.markAsRead(conversationId).then(() => {
+                        if (!socket.connected) return;
+                        const previous = readReceiptStateRef.current;
+                        const now = Date.now();
+                        // Coalesce bursts to stay below the socket read-event limit.
+                        if (previous.conversationId !== conversationId || now - previous.lastSentAt >= 1000) {
+                            socket.emit('message:read', { conversationId });
+                            readReceiptStateRef.current = { conversationId, lastSentAt: now };
+                        }
+                    }).catch(() => {});
+                }
             }
 
             setConversations(prev => {
