@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { API_BASE_URL } from '@/utils/constants.js';
+import { getAccessToken } from '@/api/client.js';
 //login
 export const loginApi = async (username, password) => {
   const response = await axios.post(
@@ -43,7 +44,7 @@ export const refreshApi = async () => {
 //logout
 
 export const logoutApi = async () => {
-  const accessToken = localStorage.getItem("accessToken");
+  const accessToken = getAccessToken();
 
   const response = await axios.post(
     `${API_BASE_URL}/api/auth/logout`,
@@ -119,10 +120,13 @@ export const finishPasskeyLoginApi = async (challengeId, responsePayload) => {
   return response.data;
 };
 
-const authenticatedAuthConfig = () => ({
-  withCredentials: true,
-  headers: { Authorization: `Bearer ${localStorage.getItem('accessToken') || ''}` }
-});
+const authenticatedAuthConfig = () => {
+  const token = getAccessToken();
+  return {
+    withCredentials: true,
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  };
+};
 
 export const beginPasskeyRegistrationApi = async () => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/registration/options`, {}, authenticatedAuthConfig());
