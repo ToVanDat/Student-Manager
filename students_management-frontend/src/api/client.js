@@ -54,6 +54,9 @@ apiClient.interceptors.request.use(
   (config) => {
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
+    } else {
+      // Never let a caller-supplied/stale bearer survive after logout or expiry.
+      delete config.headers.Authorization;
     }
 
     return config;
