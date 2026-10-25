@@ -172,6 +172,11 @@ export const useChat = () => {
     }, [currentUserId, fetchConversations]);
 
     useEffect(() => {
+        clearTimeout(remoteTypingTimerRef.current);
+        remoteTypingTimerRef.current = null;
+        typingStateRef.current = { conversationId: null, lastSentAt: 0 };
+        setIsTyping(false);
+
         if (!activeId) {
             setMessages([]);
             setConversationMembers([]);
@@ -259,6 +264,8 @@ export const useChat = () => {
 
         return () => {
             cancelled = true;
+            clearTimeout(remoteTypingTimerRef.current);
+            remoteTypingTimerRef.current = null;
             if (socket.connected) {
                 socket.emit('conversation:leave', { conversationId: activeId });
             }
