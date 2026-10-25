@@ -49,7 +49,7 @@ function normalizeHistory(history) {
 }
 
 async function loadAcademicContext(role, question = '') {
-    const [subjects, semesters] = await Promise.all([
+    const [subjects, semesters, departments, classes] = await Promise.all([
         pool.query(
             `SELECT subject_code, subject_name, credits
              FROM subjects
@@ -62,11 +62,29 @@ async function loadAcademicContext(role, question = '') {
              FROM semesters
              ORDER BY id DESC
              LIMIT 20`
+        ),
+        pool.query(
+            `SELECT department_code, department_name
+             FROM departments
+             ORDER BY department_name
+             LIMIT $1`,
+            [MAX_CONTEXT_ROWS]
+        ),
+        pool.query(
+            `SELECT c.class_code, c.class_name,
+                    d.department_code, d.department_name
+             FROM classes c
+             JOIN departments d ON d.id = c.department_id
+             ORDER BY c.class_name
+             LIMIT $1`,
+            [MAX_CONTEXT_ROWS]
         )
     ]);
 
     const context = {
         catalog: subjects.rows,
+        departments: departments.rows,
+        classes: classes.rows,
         semesters: semesters.rows
     };
 
