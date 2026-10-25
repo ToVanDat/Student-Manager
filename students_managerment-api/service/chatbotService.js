@@ -29,7 +29,8 @@ function getOllamaConfig() {
 function normalizeHistory(history) {
     if (!Array.isArray(history)) return [];
     return history.slice(-MAX_HISTORY_MESSAGES).map(item => {
-        const role = item?.role === 'assistant' ? 'assistant' : 'user';
+        if (!['user', 'assistant'].includes(item?.role)) return null;
+        const role = item.role;
         const content = typeof item?.content === 'string'
             ? item.content.trim().slice(0, MAX_MESSAGE_LENGTH)
             : '';
@@ -95,7 +96,7 @@ async function answer({ userId, role, message, history = [] }) {
                 'Bạn không có quyền thực hiện CRUD, thay đổi điểm, sửa tài khoản hoặc gọi công cụ.',
                 'Người dùng không phải admin: không được suy diễn hay tiết lộ dữ liệu cá nhân, điểm số hoặc danh sách sinh viên.',
                 'Student-to-user mapping chưa được xác minh nên không có truy vấn điểm cá nhân trong phiên bản này.',
-                `Authenticated user id: ${String(userId)}. Role: ${role}.`,
+                `Current authenticated role: ${role}.`,
                 `CONTEXT (JSON): ${JSON.stringify(context)}`
             ].join('\n')
         },
