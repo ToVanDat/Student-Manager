@@ -29,7 +29,7 @@ function getOllamaConfig() {
 
 function extractSubjectSearchTerm(message) {
     if (typeof message !== 'string') return null;
-    const match = message.match(/(?:môn(?:\s+học)?|subject)\s*[:：]?\s+([^?.!,;\\n]{2,100})/i);
+    const match = message.match(/(?:môn(?:\s+học)?|subject)\s*[:：]?\s+([^?.!,;\n]{2,100})/i);
     if (!match) return null;
     const term = match[1].trim().replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '').trim();
     if (!term || /^(học|nào|gì|bao nhiêu|có|là|trong|theo)\b/i.test(term)) return null;
