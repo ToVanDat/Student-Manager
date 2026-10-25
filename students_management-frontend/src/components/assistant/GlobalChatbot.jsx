@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bot, MessageCircle, Send, X, LoaderCircle } from 'lucide-react';
+import { Bot, MessageCircle, Send, X, LoaderCircle, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { sendChatbotMessage } from '@/api/chatbotApi.js';
+import { sendChatbotMessage, clearChatbotHistory } from '@/api/chatbotApi.js';
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
@@ -18,6 +18,22 @@ export default function GlobalChatbot() {
     }, [messages, loading, open]);
 
     if (!user) return null;
+
+    const resetConversation = async () => {
+        if (loading) return;
+        try {
+            await clearChatbotHistory();
+            setMessages([]);
+        } catch (error) {
+            setMessages(items => [...items, {
+                role: 'assistant',
+                error: true,
+                content: error?.response?.data?.message || (language === 'vi'
+                    ? 'Không thể tạo cuộc trò chuyện mới.'
+                    : 'Could not start a new conversation.')
+            }]);
+        }
+    };
 
     const send = async event => {
         event?.preventDefault();
@@ -50,6 +66,7 @@ export default function GlobalChatbot() {
                             <h2 className="m-0 text-sm font-semibold">Student Assistant</h2>
                             <p className="m-0 text-[11px] text-slate-300">{language === 'vi' ? 'Trợ lý học vụ · Ollama' : 'Academic assistant · Ollama'}</p>
                         </div>
+                        <button type="button" onClick={() => void resetConversation()} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label="New conversation" title={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'}><Plus size={18} /></button>
                         <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label="Close assistant"><X size={18} /></button>
                     </header>
                     <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 dark:bg-slate-950">
