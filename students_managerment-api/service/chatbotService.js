@@ -127,7 +127,7 @@ async function answer({ userId, sessionId, role, message }) {
                 model: config.model,
                 messages,
                 stream: false,
-                options: { temperature: 0.2 }
+                options: { temperature: 0.2, num_predict: 512 }
             })
         });
     } catch (error) {
