@@ -164,8 +164,8 @@ test('admin academic context exposes aggregate counts only, not student rows or 
         });
         const aggregateQuery = calls.find(call => call.sql.includes('COUNT(*)::int AS student_count'));
         assert.ok(aggregateQuery);
-        assert.match(aggregateQuery.sql, /COUNT\\(\\*\\)::int AS student_count/);
-        assert.doesNotMatch(aggregateQuery.sql, /SELECT\\s+(?:s\\.|e\\.)/i);
+        assert.match(aggregateQuery.sql, /COUNT\(\*\)::int AS student_count/);
+        assert.doesNotMatch(aggregateQuery.sql, /SELECT\s+(?:s\.|e\.)/i);
         assert.equal(calls.length, 5);
     } finally {
         pool.query = originalQuery;
