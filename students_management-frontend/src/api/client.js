@@ -96,15 +96,77 @@ export const refreshAccessToken = async () => {
     };
 
     // A module-level promise prevents duplicate refreshes in this tab.
-    // Web Locks extends that protection across tabs sharing the same cookie,
-    // avoiding two tabs rotating the same single-use refresh token at once.
+    // Web Locks serializes tabs where supported. The localStorage lease is a
+    // best-effort cross-tab fallback for browsers without Web Locks.
+    const refreshWithStorageLock = async () => {
+      const lockKey = 'student-management-auth-refresh-lock';
+      const owner = (
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+      );
+      const leaseMs = 30_000;
+      const deadline = Date.now() + 35_000;
+      const sleep = (ms) => new Promise(resolve => window.setTimeout(resolve, ms));
+
+      const readLock = () => {
+        const raw = window.localStorage.getItem(lockKey);
+        if (!raw) return null;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          return null;
+        }
+      };
+
+      try {
+        while (Date.now() < deadline) {
+          const current = readLock();
+
+          if (!current || !current.expiresAt || current.expiresAt <= Date.now()) {
+            window.localStorage.setItem(
+              lockKey,
+              JSON.stringify({ owner, expiresAt: Date.now() + leaseMs }),
+            );
+
+            // Allow competing tabs to write, then verify that this tab owns
+            // the final lease before using the shared HttpOnly cookie.
+            await sleep(60 + Math.floor(Math.random() * 80));
+            if (readLock()?.owner === owner) {
+              try {
+                return await performRefresh();
+              } finally {
+                if (readLock()?.owner === owner) {
+                  window.localStorage.removeItem(lockKey);
+                }
+              }
+            }
+          }
+
+          await sleep(80 + Math.floor(Math.random() * 70));
+        }
+
+        throw new Error('Không thể khóa refresh giữa các tab trong thời gian cho phép');
+      } catch (error) {
+        // If storage is unavailable (e.g. browser privacy restrictions), keep
+        // authentication usable; server-side single-use rotation remains the
+        // final authority.
+        if (error?.name === 'SecurityError' || error?.name === 'QuotaExceededError') {
+          return performRefresh();
+        }
+        throw error;
+      }
+    };
+
     const refreshAcrossTabs = () => {
       if (typeof navigator !== 'undefined' && navigator.locks?.request) {
         return navigator.locks.request('student-management-auth-refresh', async () => {
-          // Another tab may have refreshed while this tab waited. The refresh
-          // cookie is shared by the origin, so refresh only after acquiring lock.
           return performRefresh();
         });
+      }
+
+      if (typeof window !== 'undefined') {
+        return refreshWithStorageLock();
       }
 
       return performRefresh();
