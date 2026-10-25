@@ -3,7 +3,7 @@ const net = require('net');
 const { redisClient } = require('../src/config/redis.js');
 
 const HANDSHAKE_RATE_LIMIT = Object.freeze({
-    limit: 60,
+    limit: 300,
     windowMs: 60_000
 });
 
