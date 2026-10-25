@@ -3,9 +3,10 @@ const chatbotService = require('../service/chatbotService.js');
 exports.chat = async (req, res) => {
     try {
         const result = await chatbotService.answer({
+            userId: req.user.sub,
+            sessionId: req.user.sessionId,
             role: req.user.role,
-            message: req.body?.message,
-            history: req.body?.history
+            message: req.body?.message
         });
         return res.json(result);
     } catch (error) {
