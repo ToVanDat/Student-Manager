@@ -76,10 +76,10 @@ test('handshake rate limit uses a hashed IP key and atomic Redis window', async 
 });
 
 test('handshake rate limit rejects excess attempts and fails closed on Redis outage', async () => {
-    await withRedis(true, async () => [61, 10_000], async () => {
+    await withRedis(true, async () => [301, 10_000], async () => {
         const result = await consumeSocketHandshakeRateLimit('198.51.100.8');
         assert.equal(result.allowed, false);
-        assert.equal(result.totalHits, 61);
+        assert.equal(result.totalHits, 301);
     });
 
     await withRedis(false, async () => [1, 60_000], async () => {
