@@ -78,7 +78,7 @@ async function loadAcademicContext(role) {
 }
 
 async function clearHistory({ userId, sessionId, redis = redisClient }) {
-    if (!redisClient.isReady) {
+    if (!redis.isReady) {
         const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
         error.status = 503;
         throw error;
