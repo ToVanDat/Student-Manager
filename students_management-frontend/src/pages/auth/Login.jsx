@@ -262,11 +262,11 @@ function Login() {
         setError('');
         setSuccess('');
         if (!username.trim()) {
-            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Face ID / sinh trắc học.' : 'Enter your username before using Face ID / device biometrics.');
+            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Passkey.' : 'Enter your username before using a passkey.');
             return;
         }
         if (!window.isSecureContext || !navigator.credentials?.get) {
-            setError(language === 'vi' ? 'Đăng nhập sinh trắc học cần HTTPS và trình duyệt hỗ trợ Passkey.' : 'Biometric sign-in requires HTTPS and a browser that supports passkeys.');
+            setError(language === 'vi' ? 'Đăng nhập Passkey cần HTTPS và trình duyệt hỗ trợ WebAuthn.' : 'Passkey sign-in requires HTTPS and a browser that supports WebAuthn.');
             return;
         }
 
@@ -283,7 +283,7 @@ function Login() {
                 }))
             };
             const credential = await navigator.credentials.get({ publicKey });
-            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh sinh trắc học.' : 'Biometric verification was cancelled.');
+            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh Passkey.' : 'Passkey verification was cancelled.');
             const response = {
                 id: credential.id,
                 rawId: encodeBase64Url(credential.rawId),
@@ -301,7 +301,7 @@ function Login() {
             loginUser(data);
             navigate('/students?view=dashboard', { replace: true });
         } catch (error) {
-            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập sinh trắc học thất bại.' : 'Biometric sign-in failed.'));
+            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập Passkey thất bại.' : 'Passkey sign-in failed.'));
         } finally {
             sessionStorage.removeItem('auth:login-in-progress');
             setLoading(false);
