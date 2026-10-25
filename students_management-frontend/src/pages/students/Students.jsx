@@ -11,6 +11,7 @@ import { useStudentSettings } from "@/hooks/useStudentSettings.js";
 
 import StudentHeader from "@/components/layout/StudentHeader.jsx";
 import StudentSidebar from "@/components/layout/StudentSidebar.jsx";
+import PageBreadcrumbs from "@/components/layout/PageBreadcrumbs.jsx";
 import StudentDashboard from "@/components/students/StudentDashboard.jsx";
 import AdminOverview from "@/components/students/AdminOverview.jsx";
 import StudentPortalOverview from "@/components/students/StudentPortalOverview.jsx";
@@ -678,6 +679,25 @@ function Students() {
         ================================================= */}
 
         <section className="px-4 py-6 sm:px-6 lg:px-[30px] lg:pt-7 lg:pb-10">
+          {activePage !== "dashboard" && (
+            <PageBreadcrumbs
+              items={[
+                ...(activePage === "settings"
+                  ? [{ key: "settings", label: t("settingsTitle") }]
+                  : [{ key: activePage, label: ({
+                      students: t("studentList"),
+                      classes: t("classes"),
+                      departments: t("departments"),
+                      subjects: t("subjects"),
+                      enrollments: t("enrollments"),
+                      semesters: t("semesters"),
+                      results: t("results"),
+                      users: t("user"),
+                      permissions: t("security"),
+                    })[activePage] || activePage }]),
+              ]}
+            />
+          )}
           {/* =================================================
               DASHBOARD
           ================================================= */}
