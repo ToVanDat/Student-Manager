@@ -80,6 +80,9 @@ test('loadAcademicContext includes only public class and department catalog fiel
         assert.equal(calls.length, 4);
         assert.ok(calls.every(call => call.sql.includes('LIMIT $1') ? call.params?.[0] === 80 : true));
         assert.ok(calls.every(call => !/SELECT\s+\*/i.test(call.sql)));
+        assert.ok(calls.every(call => !/FROM\s+(?:students|enrollments)\b/i.test(call.sql)));
+        assert.equal(Object.hasOwn(context, 'studentMatches'), false);
+        assert.equal(Object.hasOwn(context, 'grades'), false);
     } finally {
         pool.query = originalQuery;
     }
