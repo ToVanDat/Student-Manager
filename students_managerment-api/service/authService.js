@@ -1004,10 +1004,10 @@ const logout = async (
             );
 
 
-        // Do not emit session:revoked for an explicit logout. The current
-        // browser initiated the logout and will disconnect its own socket;
-        // emitting a revoke event here incorrectly triggers the "logged in on
-        // another device" warning in the same browser.
+        // Notify every tab/socket in this session and disconnect it. The
+        // frontend treats LOGOUT as a silent local cleanup, not a forced-login
+        // warning. E2EE identity material remains in the browser keystore.
+        emitSessionRevoked(sessionId, 'LOGOUT');
 
         return {
             success: true
