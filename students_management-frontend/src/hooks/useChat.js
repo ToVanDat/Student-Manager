@@ -400,7 +400,13 @@ export const useChat = () => {
 
                     if (optimisticMatch) {
                         const next = [...prev];
-                        next[optimisticMatch.index] = { ...message, status: 'sent' };
+                        next[optimisticMatch.index] = {
+                            ...message,
+                            // Keep the optimistic correlation key until the REST request
+                            // confirms persistence; a late timeout must still update this item.
+                            tempId: optimisticMatch.item.tempId,
+                            status: optimisticMatch.item.status
+                        };
                         return next;
                     }
 
