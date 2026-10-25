@@ -272,3 +272,163 @@
         .app-card { transition: none; }
     }
 }
+
+/* --------------------------------------------------------------------------
+   Student Manager design system foundation
+   Semantic tokens keep the existing Tailwind v4 utilities and feature styles
+   compatible while giving new and gradually migrated screens one vocabulary.
+   -------------------------------------------------------------------------- */
+:root {
+    color-scheme: light;
+    --app-canvas: #f6f8fc;
+    --app-surface: #ffffff;
+    --app-surface-muted: #f8faff;
+    --app-border: #e5eaf2;
+    --app-border-strong: #d6deea;
+    --app-text: #17243b;
+    --app-text-muted: #64748b;
+    --app-text-subtle: #94a3b8;
+    --app-primary: #3e61d6;
+    --app-primary-hover: #2f4fb7;
+    --app-primary-soft: #eef3ff;
+    --app-success: #15803d;
+    --app-warning: #b45309;
+    --app-danger: #dc2626;
+    --app-radius-sm: 0.5rem;
+    --app-radius-md: 0.75rem;
+    --app-radius-lg: 1rem;
+    --app-radius-xl: 1.25rem;
+    --app-shadow-card: 0 1px 3px rgb(15 23 42 / 5%), 0 8px 24px rgb(15 23 42 / 3%);
+    --app-content-width:  min(100% - 2rem, 90rem);
+}
+
+.dark {
+    color-scheme: dark;
+    --app-canvas: #080f1e;
+    --app-surface: #0f1a2d;
+    --app-surface-muted: #142137;
+    --app-border: #26364d;
+    --app-border-strong: #354861;
+    --app-text: #e5edf8;
+    --app-text-muted: #a5b4c8;
+    --app-text-subtle: #8293aa;
+    --app-primary: #8ba7ff;
+    --app-primary-hover: #a8bcff;
+    --app-primary-soft: #1b2b50;
+    --app-success: #4ade80;
+    --app-warning: #fbbf24;
+    --app-danger: #f87171;
+    --app-shadow-card: 0 1px 3px rgb(0 0 0 / 18%), 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+@layer base {
+    html {
+        scroll-padding-top: 5rem;
+        text-size-adjust: 100%;
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        background-color: var(--app-canvas);
+        color: var(--app-text);
+        font-feature-settings: "ss01" on, "cv11" on;
+    }
+
+    button, input, select, textarea {
+        font: inherit;
+    }
+
+    button:focus-visible, a:focus-visible, input:focus-visible,
+    select:focus-visible, textarea:focus-visible {
+        outline: 2px solid var(--app-primary);
+        outline-offset: 2px;
+    }
+
+    [id] {
+        scroll-margin-top: 5rem;
+    }
+}
+
+@layer components {
+    .app-page {
+        width: var(--app-content-width);
+        min-width: 0;
+        margin-inline: auto;
+        padding-block: clamp(1.25rem, 2.5vw, 2rem);
+    }
+
+    .app-page-heading {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .app-page-title {
+        color: var(--app-text);
+        font-size: clamp(1.35rem, 2vw, 1.75rem);
+        font-weight: 750;
+        letter-spacing: -0.035em;
+        line-height: 1.2;
+    }
+
+    .app-page-description {
+        margin-top: 0.4rem;
+        color: var(--app-text-muted);
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+
+    .app-panel {
+        min-width: 0;
+        border: 1px solid var(--app-border);
+        border-radius: var(--app-radius-lg);
+        background: var(--app-surface);
+        color: var(--app-text);
+        box-shadow: var(--app-shadow-card);
+    }
+
+    .app-panel-header {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--app-border);
+    }
+
+    .app-panel-body {
+        min-width: 0;
+        padding: 1.25rem;
+    }
+
+    .app-muted {
+        color: var(--app-text-muted);
+    }
+
+    .app-focus-ring:focus-visible {
+        outline: 2px solid var(--app-primary);
+        outline-offset: 3px;
+    }
+}
+
+@media (max-width: 640px) {
+    .app-page {
+        width: min(100% - 1.25rem, 90rem);
+        padding-block: 1rem;
+    }
+
+    .app-page-heading {
+        margin-bottom: 1rem;
+    }
+
+    .app-panel-header,
+    .app-panel-body {
+        padding: 0.875rem;
+    }
+}
