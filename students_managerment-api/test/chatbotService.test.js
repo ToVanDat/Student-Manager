@@ -1,7 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeHistory, clearHistory } = require('../service/chatbotService.js');
-const { redisClient } = require('../src/config/redis.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
     const history = Array.from({ length: 10 }, (_, index) => ({
@@ -29,30 +28,20 @@ test('normalizeHistory strips unsupported roles and bounds message content', () 
 });
 
 test('clearHistory deletes only the authenticated user and session history key', async () => {
-    const originalReady = redisClient.isReady;
-    const originalDel = redisClient.del;
     const deletedKeys = [];
-    Object.defineProperty(redisClient, 'isReady', { configurable: true, value: true });
-    redisClient.del = async key => { deletedKeys.push(key); return 1; };
+    const redis = {
+        isReady: true,
+        del: async key => { deletedKeys.push(key); return 1; }
+    };
 
-    try {
-        await clearHistory({ userId: '42', sessionId: 'session-abc' });
-        assert.deepEqual(deletedKeys, ['assistant:history:42:session-abc']);
-    } finally {
-        Object.defineProperty(redisClient, 'isReady', { configurable: true, value: originalReady });
-        redisClient.del = originalDel;
-    }
+    await clearHistory({ userId: '42', sessionId: 'session-abc', redis });
+    assert.deepEqual(deletedKeys, ['assistant:history:42:session-abc']);
 });
 
 test('clearHistory fails closed when Redis is unavailable', async () => {
-    const originalReady = redisClient.isReady;
-    Object.defineProperty(redisClient, 'isReady', { configurable: true, value: false });
-    try {
-        await assert.rejects(
-            clearHistory({ userId: '42', sessionId: 'session-abc' }),
-            error => error.status === 503
-        );
-    } finally {
-        Object.defineProperty(redisClient, 'isReady', { configurable: true, value: originalReady });
-    }
+    const redis = { isReady: false };
+    await assert.rejects(
+        clearHistory({ userId: '42', sessionId: 'session-abc', redis }),
+        error => error.status === 503
+    );
 });
