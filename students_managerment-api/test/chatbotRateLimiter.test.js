@@ -78,4 +78,5 @@ test('limiter script performs expiry setup in the same Redis operation', () => {
     assert.match(RATE_LIMIT_SCRIPT, /INCR/);
     assert.match(RATE_LIMIT_SCRIPT, /EXPIRE/);
     assert.match(RATE_LIMIT_SCRIPT, /TTL/);
+    assert.match(RATE_LIMIT_SCRIPT, /ttl < 0/);
 });
