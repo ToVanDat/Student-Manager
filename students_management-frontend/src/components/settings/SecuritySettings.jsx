@@ -70,8 +70,11 @@ function SecuritySettings({ onOpenSessions }) {
                             {t('refreshTokenDescription')}
                         </span>
                     </div>
-                    <span className="rounded-full bg-green-50 px-2 py-1 text-[11px] font-bold text-green-700 dark:bg-green-950 dark:text-green-300">
-                        Enabled
+                    <span
+                        className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                        title="Refresh token được gửi qua cookie HttpOnly do máy chủ quản lý"
+                    >
+                        HttpOnly
                     </span>
                 </div>
 
