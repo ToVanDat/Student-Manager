@@ -71,6 +71,9 @@ export const chatApi = {
     removeReaction: (messageId, emoji) =>
         client.delete(`/api/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`),
 
+    getFilesByMessageId: (messageId) =>
+        client.get(`/api/messages/${messageId}/files`),
+
     // Upload file cho một message
     uploadFile: (messageId, file, onUploadProgress, quality = 'standard') => {
         const formData = new FormData();
