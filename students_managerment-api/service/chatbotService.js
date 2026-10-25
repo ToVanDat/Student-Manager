@@ -32,7 +32,7 @@ function extractSubjectSearchTerm(message) {
     const match = message.match(/(?:môn(?:\s+học)?|subject)\s*[:：]?\s+([^?.!,;\n]{2,100})/i);
     if (!match) return null;
     const term = match[1].trim().replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '').trim();
-    if (!term || /^(học|nào|gì|bao nhiêu|có|là|trong|theo|information|details|list|catalog|data|overview)$/i.test(term)) return null;
+    if (!term || /^(học|nào|gì|bao nhiêu|có|là|trong|theo)\b|^(information|details|list|catalog|data|overview)$/i.test(term)) return null;
     return term.slice(0, 100);
 }
 
@@ -48,15 +48,15 @@ function extractNamedCatalogTerm(message, labels, ignoredStarters) {
 }
 
 function extractDepartmentSearchTerm(message) {
-    return extractNamedCatalogTerm(message, ['khoa', 'department'], /^(nào|gì|có|là|bao nhiêu|trong|information|details|list|catalog|data|overview)$/i);
+    return extractNamedCatalogTerm(message, ['khoa', 'department'], /^(nào|gì|có|là|bao nhiêu|trong)\b|^(information|details|list|catalog|data|overview)$/i);
 }
 
 function extractClassSearchTerm(message) {
-    return extractNamedCatalogTerm(message, ['lớp', 'class'], /^(nào|gì|có|là|bao nhiêu|trong|information|details|list|catalog|data|overview)$/i);
+    return extractNamedCatalogTerm(message, ['lớp', 'class'], /^(nào|gì|có|là|bao nhiêu|trong)\b|^(information|details|list|catalog|data|overview)$/i);
 }
 
 function extractSemesterSearchTerm(message) {
-    return extractNamedCatalogTerm(message, ['học kỳ', 'học kì', 'semester'], /^(nào|gì|có|là|bao nhiêu|trong|information|details|list|catalog|data|overview)$/i);
+    return extractNamedCatalogTerm(message, ['học kỳ', 'học kì', 'semester'], /^(nào|gì|có|là|bao nhiêu|trong)\b|^(information|details|list|catalog|data|overview)$/i);
 }
 
 function normalizeHistory(history) {
