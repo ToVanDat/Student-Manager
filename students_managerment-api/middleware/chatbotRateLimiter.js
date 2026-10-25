@@ -7,8 +7,9 @@ const MAX_REQUESTS = 20;
 // and EXPIRE, a split-command limiter could otherwise leave a permanent key.
 const RATE_LIMIT_SCRIPT = [
     "local count = redis.call('INCR', KEYS[1])",
-    "if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end",
     "local ttl = redis.call('TTL', KEYS[1])",
+    "if count == 1 or ttl < 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end",
+    "ttl = redis.call('TTL', KEYS[1])",
     "return { count, ttl }"
 ].join('\n');
 
