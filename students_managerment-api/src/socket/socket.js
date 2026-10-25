@@ -232,8 +232,10 @@ const initSocket = (server) => {
         // authenticated account. On reconnect the client must pull its durable
         // mailbox; this room is only a wake-up signal and never carries plaintext.
         socket.on('e2ee:subscribe', async ({ deviceId, deviceToken } = {}, acknowledge) => {
-            if (!await allowRealtimeEvent('e2ee:subscribe')) return ack({ ok: false, code: 'RATE_LIMITED' });
             const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
+            if (!await allowRealtimeEvent('e2ee:subscribe')) {
+                return ack({ ok: false, code: 'RATE_LIMITED' });
+            }
             try {
                 const slot = Number(deviceId);
                 if (!Number.isSafeInteger(slot) || slot < 1 || slot > 5) {
