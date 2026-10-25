@@ -760,7 +760,11 @@ const login = async (
     // CREATE SESSION
     // =================================================
 
-    const session =
+    let session = null;
+    let accessToken = null;
+
+    try {
+    session =
         await authRepository
             .createSession(
                 user.id,
@@ -774,7 +778,7 @@ const login = async (
     // GENERATE ACCESS TOKEN
     // =================================================
 
-    const accessToken =
+    accessToken =
         generateAccessToken(
             user,
             session.id
@@ -864,6 +868,33 @@ const login = async (
 
         refreshToken
     };
+    };
+    } catch (error) {
+        // Password login spans PostgreSQL and Redis. Compensate partial writes
+        // so a failed login cannot leave an active orphan session.
+        if (accessToken) {
+            try {
+                await removeAccessTokenFromRedis(accessToken);
+            } catch (cleanupError) {
+                console.error('Login access-token cleanup failed:', cleanupError.code || cleanupError.message);
+            }
+        }
+
+        if (session?.id) {
+            try {
+                await authRepository.revokeRefreshTokensBySessionId(session.id);
+            } catch (cleanupError) {
+                console.error('Login refresh-token cleanup failed:', cleanupError.code || cleanupError.message);
+            }
+            try {
+                await authRepository.revokeSession(session.id);
+            } catch (cleanupError) {
+                console.error('Login session cleanup failed:', cleanupError.code || cleanupError.message);
+            }
+        }
+
+        throw error;
+    }
 };
 
 
