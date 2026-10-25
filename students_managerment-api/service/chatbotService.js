@@ -27,6 +27,15 @@ function getOllamaConfig() {
     };
 }
 
+function extractSubjectSearchTerm(message) {
+    if (typeof message !== 'string') return null;
+    const match = message.match(/(?:môn(?:\\s+học)?|subject)\\s*[:：]?\\s+([^?.!,;\\n]{2,100})/i);
+    if (!match) return null;
+    const term = match[1].trim().replace(/^[\"'“”‘’]+|[\"'“”‘’]+$/g, '').trim();
+    if (!term || /^(học|nào|gì|bao nhiêu|có|là|trong|theo)\\b/i.test(term)) return null;
+    return term.slice(0, 100);
+}
+
 function normalizeHistory(history) {
     if (!Array.isArray(history)) return [];
     return history.slice(-MAX_HISTORY_MESSAGES).map(item => {
@@ -39,7 +48,7 @@ function normalizeHistory(history) {
     }).filter(Boolean);
 }
 
-async function loadAcademicContext(role) {
+async function loadAcademicContext(role, question = '') {
     const [subjects, semesters] = await Promise.all([
         pool.query(
             `SELECT subject_code, subject_name, credits
@@ -107,7 +116,7 @@ async function answer({ userId, sessionId, role, message }) {
     }
 
     const config = getOllamaConfig();
-    const context = await loadAcademicContext(role);
+    const context = await loadAcademicContext(role, message);
     const messages = [
         {
             role: 'system',
@@ -175,4 +184,4 @@ async function answer({ userId, sessionId, role, message }) {
     };
 }
 
-module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext };
+module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm };
