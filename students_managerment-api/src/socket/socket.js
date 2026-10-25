@@ -233,8 +233,8 @@ const initSocket = (server) => {
 
         // Refresh the authenticated token in-place so an access-token expiry
         // does not forcibly drop signaling in the middle of an active call.
-        socket.on('auth:token-refresh', async ({
-            if (!await allowRealtimeEvent('auth:token-refresh')) return; accessToken } = {}, acknowledge) => {
+        socket.on('auth:token-refresh', async ({ accessToken } = {}, acknowledge) => {
+            if (!await allowRealtimeEvent('auth:token-refresh')) return;
             const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
 
             try {
@@ -299,8 +299,8 @@ const initSocket = (server) => {
         // A socket can subscribe only to a numeric device slot owned by the
         // authenticated account. On reconnect the client must pull its durable
         // mailbox; this room is only a wake-up signal and never carries plaintext.
-        socket.on('e2ee:subscribe', async ({
-            if (!await allowRealtimeEvent('e2ee:subscribe')) return ack({ ok: false, code: 'RATE_LIMITED' }); deviceId, deviceToken } = {}, acknowledge) => {
+        socket.on('e2ee:subscribe', async ({ deviceId, deviceToken } = {}, acknowledge) => {
+            if (!await allowRealtimeEvent('e2ee:subscribe')) return ack({ ok: false, code: 'RATE_LIMITED' });
             const ack = typeof acknowledge === 'function' ? acknowledge : () => {};
             try {
                 const slot = Number(deviceId);
@@ -414,12 +414,15 @@ const initSocket = (server) => {
             }
         };
 
-        socket.on('call:sync-pending', syncPendingCalls);
+        socket.on('call:sync-pending', async () => {
+            if (!await allowRealtimeEvent('call:sync-pending')) return;
+            await syncPendingCalls();
+        });
         // Replay pending invitations after every authenticated reconnect.
         void syncPendingCalls();
 
         socket.on('presence:sync', async () => {
-            if (!await allowRealtimeEvent('call:sync-pending')) return;
+            if (!await allowRealtimeEvent('presence:sync')) return;
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
                 const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
@@ -429,8 +432,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('conversation:join', async ({
-            if (!await allowRealtimeEvent('conversation:join')) return; conversationId }) => {
+        socket.on('conversation:join', async ({ conversationId }) => {
+            if (!await allowRealtimeEvent('conversation:join')) return;
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
                 return socket.emit('conversation:error', { message: 'conversationId không hợp lệ' });
@@ -467,8 +470,8 @@ const initSocket = (server) => {
             if (Number.isInteger(id) && id > 0) socket.leave(`conversation:${id}`);
         });
 
-        socket.on('message:send', async ({
-            if (!await allowRealtimeEvent('message:send')) return; conversationId, content, replyToMessageId = null }) => {
+        socket.on('message:send', async ({ conversationId, content, replyToMessageId = null }) => {
+            if (!await allowRealtimeEvent('message:send')) return;
             const id = Number(conversationId);
             const text = typeof content === 'string' ? content.trim() : '';
 
@@ -542,8 +545,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:edit', async ({
-            if (!await allowRealtimeEvent('message:edit')) return; messageId, content }) => {
+        socket.on('message:edit', async ({ messageId, content }) => {
+            if (!await allowRealtimeEvent('message:edit')) return;
             const id = Number(messageId);
             const text = typeof content === 'string' ? content.trim() : '';
 
@@ -621,8 +624,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:recall', async ({
-            if (!await allowRealtimeEvent('message:recall')) return; messageId }) => {
+        socket.on('message:recall', async ({ messageId }) => {
+            if (!await allowRealtimeEvent('message:recall')) return;
             const id = Number(messageId);
 
             if (!Number.isInteger(id) || id <= 0) {
@@ -689,8 +692,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:delete:me', async ({
-            if (!await allowRealtimeEvent('message:delete:me')) return; messageId }) => {
+        socket.on('message:delete:me', async ({ messageId }) => {
+            if (!await allowRealtimeEvent('message:delete:me')) return;
             const id = Number(messageId);
 
             if (!Number.isInteger(id) || id <= 0) {
@@ -736,8 +739,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:delete:everyone', async ({
-            if (!await allowRealtimeEvent('message:delete:everyone')) return; messageId }) => {
+        socket.on('message:delete:everyone', async ({ messageId }) => {
+            if (!await allowRealtimeEvent('message:delete:everyone')) return;
             const id = Number(messageId);
 
             if (!Number.isInteger(id) || id <= 0) {
@@ -799,8 +802,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:reaction:add', async ({
-            if (!await allowRealtimeEvent('message:reaction:add')) return; messageId, emoji }) => {
+        socket.on('message:reaction:add', async ({ messageId, emoji }) => {
+            if (!await allowRealtimeEvent('message:reaction:add')) return;
             const id = Number(messageId);
             const value = typeof emoji === 'string' ? emoji.trim() : '';
 
@@ -835,8 +838,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:reaction:remove', async ({
-            if (!await allowRealtimeEvent('message:reaction:remove')) return; messageId, emoji }) => {
+        socket.on('message:reaction:remove', async ({ messageId, emoji }) => {
+            if (!await allowRealtimeEvent('message:reaction:remove')) return;
             const id = Number(messageId);
             const value = typeof emoji === 'string' ? emoji.trim() : '';
 
@@ -869,8 +872,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('message:read', async ({
-            if (!await allowRealtimeEvent('message:read')) return; conversationId }) => {
+        socket.on('message:read', async ({ conversationId }) => {
+            if (!await allowRealtimeEvent('message:read')) return;
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) return;
 
@@ -886,8 +889,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('typing:start', async ({
-            if (!await allowRealtimeEvent('typing:start')) return; conversationId }) => {
+        socket.on('typing:start', async ({ conversationId }) => {
+            if (!await allowRealtimeEvent('typing:start')) return;
             const id = Number(conversationId);
             try {
                 if (!Number.isInteger(id) || id <= 0) return;
@@ -903,8 +906,8 @@ const initSocket = (server) => {
             }
         });
 
-        socket.on('typing:stop', async ({
-            if (!await allowRealtimeEvent('typing:stop')) return; conversationId }) => {
+        socket.on('typing:stop', async ({ conversationId }) => {
+            if (!await allowRealtimeEvent('typing:stop')) return;
             const id = Number(conversationId);
             try {
                 if (!Number.isInteger(id) || id <= 0) return;
@@ -987,8 +990,8 @@ const initSocket = (server) => {
             io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
         };
 
-        socket.on('call:start', async ({
-            if (!await allowRealtimeEvent('call:start')) return; callId, targetUserId, callType = 'voice' } = {}) => {
+        socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
+            if (!await allowRealtimeEvent('call:start')) return;
             const targetId = Number(targetUserId);
             const validCallId = isValidCallId(callId);
 
@@ -1070,8 +1073,8 @@ const initSocket = (server) => {
             }, CALL_RING_TIMEOUT_MS));
         });
 
-        socket.on('call:accept', async ({
-            if (!await allowRealtimeEvent('call:accept')) return; callId, targetUserId } = {}) => {
+        socket.on('call:accept', async ({ callId, targetUserId } = {}) => {
+            if (!await allowRealtimeEvent('call:accept')) return;
             const targetId = Number(targetUserId);
             if (!isValidCallId(callId) || !Number.isInteger(targetId) || targetId <= 0 || targetId === userId) {
                 return socket.emit('call:error', {
@@ -1187,8 +1190,8 @@ const initSocket = (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({
-            if (!await allowRealtimeEvent('call:reject')) return; callId, targetUserId } = {}) => {
+        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
+            if (!await allowRealtimeEvent('call:reject')) return;
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || Number(currentCall.receiver_id) !== userId || currentCall.status !== 'ringing') return;
@@ -1217,8 +1220,8 @@ const initSocket = (server) => {
             );
         });
 
-        socket.on('call:offer', async ({
-            if (!await allowRealtimeEvent('call:offer')) return; callId, targetUserId, offer }) => {
+        socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
+            if (!await allowRealtimeEvent('call:offer')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !offer || !['connecting', 'connected'].includes(call.status)) return;
@@ -1227,8 +1230,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:answer', async ({
-            if (!await allowRealtimeEvent('call:answer')) return; callId, targetUserId, answer }) => {
+        socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
+            if (!await allowRealtimeEvent('call:answer')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !answer || !['connecting', 'connected'].includes(call.status)) return;
@@ -1237,8 +1240,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:reconnect-request', async ({
-            if (!await allowRealtimeEvent('call:reconnect-request')) return; callId, targetUserId }) => {
+        socket.on('call:reconnect-request', async ({ callId, targetUserId }) => {
+            if (!await allowRealtimeEvent('call:reconnect-request')) return;
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || !currentCall.answered_at || ['rejected', 'missed', 'cancelled', 'failed', 'timeout'].includes(currentCall.status)) return;
@@ -1250,8 +1253,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:connected', async ({
-            if (!await allowRealtimeEvent('call:connected')) return; callId, targetUserId }) => {
+        socket.on('call:connected', async ({ callId, targetUserId }) => {
+            if (!await allowRealtimeEvent('call:connected')) return;
             const targetId = Number(targetUserId);
             const call = await getAuthorizedCall(callId, targetId);
             if (!call) {
@@ -1285,8 +1288,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:connection-failed', async ({
-            if (!await allowRealtimeEvent('call:connection-failed')) return; callId, targetUserId, reason = 'connection-timeout' }) => {
+        socket.on('call:connection-failed', async ({ callId, targetUserId, reason = 'connection-timeout' }) => {
+            if (!await allowRealtimeEvent('call:connection-failed')) return;
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || currentCall.status !== 'connecting' || currentCall.ended_at) return;
@@ -1313,8 +1316,8 @@ const initSocket = (server) => {
             console.warn('[CALL][connection failed]', { callId, userId, targetId, reason });
         });
 
-        socket.on('call:ice-candidate', async ({
-            if (!await allowRealtimeEvent('call:ice-candidate')) return; callId, targetUserId, candidate }) => {
+        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
+            if (!await allowRealtimeEvent('call:ice-candidate')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !candidate || !['connecting', 'connected'].includes(call.status)) return;
@@ -1323,8 +1326,8 @@ const initSocket = (server) => {
             });
         });
 
-        socket.on('call:end', async ({
-            if (!await allowRealtimeEvent('call:end')) return; callId, targetUserId, reason = 'ended' } = {}) => {
+        socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {
+            if (!await allowRealtimeEvent('call:end')) return;
             const targetId = Number(targetUserId);
             // Never persist arbitrary client-controlled reason strings.
             const safeReason = reason === 'cancelled' ? 'cancelled' : 'ended';
