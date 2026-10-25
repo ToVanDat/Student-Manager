@@ -11,6 +11,9 @@ const authMiddleware =
 const authRateLimiter =
     require('../middleware/authRateLimiter.js');
 
+const requireTrustedOrigin =
+    require('../middleware/requireTrustedOrigin.js');
+
 const requireRole = require('../middleware/roleMiddleware.js');
 const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
 const avatarController = require('../controller/avatarController');
@@ -43,10 +46,10 @@ router.post('/qr-login/poll', authRateLimiter, advancedAuthController.pollQrLogi
 router.post('/register', authRateLimiter, authController.register);
 
 // LOGIN
-router.post('/login', authRateLimiter, authController.login);
+router.post('/login', requireTrustedOrigin, authRateLimiter, authController.login);
 
 // REFRESH
-router.post('/refresh', authRateLimiter, authController.refresh);
+router.post('/refresh', requireTrustedOrigin, authRateLimiter, authController.refresh);
 
 // Account-level UI preferences (shared across devices)
 router.get('/preferences', authMiddleware, userPreferencesController.getPreferences);
@@ -64,7 +67,7 @@ router.post('/avatar', authMiddleware, uploadAvatarFile, avatarController.upload
 // CHANGE PASSWORD
 router.post('/change-password', authMiddleware, authController.changePassword);
 router.post('/verify-reset-otp', authRateLimiter, authController.verifyResetOtp);
-router.post('/logout', authController.logout);
+router.post('/logout', requireTrustedOrigin, authController.logout);
 router.post('/test-email', authMiddleware, requireRole('admin'), authRateLimiter, authController.testEmail);
 router.post('/forgot-password', authRateLimiter, authController.forgotPassword);
 router.post('/reset-password', authRateLimiter, authController.resetPassword);
