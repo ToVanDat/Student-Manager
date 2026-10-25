@@ -1,4 +1,5 @@
 import { io } from 'socket.io-client';
+import { toast } from 'sonner';
 import { API_BASE_URL } from '@/utils/constants.js';
 
 const socket = io(API_BASE_URL, {
@@ -30,6 +31,45 @@ socket.on('connect_error', (error) => {
         message: error.message,
         description: error.description,
         context: error.context
+    });
+});
+
+// Surface server-side realtime throttling without flooding the user with
+// one toast for every event rejected during the same rate-limit window.
+const realtimeNoticeTimestamps = new Map();
+const shouldShowRealtimeNotice = (key, cooldownMs = 5000) => {
+    const now = Date.now();
+    const previous = realtimeNoticeTimestamps.get(key) || 0;
+    if (now - previous < cooldownMs) return false;
+    realtimeNoticeTimestamps.set(key, now);
+
+    if (realtimeNoticeTimestamps.size > 50) {
+        for (const [noticeKey, timestamp] of realtimeNoticeTimestamps) {
+            if (now - timestamp >= cooldownMs) realtimeNoticeTimestamps.delete(noticeKey);
+        }
+    }
+    return true;
+};
+
+socket.on('socket:rate-limit', ({ event, retryAfterMs } = {}) => {
+    const eventName = typeof event === 'string' ? event : 'realtime';
+    if (!shouldShowRealtimeNotice(`rate-limit:${eventName}`)) return;
+
+    const retrySeconds = Number.isFinite(Number(retryAfterMs)) && Number(retryAfterMs) > 0
+        ? Math.max(1, Math.ceil(Number(retryAfterMs) / 1000))
+        : null;
+    const retryMessage = retrySeconds
+        ? ` Vui lòng thử lại sau khoảng ${retrySeconds} giây.`
+        : ' Vui lòng thử lại sau ít phút.';
+
+    toast.warning('Bạn thao tác quá nhanh.' + retryMessage, { duration: 5000 });
+});
+
+socket.on('socket:error', (payload = {}) => {
+    if (payload.code !== 'REALTIME_TEMPORARILY_UNAVAILABLE') return;
+    if (!shouldShowRealtimeNotice('realtime-unavailable', 8000)) return;
+    toast.error(payload.message || 'Dịch vụ realtime đang tạm thời không khả dụng.', {
+        duration: 8000
     });
 });
 
