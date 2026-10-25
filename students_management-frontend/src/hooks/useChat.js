@@ -1594,7 +1594,9 @@ export const useChat = () => {
     }, [messages, currentUserId, conversations]);
 
     const deleteFile = useCallback(async (file) => {
-        if (!file?.id) return;
+        if (!file?.id || file?._e2ee || !Number.isSafeInteger(Number(file.id)) || Number(file.id) <= 0) {
+            return false;
+        }
 
         try {
             await chatApi.deleteFile(file.id);
@@ -1603,8 +1605,12 @@ export const useChat = () => {
                     ? { ...item, files: item.files.filter(existing => Number(existing.id) !== Number(file.id)) }
                     : item
             ));
+            toast.success('Đã xóa tệp đính kèm.');
+            return true;
         } catch (error) {
             console.error('Không thể xoá file:', error);
+            toast.error(error?.response?.data?.message || 'Không thể xóa tệp đính kèm.', { duration: 8000 });
+            return false;
         }
     }, []);
 
@@ -1633,15 +1639,23 @@ export const useChat = () => {
 
     const downloadFile = useCallback(async (file) => {
         if (!file?.id) return;
-        const blob = await getFileBlob(file);
-        const blobUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        link.download = file.file_name || 'download';
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(blobUrl);
+
+        let blobUrl = null;
+        try {
+            const blob = await getFileBlob(file);
+            blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = file.file_name || 'download';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Không thể tải tệp:', error);
+            toast.error(error?.response?.data?.message || error?.message || 'Không thể tải tệp.', { duration: 8000 });
+        } finally {
+            if (blobUrl) window.setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+        }
     }, [getFileBlob]);
 
     const previewFile = useCallback(async (file) => {
