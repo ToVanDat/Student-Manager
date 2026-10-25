@@ -196,6 +196,8 @@ async function answer({ userId, sessionId, role, message }) {
         model: config.model,
         context: {
             subjects: context.catalog.length,
+            departments: context.departments.length,
+            classes: context.classes.length,
             semesters: context.semesters.length,
             adminOverviewIncluded: role === 'admin'
         }
