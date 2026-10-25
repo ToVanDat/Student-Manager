@@ -306,10 +306,10 @@ async function finishPasskeyRegistration(userId, challengeId, response, deviceNa
 async function beginPasskeyLogin(username) {
     if (typeof username !== 'string' || !username.trim()) throw new Error('Nhập username trước khi dùng passkey');
     const userResult = await pool.query('SELECT id FROM users WHERE username = $1 AND is_active = TRUE', [username.trim()]);
-    if (!userResult.rows[0]) throw new Error('Không tìm thấy tài khoản đang hoạt động');
+    if (!userResult.rows[0]) throw new Error('Không thể đăng nhập bằng passkey. Kiểm tra thông tin hoặc sử dụng mật khẩu.');
     const userId = userResult.rows[0].id;
     const rows = await pool.query('SELECT credential_id, transports FROM user_webauthn_credentials WHERE user_id = $1', [userId]);
-    if (!rows.rows.length) throw new Error('Tài khoản chưa đăng ký passkey');
+    if (!rows.rows.length) throw new Error('Không thể đăng nhập bằng passkey. Kiểm tra thông tin hoặc sử dụng mật khẩu.');
     const { rpID } = rpConfig();
     const options = await generateAuthenticationOptions({
         rpID, allowCredentials: rows.rows.map(row => ({ id: row.credential_id, transports: row.transports })),
