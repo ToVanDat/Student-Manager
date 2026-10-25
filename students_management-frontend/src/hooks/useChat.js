@@ -1336,6 +1336,8 @@ export const useChat = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
+        const sendStartedAt = Date.now();
+        let serverSendAttempted = false;
 
         try {
             const statusResponse = await e2eeRelayApi.getConversationStatus(activeId);
@@ -1384,6 +1386,7 @@ export const useChat = () => {
 
             // A missing migration returns available=false, preserving legacy chat.
             // If the status request itself fails, the catch path prevents plaintext fallback.
+            serverSendAttempted = true;
             const res = await chatApi.sendMessage(activeId, text, replyToMessageId);
             const saved = res.data?.data;
             if (!saved?.id) throw new Error('Server không trả về message');
@@ -1391,11 +1394,47 @@ export const useChat = () => {
                 item.tempId === tempId ? { ...saved, status: 'sent' } : item
             ));
         } catch (error) {
-            setMessages(prev => prev.map(item =>
-                item.tempId === tempId
-                    ? { ...item, status: 'failed' }
-                    : item
-            ));
+            let reconciledMessage = null;
+            // A timed-out HTTP response does not prove the server failed to save
+            // the message. Re-read recent history before showing a false failure.
+            if (serverSendAttempted) {
+                try {
+                    const historyResponse = await chatApi.getMessages(activeId, 1, 50);
+                    const recentMessages = historyResponse.data?.data || [];
+                    const candidates = recentMessages.filter(message => {
+                        const createdAt = Date.parse(message.created_at ?? message.createdAt ?? '');
+                        const messageReplyId = message.reply_to_message_id ?? message.replyToMessageId ?? null;
+                        return Number(message.sender_id ?? message.senderId) === Number(currentUserId) &&
+                            String(message.content ?? '') === text &&
+                            String(messageReplyId ?? '') === String(replyToMessageId ?? '') &&
+                            Number.isFinite(createdAt) &&
+                            createdAt >= sendStartedAt - 10_000 &&
+                            createdAt <= Date.now() + 10_000;
+                    });
+                    if (candidates.length) {
+                        reconciledMessage = candidates.reduce((closest, candidate) => {
+                            const distance = Math.abs(Date.parse(candidate.created_at ?? candidate.createdAt) - sendStartedAt);
+                            const closestDistance = Math.abs(Date.parse(closest.created_at ?? closest.createdAt) - sendStartedAt);
+                            return distance < closestDistance ? candidate : closest;
+                        });
+                    }
+                } catch (reconcileError) {
+                    console.warn('Không thể đối soát trạng thái gửi message:', reconcileError);
+                }
+            }
+
+            if (reconciledMessage) {
+                setMessages(prev => prev.map(item => item.tempId === tempId || String(item.id) === String(reconciledMessage.id)
+                    ? { ...reconciledMessage, status: 'sent' }
+                    : item));
+            } else {
+                setMessages(prev => prev.map(item =>
+                    item.tempId === tempId
+                        ? { ...item, status: 'failed' }
+                        : item
+                ));
+                toast.error('Không thể xác nhận tin nhắn đã được gửi. Hãy kiểm tra kết nối trước khi gửi lại.', { duration: 8000 });
+            }
             console.error('Không thể gửi message:', error);
         }
     }, [activeId, currentUserId, conversations]);
