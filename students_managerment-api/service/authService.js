@@ -1083,10 +1083,32 @@ const refresh = async (
 
 
     if (!tokenRecord) {
-
-        throw new Error(
-            'Refresh token không hợp lệ'
+        // A known, revoked, unexpired token may be a replay of a token that
+        // was already rotated. Treat the session as the token family and
+        // revoke it atomically; unknown and expired tokens remain generic 401s.
+        const historicalToken = await authRepository.findRefreshTokenByHash(
+            refreshTokenHash
         );
+
+        if (
+            historicalToken?.revoked_at &&
+            new Date(historicalToken.expires_at) > new Date()
+        ) {
+            const revokedSession = await authRepository.revokeSessionOnRefreshTokenReuse(
+                refreshTokenHash,
+                historicalToken.user_id,
+                historicalToken.session_id
+            );
+
+            if (revokedSession) {
+                emitSessionRevoked(
+                    revokedSession.id,
+                    'REFRESH_TOKEN_REUSE'
+                );
+            }
+        }
+
+        throw new Error('Refresh token không hợp lệ');
     }
 
 
@@ -1254,8 +1276,23 @@ const refresh = async (
     }
 
     if (!rotatedToken) {
-        // Do not return an access token if rotation lost a race.
+        // Another request may have rotated this token after the initial
+        // lookup. Re-check its historical state under the session lock.
         await removeAccessTokenFromRedis(newAccessToken);
+
+        const revokedSession = await authRepository.revokeSessionOnRefreshTokenReuse(
+            refreshTokenHash,
+            user.id,
+            session.id
+        );
+
+        if (revokedSession) {
+            emitSessionRevoked(
+                revokedSession.id,
+                'REFRESH_TOKEN_REUSE'
+            );
+        }
+
         throw new Error(
             'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
         );
