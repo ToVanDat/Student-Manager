@@ -1273,12 +1273,14 @@ export const useChat = () => {
         };
 
         setMessages(prev => [...prev, optimisticMessage]);
+        let createdMessageId = null;
 
         try {
             const messageResponse = await chatApi.sendMessage(activeId, placeholder);
             const message = messageResponse.data?.data;
 
             if (!message?.id) throw new Error('Không tạo được message cho file');
+            createdMessageId = message.id;
 
             setMessages(prev => prev.map(item =>
                 item.tempId === tempId
@@ -1333,7 +1335,8 @@ export const useChat = () => {
             return uploadedFile;
         } catch (error) {
             setMessages(prev => prev.map(item =>
-                item.tempId === tempId || Number(item.id) === Number(tempId)
+                item.tempId === tempId ||
+                (createdMessageId != null && Number(item.id) === Number(createdMessageId))
                     ? { ...item, status: 'failed', uploadProgress: 0 }
                     : item
             ));
