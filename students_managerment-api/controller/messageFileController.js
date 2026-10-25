@@ -87,7 +87,7 @@ const getFilesByMessageId = async (req, res) => {
                 req.user.id
             );
 
-        return res.json({ files });
+        return res.json({ files: files.map(toPublicFile) });
     } catch (error) {
         return handleError(res, error);
     }
