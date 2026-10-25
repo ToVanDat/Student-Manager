@@ -5,7 +5,7 @@ import { API_BASE_URL } from '@/utils/constants.js';
 // ACCESS TOKEN MEMORY
 // ==========================================
 
-let accessToken = localStorage.getItem("accessToken");
+let accessToken = null;
 
 // ==========================================
 // AXIOS INSTANCE
@@ -27,13 +27,7 @@ export const apiClient = axios.create({
 export const setAccessToken = (token) => {
   accessToken = token;
 
-  if (token) {
-    localStorage.setItem("accessToken", token);
-  } else {
-    localStorage.removeItem("accessToken");
-  }
-
-  // Đồng bộ token mới cho AuthContext/Socket ngay cả khi token
+persist removal  // Đồng bộ token mới cho AuthContext/Socket ngay cả khi token
   // được refresh bởi Axios interceptor thay vì bởi AuthContext.
   if (typeof window !== "undefined") {
     window.dispatchEvent(
@@ -139,10 +133,8 @@ apiClient.interceptors.response.use(
 
     // Không refresh chính request /refresh
     if (originalRequest.url?.includes("/api/auth/refresh")) {
-      localStorage.removeItem("accessToken");
-
-      localStorage.removeItem("user");
-
+      setAccessToken(null);
+      window.dispatchEvent(new CustomEvent("auth:session-invalid"));
       window.location.href = "/login";
 
       return Promise.reject(error);
@@ -175,7 +167,7 @@ apiClient.interceptors.response.use(
       // and server errors are transient and must not destroy a valid session.
       if (refreshError.response?.status === 401) {
         setAccessToken(null);
-        localStorage.removeItem("user");
+        window.dispatchEvent(new CustomEvent("auth:session-invalid"));
         window.location.href = "/login";
       }
       return Promise.reject(refreshError);
