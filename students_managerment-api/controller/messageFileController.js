@@ -2,6 +2,18 @@ const messageFileService = require('../service/messageFileService');
 const messageRepository = require('../repository/messageRepository');
 const { getIO } = require('../src/socket/socket');
 
+const toPublicFile = (file) => {
+    if (!file) return null;
+    return {
+        id: file.id,
+        message_id: file.message_id,
+        file_name: file.file_name,
+        mime_type: file.mime_type,
+        file_size: file.file_size,
+        created_at: file.created_at
+    };
+};
+
 const handleError = (res, error) => {
     const statusCode = error.statusCode || 500;
 
@@ -39,23 +51,20 @@ const uploadFile = async (req, res) => {
         const message = await messageRepository.getMessageById(messageId);
         const io = getIO();
 
-        const messageWithFile = {
-            ...message,
-            files: [savedFile]
-        };
+        const publicFile = toPublicFile(savedFile);
 
         io.to(`conversation:${message.conversation_id}`).emit(
             'message:file:uploaded',
             {
                 messageId: message.id,
                 conversationId: message.conversation_id,
-                file: savedFile
+                file: publicFile
             }
         );
 
         return res.status(201).json({
             message: 'Upload file thành công',
-            file: savedFile
+            file: publicFile
         });
     } catch (error) {
         return handleError(res, error);
@@ -163,7 +172,7 @@ const deleteFile = async (req, res) => {
 
         return res.json({
             message: 'Xoá file thành công',
-            file: deleted
+            file: toPublicFile(deleted)
         });
     } catch (error) {
         return handleError(res, error);
