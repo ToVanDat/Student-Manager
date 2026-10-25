@@ -39,6 +39,28 @@ export const AuthProvider = ({ children }) => {
     const [isAuthLoading, setIsAuthLoading] = useState(true);
     const [authRestoreError, setAuthRestoreError] = useState('');
 
+    // Cross-tab fallback: a logout in one tab also clears cached auth in
+    // sibling tabs even if their Socket.IO connection was temporarily asleep.
+    useEffect(() => {
+        const handleStorage = (event) => {
+            if (event.key !== 'user' || event.newValue !== null) return;
+            if (sessionStorage.getItem('auth:login-in-progress') === 'true') return;
+
+            void shutdownE2EEClient().catch(() => {});
+            setApiAccessToken(null);
+            setAccessToken(null);
+            setUser(null);
+            setAuthRestoreError('');
+            socket.disconnect();
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
+        };
+
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
+
     // Đồng bộ khi Axios interceptor refresh token sau một request 401.
     useEffect(() => {
         const handleTokenChanged = (event) => {
@@ -316,9 +338,23 @@ const updateUser = (partialUser) => {
         const handleSessionRevoked = (data) => {
             console.log('[SOCKET][session revoked]', data);
 
-            // Logging out is initiated by this client; it must never be reported as
-            // a forced logout caused by a login on another device.
-            if (String(data?.reason || '').toUpperCase() === 'LOGOUT') return;
+            const revokeReason = String(data?.reason || '').toUpperCase();
+
+            // Explicit logout is synchronized to every tab in the session. Clear
+            // local auth silently: never show the forced-login warning.
+            if (revokeReason === 'LOGOUT') {
+                void shutdownE2EEClient().catch(() => {});
+                setApiAccessToken(null);
+                localStorage.removeItem('user');
+                setAccessToken(null);
+                setUser(null);
+                setAuthRestoreError('');
+                socket.disconnect();
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+                return;
+            }
 
             // A login in this same tab intentionally replaces its previous
             // session. Do not let the old socket event clear the new login.
