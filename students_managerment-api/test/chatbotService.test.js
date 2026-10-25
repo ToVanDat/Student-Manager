@@ -144,7 +144,7 @@ test('admin academic context exposes aggregate counts only, not student rows or 
     const calls = [];
     pool.query = async (sql, params) => {
         calls.push({ sql, params });
-        if (sql.includes('COUNT(*)::int AS student_count')) {
+        if (sql.includes('AS student_count') && sql.includes('AS enrollment_count')) {
             return { rows: [{ student_count: 12, class_count: 3, subject_count: 20, enrollment_count: 80 }] };
         }
         if (sql.includes('FROM subjects')) return { rows: [] };
@@ -162,7 +162,7 @@ test('admin academic context exposes aggregate counts only, not student rows or 
             subject_count: 20,
             enrollment_count: 80
         });
-        const aggregateQuery = calls.find(call => call.sql.includes('COUNT(*)::int AS student_count'));
+        const aggregateQuery = calls.find(call => call.sql.includes('AS student_count') && call.sql.includes('AS enrollment_count'));
         assert.ok(aggregateQuery);
         assert.match(aggregateQuery.sql, /COUNT\(\*\)::int AS student_count/);
         assert.doesNotMatch(aggregateQuery.sql, /SELECT\s+(?:s\.|e\.)/i);
