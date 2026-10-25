@@ -27,7 +27,7 @@ export const apiClient = axios.create({
 export const setAccessToken = (token) => {
   accessToken = token;
 
-persist removal  // Đồng bộ token mới cho AuthContext/Socket ngay cả khi token
+// Đồng bộ token mới cho AuthContext/Socket ngay cả khi token
   // được refresh bởi Axios interceptor thay vì bởi AuthContext.
   if (typeof window !== "undefined") {
     window.dispatchEvent(
