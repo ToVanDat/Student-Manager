@@ -368,16 +368,39 @@ export const useChat = () => {
                     // The sender receives the same Socket.IO event that the
                     // REST request also confirms. Reconcile the optimistic
                     // placeholder instead of appending a second message.
-                    const optimisticIndex = prev.findIndex(item =>
-                        String(item.id).startsWith('temp-') &&
-                        Number(item.sender_id ?? item.senderId) === Number(currentUserId) &&
-                        String(item.content ?? '') === String(message.content ?? '') &&
-                        (item.status === 'sending' || item.status === 'uploading' || item.status === 'processing')
-                    );
+                    const messageReplyId = message.reply_to_message_id ?? message.replyToMessageId ?? null;
+                    const optimisticCandidates = prev
+                        .map((item, index) => ({ item, index }))
+                        .filter(({ item }) => {
+                            const itemReplyId = item.reply_to_message_id ?? item.replyToMessageId ?? null;
+                            return String(item.id).startsWith('temp-') &&
+                                Number(item.sender_id ?? item.senderId) === Number(currentUserId) &&
+                                String(item.content ?? '') === String(message.content ?? '') &&
+                                String(itemReplyId ?? '') === String(messageReplyId ?? '') &&
+                                ['sending', 'uploading', 'processing'].includes(item.status);
+                        });
 
-                    if (optimisticIndex !== -1) {
+                    // Two identical messages can be sent close together. Match
+                    // the server event to the pending item with the nearest
+                    // creation time rather than always consuming the first one.
+                    const optimisticMatch = optimisticCandidates.reduce((best, candidate) => {
+                        if (!best) return candidate;
+                        const eventTime = Date.parse(message.created_at ?? message.createdAt ?? '');
+                        const candidateTime = Date.parse(candidate.item.created_at ?? candidate.item.createdAt ?? '');
+                        const bestTime = Date.parse(best.item.created_at ?? best.item.createdAt ?? '');
+                        if (!Number.isFinite(eventTime)) return best;
+                        const candidateDistance = Number.isFinite(candidateTime)
+                            ? Math.abs(eventTime - candidateTime)
+                            : Number.POSITIVE_INFINITY;
+                        const bestDistance = Number.isFinite(bestTime)
+                            ? Math.abs(eventTime - bestTime)
+                            : Number.POSITIVE_INFINITY;
+                        return candidateDistance < bestDistance ? candidate : best;
+                    }, null);
+
+                    if (optimisticMatch) {
                         const next = [...prev];
-                        next[optimisticIndex] = { ...message, status: 'sent' };
+                        next[optimisticMatch.index] = { ...message, status: 'sent' };
                         return next;
                     }
 
