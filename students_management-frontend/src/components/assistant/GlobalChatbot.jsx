@@ -24,15 +24,11 @@ export default function GlobalChatbot() {
         const text = input.trim();
         if (!text || loading) return;
 
-        const previous = messages;
         setInput('');
         setMessages(items => [...items, { role: 'user', content: text }]);
         setLoading(true);
         try {
-            const result = await sendChatbotMessage(
-                text,
-                previous.slice(-8).map(item => ({ role: item.role, content: item.content }))
-            );
+            const result = await sendChatbotMessage(text);
             setMessages(items => [...items, { role: 'assistant', content: result.message }]);
         } catch (error) {
             const message = error?.response?.data?.message || (language === 'vi'
