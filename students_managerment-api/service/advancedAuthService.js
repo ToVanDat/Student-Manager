@@ -63,26 +63,61 @@ async function issueSession(user, req) {
     // User-Agent in the dedicated TEXT column.
     const userAgent = req.get('user-agent') || null;
     const deviceName = userAgent ? userAgent.slice(0, 100) : 'Passkey/Google/QR';
-    const session = await authRepository.createSession(
-        user.id,
-        deviceName,
-        userAgent,
-        req.ip || null
-    );
-    const accessToken = jwt.sign({
-        sub: user.id, username: user.username, role: user.role, sessionId: session.id
-    }, process.env.JWT_SECRET, {
-        expiresIn: ACCESS_TTL_SECONDS,
-        issuer: 'student-management-api',
-        audience: 'student-management-client'
-    });
-    const accessHash = hash(accessToken);
-    await redisClient.set(`access_token:${accessHash}`, String(user.id), { EX: ACCESS_TTL_SECONDS });
-    const refreshToken = randomToken(64);
-    await authRepository.saveRefreshToken(
-        user.id, session.id, hash(refreshToken), new Date(Date.now() + REFRESH_TTL_MS)
-    );
-    return { user: publicUser(user), accessToken, refreshToken, sessionId: session.id };
+    let session = null;
+    let accessToken = null;
+
+    try {
+        session = await authRepository.createSession(
+            user.id,
+            deviceName,
+            userAgent,
+            req.ip || null
+        );
+        accessToken = jwt.sign({
+            sub: user.id, username: user.username, role: user.role, sessionId: session.id
+        }, process.env.JWT_SECRET, {
+            expiresIn: ACCESS_TTL_SECONDS,
+            issuer: 'student-management-api',
+            audience: 'student-management-client'
+        });
+
+        const accessHash = hash(accessToken);
+        await redisClient.set(`access_token:${accessHash}`, String(user.id), { EX: ACCESS_TTL_SECONDS });
+
+        const refreshToken = randomToken(64);
+        await authRepository.saveRefreshToken(
+            user.id, session.id, hash(refreshToken), new Date(Date.now() + REFRESH_TTL_MS)
+        );
+
+        return { user: publicUser(user), accessToken, refreshToken, sessionId: session.id };
+    } catch (error) {
+        // Session creation spans PostgreSQL and Redis. If either token write
+        // fails, compensate so an incomplete login cannot leave an orphaned
+        // active session or a usable access-token entry behind.
+        if (accessToken) {
+            try {
+                await redisClient.del(`access_token:${hash(accessToken)}`);
+            } catch (cleanupError) {
+                console.error('[AdvancedAuth] Failed to clean partial access token', {
+                    code: cleanupError.code || 'ACCESS_TOKEN_CLEANUP_FAILED'
+                });
+            }
+        }
+
+        if (session?.id) {
+            try {
+                await authRepository.revokeRefreshTokensBySessionId(session.id);
+                await authRepository.revokeSession(session.id);
+            } catch (cleanupError) {
+                console.error('[AdvancedAuth] Failed to revoke incomplete session', {
+                    code: cleanupError.code || 'SESSION_CLEANUP_FAILED',
+                    sessionId: session.id
+                });
+            }
+        }
+
+        throw error;
+    }
 }
 
 async function verifyGoogleIdToken(idToken) {
