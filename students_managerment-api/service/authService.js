@@ -1007,7 +1007,14 @@ const logout = async (
         // Notify every tab/socket in this session and disconnect it. The
         // frontend treats LOGOUT as a silent local cleanup, not a forced-login
         // warning. E2EE identity material remains in the browser keystore.
-        emitSessionRevoked(sessionId, 'LOGOUT');
+        try {
+            const { emitSessionRevoked } = require('../src/socket/socket.js');
+            emitSessionRevoked(sessionId, 'LOGOUT');
+        } catch (socketError) {
+            // Database revocation is authoritative. Socket notification is
+            // best-effort and must not turn a successful logout into HTTP 500.
+            console.error('[AUTH][logout socket notification failed]', socketError.message);
+        }
 
         return {
             success: true
