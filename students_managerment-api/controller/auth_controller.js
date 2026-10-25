@@ -728,15 +728,10 @@ const refresh = async (req, res) => {
         const invalidRefreshToken =
             /refresh token|session đã bị revoke|session không tồn tại|session đã bị thu hồi/i.test(message);
 
-        if (invalidRefreshToken) {
-            res.clearCookie('refreshToken', {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                path: '/api/auth'
-            });
-        }
-
+        // Never clear the shared refresh cookie from a failed refresh response.
+        // Another tab may already have rotated RT1 -> RT2 successfully; a late
+        // 401 response carrying Set-Cookie deletion would erase RT2 in browser.
+        // Explicit logout remains the operation that clears the cookie.
         console.warn('[AUTH][refresh failed]', {
             message,
             hasRefreshCookie: Boolean(req.cookies?.refreshToken)
