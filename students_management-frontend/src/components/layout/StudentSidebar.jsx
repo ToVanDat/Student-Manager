@@ -64,16 +64,19 @@ function StudentSidebar({
                         <Home size={19} />
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t("home")}</span>
                     </button>
-                    <button
-                        title={user?.role === 'admin' ? t('manageStudents') : t('students')}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
-                        aria-current={activePage === 'students' ? 'page' : undefined}
-                        onClick={() => { onNavigate('students'); onClose?.(); }}
-                    >
-                        <Users size={19} />
-                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{user?.role === 'admin' ? t('manageStudents') : t('students')}</span>
-                        <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
-                    </button>
+                    {user?.role === 'admin' && (
+                        <button
+                            type="button"
+                            title={t('manageStudents')}
+                            className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'students' ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
+                            aria-current={activePage === 'students' ? 'page' : undefined}
+                            onClick={() => { onNavigate('students'); onClose?.(); }}
+                        >
+                            <Users size={19} />
+                            <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t('manageStudents')}</span>
+                            <span className={`ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{totalStudents}</span>
+                        </button>
+                    )}
                     {user?.role === 'admin' && (
                         <>
                             <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('trainingGroup')}</div>
