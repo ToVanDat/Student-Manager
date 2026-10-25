@@ -31,11 +31,11 @@ export const AuthProvider = ({ children }) => {
     // even when the user is on Dashboard/Home instead of ChatPage.
     const webRTCCall = useWebRTCCall();
 
-    const [accessToken, setAccessToken] = useState(
-        localStorage.getItem('accessToken')
-    );
-
+    // Access tokens are intentionally memory-only. A cached profile is display
+    // data, never proof of authentication; the refresh cookie restores the session.
+    const [accessToken, setAccessToken] = useState(null);
     const [user, setUser] = useState(getStoredUser);
+    const [isAuthLoading, setIsAuthLoading] = useState(true);
 
     // Đồng bộ khi Axios interceptor refresh token sau một request 401.
     useEffect(() => {
@@ -45,21 +45,43 @@ export const AuthProvider = ({ children }) => {
 
             if (!nextToken) {
                 void shutdownE2EEClient().catch(() => {});
+                localStorage.removeItem('user');
                 setUser(null);
             }
         };
 
-        window.addEventListener(
-            'auth:access-token-changed',
-            handleTokenChanged
-        );
+        const handleSessionInvalid = () => {
+            localStorage.removeItem('user');
+            setUser(null);
+            setAccessToken(null);
+            setIsAuthLoading(false);
+            socket.disconnect();
+        };
+
+        window.addEventListener('auth:access-token-changed', handleTokenChanged);
+        window.addEventListener('auth:session-invalid', handleSessionInvalid);
 
         return () => {
-            window.removeEventListener(
-                'auth:access-token-changed',
-                handleTokenChanged
-            );
+            window.removeEventListener('auth:access-token-changed', handleTokenChanged);
+            window.removeEventListener('auth:session-invalid', handleSessionInvalid);
         };
+    }, []);
+
+    // Restore the session from the HttpOnly refresh cookie after a hard reload.
+    // No cached access token is read from persistent browser storage.
+    useEffect(() => {
+        let active = true;
+        refreshAccessToken()
+            .catch(error => {
+                if (error.response?.status !== 401) {
+                    console.warn('[AUTH] Session restoration temporarily failed:', error.message);
+                }
+            })
+            .finally(() => {
+                if (active) setIsAuthLoading(false);
+            });
+
+        return () => { active = false; };
     }, []);
 
 const updateUser = (partialUser) => {
@@ -82,6 +104,7 @@ const updateUser = (partialUser) => {
 
         setAccessToken(data.accessToken);
         setUser(data.user);
+        setIsAuthLoading(false);
     };
 
     // =========================
@@ -292,7 +315,7 @@ const updateUser = (partialUser) => {
 
             // Ignore delayed revoke events for a session that is no longer
             // the one represented by the currently stored access token.
-            const currentToken = localStorage.getItem('accessToken');
+            const currentToken = accessToken;
             let currentSessionId = null;
             try {
                 const payload = currentToken?.split('.')?.[1];
@@ -323,7 +346,6 @@ const updateUser = (partialUser) => {
                 'Tài khoản vừa được đăng nhập trên một thiết bị khác.'
             );
 
-            localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
             setApiAccessToken(null);
             setAccessToken(null);
@@ -413,6 +435,7 @@ const updateUser = (partialUser) => {
                 logoutUser,
                 updateUser,
                 isAuthenticated: !!accessToken,
+                isAuthLoading,
                 webRTCCall
             }}
         >
