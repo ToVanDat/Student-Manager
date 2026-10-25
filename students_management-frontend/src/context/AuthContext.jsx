@@ -58,6 +58,7 @@ export const AuthProvider = ({ children }) => {
             setUser(null);
             setAccessToken(null);
             setIsAuthLoading(false);
+            setAuthRestoreError('');
             socket.disconnect();
         };
 
@@ -114,6 +115,7 @@ const updateUser = (partialUser) => {
 
         setAccessToken(data.accessToken);
         setUser(data.user);
+        setAuthRestoreError('');
         setIsAuthLoading(false);
     };
 
@@ -152,6 +154,7 @@ const updateUser = (partialUser) => {
 
             setAccessToken(null);
             setUser(null);
+            setAuthRestoreError('');
         }
     };
 
