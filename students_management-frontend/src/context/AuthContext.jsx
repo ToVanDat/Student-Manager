@@ -51,6 +51,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         const handleSessionInvalid = () => {
+            void shutdownE2EEClient().catch(() => {});
             localStorage.removeItem('user');
             setUser(null);
             setAccessToken(null);
