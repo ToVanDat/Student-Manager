@@ -106,7 +106,8 @@ test('loadAcademicContext performs parameterized lookups only for explicitly nam
     const calls = [];
     pool.query = async (sql, params) => {
         calls.push({ sql, params });
-        if (sql.includes('FROM subjects') && sql.includes('WHERE')) return { rows: [{ subject_code: 'CS101', subject_name: 'Database Systems', credits: 3 }] };\n        if (sql.includes('FROM subjects')) return { rows: [] };
+        if (sql.includes('FROM subjects') && sql.includes('WHERE')) return { rows: [{ subject_code: 'CS101', subject_name: 'Database Systems', credits: 3 }] };
+        if (sql.includes('FROM subjects')) return { rows: [] };
         if (sql.includes('FROM semesters') && !sql.includes('WHERE')) return { rows: [] };
         if (sql.includes('FROM departments') && !sql.includes('WHERE')) return { rows: [] };
         if (sql.includes('FROM classes') && !sql.includes('WHERE')) return { rows: [] };
@@ -124,7 +125,7 @@ test('loadAcademicContext performs parameterized lookups only for explicitly nam
         assert.equal(calls.length, 7);
         const targeted = calls.slice(4);
         assert.ok(targeted.every(call => call.params?.length === 1 && call.params[0].startsWith('%') && call.params[0].endsWith('%')));
-        assert.ok(targeted.every(call => !/SELECT\\s+\\*/i.test(call.sql)));
+        assert.ok(targeted.every(call => !/SELECT\s+\*/i.test(call.sql)));
     } finally {
         pool.query = originalQuery;
     }
