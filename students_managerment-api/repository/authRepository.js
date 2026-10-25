@@ -744,6 +744,29 @@ const rotateRefreshToken = async (
     try {
         await client.query('BEGIN');
 
+        // Lock the session first. Password changes/resets revoke sessions
+        // before refresh tokens, so using the same lock order avoids a
+        // session<->refresh-token deadlock during concurrent refresh/revoke.
+        const activeSession = await client.query(
+            `
+            SELECT id
+            FROM sessions
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            FOR UPDATE
+            `,
+            [sessionId, userId]
+        );
+
+        if (activeSession.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        // Consume the presented token only after owning the session lock.
+        // Concurrent refreshes still race on this conditional update and
+        // exactly one request can rotate the same token.
         const consumed = await client.query(
             `
             UPDATE refresh_tokens
@@ -753,13 +776,6 @@ const rotateRefreshToken = async (
               AND session_id = $3
               AND revoked_at IS NULL
               AND expires_at > CURRENT_TIMESTAMP
-              AND EXISTS (
-                  SELECT 1
-                  FROM sessions
-                  WHERE id = $3
-                    AND user_id = $2
-                    AND revoked_at IS NULL
-              )
             RETURNING id
             `,
             [oldTokenId, userId, sessionId]
@@ -784,21 +800,15 @@ const rotateRefreshToken = async (
             [userId, sessionId, newTokenHash, expiresAt]
         );
 
-        const updatedSession = await client.query(
+        await client.query(
             `
             UPDATE sessions
             SET last_used_at = CURRENT_TIMESTAMP
             WHERE id = $1
               AND user_id = $2
-              AND revoked_at IS NULL
-            RETURNING id
             `,
             [sessionId, userId]
         );
-
-        if (updatedSession.rowCount !== 1) {
-            throw new Error('Session đã bị thu hồi trong lúc refresh token');
-        }
 
         await client.query('COMMIT');
         return inserted.rows[0];
@@ -809,7 +819,6 @@ const rotateRefreshToken = async (
         client.release();
     }
 };
-
 
 // ======================================================
 // REVOKE REFRESH TOKEN BY ID
