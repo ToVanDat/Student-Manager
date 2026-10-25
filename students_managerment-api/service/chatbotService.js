@@ -111,10 +111,23 @@ async function loadAcademicContext(role, question = '') {
         semesters: semesters.rows
     };
 
+    const subjectTerm = extractSubjectSearchTerm(question);
     const departmentTerm = extractDepartmentSearchTerm(question);
     const classTerm = extractClassSearchTerm(question);
     const semesterTerm = extractSemesterSearchTerm(question);
     const targetedLookups = [];
+    if (subjectTerm) {
+        targetedLookups.push(
+            pool.query(
+                `SELECT subject_code, subject_name, credits
+                 FROM subjects
+                 WHERE subject_code ILIKE $1 OR subject_name ILIKE $1
+                 ORDER BY subject_name
+                 LIMIT 20`,
+                [`%${subjectTerm}%`]
+            ).then(result => { context.subjectMatches = result.rows; })
+        );
+    }
     if (departmentTerm) {
         targetedLookups.push(
             pool.query(
