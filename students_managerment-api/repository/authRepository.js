@@ -293,6 +293,67 @@ const updateUserPassword = async (
     return result.rows[0] || null;
 };
 
+// Update the credential and revoke every existing session in one transaction.
+// This prevents a password change from succeeding while old refresh credentials
+// remain active because a later revocation query failed.
+const updatePasswordAndRevokeSessions = async (userId, passwordHash) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const updatedUser = await client.query(
+            `
+            UPDATE users
+            SET password_hash = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+              AND is_active = TRUE
+            RETURNING id, username, email, role, is_active, updated_at
+            `,
+            [passwordHash, userId]
+        );
+
+        if (updatedUser.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const revokedSessions = await client.query(
+            `
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [userId]
+        );
+
+        await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            `,
+            [userId]
+        );
+
+        await client.query('COMMIT');
+
+        return {
+            user: updatedUser.rows[0],
+            revokedSessionIds: revokedSessions.rows.map(row => row.id)
+        };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 
 
 // ======================================================
@@ -956,6 +1017,7 @@ module.exports = {
     updateUserProfile,
 
     updateUserPassword,
+    updatePasswordAndRevokeSessions,
     
 
 
