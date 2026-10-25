@@ -1280,6 +1280,7 @@ export const useChat = () => {
 
         setMessages(prev => [...prev, optimisticMessage]);
         let createdMessageId = null;
+        const messageCreateStartedAt = Date.now();
 
         try {
             const messageResponse = await chatApi.sendMessage(activeId, placeholder);
@@ -1340,10 +1341,70 @@ export const useChat = () => {
 
             return uploadedFile;
         } catch (error) {
+            // The upload or message-create response may time out after the
+            // server has committed. Reconcile history first to avoid a duplicate
+            // message when the user retries.
+            let recoveredMessage = null;
+            try {
+                if (createdMessageId == null) {
+                    const historyResponse = await chatApi.getMessages(activeId, 1, 50);
+                    const recentMessages = historyResponse.data?.data || [];
+                    const candidates = recentMessages.filter(item => {
+                        const createdAt = Date.parse(item.created_at || '');
+                        return Number(item.sender_id) === Number(currentUserId) &&
+                            String(item.content || '') === placeholder &&
+                            Number.isFinite(createdAt) &&
+                            createdAt >= messageCreateStartedAt - 15_000 &&
+                            createdAt <= Date.now() + 15_000;
+                    });
+                    recoveredMessage = candidates.sort((left, right) =>
+                        Math.abs(Date.parse(left.created_at) - messageCreateStartedAt) -
+                        Math.abs(Date.parse(right.created_at) - messageCreateStartedAt)
+                    )[0] || null;
+                    if (recoveredMessage?.id) createdMessageId = recoveredMessage.id;
+                }
+
+                if (createdMessageId != null) {
+                    const filesResponse = await chatApi.getFilesByMessageId(createdMessageId);
+                    const savedFiles = filesResponse.data?.files || [];
+                    const uploadedFile = savedFiles.find(saved =>
+                        String(saved.file_name || '') === String(file.name) &&
+                        (!file.type || String(saved.mime_type || '') === String(file.type))
+                    );
+                    if (uploadedFile) {
+                        setMessages(prev => prev.map(item =>
+                            item.tempId === tempId || Number(item.id) === Number(createdMessageId)
+                                ? {
+                                    ...item,
+                                    ...recoveredMessage,
+                                    id: createdMessageId,
+                                    tempId: undefined,
+                                    status: 'sent',
+                                    uploadProgress: 100,
+                                    files: savedFiles
+                                }
+                                : item
+                        ));
+                        return uploadedFile;
+                    }
+                }
+            } catch (reconciliationError) {
+                console.warn('[Chat] attachment upload reconciliation failed', {
+                    messageId: createdMessageId,
+                    status: reconciliationError?.response?.status || null
+                });
+            }
+
             setMessages(prev => prev.map(item =>
                 item.tempId === tempId ||
                 (createdMessageId != null && Number(item.id) === Number(createdMessageId))
-                    ? { ...item, status: 'failed', uploadProgress: 0 }
+                    ? {
+                        ...item,
+                        ...(recoveredMessage || {}),
+                        id: createdMessageId ?? item.id,
+                        status: 'failed',
+                        uploadProgress: 0
+                    }
                     : item
             ));
             throw error;
