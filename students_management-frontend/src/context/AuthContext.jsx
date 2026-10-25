@@ -445,10 +445,36 @@ const updateUser = (partialUser) => {
                 socketId: socket.id
             });
 
-            // Do not manually disconnect/reconnect here for ordinary
-            // transport/network disconnects. Socket.IO handles automatic
-            // reconnection. Server namespace disconnect is an auth/session
-            // decision and is handled by connect_error/session:revoked.
+            // Ordinary transport/network loss is recovered by Socket.IO.
+            // A server-initiated namespace disconnect is different: Socket.IO
+            // will not reconnect automatically. Refresh once so an expired AT
+            // can recover, while a revoked session is rejected by the API.
+            if (
+                reason === 'io server disconnect' &&
+                sessionStorage.getItem('auth:login-in-progress') !== 'true'
+            ) {
+                refreshAccessToken()
+                    .then((newToken) => {
+                        setAccessToken(newToken);
+                    })
+                    .catch((refreshError) => {
+                        if (refreshError.response?.status !== 401) {
+                            console.warn('[SOCKET][reconnect deferred]', refreshError.message);
+                            return;
+                        }
+
+                        void shutdownE2EEClient().catch(() => {});
+                        setApiAccessToken(null);
+                        localStorage.removeItem('user');
+                        setAccessToken(null);
+                        setUser(null);
+                        setAuthRestoreError('');
+                        socket.disconnect();
+                        if (window.location.pathname !== '/login') {
+                            window.location.href = '/login';
+                        }
+                    });
+            }
         };
 
         socket.on('connect', handleConnect);
