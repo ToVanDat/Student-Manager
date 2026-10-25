@@ -909,6 +909,46 @@ export default function useWebRTCCall() {
             }
         };
 
+        const onSocketRateLimit = data => {
+            const eventName = data?.event;
+            if (typeof eventName !== 'string' || !eventName.startsWith('call:')) return;
+
+            const current = callRef.current;
+            if (!current) return;
+
+            const retrySeconds = Number.isFinite(Number(data.retryAfterMs)) && Number(data.retryAfterMs) > 0
+                ? Math.max(1, Math.ceil(Number(data.retryAfterMs) / 1000))
+                : null;
+            const retryHint = retrySeconds
+                ? ` Thử lại sau khoảng ${retrySeconds} giây.`
+                : ' Vui lòng thử lại sau ít phút.';
+            const message = 'Yêu cầu cuộc gọi bị giới hạn do thao tác quá nhanh.' + retryHint;
+
+            setError(message);
+            // These events are required to establish or recover the call. If
+            // one is dropped, continuing to show "calling/connecting" is false.
+            // ICE trickle can be throttled independently after connection; in
+            // that case keep the active call alive and show the warning only.
+            const setupEvents = new Set([
+                'call:start',
+                'call:accept',
+                'call:offer',
+                'call:answer',
+                'call:reconnect-request'
+            ]);
+            if (setupEvents.has(eventName)) {
+                cleanup();
+                return;
+            }
+
+            if (
+                eventName === 'call:ice-candidate' &&
+                callConnectedAtRef.current === null
+            ) {
+                failConnection(message, false);
+            }
+        };
+
         const onSocketConnect = () => socket.emit('call:sync-pending');
 
         socket.on('connect', onSocketConnect);
@@ -922,6 +962,7 @@ export default function useWebRTCCall() {
         socket.on('call:timeout', onTimeout);
         socket.on('call:ended', onEnded);
         socket.on('call:error', onError);
+        socket.on('socket:rate-limit', onSocketRateLimit);
 
         // Handle hooks mounted after Socket.IO has already connected.
         if (socket.connected) socket.emit('call:sync-pending');
@@ -938,6 +979,7 @@ export default function useWebRTCCall() {
             socket.off('call:timeout', onTimeout);
             socket.off('call:ended', onEnded);
             socket.off('call:error', onError);
+            socket.off('socket:rate-limit', onSocketRateLimit);
         };
     }, [cleanup, createPeer, addLocalTracksToPeer, failConnection, startConnectionTimeout]);
 
