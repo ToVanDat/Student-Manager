@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, clearHistory } = require('../service/chatbotService.js');
+const { normalizeHistory, clearHistory, extractSubjectSearchTerm } = require('../service/chatbotService.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
     const history = Array.from({ length: 10 }, (_, index) => ({
@@ -44,4 +44,16 @@ test('clearHistory fails closed when Redis is unavailable', async () => {
         clearHistory({ userId: '42', sessionId: 'session-abc', redis }),
         error => error.status === 503
     );
+});
+
+test('extractSubjectSearchTerm detects an explicitly named Vietnamese or English subject', () => {
+    assert.equal(extractSubjectSearchTerm('Cho tôi biết môn học Toán rời rạc?'), 'Toán rời rạc');
+    assert.equal(extractSubjectSearchTerm('Môn: CS101'), 'CS101');
+    assert.equal(extractSubjectSearchTerm('Find subject Database Systems'), 'Database Systems');
+});
+
+test('extractSubjectSearchTerm ignores unrelated or incomplete questions', () => {
+    assert.equal(extractSubjectSearchTerm('Xin chào, tôi cần tư vấn'), null);
+    assert.equal(extractSubjectSearchTerm('Môn học nào có nhiều tín chỉ?'), null);
+    assert.equal(extractSubjectSearchTerm(null), null);
 });
