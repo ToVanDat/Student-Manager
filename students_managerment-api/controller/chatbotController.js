@@ -23,3 +23,19 @@ exports.chat = async (req, res) => {
         });
     }
 };
+
+
+exports.clearHistory = async (req, res) => {
+    try {
+        await chatbotService.clearHistory({
+            userId: req.user.sub,
+            sessionId: req.user.sessionId
+        });
+        return res.json({ message: 'Đã xóa lịch sử cuộc trò chuyện hiện tại' });
+    } catch (error) {
+        const status = Number.isInteger(error.status) ? error.status : 500;
+        return res.status(status).json({
+            message: status === 500 ? 'Không thể xóa lịch sử trợ lý lúc này.' : error.message
+        });
+    }
+};
