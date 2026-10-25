@@ -21,6 +21,18 @@ const e2eeRouter = require('../router/e2eeRouter');
 const e2eeRelayRouter = require('../router/e2eeRelayRouter');
 
 const app = express();
+
+// Trust only an explicitly configured number of reverse-proxy hops.
+// Leave unset for direct/local development. Never use blanket "true".
+const trustProxyHops = process.env.TRUST_PROXY_HOPS;
+if (trustProxyHops !== undefined && trustProxyHops !== '') {
+    if (!/^[1-9]\\d*$/.test(trustProxyHops)) {
+        throw new Error('TRUST_PROXY_HOPS must be a positive integer');
+    }
+
+    app.set('trust proxy', Number(trustProxyHops));
+}
+
 app.disable('x-powered-by');
 
 // Baseline security headers. TLS/HSTS belongs to the reverse proxy.
