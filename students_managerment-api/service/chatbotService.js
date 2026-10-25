@@ -77,14 +77,14 @@ async function loadAcademicContext(role) {
     return context;
 }
 
-async function clearHistory({ userId, sessionId }) {
+async function clearHistory({ userId, sessionId, redis = redisClient }) {
     if (!redisClient.isReady) {
         const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
         error.status = 503;
         throw error;
     }
     const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
-    await redisClient.del(historyKey);
+    await redis.del(historyKey);
     return true;
 }
 async function answer({ userId, sessionId, role, message }) {
