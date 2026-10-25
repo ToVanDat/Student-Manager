@@ -1,7 +1,8 @@
 import {
     createContext,
     useEffect,
-    useState
+    useState,
+    useCallback
 } from 'react';
 
 import { logoutApi } from '@/api/authApi.js';
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     const [accessToken, setAccessToken] = useState(null);
     const [user, setUser] = useState(getStoredUser);
     const [isAuthLoading, setIsAuthLoading] = useState(true);
+    const [authRestoreError, setAuthRestoreError] = useState('');
 
     // Đồng bộ khi Axios interceptor refresh token sau một request 401.
     useEffect(() => {
@@ -69,21 +71,28 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     // Restore the session from the HttpOnly refresh cookie after a hard reload.
-    // No cached access token is read from persistent browser storage.
-    useEffect(() => {
-        let active = true;
-        refreshAccessToken()
-            .catch(error => {
-                if (error.response?.status !== 401) {
-                    console.warn('[AUTH] Session restoration temporarily failed:', error.message);
-                }
-            })
-            .finally(() => {
-                if (active) setIsAuthLoading(false);
-            });
-
-        return () => { active = false; };
+    // A transient network/5xx failure is not proof that the user is logged out.
+    const restoreSession = useCallback(async () => {
+        setIsAuthLoading(true);
+        setAuthRestoreError('');
+        try {
+            await refreshAccessToken();
+        } catch (error) {
+            if (error.response?.status !== 401) {
+                console.warn('[AUTH] Session restoration temporarily failed:', error.message);
+                setAuthRestoreError('Không thể kết nối dịch vụ xác thực. Phiên đăng nhập chưa được xác định; hãy thử lại khi kết nối ổn định.');
+            } else {
+                setAuthRestoreError('');
+                setApiAccessToken(null);
+            }
+        } finally {
+            setIsAuthLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        void restoreSession();
+    }, [restoreSession]);
 
 const updateUser = (partialUser) => {
         setUser(previous => {
@@ -437,6 +446,8 @@ const updateUser = (partialUser) => {
                 updateUser,
                 isAuthenticated: !!accessToken,
                 isAuthLoading,
+                authRestoreError,
+                retrySessionRestore: restoreSession,
                 webRTCCall
             }}
         >
