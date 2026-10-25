@@ -22,7 +22,7 @@ The backend makes server-to-server requests to Ollama; the browser never connect
 
 The first release grounds responses in read-only subject and semester catalogs. Admin prompts additionally receive aggregate counts only. No student PII, grades, or individual enrollment records are sent to the model. Student accounts are not yet linked to student rows through a verified foreign key, so personal grade/schedule lookup is intentionally unavailable to all chatbot users until that identity mapping and row-level authorization are audited and implemented.
 
-Conversation history is held only in browser memory for the current page session. The backend does not persist prompts or responses. Do not send passwords, access/refresh tokens, identity documents, or sensitive personal data to the assistant. Model output is untrusted text; it is not executed as SQL, HTML, or application commands.
+Conversation history is stored in Redis, scoped to the authenticated user and current login session, with a one-hour TTL. It is not written to PostgreSQL and is removed automatically when the Redis key expires. Do not send passwords, access/refresh tokens, identity documents, or sensitive personal data to the assistant. Model output is untrusted text; it is not executed as SQL, HTML, or application commands.
 
 ## Face login decision
 
