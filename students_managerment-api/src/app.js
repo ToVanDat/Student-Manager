@@ -26,7 +26,7 @@ const app = express();
 // Leave unset for direct/local development. Never use blanket "true".
 const trustProxyHops = process.env.TRUST_PROXY_HOPS;
 if (trustProxyHops !== undefined && trustProxyHops !== '') {
-    if (!/^[1-9]\\d*$/.test(trustProxyHops)) {
+    if (!/^[1-9][0-9]*$/.test(trustProxyHops)) {
         throw new Error('TRUST_PROXY_HOPS must be a positive integer');
     }
 
