@@ -21,7 +21,8 @@ test('normalizeHistory strips unsupported roles and bounds message content', () 
         null
     ]);
     assert.equal(result.length, 2);
-    assert.equal(result[0].role, 'user');
+    assert.equal(result[0].role, 'assistant');
     assert.equal(result[0].content.length, 4000);
+    assert.equal(result[1].role, 'user');
     assert.equal(result[1].content, 'hello');
 });
