@@ -1276,22 +1276,13 @@ const refresh = async (
     }
 
     if (!rotatedToken) {
-        // Another request may have rotated this token after the initial
-        // lookup. Re-check its historical state under the session lock.
+        // This request observed an active token before attempting rotation.
+        // A competing tab/request may have consumed it in the meantime.
+        // Do not classify this race as replay: doing so would revoke the
+        // legitimate session when two refreshes overlap. A later request
+        // presenting the already-revoked token is handled by the historical
+        // lookup above and triggers replay response.
         await removeAccessTokenFromRedis(newAccessToken);
-
-        const revokedSession = await authRepository.revokeSessionOnRefreshTokenReuse(
-            refreshTokenHash,
-            user.id,
-            session.id
-        );
-
-        if (revokedSession) {
-            emitSessionRevoked(
-                revokedSession.id,
-                'REFRESH_TOKEN_REUSE'
-            );
-        }
 
         throw new Error(
             'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
