@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, clearHistory, extractSubjectSearchTerm, loadAcademicContext } = require('../service/chatbotService.js');
+const { normalizeHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
@@ -80,6 +80,51 @@ test('loadAcademicContext includes only public class and department catalog fiel
         assert.equal(calls.length, 4);
         assert.ok(calls.every(call => call.sql.includes('LIMIT $1') ? call.params?.[0] === 80 : true));
         assert.ok(calls.every(call => !/SELECT\s+\*/i.test(call.sql)));
+    } finally {
+        pool.query = originalQuery;
+    }
+});
+
+test('catalog term extractors recognize explicit department, class and semester names', () => {
+    assert.equal(extractDepartmentSearchTerm('Tìm khoa Công nghệ thông tin'), 'Công nghệ thông tin');
+    assert.equal(extractDepartmentSearchTerm('department: IT'), 'IT');
+    assert.equal(extractClassSearchTerm('Thông tin lớp CNTT K20'), 'CNTT K20');
+    assert.equal(extractClassSearchTerm('class: IT01'), 'IT01');
+    assert.equal(extractSemesterSearchTerm('Học kỳ: HK1'), 'HK1');
+    assert.equal(extractSemesterSearchTerm('semester Fall 2026'), 'Fall 2026');
+});
+
+test('catalog term extractors ignore generic questions and missing values', () => {
+    assert.equal(extractDepartmentSearchTerm('Khoa nào có ngành công nghệ?'), null);
+    assert.equal(extractClassSearchTerm('Lớp nào đang tuyển sinh?'), null);
+    assert.equal(extractSemesterSearchTerm('Học kỳ nào mới nhất?'), null);
+    assert.equal(extractClassSearchTerm(null), null);
+});
+
+test('loadAcademicContext performs parameterized lookups only for explicitly named catalog terms', async () => {
+    const originalQuery = pool.query;
+    const calls = [];
+    pool.query = async (sql, params) => {
+        calls.push({ sql, params });
+        if (sql.includes('FROM subjects')) return { rows: [] };
+        if (sql.includes('FROM semesters') && !sql.includes('WHERE')) return { rows: [] };
+        if (sql.includes('FROM departments') && !sql.includes('WHERE')) return { rows: [] };
+        if (sql.includes('FROM classes') && !sql.includes('WHERE')) return { rows: [] };
+        if (sql.includes('FROM departments') && sql.includes('WHERE')) return { rows: [{ department_code: 'IT', department_name: 'Information Technology' }] };
+        if (sql.includes('FROM classes') && sql.includes('WHERE')) return { rows: [{ class_code: 'IT01', class_name: 'IT Class' }] };
+        if (sql.includes('FROM semesters') && sql.includes('WHERE')) return { rows: [{ semester_name: 'Fall', academic_year: '2026' }] };
+        throw new Error('Unexpected chatbot context query');
+    };
+
+    try {
+        const context = await loadAcademicContext('student', 'Khoa: Information Technology; lớp: IT01; học kỳ: Fall 2026');
+        assert.equal(context.departmentMatches[0].department_code, 'IT');
+        assert.equal(context.classMatches[0].class_code, 'IT01');
+        assert.equal(context.semesterMatches[0].semester_name, 'Fall');
+        assert.equal(calls.length, 7);
+        const targeted = calls.slice(4);
+        assert.ok(targeted.every(call => call.params?.length === 1 && call.params[0].startsWith('%') && call.params[0].endsWith('%')));
+        assert.ok(targeted.every(call => !/SELECT\\s+\\*/i.test(call.sql)));
     } finally {
         pool.query = originalQuery;
     }
