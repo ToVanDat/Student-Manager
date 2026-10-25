@@ -52,9 +52,9 @@ export const logoutApi = async () => {
     {
       withCredentials: true,
 
-      headers: {
+      headers: accessToken ? {
         Authorization: `Bearer ${accessToken}`,
-      },
+      } : {},
     },
   );
 
