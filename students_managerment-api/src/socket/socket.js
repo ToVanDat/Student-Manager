@@ -1134,7 +1134,7 @@ const initSocket = (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
+        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' } = {}) => {
             if (!await allowRealtimeEvent('call:reject')) return;
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
