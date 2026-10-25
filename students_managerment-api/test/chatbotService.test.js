@@ -106,7 +106,7 @@ test('loadAcademicContext performs parameterized lookups only for explicitly nam
     const calls = [];
     pool.query = async (sql, params) => {
         calls.push({ sql, params });
-        if (sql.includes('FROM subjects')) return { rows: [] };
+        if (sql.includes('FROM subjects') && sql.includes('WHERE')) return { rows: [{ subject_code: 'CS101', subject_name: 'Database Systems', credits: 3 }] };\n        if (sql.includes('FROM subjects')) return { rows: [] };
         if (sql.includes('FROM semesters') && !sql.includes('WHERE')) return { rows: [] };
         if (sql.includes('FROM departments') && !sql.includes('WHERE')) return { rows: [] };
         if (sql.includes('FROM classes') && !sql.includes('WHERE')) return { rows: [] };
