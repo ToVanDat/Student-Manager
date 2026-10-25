@@ -25,9 +25,33 @@ const isAccessTokenActive = async (accessToken, userId) => {
 };
 
 const initSocket = (server) => {
+    // Keep Socket.IO's browser-origin policy aligned with Express CORS.
+    // Do not use wildcard origins because credentialed browser clients are supported.
+    const configuredOrigins = (process.env.FRONTEND_URLS || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
+    const localDevelopmentOrigins = process.env.NODE_ENV === 'production'
+        ? []
+        : [
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'https://student-manager.local'
+        ];
+    const allowedOrigins = new Set([
+        ...localDevelopmentOrigins,
+        process.env.FRONTEND_URL,
+        ...configuredOrigins
+    ].filter(Boolean));
+
     io = new Server(server, {
         cors: {
-            origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+            origin(origin, callback) {
+                if (!origin || allowedOrigins.has(origin)) {
+                    return callback(null, true);
+                }
+                return callback(new Error('Origin not allowed by Socket.IO CORS'));
+            },
             credentials: true
         }
     });
