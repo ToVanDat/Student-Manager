@@ -932,9 +932,11 @@ export default function useWebRTCCall() {
             const setupEvents = new Set([
                 'call:start',
                 'call:accept',
+                'call:reject',
                 'call:offer',
                 'call:answer',
-                'call:reconnect-request'
+                'call:reconnect-request',
+                'call:connected'
             ]);
             if (setupEvents.has(eventName)) {
                 // Keep the persisted call lifecycle in sync with the local UI.
@@ -948,7 +950,7 @@ export default function useWebRTCCall() {
                     });
                 } else if (
                     socket.connected &&
-                    ['call:offer', 'call:answer', 'call:reconnect-request'].includes(eventName)
+                    ['call:reject', 'call:offer', 'call:answer', 'call:reconnect-request', 'call:connected'].includes(eventName)
                 ) {
                     socket.emit('call:end', {
                         callId: current.callId,
