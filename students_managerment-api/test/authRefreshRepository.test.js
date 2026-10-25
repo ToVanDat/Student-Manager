@@ -127,3 +127,32 @@ test('refresh-token replay transaction rolls back when the token does not belong
         assert.equal(calls.some(call => call.statement.startsWith('UPDATE refresh_tokens SET revoked_at')), false);
     });
 });
+
+test('refresh rotation rolls back token consumption when replacement insert fails', async () => {
+    await withMockClient(async (sql) => {
+        if (sql === 'BEGIN' || sql === 'ROLLBACK') return { rows: [], rowCount: 0 };
+        if (sql.startsWith('SELECT id FROM sessions')) return { rows: [{ id: 'session-1' }], rowCount: 1 };
+        if (sql.startsWith('UPDATE refresh_tokens SET revoked_at')) return { rows: [{ id: 10 }], rowCount: 1 };
+        if (sql.startsWith('INSERT INTO refresh_tokens')) {
+            throw new Error('simulated replacement insert failure');
+        }
+        throw new Error('Unexpected SQL: ' + sql);
+    }, async (calls) => {
+        await assert.rejects(
+            authRepository.rotateRefreshToken(
+                10, 7, 'session-1', 'replacement-hash', new Date('2030-01-01T00:00:00Z')
+            ),
+            /simulated replacement insert failure/
+        );
+
+        const sessionLockIndex = calls.findIndex(call => call.statement.startsWith('SELECT id FROM sessions'));
+        const consumeIndex = calls.findIndex(call => call.statement.startsWith('UPDATE refresh_tokens SET revoked_at'));
+        const insertIndex = calls.findIndex(call => call.statement.startsWith('INSERT INTO refresh_tokens'));
+        assert.ok(sessionLockIndex > 0);
+        assert.ok(consumeIndex > sessionLockIndex);
+        assert.ok(insertIndex > consumeIndex);
+        assert.equal(calls.at(-2).statement, 'ROLLBACK');
+        assert.equal(calls.at(-1).statement, 'RELEASE');
+        assert.equal(calls.some(call => call.statement === 'COMMIT'), false);
+    });
+});
