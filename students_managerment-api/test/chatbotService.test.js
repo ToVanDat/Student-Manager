@@ -1,6 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, clearHistory, extractSubjectSearchTerm } = require('../service/chatbotService.js');
+const { normalizeHistory, clearHistory, extractSubjectSearchTerm, loadAcademicContext } = require('../service/chatbotService.js');
+const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
     const history = Array.from({ length: 10 }, (_, index) => ({
@@ -56,4 +57,30 @@ test('extractSubjectSearchTerm ignores unrelated or incomplete questions', () =>
     assert.equal(extractSubjectSearchTerm('Xin chào, tôi cần tư vấn'), null);
     assert.equal(extractSubjectSearchTerm('Môn học nào có nhiều tín chỉ?'), null);
     assert.equal(extractSubjectSearchTerm(null), null);
+});
+
+test('loadAcademicContext includes only public class and department catalog fields', async () => {
+    const originalQuery = pool.query;
+    const calls = [];
+    pool.query = async (sql, params) => {
+        calls.push({ sql, params });
+        if (sql.includes('FROM subjects')) return { rows: [{ subject_code: 'CS101', subject_name: 'Intro', credits: 3 }] };
+        if (sql.includes('FROM semesters')) return { rows: [{ semester_name: 'Fall', academic_year: '2026' }] };
+        if (sql.includes('FROM departments')) return { rows: [{ department_code: 'IT', department_name: 'Information Technology' }] };
+        if (sql.includes('FROM classes')) return { rows: [{ class_code: 'IT01', class_name: 'IT Class', department_code: 'IT', department_name: 'Information Technology' }] };
+        throw new Error('Unexpected chatbot context query');
+    };
+
+    try {
+        const context = await loadAcademicContext('student', 'show me class information');
+        assert.equal(context.departments[0].department_code, 'IT');
+        assert.equal(context.classes[0].class_code, 'IT01');
+        assert.equal(context.catalog[0].subject_code, 'CS101');
+        assert.equal(context.semesters[0].semester_name, 'Fall');
+        assert.equal(calls.length, 4);
+        assert.ok(calls.every(call => call.sql.includes('LIMIT $1') ? call.params?.[0] === 80 : true));
+        assert.ok(calls.every(call => !/SELECT\s+\*/i.test(call.sql)));
+    } finally {
+        pool.query = originalQuery;
+    }
 });
