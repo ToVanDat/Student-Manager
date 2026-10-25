@@ -1,4 +1,5 @@
 const pool = require('../src/config/database.js');
+const { redisClient } = require('../src/config/redis.js');
 
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -76,11 +77,23 @@ async function loadAcademicContext(role) {
     return context;
 }
 
-async function answer({ role, message, history = [] }) {
+async function answer({ userId, sessionId, role, message }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
         error.status = 400;
         throw error;
+    }
+
+    if (!redisClient.isReady) {
+        const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
+        error.status = 503;
+        throw error;
+    }
+    const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
+    let history = [];
+    const storedHistory = await redisClient.get(historyKey);
+    if (storedHistory) {
+        try { history = normalizeHistory(JSON.parse(storedHistory)); } catch { history = []; }
     }
 
     const config = getOllamaConfig();
@@ -100,7 +113,7 @@ async function answer({ role, message, history = [] }) {
                 `CONTEXT (JSON): ${JSON.stringify(context)}`
             ].join('\n')
         },
-        ...normalizeHistory(history),
+        ...history,
         { role: 'user', content: message.trim() }
     ];
 
@@ -136,6 +149,10 @@ async function answer({ role, message, history = [] }) {
         unavailable.status = 502;
         throw unavailable;
     }
+
+    const nextHistory = [...history, { role: 'user', content: message.trim() }, { role: 'assistant', content: content.trim() }]
+        .slice(-MAX_HISTORY_MESSAGES);
+    await redisClient.set(historyKey, JSON.stringify(nextHistory), { EX: 60 * 60 });
 
     return {
         message: content.trim(),
