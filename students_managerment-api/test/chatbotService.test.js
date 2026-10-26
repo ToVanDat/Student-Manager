@@ -287,6 +287,6 @@ test('conversation CRUD is scoped to the user session and stores history separat
 
 test('conversation rename and delete reject IDs not present in the caller index', async () => {
     const redis = { isReady: true, get: async () => null, set: async () => {}, del: async () => {} };
-    await assert.rejects(renameConversation({ userId: '7', sessionId: 's1', conversationId: '00000000-0000-0000-0000-000000000000', title: 'x', redis }), error => error.status === 404);
-    await assert.rejects(deleteConversation({ userId: '7', sessionId: 's1', conversationId: '00000000-0000-0000-0000-000000000000', redis }), error => error.status === 404);
+    await assert.rejects(renameConversation({ userId: '7', sessionId: 's1', conversationId: '123e4567-e89b-42d3-a456-426614174000', title: 'x', redis }), error => error.status === 404);
+    await assert.rejects(deleteConversation({ userId: '7', sessionId: 's1', conversationId: '123e4567-e89b-42d3-a456-426614174000', redis }), error => error.status === 404);
 });
