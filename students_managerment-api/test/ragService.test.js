@@ -69,6 +69,24 @@ test('createDocumentEmbedding validates the 768-dimensional response', async () 
     }
 });
 
+test('createDocumentEmbedding aborts when the requesting client disconnects', async () => {
+    const controller = new AbortController();
+    let requestSignal;
+    const fetchImpl = async (_url, options) => {
+        requestSignal = options.signal;
+        return new Promise((_resolve, reject) => {
+            requestSignal.addEventListener('abort', () => reject(requestSignal.reason), { once: true });
+            controller.abort(new Error('client disconnected'));
+        });
+    };
+
+    await assert.rejects(
+        createDocumentEmbedding('test', { fetchImpl, signal: controller.signal }),
+        /client disconnected/
+    );
+    assert.equal(requestSignal.aborted, true);
+});
+
 test('document retrieval scope never exposes admin-only material to student users', () => {
     assert.deepEqual(getAllowedDocumentVisibility('user'), ['all', 'student']);
     assert.deepEqual(getAllowedDocumentVisibility('student'), ['all', 'student']);
