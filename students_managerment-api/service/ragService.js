@@ -25,7 +25,8 @@ async function getRagSchemaReadiness(queryable = pool) {
     const result = await queryable.query(
         `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
                 to_regclass('assistant_document_chunks') IS NOT NULL AS chunks_ready,
-                EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_ready`
+                EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_ready,
+                EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'assistant_documents' AND column_name = 'archived_at') AS archive_ready`
     );
     return result.rows[0];
 }
@@ -323,10 +324,12 @@ async function setDocumentArchived({ documentId, archived, queryable = pool }) {
 }
 
 async function listDocuments() {
-    assertRagSchemaReady(await getRagSchemaReadiness());
+    const readiness = await getRagSchemaReadiness();
+    assertRagSchemaReady(readiness);
+    const archivedAtExpression = readiness.archive_ready ? 'd.archived_at' : 'NULL::timestamptz';
     const result = await pool.query(
         `SELECT d.id, d.title, d.source_name, d.visibility, d.status,
-                d.created_at, d.updated_at, d.archived_at,
+                d.created_at, d.updated_at, ${archivedAtExpression} AS archived_at,
                 COUNT(c.id)::integer AS chunk_count
          FROM assistant_documents d
          LEFT JOIN assistant_document_chunks c ON c.document_id = d.id
