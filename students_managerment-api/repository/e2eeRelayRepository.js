@@ -820,23 +820,71 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => withTr
     if (!completed.rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
 });
 
-const rollbackProvisioning = async (userId, sessionId) => withTransaction(async client => {
+const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw httpError(401, 'Thiếu xác thực thiết bị mới', 'E2EE_DEVICE_AUTH_REQUIRED');
+    }
+    const tokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     const { rows } = await client.query(
-        `SELECT assigned_device_id, completed_at FROM e2ee_sdk_provisioning_sessions
-         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' FOR UPDATE`,
+        `SELECT assigned_device_id, completed_at, status
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('linked_pending_ack', 'completed')
+         FOR UPDATE`,
         [sessionId, userId]
     );
-    if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
-    if (rows[0].assigned_device_id && rows[0].completed_at) {
-        await client.query(
+    const session = rows[0];
+    // Expiry cleanup may already have removed the pending device. A rollback
+    // retry after that cleanup is a safe no-op; the adapter can still clear its
+    // local credential and the SDK can clear partially stored local state.
+    if (!session) {
+        const existing = await client.query(
+            `SELECT 1 FROM e2ee_sdk_provisioning_sessions
+             WHERE session_id = $1 AND owner_user_id = $2
+               AND status IN ('expired', 'rolled_back') LIMIT 1`,
+            [sessionId, userId]
+        );
+        if (existing.rows[0]) return { rolledBack: false, alreadyFinalized: true };
+        throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
+    }
+    if (!session.assigned_device_id || !session.completed_at) {
+        throw httpError(409, 'Phiên liên kết thiếu thông tin thiết bị được cấp');
+    }
+    if (session.status === 'completed') {
+        const revoked = await client.query(
+            `UPDATE e2ee_sdk_devices SET enabled = FALSE, revoked_at = NOW(), device_token_hash = NULL
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND enabled = TRUE AND device_token_hash = $3
+               AND created_at <= $4
+             RETURNING id`,
+            [userId, session.assigned_device_id, tokenHash, session.completed_at]
+        );
+        if (!revoked.rows[0]) {
+            throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
+        }
+        await client.query('DELETE FROM e2ee_sdk_envelopes WHERE recipient_device_pk = $1 AND acknowledged_at IS NULL', [revoked.rows[0].id]);
+        await client.query('DELETE FROM e2ee_sdk_prekeys WHERE device_pk = $1', [revoked.rows[0].id]);
+    } else {
+        const removed = await client.query(
             `DELETE FROM e2ee_sdk_devices
              WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
-               AND revoked_at IS NULL AND created_at <= $3`,
-            [userId, rows[0].assigned_device_id, rows[0].completed_at]
+               AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
+               AND created_at <= $4
+             RETURNING id`,
+            [userId, session.assigned_device_id, tokenHash, session.completed_at]
         );
+        if (!removed.rows[0]) {
+            throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
+        }
     }
-    await client.query("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back' WHERE session_id = $1", [sessionId]);
+    await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('linked_pending_ack', 'completed')`,
+        [sessionId, userId]
+    );
+    return { rolledBack: true };
 });
 
 const deleteProvisioningSession = async (userId, sessionId) => withTransaction(async client => {
