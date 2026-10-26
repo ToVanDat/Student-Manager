@@ -22,6 +22,30 @@ function acquireOllamaSlot() {
     };
 }
 
+function createOllamaAbortSignal(clientSignal, timeoutMs) {
+    const controller = new AbortController();
+    const abortFromClient = () => {
+        if (!controller.signal.aborted) {
+            controller.abort(clientSignal?.reason || new Error('Chat stream client disconnected'));
+        }
+    };
+
+    if (clientSignal?.aborted) abortFromClient();
+    else clientSignal?.addEventListener('abort', abortFromClient, { once: true });
+
+    const timeout = setTimeout(() => {
+        if (!controller.signal.aborted) controller.abort(new Error('Ollama request timed out'));
+    }, timeoutMs);
+
+    return {
+        signal: controller.signal,
+        cleanup: () => {
+            clearTimeout(timeout);
+            clientSignal?.removeEventListener('abort', abortFromClient);
+        }
+    };
+}
+
 function getOllamaConfig() {
     const rawUrl = aiConfig.ollama.baseUrl;
     let url;
@@ -318,7 +342,7 @@ async function clearHistory({ userId, sessionId, conversationId = 'default', red
     await redis.del(historyKey);
     return true;
 }
-async function answer({ userId, sessionId, role, message, conversationId = 'default', onToken = null }) {
+async function answer({ userId, sessionId, role, message, conversationId = 'default', onToken = null, signal = null }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
         error.status = 400;
@@ -388,11 +412,12 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
 
         let response;
         let content = '';
+        const ollamaAbort = createOllamaAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
         try {
             response = await fetch(`${config.baseUrl}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                signal: AbortSignal.timeout(aiConfig.ollama.requestTimeoutMs),
+                signal: ollamaAbort.signal,
                 body: JSON.stringify({
                     model: config.model,
                     messages,
@@ -450,6 +475,8 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
             const unavailable = new Error('Không thể kết nối hoặc đọc phản hồi Ollama. Hãy kiểm tra dịch vụ Ollama và OLLAMA_BASE_URL.');
             unavailable.status = 503;
             throw unavailable;
+        } finally {
+            ollamaAbort.cleanup();
         }
 
         if (typeof content !== 'string' || !content.trim()) {
