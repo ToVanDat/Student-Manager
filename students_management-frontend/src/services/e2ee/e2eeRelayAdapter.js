@@ -89,11 +89,11 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
     };
 
     const retryPendingProvisioningRollback = async () => {
-        const deviceId = await getStoredE2EEDeviceId(userId);
-        if (!deviceId || deviceId <= 1) return;
-        const sessionId = await getPendingE2EEProvisioningRollback(userId, deviceId);
-        if (!sessionId) return;
         try {
+            const deviceId = await getStoredE2EEDeviceId(userId);
+            if (!deviceId || deviceId <= 1) return;
+            const sessionId = await getPendingE2EEProvisioningRollback(userId, deviceId);
+            if (!sessionId) return;
             await finishProvisioningRollback(deviceId, sessionId);
         } catch (error) {
             console.warn('[E2EE] pending provisioning rollback remains queued', {
