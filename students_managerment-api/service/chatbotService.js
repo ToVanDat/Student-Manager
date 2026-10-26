@@ -380,7 +380,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                     'Student-to-user mapping chưa được xác minh nên không có truy vấn điểm cá nhân trong phiên bản này.',
                     `Current authenticated role: ${role}.`,
                     serializeUntrustedContext(context)
-                ].join('\\n')
+                ].join('\n')
             },
             ...history,
             { role: 'user', content: message.trim() }
