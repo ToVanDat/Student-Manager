@@ -153,7 +153,7 @@ No schema change or migration is required because `e2ee_sdk_devices.enabled` alr
 - Regression coverage checks that expired ACK removes the pending device, scrubs session payloads, commits the transaction, and never executes device activation. A service-level test checks the sentinel is translated to a conflict.
 - If expiry occurs in the narrow interval after the initial cleanup scan but before the final ACK update, the ACK remains fail-closed (device stays disabled); cleanup is retried on the next provisioning operation.
 
-## 9. Provisioning rollback handles a lost ACK response
+## 10. Provisioning rollback handles a lost ACK response
 
 The SDK v11 receiver catches errors after `completeProvisioning`, calls `rollbackProvisioning`, and then clears partially stored local identity/device/group state. A network interruption can occur after the ACK transaction commits but before the browser receives its response. Previously the server would reject rollback because the session was already `completed`; the SDK would still clear local state, leaving an enabled server device with no corresponding local identity state.
 
