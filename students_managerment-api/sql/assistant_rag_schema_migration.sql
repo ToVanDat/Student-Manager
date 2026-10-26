@@ -73,7 +73,7 @@ COMMENT ON TABLE assistant_documents IS
 COMMENT ON COLUMN assistant_documents.visibility IS
 'Backend-enforced retrieval scope: all, student, or admin. Student requests may retrieve only all/student documents.';
 COMMENT ON COLUMN assistant_documents.source_sha256 IS
-'SHA-256 of the original uploaded source, used for duplicate detection and integrity auditing.';
+'SHA-256 of normalized extracted UTF-8 text, used for duplicate detection and content-integrity auditing.';
 COMMENT ON COLUMN assistant_document_chunks.embedding IS
 '768-dimensional nomic-embed-text vector. Re-embed all chunks when changing embedding model or dimensions.';
 
