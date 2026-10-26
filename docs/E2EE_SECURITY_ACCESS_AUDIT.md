@@ -108,3 +108,33 @@ No live user database was accessed or modified. No migration was run. No merge w
 - The current `completeProvisioning` endpoint is authenticated by the account session and returns a device credential. Its proof-of-possession boundary should be reviewed against the SDK v11 handshake before production; do not infer that successful HTTP authentication proves possession of the primary device's local identity key.
 
 No schema change, migration, live database operation, or merge was performed for this follow-up.
+
+
+## 7. Provisioning acknowledgement now gates device activation
+
+The pinned SDK source for tag `v11.0.0` was inspected at `device/provisioning.ts`. Its receiver sequence is:
+
+1. Fetch the ready provisioning payload.
+2. Derive the ECDH shared secret and decrypt/authenticate the AES-GCM payload.
+3. Call `completeProvisioning`.
+4. Store the received identity and local device state.
+5. Call `acknowledgeProvisioning`.
+6. If a later step fails after server completion, attempt `rollbackProvisioning`.
+
+The relay adapter already stores the returned device credential during step 3. The backend previously inserted the device as enabled immediately, before the SDK had stored its local identity state and acknowledged success.
+
+### Change applied
+
+- New linked device rows are now inserted with `enabled = FALSE`.
+- The frontend relay adapter retrieves the newly issued device credential and sends it in `X-E2EE-Device-Token` when the SDK calls `acknowledgeProvisioning`.
+- The backend hashes that credential and activates only the exact device slot assigned to that pending session, matching account, linked flag, revocation state and creation-time guard.
+- The provisioning session changes to `completed` in the same database transaction as activation. A bad/missing credential or failed session transition rolls the transaction back.
+- Added repository regression tests for credential-gated activation and missing-credential rejection; the slot-allocation test also asserts that new devices are initially disabled.
+
+### Security boundary that remains
+
+This closes the window in which a newly allocated device could use its relay credential before the SDK had stored its provisioned local state and acknowledged. It does **not** provide server-verifiable proof that the caller of `completeProvisioning` actually decrypted the AES-GCM payload: that endpoint still returns the device credential to the authenticated account session that calls it. The SDK v11 provisioning callback does not pass a decrypt-derived proof parameter to the relay interface. A complete cryptographic proof-of-possession design therefore requires a compatible SDK extension/fork or a separately reviewed challenge protocol; do not describe this as fully closed.
+
+The SDK v11 source confirms decryption/authentication occurs before `completeProvisioning`, and acknowledgement follows local identity/state storage. This code-level sequence is not a substitute for a real two-browser test.
+
+No schema change or migration is required because `e2ee_sdk_devices.enabled` already exists.
