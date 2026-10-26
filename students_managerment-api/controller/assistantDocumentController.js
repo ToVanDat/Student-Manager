@@ -45,3 +45,43 @@ exports.listDocuments = async (req, res) => {
         });
     }
 };
+
+exports.archiveDocument = async (req, res) => {
+    try {
+        const document = await ragService.setDocumentArchived({
+            documentId: req.params.documentId,
+            archived: true
+        });
+        return res.json({ document });
+    } catch (error) {
+        const status = Number.isInteger(error.status) ? error.status : 500;
+        return res.status(status).json({
+            code: error.code || undefined,
+            message: error.code === 'RAG_ARCHIVE_SCHEMA_NOT_READY'
+                ? 'Chức năng lưu trữ chưa sẵn sàng. Cần kiểm tra và áp dụng migration assistant_rag_lifecycle_migration.sql.'
+                : status >= 500
+                    ? 'Không thể lưu trữ tài liệu lúc này.'
+                    : error.message
+        });
+    }
+};
+
+exports.restoreDocument = async (req, res) => {
+    try {
+        const document = await ragService.setDocumentArchived({
+            documentId: req.params.documentId,
+            archived: false
+        });
+        return res.json({ document });
+    } catch (error) {
+        const status = Number.isInteger(error.status) ? error.status : 500;
+        return res.status(status).json({
+            code: error.code || undefined,
+            message: error.code === 'RAG_ARCHIVE_SCHEMA_NOT_READY'
+                ? 'Chức năng khôi phục chưa sẵn sàng. Cần kiểm tra và áp dụng migration assistant_rag_lifecycle_migration.sql.'
+                : status >= 500
+                    ? 'Không thể khôi phục tài liệu lúc này.'
+                    : error.message
+        });
+    }
+};
