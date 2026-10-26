@@ -97,31 +97,30 @@ function createEmbeddingAbortSignal(clientSignal, timeoutMs) {
 async function createDocumentEmbedding(text, { fetchImpl = fetch, signal = null } = {}) {
     const config = getEmbeddingConfig();
     const requestAbort = createEmbeddingAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
-    let response;
     try {
-        response = await fetchImpl(config.endpoint, {
+        const response = await fetchImpl(config.endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             signal: requestAbort.signal,
             body: JSON.stringify({ model: config.model, input: text })
         });
+        if (!response.ok) {
+            const error = new Error('Không thể tạo embedding. Kiểm tra Ollama và OLLAMA_EMBEDDING_MODEL.');
+            error.status = 503;
+            throw error;
+        }
+        const payload = await response.json();
+        const embedding = payload?.embeddings?.[0];
+        if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSIONS
+            || !embedding.every(value => Number.isFinite(value))) {
+            const error = new Error('Embedding model phải trả về vector 768 chiều hợp lệ');
+            error.status = 502;
+            throw error;
+        }
+        return embedding;
     } finally {
         requestAbort.cleanup();
     }
-    if (!response.ok) {
-        const error = new Error('Không thể tạo embedding. Kiểm tra Ollama và OLLAMA_EMBEDDING_MODEL.');
-        error.status = 503;
-        throw error;
-    }
-    const payload = await response.json();
-    const embedding = payload?.embeddings?.[0];
-    if (!Array.isArray(embedding) || embedding.length !== EMBEDDING_DIMENSIONS
-        || !embedding.every(value => Number.isFinite(value))) {
-        const error = new Error('Embedding model phải trả về vector 768 chiều hợp lệ');
-        error.status = 502;
-        throw error;
-    }
-    return embedding;
 }
 
 
