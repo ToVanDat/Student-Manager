@@ -96,6 +96,7 @@ function createEmbeddingAbortSignal(clientSignal, timeoutMs) {
 }
 
 async function createDocumentEmbedding(text, { fetchImpl = fetch, signal = null } = {}) {
+    const config = getEmbeddingConfig();
     const releaseOllamaSlot = acquireOllamaSlot();
     if (!releaseOllamaSlot) {
         const error = new Error('Ollama đang xử lý yêu cầu khác. Vui lòng thử lại sau.');
@@ -105,7 +106,6 @@ async function createDocumentEmbedding(text, { fetchImpl = fetch, signal = null 
         throw error;
     }
 
-    const config = getEmbeddingConfig();
     const requestAbort = createEmbeddingAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
     try {
         const response = await fetchImpl(config.endpoint, {
