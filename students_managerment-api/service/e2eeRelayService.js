@@ -205,7 +205,11 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => {
     if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
         throw fail(401, 'Cần xác thực thiết bị E2EE mới');
     }
-    return relayRepository.acknowledgeProvisioning(userId, sessionId, deviceToken);
+    const result = await relayRepository.acknowledgeProvisioning(userId, sessionId, deviceToken);
+    if (result?.expiredOrUnavailable) {
+        throw fail(409, 'Không thể xác nhận phiên liên kết thiết bị');
+    }
+    return result;
 };
 
 const rollbackProvisioning = async (userId, sessionId) => {
