@@ -189,6 +189,10 @@ async function listDocuments() {
     return result.rows;
 }
 
+function getAllowedDocumentVisibility(role) {
+    return role === 'admin' ? ['all', 'student', 'admin'] : ['all', 'student'];
+}
+
 async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit }) {
     const schemaReady = await pool.query(
         `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
@@ -199,7 +203,7 @@ async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.re
     if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) return [];
     const query = normalizeDocumentText(question).slice(0, 4000);
     const embedding = await createDocumentEmbedding(query);
-    const allowedVisibility = role === 'admin' ? ['all', 'student', 'admin'] : ['all', 'student'];
+    const allowedVisibility = getAllowedDocumentVisibility(role);
     const result = await pool.query(
         `SELECT d.id AS document_id, d.title, d.source_name,
                 c.chunk_index, c.page_number, c.content,
@@ -234,5 +238,6 @@ module.exports = {
     createDocumentEmbedding,
     ingestTextDocument,
     retrieveDocumentContext,
+    getAllowedDocumentVisibility,
     listDocuments
 };
