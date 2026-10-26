@@ -37,7 +37,7 @@ A custom camera-based face matcher using MediaPipe/TF.js is not enabled in this 
 - Local Ollama defaults to loopback only. When the API runs inside Docker, `127.0.0.1` refers to the API container, not the Windows host; configure a private, reachable Ollama endpoint using HTTPS or a trusted private network rather than exposing port `11434` publicly.
 - For remote Ollama, use HTTPS and private network access; do not expose the model endpoint to the public internet.
 - WebAuthn requires a secure context (HTTPS, with localhost permitted for development) and correct `WEBAUTHN_ORIGIN` / `WEBAUTHN_RP_ID`.
-- No database migration is introduced by this feature.
+- The WebAuthn/passkey flow uses `user_webauthn_credentials`; its schema is defined in `sql/advanced_auth_features_migration.sql` and must be verified against the live database before applying. The separate TXT RAG MVP uses the guarded `sql/assistant_rag_schema_migration.sql`; neither migration is run automatically by the application.
 
 ## Current limitations and explicitly out-of-scope capabilities
 
