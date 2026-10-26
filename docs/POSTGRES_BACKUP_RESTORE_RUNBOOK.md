@@ -79,8 +79,8 @@ Example commands (replace placeholders only after confirming the target):
 ```bash
 mkdir -p ./private-db-backups
 chmod 700 ./private-db-backups
-docker exec -t student-management-postgres sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > ./private-db-backups/student-manager-YYYYMMDD-HHMM.dump
-docker exec -t student-management-postgres sh -lc 'pg_dumpall -U "$POSTGRES_USER" --globals-only' > ./private-db-backups/postgres-globals-YYYYMMDD-HHMM.sql
+docker exec student-management-postgres sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > ./private-db-backups/student-manager-YYYYMMDD-HHMM.dump
+docker exec student-management-postgres sh -lc 'pg_dumpall -U "$POSTGRES_USER" --globals-only' > ./private-db-backups/postgres-globals-YYYYMMDD-HHMM.sql
 sha256sum ./private-db-backups/*
 ```
 
