@@ -296,7 +296,7 @@ test('provisioning rollback revokes a completed device when ACK response was los
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push({ statement, params });
             if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
@@ -332,7 +332,7 @@ test('provisioning rollback rejects a wrong credential for a completed device', 
     const calls = [];
     const client = {
         async query(sql) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push(statement);
             if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
@@ -360,7 +360,7 @@ test('provisioning rollback treats an already expired session as an idempotent c
     const calls = [];
     const client = {
         async query(sql) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push(statement);
             if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
