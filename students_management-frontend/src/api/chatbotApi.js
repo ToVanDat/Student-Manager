@@ -20,7 +20,7 @@ export const clearChatbotHistory = async conversationId => {
     return response.data;
 };
 
-async function requestChatStream(message, conversationId, signal) {
+async function requestChatStream(message, conversationId, signal, replaceLastTurn = false) {
     const token = getAccessToken();
     return fetch(`${apiClient.defaults.baseURL || ''}/api/assistant/chat/stream`, {
         method: 'POST',
@@ -30,7 +30,7 @@ async function requestChatStream(message, conversationId, signal) {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ message, conversationId })
+        body: JSON.stringify({ message, conversationId, replaceLastTurn })
     });
 }
 
@@ -41,8 +41,8 @@ function createStreamError(message, status = null, code = null) {
     return error;
 }
 
-export const streamChatbotMessage = async (message, { signal, onToken, onDone, conversationId = 'default' } = {}) => {
-    let response = await requestChatStream(message, conversationId, signal);
+export const streamChatbotMessage = async (message, { signal, onToken, onDone, conversationId = 'default', replaceLastTurn = false } = {}) => {
+    let response = await requestChatStream(message, conversationId, signal, replaceLastTurn);
 
     // fetch() does not pass through Axios' 401 response interceptor. Refresh once
     // using the same shared refresh promise, then retry the exact stream request.
@@ -63,7 +63,7 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone, c
             );
         }
         if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-        response = await requestChatStream(message, conversationId, signal);
+        response = await requestChatStream(message, conversationId, signal, replaceLastTurn);
         if (response.status === 401) {
             setAccessToken(null);
             if (typeof window !== 'undefined') {
@@ -112,4 +112,14 @@ export const uploadAssistantDocument = async ({ file, title, visibility = 'all' 
     form.append('title', title);
     form.append('visibility', visibility);
     return (await apiClient.post('/api/assistant/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+};
+
+export const rateChatbotAnswer = async ({ conversationId = 'default', content, rating }) => {
+    if (!globalThis.crypto?.subtle || typeof TextEncoder === 'undefined') {
+        throw new Error('Trình duyệt không hỗ trợ mã hóa an toàn để gửi đánh giá.');
+    }
+    const bytes = new TextEncoder().encode(content);
+    const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+    const answerHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    return (await apiClient.post('/api/assistant/feedback', { conversationId, answerHash, rating })).data;
 };
