@@ -52,10 +52,10 @@ These are repository observations, not claims about unobserved local or hosted i
 
 ### P1 — Reliability and maintainability
 
-- The API Dockerfile uses `npm install --omit=dev` and explicitly notes that the API package lockfile is not tracked. Add a real generated lockfile before switching to `npm ci`; do not hand-edit lockfiles.
-- Docker Compose has no explicit container health checks or dependency readiness conditions. `depends_on` alone does not prove PostgreSQL/Redis are ready to accept requests.
-- Graceful shutdown is now implemented; its runtime behavior still needs a staging termination/restart exercise.
-- No dedicated liveness/readiness endpoints were observed in the inspected Express app.
+- The API package now has a tracked `package-lock.json`; the Dockerfile still uses `npm install --omit=dev`, so reproducible image installation should be reviewed against the committed lockfile before switching to `npm ci`.
+- Docker Compose now defines PostgreSQL, Redis and API health checks and gates API startup on healthy database/cache dependencies. This is configuration evidence, not a substitute for a staging failure/restart exercise.
+- Graceful shutdown is implemented; its runtime behavior still needs a staging termination/restart exercise.
+- `GET /health/live` and `GET /health/ready` are implemented; readiness checks PostgreSQL and Redis and returns 503 when a dependency is unavailable.
 - Operational monitoring, structured request correlation, alert thresholds and incident runbooks need evidence.
 - Add browser-level E2E coverage for critical journeys; current CI has unit/integration tests and build/lint checks but no configured browser E2E job in the inspected workflows.
 
@@ -147,6 +147,16 @@ The first operational slice has been added to the working branch:
 - Docker Compose now health-checks PostgreSQL, Redis and the API, and waits for database/cache health before starting the API.
 - SIGTERM/SIGINT handling closes Socket.IO (including its Redis Pub/Sub subscriber), HTTP connections, Redis and PostgreSQL with a bounded shutdown timeout.
 
-The CI runs triggered by these commits are being evaluated; do not treat this implementation as validated until the latest-commit workflows complete successfully. The API lockfile is still absent, so the Dockerfile remains on `npm install --omit=dev`; generate and commit a lockfile from a real npm environment before switching to `npm ci`.
+The latest workflow runs on commit `b4d90c8dbe828db45b2efc3ead7350f3ad4f7042` completed successfully: API tests run `40289133762` and Quality checks run `40289133740`. The API run includes backend tests, Cloudflare Worker tests, E2EE migration smoke, live PostgreSQL relay integration and frontend build; Quality checks include backend tests and frontend lint/production build.
 
-This slice does not change business tables, apply migrations or delete data. After CI validation, continue with security and data-integrity work, then browser E2E, performance, backup/restore and deployment exercises.
+This slice does not change business tables, apply migrations or delete data. Continue with E2EE lifecycle E2E, performance, backup/restore and deployment exercises.
+
+
+## 9. E2EE security access audit
+
+- Added [E2EE_SECURITY_ACCESS_AUDIT.md](./E2EE_SECURITY_ACCESS_AUDIT.md), covering account/device authorization, envelope membership, mailbox ownership, provisioning, identity rotation, encrypted attachments and R2 tickets.
+- Fixed cross-account prekey bundle retrieval so an existing direct conversation is required before the server claims one-time prekeys. Self-owned linked-device bundle retrieval remains supported.
+- Added regression tests for denied unrelated-account requests and allowed peer/self-device flows.
+- Latest API tests and Quality checks both passed on commit `b4d90c8dbe828db45b2efc3ead7350f3ad4f7042`.
+- Remaining items include primary-device revocation/recovery, privacy scope for device discovery metadata, requester-target-aware prekey abuse limits, paused-conversation attachment policy and full two-client provisioning/revocation E2E coverage.
+- This remains a static code audit plus CI evidence, not a penetration test or production certification.
