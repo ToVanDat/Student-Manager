@@ -7,7 +7,8 @@ exports.chat = async (req, res) => {
             sessionId: req.user.sessionId,
             role: req.user.role,
             message: req.body?.message,
-            conversationId: req.body?.conversationId || 'default'
+            conversationId: req.body?.conversationId || 'default',
+            replaceLastTurn: req.body?.replaceLastTurn === true
         });
         return res.json(result);
     } catch (error) {
@@ -49,6 +50,7 @@ exports.chatStream = async (req, res) => {
             role: req.user.role,
             message: req.body?.message,
             conversationId: req.body?.conversationId || 'default',
+            replaceLastTurn: req.body?.replaceLastTurn === true,
             signal: clientAbortController.signal,
             onToken: token => send('token', { token })
         });
@@ -108,4 +110,22 @@ exports.renameConversation = async (req, res) => {
 exports.deleteConversation = async (req, res) => {
     try { await chatbotService.deleteConversation({ userId: req.user.sub, sessionId: req.user.sessionId, conversationId: req.params.conversationId }); return res.json({ success: true }); }
     catch (error) { return res.status(error.status || 500).json({ message: error.status ? error.message : 'Không thể xóa hội thoại.' }); }
+};
+
+exports.rateAnswer = async (req, res) => {
+    try {
+        const result = await chatbotService.rateAnswer({
+            userId: req.user.sub,
+            sessionId: req.user.sessionId,
+            conversationId: req.body?.conversationId || 'default',
+            answerHash: req.body?.answerHash,
+            rating: req.body?.rating
+        });
+        return res.json({ success: true, ...result });
+    } catch (error) {
+        const status = Number.isInteger(error.status) ? error.status : 500;
+        return res.status(status).json({
+            message: status >= 500 ? 'Không thể lưu đánh giá lúc này.' : error.message
+        });
+    }
 };
