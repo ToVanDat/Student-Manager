@@ -42,7 +42,7 @@ const publishPresenceEvent = async (event, payload) => {
     await redisClient.publish('presence:events', JSON.stringify({ event, payload }));
 };
 
-const initSocket = (server) => {
+const initSocket = async (server) => {
     // Keep Socket.IO's browser-origin policy aligned with Express CORS.
     // Do not use wildcard origins because credentialed browser clients are supported.
     const configuredOrigins = (process.env.FRONTEND_URLS || '')
@@ -64,20 +64,19 @@ const initSocket = (server) => {
 
     // Redis Pub/Sub relays presence transitions to Socket.IO nodes sharing this Redis.
     const presenceSubscriber = redisClient.duplicate();
-    presenceSubscriber.connect()
-        .then(() => presenceSubscriber.subscribe('presence:events', raw => {
-            try {
-                const event = JSON.parse(raw);
-                if (!['presence:online', 'presence:offline'].includes(event?.event)) return;
-                const recipientIds = [...new Set((event?.payload?.recipientIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
-                for (const recipientId of recipientIds) {
-                    io?.to(`user:${recipientId}`).emit(event.event, event.payload);
-                }
-            } catch (error) {
-                console.error('[PRESENCE][pubsub message invalid]', error.message);
+    await presenceSubscriber.connect();
+    await presenceSubscriber.subscribe('presence:events', raw => {
+        try {
+            const event = JSON.parse(raw);
+            if (!['presence:online', 'presence:offline'].includes(event?.event)) return;
+            const recipientIds = [...new Set((event?.payload?.recipientIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
+            for (const recipientId of recipientIds) {
+                io?.to(`user:${recipientId}`).emit(event.event, event.payload);
             }
-        }))
-        .catch(error => console.error('[PRESENCE][pubsub subscribe failed]', error.message));
+        } catch (error) {
+            console.error('[PRESENCE][pubsub message invalid]', error.message);
+        }
+    });
 
     io = new Server(server, {
         // WebRTC SDP is capped at 64 KiB by payload validation; 256 KiB leaves
