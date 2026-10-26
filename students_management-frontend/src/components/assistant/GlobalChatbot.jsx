@@ -53,7 +53,7 @@ export default function GlobalChatbot() {
             }
         }).catch(() => {});
         return () => { active = false; };
-    }, [open, userKey, activeConversationId]);
+    }, [open, userKey]);
 
     useEffect(() => {
         if (!open || !userKey || messages.length > 0 || historyLoading) return undefined;
@@ -67,7 +67,7 @@ export default function GlobalChatbot() {
             .catch(() => {})
             .finally(() => { setHistoryLoading(false); });
         return () => { active = false; };
-    }, [open, userKey]);
+    }, [open, userKey, activeConversationId]);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -134,8 +134,13 @@ export default function GlobalChatbot() {
             setConversations(remaining);
             if (id === activeConversationId) {
                 setMessages([]);
-                if (remaining.length) await switchConversation(remaining[0].id);
-                else setActiveConversationId('default');
+                if (remaining.length) {
+                    setActiveConversationId(remaining[0].id);
+                    setMessages([]);
+                } else {
+                    setActiveConversationId('default');
+                    setMessages([]);
+                }
             }
         } catch (error) {
             setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể xóa hội thoại.' }]);
@@ -174,6 +179,14 @@ export default function GlobalChatbot() {
             });
             if (requestVersion !== requestVersionRef.current) return;
             setMessages(items => items.map(item => item.id === assistantId ? { ...item, streaming: false } : item));
+            setConversations(items => {
+                const now = new Date().toISOString();
+                const existing = items.find(item => item.id === activeConversationId);
+                const next = existing
+                    ? items.map(item => item.id === activeConversationId ? { ...item, updatedAt: now } : item)
+                    : [{ id: activeConversationId, title: text.slice(0, 80), createdAt: now, updatedAt: now }, ...items];
+                return next.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+            });
         } catch (error) {
             if (error?.name === 'AbortError') return;
             const message = error?.response?.data?.message || error?.message || (language === 'vi'
