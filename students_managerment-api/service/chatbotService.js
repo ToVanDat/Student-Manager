@@ -74,7 +74,7 @@ function extractSemesterSearchTerm(message) {
 }
 
 function serializeUntrustedContext(context) {
-    return serializeUntrustedContext(context);
+    return `BEGIN_UNTRUSTED_ACADEMIC_CONTEXT_JSON\n${JSON.stringify(context).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')}\nEND_UNTRUSTED_ACADEMIC_CONTEXT_JSON`;
 }
 
 function normalizeHistory(history) {
