@@ -63,3 +63,12 @@ The guarded schema is in `sql/assistant_rag_schema_migration.sql`. It requires t
 - Personal grades, attendance, schedules, or enrollment details until a verified account-to-student foreign-key mapping and row-level authorization are confirmed.
 - Chatbot-triggered CRUD, SQL generation/execution, or administrative actions.
 - Custom camera face recognition, biometric embeddings, or liveness/PAD. MediaPipe detection alone is not identity verification.
+
+
+## Chat experience: latest-turn editing, regeneration and feedback
+
+- The assistant UI supports editing the latest user prompt and regenerating the latest completed answer. The API replaces only the latest persisted user/assistant pair in the Redis history for the authenticated user + session + conversation; older turns are retained.
+- A failed or stopped stream is not treated as a persisted turn. Editing such a prompt submits a new turn instead of deleting the previous successful turn.
+- Helpful / not-helpful feedback is stored in Redis under a key scoped to user, session, conversation and SHA-256 of the latest assistant answer. Feedback expires after 30 days and is accepted only when the supplied hash matches the latest persisted assistant answer. This is lightweight operational feedback, not a durable analytics/reporting system.
+- Document upload currently supports UTF-8 plain-text `.txt` files only (1 MB). PDF and DOCX extraction are not enabled; do not rename those formats to `.txt`. Supporting them requires vetted parsers, content validation, page/paragraph metadata preservation, resource limits and dedicated tests before enabling uploads.
+- RAG citations should use only returned document sources and page metadata. TXT documents have no page number; page-level citations will be available only for formats whose extractor reliably preserves page boundaries.
