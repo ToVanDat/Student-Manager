@@ -64,6 +64,13 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone, c
         }
         if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
         response = await requestChatStream(message, conversationId, signal);
+        if (response.status === 401) {
+            setAccessToken(null);
+            if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('auth:session-invalid'));
+                window.location.href = '/login';
+            }
+        }
     }
 
     if (!response.ok || !response.body?.getReader) {
