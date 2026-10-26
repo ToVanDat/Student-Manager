@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     BookOpen, Check, ChevronDown, Copy, LoaderCircle, MessageCircle, MessageSquare,
-    MoreHorizontal, Pencil, Plus, Search, Send, Sparkles, Square, Trash2, X
+    Pencil, Plus, Search, Send, Sparkles, Square, Trash2, X
 } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import AssistantKnowledgeManager from '@/components/assistant/AssistantKnowledgeManager.jsx';
@@ -193,7 +193,8 @@ export default function GlobalChatbot() {
         if (!prompt || loading) return;
 
         setInput('');
-        if (retryText === null) setMessages(items => [...items, {
+        // A retry is a new backend turn, so keep its repeated prompt visible in the transcript.
+        setMessages(items => [...items, {
             id: 'user-' + Date.now(), role: 'user', content: prompt
         }]);
         setLoading(true);
@@ -250,6 +251,7 @@ export default function GlobalChatbot() {
         if (!streamAbortRef.current) return;
         streamAbortRef.current.abort();
         streamAbortRef.current = null;
+        requestVersionRef.current += 1;
         setMessages(items => items.map(item => item.streaming
             ? { ...item, streaming: false, stopped: true }
             : item));
