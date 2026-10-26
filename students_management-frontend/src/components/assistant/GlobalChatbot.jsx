@@ -1,14 +1,34 @@
-import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles, MessageSquare, Pencil, Trash2, Check, BookOpen } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    BookOpen, Check, ChevronDown, Copy, LoaderCircle, MessageCircle, MessageSquare,
+    MoreHorizontal, Pencil, Plus, Search, Send, Sparkles, Square, Trash2, X
+} from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import AssistantKnowledgeManager from '@/components/assistant/AssistantKnowledgeManager.jsx';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { streamChatbotMessage, getChatbotHistory, listChatbotConversations, createChatbotConversation, renameChatbotConversation, deleteChatbotConversation } from '@/api/chatbotApi.js';
+import {
+    streamChatbotMessage, getChatbotHistory, listChatbotConversations,
+    createChatbotConversation, renameChatbotConversation, deleteChatbotConversation
+} from '@/api/chatbotApi.js';
+
+const QUICK_PROMPTS = {
+    vi: [
+        'Tôi có thể tra cứu những thông tin nào?',
+        'Hướng dẫn đăng ký học phần',
+        'Điều kiện xét tốt nghiệp là gì?'
+    ],
+    en: [
+        'What information can I look up?',
+        'How do I register for courses?',
+        'What are the graduation requirements?'
+    ]
+};
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
     const { language } = useLanguage();
+    const vi = language === 'vi';
     const [open, setOpen] = useState(false);
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([]);
@@ -18,16 +38,25 @@ export default function GlobalChatbot() {
     const [activeConversationId, setActiveConversationId] = useState('default');
     const [showConversationList, setShowConversationList] = useState(false);
     const [showKnowledgeManager, setShowKnowledgeManager] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const [editingConversationId, setEditingConversationId] = useState(null);
     const [editingTitle, setEditingTitle] = useState('');
+    const [copiedMessageId, setCopiedMessageId] = useState(null);
     const scrollRef = useRef(null);
     const requestVersionRef = useRef(0);
     const streamAbortRef = useRef(null);
+    const textareaRef = useRef(null);
     const userKey = user?.id ?? user?.sub ?? user?.username ?? null;
     const isAdmin = user?.role === 'admin';
     const assistantTitle = isAdmin
-        ? (language === 'vi' ? 'Trợ lý quản trị' : 'Admin assistant')
-        : (language === 'vi' ? 'Trợ lý sinh viên' : 'Student assistant');
+        ? (vi ? 'Trợ lý quản trị' : 'Admin assistant')
+        : (vi ? 'Trợ lý sinh viên' : 'Student assistant');
+
+    const filteredConversations = useMemo(() => {
+        const query = searchTerm.trim().toLocaleLowerCase();
+        if (!query) return conversations;
+        return conversations.filter(item => String(item.title || '').toLocaleLowerCase().includes(query));
+    }, [conversations, searchTerm]);
 
     useEffect(() => {
         requestVersionRef.current += 1;
@@ -48,13 +77,14 @@ export default function GlobalChatbot() {
         if (!open || !userKey) return undefined;
         let active = true;
         listChatbotConversations().then(result => {
-            if (active && Array.isArray(result?.conversations)) {
-                setConversations(result.conversations);
-                if (result.conversations.length && !result.conversations.some(item => item.id === activeConversationId)) {
-                    setActiveConversationId(result.conversations[0].id);
-                }
+            if (!active || !Array.isArray(result?.conversations)) return;
+            setConversations(result.conversations);
+            if (result.conversations.length && !result.conversations.some(item => item.id === activeConversationId)) {
+                setActiveConversationId(result.conversations[0].id);
             }
-        }).catch(() => {});
+        }).catch(() => {
+            if (active) setConversations([]);
+        });
         return () => { active = false; };
     }, [open, userKey]);
 
@@ -65,20 +95,35 @@ export default function GlobalChatbot() {
         getChatbotHistory(activeConversationId)
             .then(result => {
                 if (!active || !Array.isArray(result?.messages)) return;
-                setMessages(current => current.length > 0 ? current : result.messages.map((item, index) => ({ id: 'history-' + index + '-' + item.role, role: item.role, content: item.content })));
+                setMessages(current => current.length > 0 ? current : result.messages.map((item, index) => ({
+                    id: 'history-' + index + '-' + item.role,
+                    role: item.role,
+                    content: item.content
+                })));
             })
-            .catch(() => {})
-            .finally(() => { setHistoryLoading(false); });
+            .catch(() => {
+                if (active) setMessages([]);
+            })
+            .finally(() => {
+                if (active) setHistoryLoading(false);
+            });
         return () => { active = false; };
     }, [open, userKey, activeConversationId]);
 
     useEffect(() => {
-        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+        if (!scrollRef.current) return;
+        scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, [messages, loading, open]);
+
+    useEffect(() => {
+        if (open && !showConversationList && !showKnowledgeManager) {
+            textareaRef.current?.focus({ preventScroll: true });
+        }
+    }, [open, showConversationList, showKnowledgeManager]);
 
     if (!user) return null;
 
-    const switchConversation = async id => {
+    const switchConversation = id => {
         if (loading || id === activeConversationId) return;
         streamAbortRef.current?.abort();
         requestVersionRef.current += 1;
@@ -93,59 +138,73 @@ export default function GlobalChatbot() {
         try {
             const result = await createChatbotConversation();
             if (!result?.conversation?.id) return;
-            setConversations(items => [result.conversation, ...items]);
-            await switchConversation(result.conversation.id);
+            setConversations(items => [result.conversation, ...items.filter(item => item.id !== result.conversation.id)]);
+            setMessages([]);
+            setActiveConversationId(result.conversation.id);
+            setShowConversationList(false);
+            setShowKnowledgeManager(false);
         } catch (error) {
-            setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể tạo hội thoại mới.' }]);
+            setMessages(items => [...items, {
+                role: 'assistant', error: true,
+                content: error?.response?.data?.message || (vi ? 'Không thể tạo hội thoại mới.' : 'Could not create a conversation.')
+            }]);
         }
     };
 
     const saveConversationTitle = async id => {
+        const title = editingTitle.trim();
+        if (!title) return;
         try {
-            const result = await renameChatbotConversation(id, editingTitle);
+            const result = await renameChatbotConversation(id, title);
             setConversations(items => items.map(item => item.id === id ? result.conversation : item));
             setEditingConversationId(null);
+            setEditingTitle('');
         } catch (error) {
-            setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể đổi tên hội thoại.' }]);
+            setMessages(items => [...items, {
+                role: 'assistant', error: true,
+                content: error?.response?.data?.message || (vi ? 'Không thể đổi tên hội thoại.' : 'Could not rename conversation.')
+            }]);
         }
     };
 
     const removeConversation = async id => {
-        if (loading || !window.confirm(language === 'vi' ? 'Xóa cuộc trò chuyện này? Thao tác không thể hoàn tác.' : 'Delete this conversation? This cannot be undone.')) return;
+        if (loading || !window.confirm(vi
+            ? 'Xóa cuộc trò chuyện này? Thao tác không thể hoàn tác.'
+            : 'Delete this conversation? This cannot be undone.')) return;
         try {
             await deleteChatbotConversation(id);
             const remaining = conversations.filter(item => item.id !== id);
             setConversations(remaining);
             if (id === activeConversationId) {
                 setMessages([]);
-                if (remaining.length) {
-                    setActiveConversationId(remaining[0].id);
-                    setMessages([]);
-                } else {
-                    setActiveConversationId('default');
-                    setMessages([]);
-                }
+                setActiveConversationId(remaining[0]?.id || 'default');
             }
         } catch (error) {
-            setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể xóa hội thoại.' }]);
+            setMessages(items => [...items, {
+                role: 'assistant', error: true,
+                content: error?.response?.data?.message || (vi ? 'Không thể xóa hội thoại.' : 'Could not delete conversation.')
+            }]);
         }
     };
 
     const send = async (event, retryText = null) => {
         event?.preventDefault();
-        const text = retryText ?? input.trim();
-        if (!text || loading) return;
+        const prompt = retryText ?? input.trim();
+        if (!prompt || loading) return;
 
         setInput('');
-        if (retryText === null) setMessages(items => [...items, { role: 'user', content: text }]);
+        if (retryText === null) setMessages(items => [...items, {
+            id: 'user-' + Date.now(), role: 'user', content: prompt
+        }]);
         setLoading(true);
         const requestVersion = requestVersionRef.current;
-        const assistantId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const assistantId = 'assistant-' + Date.now() + '-' + Math.random().toString(36).slice(2);
         const abortController = new AbortController();
         streamAbortRef.current = abortController;
+
+        setMessages(items => [...items, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
         try {
-            setMessages(items => [...items, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
-            await streamChatbotMessage(text, {
+            await streamChatbotMessage(prompt, {
                 signal: abortController.signal,
                 conversationId: activeConversationId,
                 onToken: token => {
@@ -158,7 +217,7 @@ export default function GlobalChatbot() {
                     if (requestVersion !== requestVersionRef.current) return;
                     const sources = Array.isArray(data?.context?.sources) ? data.context.sources : [];
                     setMessages(items => items.map(item => item.id === assistantId
-                        ? { ...item, streaming: false, sources }
+                        ? { ...item, streaming: false, sources, model: data?.model || null }
                         : item));
                 }
             });
@@ -169,98 +228,259 @@ export default function GlobalChatbot() {
                 const existing = items.find(item => item.id === activeConversationId);
                 const next = existing
                     ? items.map(item => item.id === activeConversationId ? { ...item, updatedAt: now } : item)
-                    : [{ id: activeConversationId, title: text.slice(0, 80), createdAt: now, updatedAt: now }, ...items];
-                return next.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+                    : [{ id: activeConversationId, title: prompt.slice(0, 80), createdAt: now, updatedAt: now }, ...items];
+                return next.sort((a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')));
             });
         } catch (error) {
-            if (error?.name === 'AbortError') return;
-            const message = error?.response?.data?.message || error?.message || (language === 'vi'
+            if (error?.name === 'AbortError' || abortController.signal.aborted) return;
+            const message = error?.message || (vi
                 ? 'Không thể kết nối trợ lý lúc này. Vui lòng thử lại.'
                 : 'The assistant is temporarily unavailable. Please try again.');
             if (requestVersion !== requestVersionRef.current) return;
-            setMessages(items => {
-                const partial = items.some(item => item.id === assistantId);
-                return partial
-                    ? items.map(item => item.id === assistantId ? { ...item, streaming: false, error: true, retryable: true, retryPrompt: text, content: item.content || message } : item)
-                    : [...items, { id: assistantId, role: 'assistant', content: message, error: true, retryable: true, retryPrompt: text }];
-            });
+            setMessages(items => items.map(item => item.id === assistantId
+                ? { ...item, streaming: false, error: true, retryable: true, retryPrompt: prompt, content: item.content || message }
+                : item));
         } finally {
             if (streamAbortRef.current === abortController) streamAbortRef.current = null;
             if (requestVersion === requestVersionRef.current) setLoading(false);
         }
     };
 
+    const stopGeneration = () => {
+        if (!streamAbortRef.current) return;
+        streamAbortRef.current.abort();
+        streamAbortRef.current = null;
+        setMessages(items => items.map(item => item.streaming
+            ? { ...item, streaming: false, stopped: true }
+            : item));
+        setLoading(false);
+    };
+
+    const copyMessage = async (id, content) => {
+        try {
+            await navigator.clipboard.writeText(content);
+            setCopiedMessageId(id);
+            window.setTimeout(() => setCopiedMessageId(current => current === id ? null : current), 1600);
+        } catch {
+            setCopiedMessageId(null);
+        }
+    };
+
+    const panelTitle = showKnowledgeManager
+        ? (vi ? 'Kho tri thức' : 'Knowledge base')
+        : showConversationList
+            ? (vi ? 'Lịch sử hội thoại' : 'Conversation history')
+            : assistantTitle;
+
     return (
-        <div className="fixed bottom-5 right-5 z-[70]">
+        <div className="fixed bottom-4 right-4 z-[70] sm:bottom-5 sm:right-5">
             {open && (
-                <section className="mb-3 flex h-[min(700px,calc(100dvh-110px))] w-[min(440px,calc(100vw-32px))] flex-col overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_24px_80px_-24px_rgba(15,23,42,0.45)] dark:border-slate-700 dark:bg-slate-900" aria-label={language === 'vi' ? 'Trợ lý Student Manager' : 'Student Manager assistant'}>
-                    <header className="flex items-center gap-3 border-b border-slate-100 bg-slate-950 px-4 py-3 text-white dark:border-slate-800">
-                        <span className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-lg shadow-blue-950/20"><Sparkles size={19} /></span>
-                        <div className="min-w-0 flex-1">
-                            <h2 className="m-0 text-sm font-semibold">{assistantTitle}</h2>
-                            <p className="m-0 text-[11px] text-slate-300">{isAdmin
-                                ? (language === 'vi' ? 'Hỗ trợ quản lý · Ollama' : 'Management support · Ollama')
-                                : (language === 'vi' ? 'Hỗ trợ học tập · Ollama' : 'Study support · Ollama')}</p>
+                <section
+                    className="fixed inset-2 flex flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_28px_100px_-30px_rgba(15,23,42,.55)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-16 sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(500px,calc(100vw-40px))]"
+                    aria-label={vi ? 'Trợ lý Student Manager' : 'Student Manager assistant'}
+                    aria-live="off"
+                >
+                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
+                            <Sparkles size={19} />
                         </div>
-                        <button type="button" onClick={() => void startNewConversation()} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'} title={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'}><Plus size={18} /></button>
-                        {isAdmin && <button type="button" onClick={() => setShowKnowledgeManager(value => !value)} className={`rounded-lg p-2 hover:bg-white/10 hover:text-white ${showKnowledgeManager ? 'bg-white/15 text-white' : 'text-slate-300'}`} aria-label={language === 'vi' ? 'Kho tài liệu' : 'Knowledge base'} title={language === 'vi' ? 'Kho tài liệu' : 'Knowledge base'}><BookOpen size={17} /></button>}
-                        <button type="button" onClick={() => setShowConversationList(value => !value)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Danh sách hội thoại' : 'Conversation list'} title={language === 'vi' ? 'Danh sách hội thoại' : 'Conversation list'}><MessageSquare size={17} /></button>
-                        <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Đóng trợ lý' : 'Close assistant'}><X size={18} /></button>
-                    </header>
-                    {isAdmin && showKnowledgeManager && <AssistantKnowledgeManager language={language} />}
-                    {showConversationList && <aside className="max-h-56 overflow-y-auto border-b border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
-                        {conversations.map(item => <div key={item.id} className={`flex items-center gap-1 rounded-lg px-2 py-1.5 ${item.id === activeConversationId ? 'bg-blue-50 dark:bg-slate-800' : ''}`}>
-                            {editingConversationId === item.id ? <><input autoFocus value={editingTitle} onChange={e => setEditingTitle(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-2 py-1 text-xs dark:bg-slate-950" /><button onClick={() => void saveConversationTitle(item.id)} className="p-1 text-emerald-600"><Check size={14}/></button></> : <button onClick={() => void switchConversation(item.id)} disabled={loading} className="min-w-0 flex-1 truncate text-left text-xs text-slate-700 dark:text-slate-200">{item.title}</button>}
-                            <button onClick={() => { setEditingConversationId(item.id); setEditingTitle(item.title); }} title={language === 'vi' ? 'Đổi tên' : 'Rename'} className="p-1 text-slate-400 hover:text-blue-600"><Pencil size={13}/></button>
-                            <button onClick={() => void removeConversation(item.id)} title={language === 'vi' ? 'Xóa' : 'Delete'} className="p-1 text-slate-400 hover:text-red-600"><Trash2 size={13}/></button>
-                        </div>)}
-                        {conversations.length === 0 && <p className="px-2 py-3 text-xs text-slate-500">{language === 'vi' ? 'Chưa có hội thoại nào.' : 'No conversations yet.'}</p>}
-                    </aside>}
-                    <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-4 dark:from-slate-950 dark:to-slate-900 sm:p-5">
-                        {historyLoading && messages.length === 0 && <div className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" />{language === 'vi' ? 'Đang tải lịch sử…' : 'Loading history…'}</div>}
-                        {messages.length === 0 && !historyLoading && (
-                            <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                                <p className="mb-2 font-semibold text-slate-900 dark:text-white">{isAdmin
-                                    ? (language === 'vi' ? 'Xin chào quản trị viên! Tôi có thể hỗ trợ gì?' : 'Hello, administrator! How can I help?')
-                                    : (language === 'vi' ? 'Xin chào! Tôi có thể giúp gì?' : 'Hello! How can I help?')}</p>
-                                <p className="m-0 text-xs leading-5">{isAdmin
-                                    ? (language === 'vi' ? 'Hỏi về danh mục môn học, khoa, lớp, học kỳ và số liệu tổng quan hệ thống. Trợ lý chỉ cung cấp thông tin, không tự thực hiện thao tác quản trị.' : 'Ask about subjects, departments, classes, semesters, and aggregate system counts. The assistant is read-only and cannot perform administrative actions.')
-                                    : (language === 'vi' ? 'Hỏi về môn học, tín chỉ, khoa, lớp, học kỳ hoặc cách sử dụng Student Manager. Dữ liệu điểm cá nhân chưa được mở vì tài khoản sinh viên chưa có liên kết định danh đã xác minh.' : 'Ask about subjects, credits, departments, classes, semesters, or using Student Manager. Personal grades are not available until student-account identity linking is verified.')}</p>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                                <h2 className="m-0 truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">{panelTitle}</h2>
+                                {!showKnowledgeManager && !showConversationList && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">AI</span>}
                             </div>
+                            <p className="m-0 mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
+                                {showKnowledgeManager
+                                    ? (vi ? 'Tài liệu tham khảo được quản lý bởi admin' : 'Documents managed by administrators')
+                                    : showConversationList
+                                        ? (vi ? 'Các cuộc trò chuyện gần đây' : 'Your recent conversations')
+                                        : (isAdmin
+                                            ? (vi ? 'Trợ lý quản trị · Student Manager' : 'Management assistant · Student Manager')
+                                            : (vi ? 'Trợ lý học tập · Student Manager' : 'Study assistant · Student Manager'))}
+                            </p>
+                        </div>
+                        {!showKnowledgeManager && !showConversationList && (
+                            <>
+                                <button type="button" onClick={() => void startNewConversation()} disabled={loading} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={vi ? 'Cuộc trò chuyện mới' : 'New conversation'} title={vi ? 'Cuộc trò chuyện mới' : 'New conversation'}>
+                                    <Plus size={18} />
+                                </button>
+                                <button type="button" onClick={() => setShowConversationList(true)} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={vi ? 'Lịch sử hội thoại' : 'Conversation history'} title={vi ? 'Lịch sử hội thoại' : 'Conversation history'}>
+                                    <MessageSquare size={18} />
+                                </button>
+                                {isAdmin && <button type="button" onClick={() => setShowKnowledgeManager(true)} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={vi ? 'Kho tri thức' : 'Knowledge base'} title={vi ? 'Kho tri thức' : 'Knowledge base'}>
+                                    <BookOpen size={18} />
+                                </button>}
+                            </>
                         )}
-                        {messages.map((item, index) => (
-                            <div key={item.id || index} className={`group flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`min-w-0 max-w-[94%] rounded-2xl px-3.5 py-3 sm:max-w-[90%] ${item.role === 'user' ? 'rounded-br-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-950/10' : 'rounded-bl-md border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900'} ${item.error ? 'border-amber-300 dark:border-amber-800' : ''}`}>
-                                    {item.role === 'assistant'
-                                        ? <AssistantMessage content={item.content} />
-                                        : <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-6">{item.content}</p>}
-                                    {item.sources?.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{language === 'vi' ? 'Nguồn tham khảo' : 'Sources'}</p><ul className="m-0 list-disc space-y-1 pl-4">{item.sources.map((source, sourceIndex) => <li key={source.documentId || sourceIndex} className="text-[10px] leading-4 text-slate-500 dark:text-slate-400">{source.title}{source.pageNumber ? `, trang ${source.pageNumber}` : ''}</li>)}</ul></div>}
-                                    {item.streaming && <span className="ml-1 inline-block h-3.5 w-1 animate-pulse rounded-full bg-blue-500 align-middle" />}
-                                    {item.retryable && item.retryPrompt && (
-                                        <button type="button" onClick={() => void send(null, item.retryPrompt)} disabled={loading} className="mt-3 block rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950">
-                                            {language === 'vi' ? 'Thử gửi lại' : 'Try again'}
-                                        </button>
-                                    )}
-                                    {item.role === 'assistant' && item.content && !item.streaming && (
-                                        <div className="mt-2 flex justify-end border-t border-slate-100 pt-2 dark:border-slate-800">
-                                            <button type="button" onClick={() => navigator.clipboard?.writeText(item.content)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200"><Copy size={12} />{language === 'vi' ? 'Sao chép' : 'Copy'}</button>
-                                        </div>
-                                    )}
-                                </div>
+                        {(showKnowledgeManager || showConversationList) && (
+                            <button type="button" onClick={() => { setShowKnowledgeManager(false); setShowConversationList(false); }} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={vi ? 'Quay lại hội thoại' : 'Back to chat'}>
+                                <ChevronDown size={18} className="rotate-90" />
+                            </button>
+                        )}
+                        <button type="button" onClick={() => setOpen(false)} className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={vi ? 'Đóng trợ lý' : 'Close assistant'}>
+                            <X size={19} />
+                        </button>
+                    </header>
+
+                    {isAdmin && showKnowledgeManager ? (
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                            <AssistantKnowledgeManager language={language} />
+                        </div>
+                    ) : showConversationList ? (
+                        <aside className="flex min-h-0 flex-1 flex-col bg-slate-50/80 p-3 dark:bg-slate-900/50">
+                            <label className="relative mb-3 block">
+                                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder={vi ? 'Tìm trong hội thoại...' : 'Search conversations...'} className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                            </label>
+                            <button type="button" onClick={() => void startNewConversation()} disabled={loading} className="mb-2 flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-40">
+                                <Plus size={16} />{vi ? 'Cuộc trò chuyện mới' : 'New conversation'}
+                            </button>
+                            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto">
+                                {filteredConversations.map(item => (
+                                    <div key={item.id} className={`group flex items-center gap-1 rounded-xl border px-2 py-2 transition ${item.id === activeConversationId ? 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40' : 'border-transparent hover:border-slate-200 hover:bg-white dark:hover:border-slate-700 dark:hover:bg-slate-900'}`}>
+                                        {editingConversationId === item.id ? (
+                                            <>
+                                                <input autoFocus value={editingTitle} onChange={event => setEditingTitle(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') void saveConversationTitle(item.id); if (event.key === 'Escape') setEditingConversationId(null); }} maxLength={80} className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
+                                                <button type="button" onClick={() => void saveConversationTitle(item.id)} className="rounded-lg p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950" aria-label={vi ? 'Lưu tên' : 'Save title'}><Check size={15} /></button>
+                                            </>
+                                        ) : (
+                                            <button type="button" onClick={() => switchConversation(item.id)} disabled={loading} className="min-w-0 flex-1 truncate px-1 py-1 text-left text-xs font-medium text-slate-700 disabled:opacity-50 dark:text-slate-200">
+                                                {item.title || (vi ? 'Cuộc trò chuyện mới' : 'New conversation')}
+                                            </button>
+                                        )}
+                                        <button type="button" onClick={() => { setEditingConversationId(item.id); setEditingTitle(item.title || ''); }} className="rounded-lg p-2 text-slate-400 opacity-100 transition hover:bg-slate-100 hover:text-blue-600 sm:opacity-0 sm:group-hover:opacity-100" aria-label={vi ? 'Đổi tên' : 'Rename'}><Pencil size={14} /></button>
+                                        <button type="button" onClick={() => void removeConversation(item.id)} disabled={loading} className="rounded-lg p-2 text-slate-400 opacity-100 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-30 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:bg-red-950/40" aria-label={vi ? 'Xóa hội thoại' : 'Delete conversation'}><Trash2 size={14} /></button>
+                                    </div>
+                                ))}
+                                {filteredConversations.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center px-5 py-12 text-center">
+                                        <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm dark:bg-slate-900"><Search size={20} /></div>
+                                        <p className="m-0 text-sm font-medium text-slate-700 dark:text-slate-200">{vi ? 'Không tìm thấy hội thoại' : 'No conversations found'}</p>
+                                        <p className="mb-0 mt-1 text-xs text-slate-400">{vi ? 'Thử từ khóa khác hoặc tạo cuộc trò chuyện mới.' : 'Try another keyword or start a new conversation.'}</p>
+                                    </div>
+                                )}
                             </div>
-                        ))}
-                        {loading && <div className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" />{language === 'vi' ? 'Đang suy nghĩ…' : 'Thinking…'}</div>}
-                    </div>
-                    <form onSubmit={send} className="flex items-end gap-2 border-t border-slate-100 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                        <textarea value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(event); } }} rows={1} maxLength={4000} placeholder={language === 'vi' ? 'Nhập câu hỏi…' : 'Ask a question…'} className="max-h-32 min-h-11 flex-1 resize-y rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:focus:bg-slate-950" />
-                        <button type="submit" disabled={!input.trim() || loading} className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40" aria-label={language === 'vi' ? 'Gửi tin nhắn' : 'Send message'}><Send size={17} /></button>
-                    </form>
-                    <p className="m-0 bg-white px-3 pb-2 text-[10px] text-slate-400 dark:bg-slate-900">{language === 'vi' ? 'AI có thể trả lời sai. Không nhập mật khẩu hoặc mã xác thực.' : 'AI can make mistakes. Never enter passwords or verification codes.'}</p>
+                        </aside>
+                    ) : (
+                        <>
+                            <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50/70 via-slate-50 to-white px-4 py-5 dark:from-blue-950/20 dark:via-slate-950 dark:to-slate-950 sm:px-5">
+                                {historyLoading && messages.length === 0 && (
+                                    <div className="flex items-center justify-center gap-2 py-8 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" />{vi ? 'Đang tải lịch sử...' : 'Loading conversation...'}</div>
+                                )}
+                                {messages.length === 0 && !historyLoading && (
+                                    <div className="mx-auto flex min-h-full max-w-sm flex-col items-center justify-center py-6 text-center">
+                                        <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-xl shadow-blue-500/20"><Sparkles size={27} /></div>
+                                        <p className="m-0 text-lg font-bold tracking-tight text-slate-900 dark:text-white">{vi ? (isAdmin ? 'Xin chào quản trị viên!' : 'Xin chào!') : (isAdmin ? 'Hello, administrator!' : 'Hello!')}</p>
+                                        <p className="mb-5 mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{vi
+                                            ? (isAdmin ? 'Tôi có thể hỗ trợ tra cứu danh mục và số liệu quản lý trong phạm vi được cấp quyền.' : 'Tôi có thể hỗ trợ bạn tra cứu thông tin học tập và hướng dẫn sử dụng Student Manager.')
+                                            : (isAdmin ? 'I can help explore management catalogs and authorized system summaries.' : 'I can help you find academic information and navigate Student Manager.')}</p>
+                                        <div className="grid w-full gap-2 text-left">
+                                            {QUICK_PROMPTS[vi ? 'vi' : 'en'].map((prompt, index) => (
+                                                <button key={prompt} type="button" onClick={() => { setInput(prompt); textareaRef.current?.focus(); }} className="group flex items-center justify-between gap-3 rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-3 text-left text-xs font-medium text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:text-blue-700 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-blue-800 dark:hover:text-blue-300">
+                                                    <span>{prompt}</span><span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-500">↗</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-5">
+                                    {messages.map((item, index) => (
+                                        <div key={item.id || index} className={`group flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            {item.role === 'assistant' && (
+                                                <div className="mr-2 mt-1 flex size-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white"><Sparkles size={14} /></div>
+                                            )}
+                                            <div className={`min-w-0 max-w-[88%] rounded-[20px] px-4 py-3.5 sm:max-w-[86%] ${item.role === 'user'
+                                                ? 'rounded-br-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-950/10'
+                                                : 'rounded-bl-md border border-slate-200/80 bg-white/95 text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'} ${item.error ? 'border-amber-300 dark:border-amber-800' : ''}`}>
+                                                {item.role === 'assistant'
+                                                    ? <AssistantMessage content={item.content} />
+                                                    : <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-6">{item.content}</p>}
+                                                {item.sources?.length > 0 && (
+                                                    <div className="mt-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+                                                        <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400"><BookOpen size={12} />{vi ? 'Nguồn tham khảo' : 'Sources'}</p>
+                                                        <div className="space-y-1.5">
+                                                            {item.sources.map((source, sourceIndex) => (
+                                                                <div key={source.documentId || sourceIndex} className="flex items-start gap-2 rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] leading-4 text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
+                                                                    <BookOpen size={13} className="mt-0.5 shrink-0 text-blue-500" />
+                                                                    <span>{source.title}{source.pageNumber ? ` · ${vi ? 'trang' : 'page'} ${source.pageNumber}` : ''}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {item.streaming && <span className="ml-1 inline-block h-3.5 w-1 animate-pulse rounded-full bg-blue-500 align-middle" />}
+                                                {item.stopped && <p className="mb-0 mt-2 text-[10px] text-slate-400">{vi ? 'Đã dừng tạo câu trả lời.' : 'Generation stopped.'}</p>}
+                                                {item.retryable && item.retryPrompt && (
+                                                    <button type="button" onClick={() => void send(null, item.retryPrompt)} disabled={loading} className="mt-3 rounded-xl border border-amber-300 px-3 py-1.5 text-xs font-semibold text-amber-800 transition hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950">
+                                                        {vi ? 'Thử lại' : 'Try again'}
+                                                    </button>
+                                                )}
+                                                {item.role === 'assistant' && item.content && !item.streaming && (
+                                                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                                                        <span className="text-[10px] text-slate-400">{item.model || 'AI Assistant'}</span>
+                                                        <button type="button" onClick={() => void copyMessage(item.id || String(index), item.content)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200">
+                                                            {copiedMessageId === (item.id || String(index)) ? <Check size={12} /> : <Copy size={12} />}
+                                                            {copiedMessageId === (item.id || String(index)) ? (vi ? 'Đã sao chép' : 'Copied') : (vi ? 'Sao chép' : 'Copy')}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                {loading && (
+                                    <div className="mt-4 flex items-center gap-2 pl-9 text-xs text-slate-500 dark:text-slate-400">
+                                        <span className="flex gap-1"><i className="size-1.5 animate-bounce rounded-full bg-blue-500" /><i className="size-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:120ms]" /><i className="size-1.5 animate-bounce rounded-full bg-blue-500 [animation-delay:240ms]" /></span>
+                                        {vi ? 'Đang tạo câu trả lời...' : 'Generating response...'}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
+                                <form onSubmit={send} className="rounded-[20px] border border-slate-200 bg-slate-50 p-2 shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:bg-slate-900">
+                                    <textarea
+                                        ref={textareaRef}
+                                        value={input}
+                                        onChange={event => setInput(event.target.value)}
+                                        onKeyDown={event => {
+                                            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+                                                event.preventDefault();
+                                                void send(event);
+                                            }
+                                        }}
+                                        rows={2}
+                                        maxLength={4000}
+                                        placeholder={vi ? 'Nhắn tin cho trợ lý...' : 'Message the assistant...'}
+                                        aria-label={vi ? 'Nội dung câu hỏi' : 'Your message'}
+                                        className="max-h-32 min-h-12 w-full resize-y bg-transparent px-2 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 dark:text-white"
+                                    />
+                                    <div className="flex items-center justify-between gap-2 px-1">
+                                        <span className="text-[10px] text-slate-400">{vi ? 'Enter để gửi · Shift + Enter xuống dòng' : 'Enter to send · Shift + Enter for a new line'}</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] tabular-nums text-slate-400">{input.length}/4000</span>
+                                            {loading ? (
+                                                <button type="button" onClick={stopGeneration} className="flex size-9 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-red-600 dark:bg-slate-700" aria-label={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'} title={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'}>
+                                                    <Square size={14} fill="currentColor" />
+                                                </button>
+                                            ) : (
+                                                <button type="submit" disabled={!input.trim()} className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:translate-y-0" aria-label={vi ? 'Gửi tin nhắn' : 'Send message'}>
+                                                    <Send size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </form>
+                                <p className="mb-0 mt-2 text-center text-[10px] leading-4 text-slate-400">{vi ? 'AI có thể mắc lỗi. Không nhập mật khẩu hoặc mã xác thực.' : 'AI can make mistakes. Never enter passwords or verification codes.'}</p>
+                            </div>
+                        </>
+                    )}
                 </section>
             )}
-            <button type="button" onClick={() => setOpen(value => !value)} className="ml-auto flex size-14 items-center justify-center rounded-full bg-slate-950 text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={open ? (language === 'vi' ? 'Đóng trợ lý' : 'Close assistant') : (language === 'vi' ? 'Mở trợ lý' : 'Open assistant')} title={assistantTitle}>
-                {open ? <X size={22} /> : <MessageCircle size={23} />}
-            </button>
+            {!open && (
+                <button type="button" onClick={() => setOpen(true)} className="ml-auto flex size-14 items-center justify-center rounded-[20px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-950/25 transition hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} title={assistantTitle}>
+                    <MessageCircle size={23} />
+                </button>
+            )}
         </div>
     );
 }
