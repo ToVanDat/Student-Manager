@@ -203,3 +203,30 @@ export const finalizeE2EEProvisioningRecovery = async (userId, deviceId, session
         db.close();
     }
 };
+
+
+// Successful ACK is the only transition that retires the recovery journal
+// while preserving the credential for normal relay authentication.
+export const completeE2EEProvisioningRecovery = async (userId, deviceId, sessionId) => {
+    const normalizedDeviceId = assertDeviceId(deviceId, { linkedOnly: true });
+    const normalizedSessionId = assertSessionId(sessionId);
+    const db = await openCredentialDb(userId);
+    try {
+        const tx = db.transaction(['credentials', 'provisionings'], 'readwrite');
+        const journal = await tx.objectStore('provisionings').get(normalizedSessionId);
+        if (journal && Number(journal.deviceId) === normalizedDeviceId) {
+            await tx.objectStore('provisionings').delete(normalizedSessionId);
+        }
+        const credentialStore = tx.objectStore('credentials');
+        const credential = await credentialStore.get(normalizedDeviceId);
+        if (credential?.provisioningSessionId === normalizedSessionId) {
+            const next = { ...credential, updatedAt: Date.now() };
+            delete next.provisioningSessionId;
+            delete next.pendingProvisioningRollbackSessionId;
+            await credentialStore.put(next);
+        }
+        await tx.done;
+    } finally {
+        db.close();
+    }
+};
