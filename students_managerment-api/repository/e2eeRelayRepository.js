@@ -796,8 +796,10 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => withTr
         [sessionId, userId]
     );
     const session = rows[0];
+    // Return a sentinel instead of throwing so expiry cleanup commits. The
+    // service converts it to a conflict after this transaction has completed.
     if (!session?.assigned_device_id || !session.completed_at) {
-        throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
+        return { expiredOrUnavailable: true };
     }
     const activated = await client.query(
         `UPDATE e2ee_sdk_devices SET enabled = TRUE
