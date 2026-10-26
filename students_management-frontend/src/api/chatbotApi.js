@@ -83,11 +83,11 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone, c
     const decoder = new TextDecoder();
     let buffer = '';
     const consumeEvent = block => {
-        const eventName = block.match(/^event:\\s*(.+)$/m)?.[1]?.trim();
-        const dataLines = block.split('\\n').filter(line => line.startsWith('data:'));
+        const eventName = block.match(/^event:\s*(.+)$/m)?.[1]?.trim();
+        const dataLines = block.split('\n').filter(line => line.startsWith('data:'));
         if (!dataLines.length) return;
         let data;
-        try { data = JSON.parse(dataLines.map(line => line.slice(5).trimStart()).join('\\n')); }
+        try { data = JSON.parse(dataLines.map(line => line.slice(5).trimStart()).join('\n')); }
         catch { return; }
         if (eventName === 'token' && typeof data.token === 'string') onToken?.(data.token);
         if (eventName === 'done') onDone?.(data);
@@ -96,8 +96,8 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone, c
 
     while (true) {
         const { value, done } = await reader.read();
-        buffer += decoder.decode(value || new Uint8Array(), { stream: !done }).replace(/\\r\\n/g, '\\n');
-        const events = buffer.split('\\n\\n');
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done }).replace(/\r\n/g, '\n');
+        const events = buffer.split('\n\n');
         buffer = events.pop() || '';
         for (const block of events) consumeEvent(block);
         if (done) break;
