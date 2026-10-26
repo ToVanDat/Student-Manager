@@ -8,7 +8,9 @@ test('Ollama gate permits one model request and releases idempotently', () => {
     assert.equal(acquireOllamaSlot(), null);
     release();
     release();
-    assert.equal(typeof acquireOllamaSlot(), 'function');
+    const nextRelease = acquireOllamaSlot();
+    assert.equal(typeof nextRelease, 'function');
+    nextRelease();
 });
 
 test('chatbot request gate bounds concurrent full assistant requests', () => {
@@ -16,5 +18,7 @@ test('chatbot request gate bounds concurrent full assistant requests', () => {
     assert.equal(typeof release, 'function');
     assert.equal(acquireChatbotRequestSlot(), null);
     release();
-    assert.equal(typeof acquireChatbotRequestSlot(), 'function');
+    const nextRelease = acquireChatbotRequestSlot();
+    assert.equal(typeof nextRelease, 'function');
+    nextRelease();
 });
