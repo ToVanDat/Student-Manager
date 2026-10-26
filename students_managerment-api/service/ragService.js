@@ -176,6 +176,13 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
 }
 
 async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit }) {
+    const schemaReady = await pool.query(
+        `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
+                to_regclass('assistant_document_chunks') IS NOT NULL AS chunks_ready,
+                EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_ready`
+    );
+    const readiness = schemaReady.rows[0];
+    if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) return [];
     const query = normalizeDocumentText(question).slice(0, 4000);
     const embedding = await createDocumentEmbedding(query);
     const allowedVisibility = role === 'admin' ? ['all', 'admin'] : ['all', 'student'];
