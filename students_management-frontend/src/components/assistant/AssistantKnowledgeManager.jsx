@@ -193,7 +193,12 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300"><FileText size={17} /></div>
                         <div className="min-w-0 flex-1">
                             <p className="m-0 truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{document.title}</p>
-                            <p className="m-0 mt-1 truncate text-[10px] text-slate-400">{document.source_name} · {visibilityLabel(document.visibility)}</p>
+                            <p className="m-0 mt-1 truncate text-[10px] text-slate-400">{document.source_name} · {visibilityLabel(document.visibility)} · {Number(document.chunkCount || 0)} {vi ? 'đoạn' : 'chunks'}</p>
+                            {document.status === 'archived' && document.archived_at && (
+                                <p className="m-0 mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                                    {vi ? 'Lưu trữ: ' : 'Archived: '}{new Date(document.archived_at).toLocaleString(vi ? 'vi-VN' : 'en-US')}
+                                </p>
+                            )}
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${document.status === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : document.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'}`}>{statusLabel(document.status)}</span>
                         {(document.status === 'ready' || document.status === 'archived') && (
