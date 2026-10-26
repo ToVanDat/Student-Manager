@@ -167,6 +167,7 @@ WHERE table_schema = current_schema()
       'qr_login_requests',
       'assistant_documents',
       'assistant_document_chunks',
+      'student_account_links',
       'sessions',
       'refresh_tokens'
   )
@@ -192,6 +193,10 @@ UNION ALL
 SELECT
     'assistant_document_chunks',
     to_regclass(format('%I.%I', current_schema(), 'assistant_document_chunks'))::text
+UNION ALL
+SELECT
+    'student_account_links',
+    to_regclass(format('%I.%I', current_schema(), 'student_account_links'))::text
 UNION ALL
 SELECT
     'pgvector extension',
