@@ -2,13 +2,10 @@ const path = require('path');
 const { TextDecoder } = require('util');
 const aiConfig = require('../src/config/ai.js');
 
-const SUPPORTED_TEXT_MIME_TYPES = new Set([
-    'text/plain',
-    'application/octet-stream'
-]);
+const SUPPORTED_TEXT_MIME_TYPES = new Set(['text/plain', 'application/octet-stream']);
 
 function getSafeSourceName(originalName) {
-    const basename = path.basename(String(originalName || '').replace(/\\\\/g, '/'));
+    const basename = path.basename(String(originalName || '').replace(/\\/g, '/'));
     return basename.slice(0, 255);
 }
 
@@ -25,7 +22,7 @@ function extractTextDocument({ buffer, originalName, mimeType }) {
     }
 
     const sourceName = getSafeSourceName(originalName);
-    if (!/\\.txt$/i.test(sourceName) || !SUPPORTED_TEXT_MIME_TYPES.has(mimeType)) {
+    if (!/\.txt$/i.test(sourceName) || !SUPPORTED_TEXT_MIME_TYPES.has(mimeType)) {
         const error = new Error('Giai đoạn này chỉ hỗ trợ tệp .txt');
         error.status = 415;
         throw error;
@@ -40,13 +37,13 @@ function extractTextDocument({ buffer, originalName, mimeType }) {
         throw error;
     }
 
-    if (text.includes('\\u0000')) {
+    if (text.includes('\u0000')) {
         const error = new Error('Tệp chứa ký tự nhị phân không hợp lệ');
         error.status = 400;
         throw error;
     }
 
-    text = text.replace(/^\\uFEFF/, '').replace(/\\r\\n?/g, '\\n').trim();
+    text = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').trim();
     if (!text) {
         const error = new Error('Tài liệu không có nội dung văn bản');
         error.status = 400;
@@ -58,7 +55,7 @@ function extractTextDocument({ buffer, originalName, mimeType }) {
         sourceName,
         mimeType: 'text/plain',
         format: 'txt',
-        paragraphCount: text.split(/\\n\\s*\\n/).filter(value => value.trim()).length
+        paragraphCount: text.split(/\n\s*\n/).filter(value => value.trim()).length
     };
 }
 
