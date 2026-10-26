@@ -24,7 +24,7 @@ const uploadAssistantDocument = multer({
 module.exports = (req, res, next) => {
     uploadAssistantDocument(req, res, error => {
         if (!error) return next();
-        const status = Number.isInteger(error.status) ? error.status : (error instanceof multer.MulterError ? 400 : 415);
+        const status = error.code === 'LIMIT_FILE_SIZE' ? 413 : (Number.isInteger(error.status) ? error.status : (error instanceof multer.MulterError ? 400 : 415));
         return res.status(status).json({ message: status === 413 ? 'Tệp vượt quá giới hạn 1 MB' : error.message || 'Tệp tải lên không hợp lệ' });
     });
 };
