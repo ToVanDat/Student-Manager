@@ -37,7 +37,7 @@ test('chunkDocumentText validates chunk size and overlap', () => {
 
 test('getEmbeddingConfig uses centralized AI runtime configuration', () => {
     assert.deepEqual(getEmbeddingConfig(), {
-        endpoint: aiConfig.ollama.baseUrl.replace(/\\/$/, '') + '/api/embed',
+        endpoint: (aiConfig.ollama.baseUrl.endsWith('/') ? aiConfig.ollama.baseUrl.slice(0, -1) : aiConfig.ollama.baseUrl) + '/api/embed',
         model: aiConfig.ollama.embeddingModel
     });
 });
@@ -49,7 +49,7 @@ test('createDocumentEmbedding validates the 768-dimensional response', async () 
         const embedding = Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.25);
         const result = await createDocumentEmbedding('test', {
             fetchImpl: async (url, options) => {
-                assert.equal(url, aiConfig.ollama.baseUrl.replace(/\\/$/, '') + '/api/embed');
+                assert.equal(url, (aiConfig.ollama.baseUrl.endsWith('/') ? aiConfig.ollama.baseUrl.slice(0, -1) : aiConfig.ollama.baseUrl) + '/api/embed');
                 const body = JSON.parse(options.body);
                 assert.equal(body.model, aiConfig.ollama.embeddingModel);
                 assert.equal(body.input, 'test');
