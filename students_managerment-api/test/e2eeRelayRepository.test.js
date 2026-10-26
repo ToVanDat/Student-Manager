@@ -311,3 +311,51 @@ test('provisioning rollback cannot delete a later device that reused the assigne
     assert.ok(deletion.statement.includes('created_at <= $3'));
     assert.deepEqual(deletion.params, [44, 2, completedAt]);
 });
+
+
+test('expired pending-ack provisioning revokes its unacknowledged device and clears ephemeral payload', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) {
+                return {
+                    rows: [{ session_id: sessionId, status: 'linked_pending_ack', assigned_device_id: 2, completed_at: completedAt }],
+                    rowCount: 1
+                };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'expired'")) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at')) {
+                return {
+                    rows: [{ status: 'expired', encrypted_message: null, new_device_ephemeral_public_key: null, expires_at: new Date('2026-10-26T10:05:00.000Z') }],
+                    rowCount: 1
+                };
+            }
+            throw new Error('Unexpected SQL in expired provisioning test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    const state = await repository.getProvisioningMessage(44, sessionId);
+    assert.deepEqual(state, {
+        status: 'expired',
+        message: null,
+        newDeviceEphemeralPublicKey: null,
+        expiresAt: null
+    });
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.ok(deletion.statement.includes('created_at <= $3'));
+    assert.deepEqual(deletion.params, [44, 2, completedAt]);
+    const expiryUpdate = calls.find(call => call.statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'expired'"));
+    assert.ok(expiryUpdate.statement.includes('encrypted_message = NULL'));
+    assert.ok(expiryUpdate.statement.includes('new_device_ephemeral_public_key = NULL'));
+    assert.deepEqual(expiryUpdate.params, [[sessionId], 44]);
+});
