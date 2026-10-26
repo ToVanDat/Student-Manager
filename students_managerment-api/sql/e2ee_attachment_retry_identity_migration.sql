@@ -3,12 +3,12 @@
 -- Keep all DDL atomic so a failure cannot leave only part of the retry contract installed.
 BEGIN;
 
-DO $
+DO $preflight$
 BEGIN
     IF to_regclass('e2ee_attachment_objects') IS NULL THEN
         RAISE EXCEPTION 'Required table e2ee_attachment_objects is missing in the current search_path';
     END IF;
-END $;
+END $preflight$;
 
 ALTER TABLE e2ee_attachment_objects
     ADD COLUMN IF NOT EXISTS request_id TEXT,
