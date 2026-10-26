@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const aiConfig = require('../src/config/ai.js');
 const {
     normalizeDocumentText,
     chunkDocumentText,
@@ -33,22 +34,11 @@ test('chunkDocumentText validates chunk size and overlap', () => {
     assert.throws(() => chunkDocumentText('a'.repeat(300), { chunkSize: 200, overlap: 200 }), RangeError);
 });
 
-test('getEmbeddingConfig defaults to loopback Ollama and nomic embedding model', () => {
-    const oldUrl = process.env.OLLAMA_BASE_URL;
-    const oldModel = process.env.OLLAMA_EMBEDDING_MODEL;
-    try {
-        delete process.env.OLLAMA_BASE_URL;
-        delete process.env.OLLAMA_EMBEDDING_MODEL;
-        assert.deepEqual(getEmbeddingConfig(), {
-            endpoint: 'http://127.0.0.1:11434/api/embed',
-            model: 'nomic-embed-text'
-        });
-    } finally {
-        if (oldUrl === undefined) delete process.env.OLLAMA_BASE_URL;
-        else process.env.OLLAMA_BASE_URL = oldUrl;
-        if (oldModel === undefined) delete process.env.OLLAMA_EMBEDDING_MODEL;
-        else process.env.OLLAMA_EMBEDDING_MODEL = oldModel;
-    }
+test('getEmbeddingConfig uses centralized AI runtime configuration', () => {
+    assert.deepEqual(getEmbeddingConfig(), {
+        endpoint: aiConfig.ollama.baseUrl.replace(/\\/$/, '') + '/api/embed',
+        model: aiConfig.ollama.embeddingModel
+    });
 });
 
 test('createDocumentEmbedding validates the 768-dimensional response', async () => {
@@ -58,9 +48,9 @@ test('createDocumentEmbedding validates the 768-dimensional response', async () 
         const embedding = Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.25);
         const result = await createDocumentEmbedding('test', {
             fetchImpl: async (url, options) => {
-                assert.equal(url, 'http://127.0.0.1:11434/api/embed');
+                assert.equal(url, aiConfig.ollama.baseUrl.replace(/\\/$/, '') + '/api/embed');
                 const body = JSON.parse(options.body);
-                assert.equal(body.model, 'nomic-embed-text');
+                assert.equal(body.model, aiConfig.ollama.embeddingModel);
                 assert.equal(body.input, 'test');
                 return { ok: true, json: async () => ({ embeddings: [embedding] }) };
             }
