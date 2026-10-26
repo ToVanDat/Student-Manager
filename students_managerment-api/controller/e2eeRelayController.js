@@ -79,15 +79,9 @@ module.exports = {
         }
         return require('../repository/e2eeRelayRepository').getIdentityKey(userId, identityType);
     }),
-    getActiveDevices: run(async req => {
-        const userId = Number(req.params.userId);
-        if (!Number.isSafeInteger(userId) || userId <= 0) {
-            const error = new Error('userId không hợp lệ');
-            error.statusCode = 400;
-            throw error;
-        }
-        return require('../repository/e2eeRelayRepository').getActiveDevices(userId);
-    }),
+    getActiveDevices: run(req => e2eeRelayService.getActiveDevices(
+        Number(req.user.id), Number(req.params.userId)
+    )),
     clearStaleKemPreKeys: run(req => e2eeRelayService.clearStaleKemPreKeys(
         Number(req.user.id), req.params.deviceId, req.query.identityType || 'aci'
     )),
