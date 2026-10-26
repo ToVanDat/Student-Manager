@@ -544,7 +544,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                 classes: context.classes.length,
                 semesters: context.semesters.length,
                 adminOverviewIncluded: role === 'admin',
-                sources: ragSources.map(source => ({ title: source.title, sourceName: source.sourceName, pageNumber: source.pageNumber, chunkIndex: source.chunkIndex }))
+                sources: ragSources.map(source => ({ title: source.title, sourceName: source.sourceName, pageNumber: source.pageNumber, chunkIndex: source.chunkIndex, excerpt: String(source.content || '').slice(0, 280) }))
             }
         };
     } finally {
