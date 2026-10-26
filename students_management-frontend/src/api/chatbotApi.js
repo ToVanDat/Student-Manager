@@ -57,3 +57,12 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone, c
         if (done) break;
     }
 };
+
+export const listAssistantDocuments = async () => (await apiClient.get('/api/assistant/documents')).data;
+export const uploadAssistantDocument = async ({ file, title, visibility = 'all' }) => {
+    const form = new FormData();
+    form.append('document', file);
+    form.append('title', title);
+    form.append('visibility', visibility);
+    return (await apiClient.post('/api/assistant/documents', form)).data;
+};
