@@ -262,25 +262,23 @@ const updateConversationSettings = async (
     return rows[0];
 };
 
-const getConversationChatTheme = async (conversationId, userId) => {
+const getConversationChatTheme = async (conversationId) => {
     const { rows } = await pool.query(
-        `SELECT chat_theme FROM conversation_user_settings
-         WHERE conversation_id = $1 AND user_id = $2 LIMIT 1`,
-        [conversationId, userId]
+        `SELECT chat_theme FROM conversations WHERE id = $1 LIMIT 1`,
+        [conversationId]
     );
     return rows[0]?.chat_theme || 'default';
 };
 
-const setConversationChatTheme = async (conversationId, userId, theme) => {
+const setConversationChatTheme = async (conversationId, theme) => {
     const { rows } = await pool.query(
-        `INSERT INTO conversation_user_settings (conversation_id, user_id, chat_theme, updated_at)
-         VALUES ($1, $2, $3, NOW())
-         ON CONFLICT (conversation_id, user_id)
-         DO UPDATE SET chat_theme = EXCLUDED.chat_theme, updated_at = NOW()
-         RETURNING conversation_id, user_id, chat_theme`,
-        [conversationId, userId, theme]
+        `UPDATE conversations
+         SET chat_theme = $2, updated_at = NOW()
+         WHERE id = $1
+         RETURNING id AS conversation_id, chat_theme`,
+        [conversationId, theme]
     );
-    return rows[0];
+    return rows[0] || null;
 };
 
 const unhideConversationForUser = async (conversationId, userId) => {
