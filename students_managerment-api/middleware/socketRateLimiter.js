@@ -5,6 +5,7 @@ const SOCKET_EVENT_LIMITS = {
     'e2ee:subscribe': { limit: 10, windowMs: 60_000 },
     'call:sync-pending': { limit: 5, windowMs: 30_000 },
     'presence:sync': { limit: 10, windowMs: 10_000 },
+    'presence:heartbeat': { limit: 6, windowMs: 60_000 },
     'conversation:join': { limit: 20, windowMs: 10_000 },
     'message:send': { limit: 15, windowMs: 10_000 },
     'message:edit': { limit: 10, windowMs: 10_000 },
