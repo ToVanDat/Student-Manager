@@ -11,6 +11,8 @@ const router = express.Router();
 // Admin-only document knowledge base. The backend enforces role and file limits.
 router.get('/documents', authMiddleware, requireRole('admin'), chatbotRateLimiter, assistantDocumentController.listDocuments);
 router.post('/documents', authMiddleware, requireRole('admin'), chatbotRateLimiter, uploadAssistantDocument, assistantDocumentController.uploadTextDocument);
+router.patch('/documents/:documentId/archive', authMiddleware, requireRole('admin'), chatbotRateLimiter, assistantDocumentController.archiveDocument);
+router.patch('/documents/:documentId/restore', authMiddleware, requireRole('admin'), chatbotRateLimiter, assistantDocumentController.restoreDocument);
 
 // AI requests always run under the current authenticated account.
 router.post('/chat', authMiddleware, chatbotRateLimiter, chatbotController.chat);
