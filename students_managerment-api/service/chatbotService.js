@@ -222,7 +222,7 @@ const conversationHistoryKey = (userId, sessionId, conversationId) => conversati
     : `assistant:history:${String(userId)}:${String(sessionId)}:${String(conversationId)}`;
 
 function validateConversationId(value) {
-    if (typeof value !== 'string' || !/^(default|[a-f0-9-]{36})$/i.test(value)) {
+    if (typeof value !== 'string' || !/^(default|[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.test(value)) {
         const error = new Error('conversationId không hợp lệ');
         error.status = 400;
         throw error;
@@ -444,8 +444,10 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         await redisClient.set(historyKey, JSON.stringify(nextHistory), { EX: CHAT_CONVERSATION_TTL_SECONDS });
         const index = await readConversationIndex(userId, sessionId);
         const existing = index.find(item => item.id === conversationId);
-        if (existing) existing.updatedAt = new Date().toISOString();
-        else index.push({ id: conversationId, title: message.trim().slice(0, 80), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        if (existing) {
+            existing.updatedAt = new Date().toISOString();
+            if (existing.title === 'Cuộc trò chuyện mới') existing.title = message.trim().slice(0, 80);
+        } else index.push({ id: conversationId, title: message.trim().slice(0, 80), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
         await writeConversationIndex(userId, sessionId, index);
 
         return {
