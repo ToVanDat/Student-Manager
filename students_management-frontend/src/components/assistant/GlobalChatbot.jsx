@@ -14,6 +14,10 @@ export default function GlobalChatbot() {
     const scrollRef = useRef(null);
     const requestVersionRef = useRef(0);
     const userKey = user?.id ?? user?.sub ?? user?.username ?? null;
+    const isAdmin = user?.role === 'admin';
+    const assistantTitle = isAdmin
+        ? (language === 'vi' ? 'Trợ lý quản trị' : 'Admin assistant')
+        : (language === 'vi' ? 'Trợ lý sinh viên' : 'Student assistant');
 
     useEffect(() => {
         requestVersionRef.current += 1;
@@ -76,8 +80,10 @@ export default function GlobalChatbot() {
                     <header className="flex items-center gap-3 border-b border-slate-100 bg-slate-950 px-4 py-3 text-white dark:border-slate-800">
                         <span className="flex size-9 items-center justify-center rounded-xl bg-white/10"><Bot size={20} /></span>
                         <div className="min-w-0 flex-1">
-                            <h2 className="m-0 text-sm font-semibold">Student Assistant</h2>
-                            <p className="m-0 text-[11px] text-slate-300">{language === 'vi' ? 'Trợ lý học vụ · Ollama' : 'Academic assistant · Ollama'}</p>
+                            <h2 className="m-0 text-sm font-semibold">{assistantTitle}</h2>
+                            <p className="m-0 text-[11px] text-slate-300">{isAdmin
+                                ? (language === 'vi' ? 'Hỗ trợ quản lý · Ollama' : 'Management support · Ollama')
+                                : (language === 'vi' ? 'Hỗ trợ học tập · Ollama' : 'Study support · Ollama')}</p>
                         </div>
                         <button type="button" onClick={() => void resetConversation()} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'} title={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'}><Plus size={18} /></button>
                         <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Đóng trợ lý' : 'Close assistant'}><X size={18} /></button>
@@ -85,8 +91,12 @@ export default function GlobalChatbot() {
                     <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto bg-slate-50 p-4 dark:bg-slate-950">
                         {messages.length === 0 && (
                             <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                                <p className="mb-2 font-semibold text-slate-900 dark:text-white">{language === 'vi' ? 'Xin chào! Tôi có thể giúp gì?' : 'Hello! How can I help?'}</p>
-                                <p className="m-0 text-xs leading-5">{language === 'vi' ? 'Hỏi về môn học, tín chỉ, khoa, lớp, học kỳ hoặc cách sử dụng Student Manager. Dữ liệu điểm cá nhân chưa được mở vì tài khoản sinh viên chưa có liên kết định danh đã xác minh.' : 'Ask about subjects, credits, departments, classes, semesters, or using Student Manager. Personal grades are not available until student-account identity linking is verified.'}</p>
+                                <p className="mb-2 font-semibold text-slate-900 dark:text-white">{isAdmin
+                                    ? (language === 'vi' ? 'Xin chào quản trị viên! Tôi có thể hỗ trợ gì?' : 'Hello, administrator! How can I help?')
+                                    : (language === 'vi' ? 'Xin chào! Tôi có thể giúp gì?' : 'Hello! How can I help?')}</p>
+                                <p className="m-0 text-xs leading-5">{isAdmin
+                                    ? (language === 'vi' ? 'Hỏi về danh mục môn học, khoa, lớp, học kỳ và số liệu tổng quan hệ thống. Trợ lý chỉ cung cấp thông tin, không tự thực hiện thao tác quản trị.' : 'Ask about subjects, departments, classes, semesters, and aggregate system counts. The assistant is read-only and cannot perform administrative actions.')
+                                    : (language === 'vi' ? 'Hỏi về môn học, tín chỉ, khoa, lớp, học kỳ hoặc cách sử dụng Student Manager. Dữ liệu điểm cá nhân chưa được mở vì tài khoản sinh viên chưa có liên kết định danh đã xác minh.' : 'Ask about subjects, credits, departments, classes, semesters, or using Student Manager. Personal grades are not available until student-account identity linking is verified.')}</p>
                             </div>
                         )}
                         {messages.map((item, index) => (
