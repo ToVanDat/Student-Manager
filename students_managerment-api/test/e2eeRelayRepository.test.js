@@ -535,12 +535,11 @@ test('expired provisioning acknowledgement expires and removes the pending devic
     pool.connect = async () => client;
     t.after(() => { pool.connect = oldConnect; });
 
-    await assert.rejects(
-        repository.acknowledgeProvisioning(44, sessionId, token),
-        error => error.statusCode === 409
-    );
+    const result = await repository.acknowledgeProvisioning(44, sessionId, token);
+    assert.deepEqual(result, { expiredOrUnavailable: true });
     assert.ok(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices')));
     assert.ok(calls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE')));
     assert.equal(calls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')), false);
-    assert.ok(calls.some(call => call.statement === 'ROLLBACK'));
+    assert.ok(calls.some(call => call.statement === 'COMMIT'));
+    assert.equal(calls.some(call => call.statement === 'ROLLBACK'), false);
 });
