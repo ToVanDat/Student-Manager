@@ -327,6 +327,43 @@ test('provisioning rollback revokes a completed device when ACK response was los
     assert.ok(calls.some(call => call.statement === "COMMIT"));
 });
 
+
+test('provisioning rollback removes only the matching disabled pending device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ assigned_device_id: 4, completed_at: completedAt, status: 'linked_pending_ack' }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [{ id: 72 }], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [], rowCount: 1 };
+            throw new Error('Unexpected SQL in pending provisioning rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    assert.deepEqual(
+        await repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', token),
+        { rolledBack: true }
+    );
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.deepEqual(deletion.params, [44, 4, tokenHash, completedAt]);
+    assert.ok(deletion.statement.includes('enabled = FALSE'));
+    assert.ok(deletion.statement.includes('created_at <= $4'));
+    assert.ok(calls.some(call => call.statement === 'COMMIT'));
+});
+
+
 test('provisioning rollback rejects a wrong credential for a completed device', async t => {
     const oldConnect = pool.connect;
     const calls = [];
