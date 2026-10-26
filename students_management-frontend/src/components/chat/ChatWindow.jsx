@@ -45,6 +45,7 @@ import AvatarFallback from './AvatarFallback';
 import GroupInfoPanel from './GroupInfoPanel';
 import { notificationApi } from '@/api/notificationApi';
 import { getConversationChatTheme, updateConversationChatTheme } from '@/api/chatApi.js';
+import socket from '@/socket/socket.js';
 import { useTheme } from '@/context/ThemeContext.jsx';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
@@ -235,6 +236,20 @@ export default function ChatWindow({
                 });
         }
         return () => { active = false; };
+    }, [activeConversation?.id, currentUserId, chatThemes]);
+
+    useEffect(() => {
+        const handleSharedThemeUpdated = ({ conversationId, theme }) => {
+            if (
+                Number(conversationId) !== Number(activeConversation?.id) ||
+                !chatThemes.some(item => item.value === theme)
+            ) return;
+            const storageKey = `chat-theme:${currentUserId}:${conversationId}`;
+            setChatTheme(theme);
+            try { localStorage.setItem(storageKey, theme); } catch { /* optional cache */ }
+        };
+        socket.on('conversation:theme-updated', handleSharedThemeUpdated);
+        return () => socket.off('conversation:theme-updated', handleSharedThemeUpdated);
     }, [activeConversation?.id, currentUserId, chatThemes]);
 
     const chooseChatTheme = async (nextTheme) => {
