@@ -29,6 +29,7 @@ export default function GlobalChatbot() {
         setMessages([]);
         setInput('');
         setLoading(false);
+        setHistoryLoading(false);
         setOpen(false);
     }, [userKey]);
 
@@ -39,10 +40,10 @@ export default function GlobalChatbot() {
         getChatbotHistory()
             .then(result => {
                 if (!active || !Array.isArray(result?.messages)) return;
-                setMessages(result.messages.map((item, index) => ({ id: 'history-' + index + '-' + item.role, role: item.role, content: item.content })));
+                setMessages(current => current.length > 0 ? current : result.messages.map((item, index) => ({ id: 'history-' + index + '-' + item.role, role: item.role, content: item.content })));
             })
             .catch(() => {})
-            .finally(() => { if (active) setHistoryLoading(false); });
+            .finally(() => { setHistoryLoading(false); });
         return () => { active = false; };
     }, [open, userKey]);
 
