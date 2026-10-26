@@ -89,3 +89,22 @@ On commit `b4d90c8dbe828db45b2efc3ead7350f3ad4f7042`:
 The API workflow includes backend unit tests, Cloudflare Worker tests, E2EE migration smoke and live PostgreSQL relay integration. Quality checks include backend tests and frontend lint/production build. These results validate configured CI jobs only; they do not establish a production penetration test, browser pairing test, live R2 test or hosted deployment readiness.
 
 No live user database was accessed or modified. No migration was run. No merge was performed.
+
+
+## 6. Provisioning lifecycle follow-up (SDK 11.0.0)
+
+- Confirmed the frontend lockfile resolves `@open-e2ee/signal-protocol-sdk` to exactly `11.0.0`; review of provisioning must use that package contract rather than current-major examples.
+- Provisioning allocates linked slots 2–5 under an account-row lock. The new device credential is issued by `completeProvisioning` and stored by the relay adapter; the frontend then restarts the client using the provisioned local store.
+- Expired `linked_pending_ack` sessions remove only the device row allocated by that session, guarded by user, slot, linked flag, revocation state and `created_at <= completed_at`. This prevents cleanup from deleting a later device that reused the slot.
+- **Newly closed finding:** expired `completed` sessions were excluded from expiry cleanup, so encrypted provisioning payload and transient public-key metadata could remain stored indefinitely. The cleanup query now includes completed rows after their five-minute retention window, clears encrypted payload/metadata and ephemeral public-key fields, and preserves `status='completed'` so the primary device can still observe successful completion.
+- Added a repository regression test for completed-session scrubbing and status preservation. The test is mocked at the PostgreSQL query boundary; it has not been executed in this environment.
+- Cleanup remains opportunistic: it runs when a provisioning endpoint is next called. There is no background expiry worker, so an idle account's expired rows can remain until its next provisioning request.
+
+### Still unverified before production
+
+- The SDK's exact v11 provisioning wire encoding for ephemeral public keys has not been independently confirmed from the installed package artifact. Do not add a guessed fixed-length validation to Base64 values.
+- The SDK's internal ordering of decrypt → complete → acknowledgement has not been verified against the installed v11 runtime source. Adapter methods exist and the relay adapter persists the returned device token, but this is not proof of the two-browser handshake.
+- No real-browser two-device pairing, wrong-key rejection, provisioning replay, or PostgreSQL concurrency test was run in this environment. The next required test is a real primary/new-browser pair with network interruption between decrypt, completion, acknowledgement and client initialization.
+- The current `completeProvisioning` endpoint is authenticated by the account session and returns a device credential. Its proof-of-possession boundary should be reviewed against the SDK v11 handshake before production; do not infer that successful HTTP authentication proves possession of the primary device's local identity key.
+
+No schema change, migration, live database operation, or merge was performed for this follow-up.
