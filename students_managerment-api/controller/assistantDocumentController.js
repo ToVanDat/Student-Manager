@@ -37,6 +37,11 @@ exports.listDocuments = async (req, res) => {
         return res.json({ documents });
     } catch (error) {
         const status = Number.isInteger(error.status) ? error.status : 503;
-        return res.status(status).json({ message: 'Không thể tải danh sách tài liệu RAG. Kiểm tra migration schema.' });
+        return res.status(status).json({
+            code: error.code || undefined,
+            message: error.code === 'RAG_SCHEMA_NOT_READY'
+                ? 'Kho tri thức chưa sẵn sàng. Cần kiểm tra migration RAG và pgvector trước khi tải danh sách tài liệu.'
+                : 'Không thể tải danh sách tài liệu RAG. Kiểm tra migration schema.'
+        });
     }
 };
