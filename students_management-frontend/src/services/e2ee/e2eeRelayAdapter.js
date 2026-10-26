@@ -34,6 +34,8 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
     let currentDeviceId = null;
     let connectionState = { state: socket.connected ? 'connected' : 'stopped', since: Date.now() };
     const connectionListeners = new Set();
+    let provisioningRollbackRetryTimer = null;
+    let provisioningRollbackRetryAttempt = 0;
     const updateConnectionState = state => {
         connectionState = { ...state, since: Date.now() };
         connectionListeners.forEach(listener => {
@@ -95,10 +97,19 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             const sessionId = await getPendingE2EEProvisioningRollback(userId, deviceId);
             if (!sessionId) return;
             await finishProvisioningRollback(deviceId, sessionId);
+            provisioningRollbackRetryAttempt = 0;
         } catch (error) {
             console.warn('[E2EE] pending provisioning rollback remains queued', {
                 code: error?.code || 'PROVISIONING_ROLLBACK_FAILED'
             });
+            if (!provisioningRollbackRetryTimer) {
+                const delay = Math.min(60_000, 2_000 * (2 ** Math.min(provisioningRollbackRetryAttempt, 5)));
+                provisioningRollbackRetryAttempt += 1;
+                provisioningRollbackRetryTimer = setTimeout(() => {
+                    provisioningRollbackRetryTimer = null;
+                    void retryPendingProvisioningRollback();
+                }, delay);
+            }
         }
     };
 
@@ -118,6 +129,10 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             socket.off('connect', onSocketConnect);
             socket.off('disconnect', onSocketDisconnect);
             socket.off('connect_error', onSocketConnectError);
+            if (provisioningRollbackRetryTimer) {
+                clearTimeout(provisioningRollbackRetryTimer);
+                provisioningRollbackRetryTimer = null;
+            }
             connectionListeners.clear();
         },
 
