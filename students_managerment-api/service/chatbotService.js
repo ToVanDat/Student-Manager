@@ -25,14 +25,25 @@ function getOllamaConfig() {
     try {
         url = new URL(rawUrl);
     } catch {
-        throw new Error('OLLAMA_BASE_URL không hợp lệ');
+        const error = new Error('OLLAMA_BASE_URL không hợp lệ');
+        error.status = 503;
+        throw error;
     }
 
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
-        throw new Error('OLLAMA_BASE_URL phải là HTTP(S) URL hợp lệ');
+        const error = new Error('OLLAMA_BASE_URL phải là HTTP(S) URL hợp lệ và không chứa thông tin đăng nhập');
+        error.status = 503;
+        throw error;
     }
-    if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '::1'].includes(url.hostname)) {
-        throw new Error('OLLAMA_BASE_URL từ xa phải sử dụng HTTPS');
+    if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname)) {
+        const error = new Error('OLLAMA_BASE_URL từ xa phải sử dụng HTTPS');
+        error.status = 503;
+        throw error;
+    }
+    if (url.search || url.hash) {
+        const error = new Error('OLLAMA_BASE_URL không được chứa query string hoặc fragment');
+        error.status = 503;
+        throw error;
     }
 
     return {
@@ -317,4 +328,4 @@ async function answer({ userId, sessionId, role, message }) {
     }
 }
 
-module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext };
+module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
