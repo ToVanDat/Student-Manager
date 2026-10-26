@@ -196,7 +196,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
                             <p className="m-0 mt-1 truncate text-[10px] text-slate-400">{document.source_name} · {visibilityLabel(document.visibility)}</p>
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${document.status === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : document.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'}`}>{statusLabel(document.status)}</span>
-                        {(document.status === 'ready' || document.status === 'failed' || document.status === 'archived') && (
+                        {(document.status === 'ready' || document.status === 'archived') && (
                             <button
                                 type="button"
                                 onClick={() => void changeDocumentArchiveState(document)}
