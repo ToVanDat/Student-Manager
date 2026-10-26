@@ -73,14 +73,41 @@ function getEmbeddingConfig() {
     };
 }
 
-async function createDocumentEmbedding(text, { fetchImpl = fetch } = {}) {
+function createEmbeddingAbortSignal(clientSignal, timeoutMs) {
+    const controller = new AbortController();
+    const abortFromClient = () => {
+        if (!controller.signal.aborted) {
+            controller.abort(clientSignal?.reason || new Error('Chat request client disconnected'));
+        }
+    };
+    if (clientSignal?.aborted) abortFromClient();
+    else clientSignal?.addEventListener('abort', abortFromClient, { once: true });
+    const timeout = setTimeout(() => {
+        if (!controller.signal.aborted) controller.abort(new Error('Ollama embedding request timed out'));
+    }, timeoutMs);
+    return {
+        signal: controller.signal,
+        cleanup: () => {
+            clearTimeout(timeout);
+            clientSignal?.removeEventListener('abort', abortFromClient);
+        }
+    };
+}
+
+async function createDocumentEmbedding(text, { fetchImpl = fetch, signal = null } = {}) {
     const config = getEmbeddingConfig();
-    const response = await fetchImpl(config.endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(aiConfig.ollama.requestTimeoutMs),
-        body: JSON.stringify({ model: config.model, input: text })
-    });
+    const requestAbort = createEmbeddingAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
+    let response;
+    try {
+        response = await fetchImpl(config.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: requestAbort.signal,
+            body: JSON.stringify({ model: config.model, input: text })
+        });
+    } finally {
+        requestAbort.cleanup();
+    }
     if (!response.ok) {
         const error = new Error('Không thể tạo embedding. Kiểm tra Ollama và OLLAMA_EMBEDDING_MODEL.');
         error.status = 503;
@@ -211,7 +238,7 @@ function getAllowedDocumentVisibility(role) {
     return role === 'admin' ? ['all', 'student', 'admin'] : ['all', 'student'];
 }
 
-async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit }) {
+async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit, signal = null }) {
     const schemaReady = await pool.query(
         `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
                 to_regclass('assistant_document_chunks') IS NOT NULL AS chunks_ready,
@@ -220,7 +247,7 @@ async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.re
     const readiness = schemaReady.rows[0];
     if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) return [];
     const query = normalizeDocumentText(question).slice(0, 4000);
-    const embedding = await createDocumentEmbedding(query);
+    const embedding = await createDocumentEmbedding(query, { signal });
     const allowedVisibility = getAllowedDocumentVisibility(role);
     const result = await pool.query(
         `SELECT d.id AS document_id, d.title, d.source_name,
