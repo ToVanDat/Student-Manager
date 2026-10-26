@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 // Central AI configuration. Keep deployment secrets in the ignored local .env;
 // these non-secret model defaults intentionally live in source configuration.
 module.exports = Object.freeze({
