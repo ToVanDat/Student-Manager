@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bot, MessageCircle, Send, X, LoaderCircle, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { sendChatbotMessage, clearChatbotHistory } from '@/api/chatbotApi.js';
+import { streamChatbotMessage, clearChatbotHistory } from '@/api/chatbotApi.js';
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
@@ -59,9 +59,24 @@ export default function GlobalChatbot() {
         setLoading(true);
         const requestVersion = requestVersionRef.current;
         try {
-            const result = await sendChatbotMessage(text);
+            const assistantId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            setMessages(items => [...items, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
+            await streamChatbotMessage(text, {
+                onToken: token => {
+                    if (requestVersion !== requestVersionRef.current) return;
+                    setMessages(items => items.map(item => item.id === assistantId
+                        ? { ...item, content: item.content + token }
+                        : item));
+                },
+                onDone: () => {
+                    if (requestVersion !== requestVersionRef.current) return;
+                    setMessages(items => items.map(item => item.id === assistantId
+                        ? { ...item, streaming: false }
+                        : item));
+                }
+            });
             if (requestVersion !== requestVersionRef.current) return;
-            setMessages(items => [...items, { role: 'assistant', content: result.message }]);
+            setMessages(items => items.map(item => item.id === assistantId ? { ...item, streaming: false } : item));
         } catch (error) {
             const message = error?.response?.data?.message || (language === 'vi'
                 ? 'Không thể kết nối trợ lý lúc này. Vui lòng thử lại.'
