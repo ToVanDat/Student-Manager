@@ -255,7 +255,8 @@ test('provisioning serializes device-slot allocation by locking the owning accou
             if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
                 return { rows: [], rowCount: 0 };
             }
-            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };\n            if (statement.startsWith('SELECT * FROM e2ee_sdk_provisioning_sessions')) {
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT * FROM e2ee_sdk_provisioning_sessions')) {
                 return { rows: [{ session_id: 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d' }], rowCount: 1 };
             }
             if (statement === 'SELECT id FROM users WHERE id = $1 FOR UPDATE') {
@@ -293,7 +294,8 @@ test('provisioning rollback cannot delete a later device that reused the assigne
             if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
                 return { rows: [], rowCount: 0 };
             }
-            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };\n            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
                 return { rows: [{ assigned_device_id: 2, completed_at: completedAt }], rowCount: 1 };
             }
             if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [], rowCount: 0 };
