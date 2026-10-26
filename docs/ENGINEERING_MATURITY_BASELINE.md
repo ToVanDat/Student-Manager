@@ -120,7 +120,18 @@ These are repository observations, not claims about unobserved local or hosted i
 5. Do not claim a test, deployment, security review or restore drill passed unless its result is available.
 6. Keep production readiness as **unverified** until the acceptance evidence above exists.
 
-## 6. Immediate implementation progress
+## 6. Security assurance progress
+
+A focused security-hardening slice has been committed:
+
+- JWT signing is explicitly pinned to HS256 for password, Google/passkey/QR session issuance.
+- JWT verification in HTTP authentication, Socket.IO handshake/token refresh and logout session resolution explicitly allows HS256 only.
+- RAG document visibility now fails closed for missing or unrecognized roles instead of treating every non-admin role as a student.
+- Added a regression test for unknown/null/malformed role values.
+
+Existing route-level controls were also reviewed: student records and enrollment/grade data remain admin-only until a verified student-account mapping exists; chatbot knowledge documents are admin-managed; retrieval filters ready documents by role visibility; chat history keys are scoped by user and session. These are code-level observations, not a complete penetration test.
+
+## 7. Immediate implementation progress
 
 The first operational slice has been added to the working branch:
 
