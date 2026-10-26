@@ -852,6 +852,10 @@ export const useChat = () => {
             socket.emit('presence:sync');
             joinActiveConversation();
         }
+        // Reconcile expired Redis presence keys after abrupt browser/server exits.
+        const presenceSyncTimer = setInterval(() => {
+            if (socket.connected) socket.emit('presence:sync');
+        }, 30_000);
         socket.on('presence:online', handlePresenceOnline);
         socket.on('presence:offline', handlePresenceOffline);
         socket.on('message:new', handleNewMessage);
@@ -877,6 +881,7 @@ export const useChat = () => {
         socket.on('message:error', handleMessageError);
 
         return () => {
+            clearInterval(presenceSyncTimer);
             socket.off('connect', handleSocketConnect);
             socket.off('presence:snapshot', handlePresenceSnapshot);
             socket.off('conversation:created', handleConversationCreated);
