@@ -71,7 +71,7 @@ export default function ChatLockGate({ children }) {
 
     const lock = useCallback(() => {
         if (!record) return;
-        void shutdownE2EEClient().finally(() => lockPinProtectedE2EEVault(userId));
+        void shutdownE2EEClient().catch(() => {}).finally(() => lockPinProtectedE2EEVault(userId));
         sessionStorage.setItem(LOCK_KEY, 'true');
         setLocked(true);
         setMode('unlock');
