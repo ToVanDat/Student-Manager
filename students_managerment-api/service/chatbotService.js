@@ -99,6 +99,18 @@ function extractSemesterSearchTerm(message) {
     return extractNamedCatalogTerm(message, ['học kỳ', 'học kì', 'semester'], /^(nào|gì|có|là|bao nhiêu|trong)\b|^(information|details|list|catalog|data|overview)$/i);
 }
 
+function removeLastTurn(history) {
+    const normalized = normalizeHistory(history);
+    const lastAssistant = normalized[normalized.length - 1];
+    const lastUser = normalized[normalized.length - 2];
+    if (lastAssistant?.role !== 'assistant' || lastUser?.role !== 'user') {
+        const error = new Error('Không tìm thấy lượt trao đổi gần nhất để chỉnh sửa hoặc tạo lại');
+        error.status = 409;
+        throw error;
+    }
+    return normalized.slice(0, -2);
+}
+
 function serializeUntrustedContext(context) {
     return `BEGIN_UNTRUSTED_ACADEMIC_CONTEXT_JSON\n${JSON.stringify(context).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')}\nEND_UNTRUSTED_ACADEMIC_CONTEXT_JSON`;
 }
@@ -372,16 +384,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         if (storedHistory) {
             try { history = normalizeHistory(JSON.parse(storedHistory)); } catch { history = []; }
         }
-        if (replaceLastTurn) {
-            const lastAssistant = history[history.length - 1];
-            const lastUser = history[history.length - 2];
-            if (lastAssistant?.role !== 'assistant' || lastUser?.role !== 'user') {
-                const error = new Error('Không tìm thấy lượt trao đổi gần nhất để chỉnh sửa hoặc tạo lại');
-                error.status = 409;
-                throw error;
-            }
-            history = history.slice(0, -2);
-        }
+        if (replaceLastTurn) history = removeLastTurn(history);
 
         const config = getOllamaConfig();
         const context = await loadAcademicContext(role, message);
@@ -549,4 +552,4 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
     }
 }
 
-module.exports = { answer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, rateAnswer, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
+module.exports = { answer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, rateAnswer, normalizeHistory, removeLastTurn, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
