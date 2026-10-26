@@ -37,7 +37,7 @@ export default function AssistantMessage({ content = '' }) {
             paragraph = [];
         };
         const flushList = () => {
-            if (list.length) output.push({ type: 'list', items: list });
+            if (list.length) output.push({ type: 'list', ordered: list[0].ordered, items: list });
             list = [];
         };
         lines.forEach((line, index) => {
@@ -101,7 +101,7 @@ export default function AssistantMessage({ content = '' }) {
                     const className = block.level === 1 ? 'text-base font-bold' : block.level === 2 ? 'text-sm font-bold' : 'text-[13px] font-semibold';
                     return <h3 key={index} className={className + ' m-0 text-slate-900 dark:text-white'}>{renderInline(block.text, 'h' + index)}</h3>;
                 }
-                if (block.type === 'list') return <ul key={index} className="my-1 list-disc space-y-1.5 pl-5">{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item.text, 'l' + index + '-' + itemIndex)}</li>)}</ul>;
+                if (block.type === 'list') { const ListTag = block.ordered ? 'ol' : 'ul'; return <ListTag key={index} className={`my-1 space-y-1.5 pl-5 ${block.ordered ? 'list-decimal' : 'list-disc'}`}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{renderInline(item.text, 'l' + index + '-' + itemIndex)}</li>)}</ListTag>; }
                 if (block.type === 'quote') return <blockquote key={index} className="m-0 border-l-2 border-blue-400 bg-blue-50/70 py-2 pl-3 pr-2 text-slate-600 dark:bg-blue-950/30 dark:text-slate-300">{renderInline(block.text, 'q' + index)}</blockquote>;
                 if (block.type === 'table') return (
                     <div key={index} className="max-w-full overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
