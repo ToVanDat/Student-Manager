@@ -120,8 +120,16 @@ These are repository observations, not claims about unobserved local or hosted i
 5. Do not claim a test, deployment, security review or restore drill passed unless its result is available.
 6. Keep production readiness as **unverified** until the acceptance evidence above exists.
 
-## 6. Immediate next implementation slice
+## 6. Immediate implementation progress
 
-Start with the operational foundation: add dependency-aware liveness/readiness endpoints, graceful shutdown for HTTP/Socket.IO/PostgreSQL/Redis, focused tests, and Compose health checks. In parallel, create the API lockfile using a real npm environment before changing Docker installation to `npm ci`.
+The first operational slice has been added to the working branch:
 
-This slice improves observability and shutdown behavior without changing business tables or deleting data. It must be delivered in small commits and validated by CI before proceeding to the next security/data-integrity slice.
+- `GET /health/live` returns a minimal process-liveness response.
+- `GET /health/ready` checks PostgreSQL and Redis and returns HTTP 503 when either dependency is unavailable. Dependency error details are not exposed.
+- Focused unit tests cover healthy, unavailable and error-redaction cases.
+- Docker Compose now health-checks PostgreSQL, Redis and the API, and waits for database/cache health before starting the API.
+- SIGTERM/SIGINT handling closes Socket.IO (including its Redis Pub/Sub subscriber), HTTP connections, Redis and PostgreSQL with a bounded shutdown timeout.
+
+The CI runs triggered by these commits are being evaluated; do not treat this implementation as validated until the latest-commit workflows complete successfully. The API lockfile is still absent, so the Dockerfile remains on `npm install --omit=dev`; generate and commit a lockfile from a real npm environment before switching to `npm ci`.
+
+This slice does not change business tables, apply migrations or delete data. After CI validation, continue with security and data-integrity work, then browser E2E, performance, backup/restore and deployment exercises.
