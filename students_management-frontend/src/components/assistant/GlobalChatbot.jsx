@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles, MessageSquare, Pencil, Trash2, Check } from 'lucide-react';
+import { MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles, MessageSquare, Pencil, Trash2, Check, BookOpen } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
+import AssistantKnowledgeManager from '@/components/assistant/AssistantKnowledgeManager.jsx';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import { streamChatbotMessage, getChatbotHistory, listChatbotConversations, createChatbotConversation, renameChatbotConversation, deleteChatbotConversation } from '@/api/chatbotApi.js';
@@ -16,6 +17,7 @@ export default function GlobalChatbot() {
     const [conversations, setConversations] = useState([]);
     const [activeConversationId, setActiveConversationId] = useState('default');
     const [showConversationList, setShowConversationList] = useState(false);
+    const [showKnowledgeManager, setShowKnowledgeManager] = useState(false);
     const [editingConversationId, setEditingConversationId] = useState(null);
     const [editingTitle, setEditingTitle] = useState('');
     const scrollRef = useRef(null);
@@ -151,10 +153,11 @@ export default function GlobalChatbot() {
                         ? { ...item, content: item.content + token }
                         : item));
                 },
-                onDone: () => {
+                onDone: data => {
                     if (requestVersion !== requestVersionRef.current) return;
+                    const sources = Array.isArray(data?.context?.sources) ? data.context.sources : [];
                     setMessages(items => items.map(item => item.id === assistantId
-                        ? { ...item, streaming: false }
+                        ? { ...item, streaming: false, sources }
                         : item));
                 }
             });
@@ -199,9 +202,11 @@ export default function GlobalChatbot() {
                                 : (language === 'vi' ? 'Hỗ trợ học tập · Ollama' : 'Study support · Ollama')}</p>
                         </div>
                         <button type="button" onClick={() => void startNewConversation()} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'} title={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'}><Plus size={18} /></button>
+                        {isAdmin && <button type="button" onClick={() => setShowKnowledgeManager(value => !value)} className={`rounded-lg p-2 hover:bg-white/10 hover:text-white ${showKnowledgeManager ? 'bg-white/15 text-white' : 'text-slate-300'}`} aria-label={language === 'vi' ? 'Kho tài liệu' : 'Knowledge base'} title={language === 'vi' ? 'Kho tài liệu' : 'Knowledge base'}><BookOpen size={17} /></button>}
                         <button type="button" onClick={() => setShowConversationList(value => !value)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Danh sách hội thoại' : 'Conversation list'} title={language === 'vi' ? 'Danh sách hội thoại' : 'Conversation list'}><MessageSquare size={17} /></button>
                         <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Đóng trợ lý' : 'Close assistant'}><X size={18} /></button>
                     </header>
+                    {isAdmin && showKnowledgeManager && <AssistantKnowledgeManager language={language} />}
                     {showConversationList && <aside className="max-h-56 overflow-y-auto border-b border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
                         {conversations.map(item => <div key={item.id} className={`flex items-center gap-1 rounded-lg px-2 py-1.5 ${item.id === activeConversationId ? 'bg-blue-50 dark:bg-slate-800' : ''}`}>
                             {editingConversationId === item.id ? <><input autoFocus value={editingTitle} onChange={e => setEditingTitle(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-2 py-1 text-xs dark:bg-slate-950" /><button onClick={() => void saveConversationTitle(item.id)} className="p-1 text-emerald-600"><Check size={14}/></button></> : <button onClick={() => void switchConversation(item.id)} disabled={loading} className="min-w-0 flex-1 truncate text-left text-xs text-slate-700 dark:text-slate-200">{item.title}</button>}
@@ -228,6 +233,7 @@ export default function GlobalChatbot() {
                                     {item.role === 'assistant'
                                         ? <AssistantMessage content={item.content} />
                                         : <p className="m-0 whitespace-pre-wrap break-words text-[13px] leading-6">{item.content}</p>}
+                                    {item.sources?.length > 0 && <div className="mt-3 border-t border-slate-100 pt-2 dark:border-slate-800"><p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">{language === 'vi' ? 'Nguồn tham khảo' : 'Sources'}</p><ul className="m-0 list-disc space-y-1 pl-4">{item.sources.map((source, sourceIndex) => <li key={source.documentId || sourceIndex} className="text-[10px] leading-4 text-slate-500 dark:text-slate-400">{source.title}{source.pageNumber ? `, trang ${source.pageNumber}` : ''}</li>)}</ul></div>}
                                     {item.streaming && <span className="ml-1 inline-block h-3.5 w-1 animate-pulse rounded-full bg-blue-500 align-middle" />}
                                     {item.retryable && item.retryPrompt && (
                                         <button type="button" onClick={() => void send(null, item.retryPrompt)} disabled={loading} className="mt-3 block rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950">
