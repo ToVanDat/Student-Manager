@@ -659,7 +659,7 @@ const expireProvisioningSessions = async (client, userId) => {
         `SELECT session_id, status, assigned_device_id, completed_at
          FROM e2ee_sdk_provisioning_sessions
          WHERE owner_user_id = $1 AND expires_at <= NOW()
-           AND status NOT IN ('completed', 'rolled_back', 'expired')
+           AND status NOT IN ('rolled_back', 'expired')
          FOR UPDATE`,
         [userId]
     );
@@ -681,10 +681,11 @@ const expireProvisioningSessions = async (client, userId) => {
     const sessionIds = rows.map(row => row.session_id);
     await client.query(
         `UPDATE e2ee_sdk_provisioning_sessions
-         SET status = 'expired', new_device_ephemeral_public_key = NULL,
-             new_device_metadata = NULL, encrypted_message = NULL, encrypted_device_name = NULL
+         SET status = CASE WHEN status = 'completed' THEN 'completed' ELSE 'expired' END,
+             new_device_ephemeral_public_key = NULL, new_device_metadata = NULL,
+             encrypted_message = NULL, encrypted_device_name = NULL
          WHERE session_id = ANY($1::uuid[]) AND owner_user_id = $2
-           AND status NOT IN ('completed', 'rolled_back', 'expired')`,
+           AND status NOT IN ('rolled_back', 'expired')`,
         [sessionIds, userId]
     );
     return rows.length;
