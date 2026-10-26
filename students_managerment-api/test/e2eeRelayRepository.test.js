@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
 const pool = require('../src/config/database');
 const repository = require('../repository/e2eeRelayRepository');
@@ -276,6 +277,9 @@ test('provisioning serializes device-slot allocation by locking the owning accou
 
     const result = await repository.completeProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', null, {});
     assert.equal(result.deviceId, 3);
+    const deviceInsert = calls.find(call => call.statement.startsWith('INSERT INTO e2ee_sdk_devices'));
+    assert.ok(deviceInsert.statement.includes('enabled'));
+    assert.ok(deviceInsert.statement.includes("VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6,FALSE)"));
     const accountLock = calls.findIndex(call => call.statement === 'SELECT id FROM users WHERE id = $1 FOR UPDATE');
     const slotRead = calls.findIndex(call => call.statement.startsWith('SELECT device_id FROM e2ee_sdk_devices'));
     assert.ok(accountLock > 0);
