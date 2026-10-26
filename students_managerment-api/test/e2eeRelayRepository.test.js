@@ -108,7 +108,7 @@ test('notification decision is deduplicated across recipient devices and retries
     const keyFor = (senderId, clientId, recipientDevicePk) => `${senderId}:${clientId}:${recipientDevicePk}`;
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push({ statement, params });
             if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT 1 FROM conversation_members')) return { rows: [{}], rowCount: 1 };
@@ -176,7 +176,7 @@ test('revoked device credentials cannot authenticate, pull mailbox or acknowledg
     const transactionCalls = [];
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             transactionCalls.push({ statement, params });
             if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
                 return { rows: [], rowCount: 0 };
@@ -194,7 +194,7 @@ test('revoked device credentials cannot authenticate, pull mailbox or acknowledg
     };
     pool.connect = async () => client;
     pool.query = async (sql, params = []) => {
-        const statement = sql.replace(/\\s+/g, ' ').trim();
+        const statement = sql.replace(/\s+/g, ' ').trim();
         if (statement.startsWith('SELECT id, user_id, device_id, registration_id FROM e2ee_sdk_devices')) {
             assert.ok(statement.includes('revoked_at IS NULL AND enabled = TRUE AND registered = TRUE'));
             return { rows: revoked ? [] : [{ id: 12, user_id: 44, device_id: 2 }], rowCount: revoked ? 0 : 1 };
@@ -231,7 +231,7 @@ test('primary E2EE device slot remains protected from linked-device revocation A
     const calls = [];
     const client = {
         async query(sql) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push(statement);
             return { rows: [], rowCount: 0 };
         },
@@ -250,7 +250,7 @@ test('provisioning serializes device-slot allocation by locking the owning accou
     const calls = [];
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push({ statement, params });
             if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
                 return { rows: [], rowCount: 0 };
@@ -288,7 +288,7 @@ test('provisioning rollback cannot delete a later device that reused the assigne
     const completedAt = new Date('2026-10-26T10:00:00.000Z');
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push({ statement, params });
             if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
                 return { rows: [], rowCount: 0 };
