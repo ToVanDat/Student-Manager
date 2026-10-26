@@ -64,7 +64,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
                 </button>
             </div>
             <form onSubmit={submit} className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
-                <input type="file" accept=".txt,text/plain" onChange={event => setFile(event.target.files?.[0] || null)} className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-blue-700 dark:text-slate-300 dark:file:bg-blue-950 dark:file:text-blue-300" />
+                <input key={file ? file.name : "empty"} type="file" accept=".txt,text/plain" onChange={event => setFile(event.target.files?.[0] || null)} className="block w-full text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-blue-700 dark:text-slate-300 dark:file:bg-blue-950 dark:file:text-blue-300" />
                 <input value={title} onChange={event => setTitle(event.target.value)} maxLength={200} placeholder={vi ? 'Tên hiển thị tài liệu (không bắt buộc)' : 'Document title (optional)'} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs outline-none focus:border-blue-400 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
                 <div className="flex items-center gap-2">
                     <select value={visibility} onChange={event => setVisibility(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-slate-200 px-2 py-2 text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-white">
