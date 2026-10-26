@@ -269,7 +269,7 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
     }
 }
 
-async function setDocumentArchived({ documentId, archived }) {
+async function setDocumentArchived({ documentId, archived, queryable = pool }) {
     if (typeof documentId !== 'string'
         || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(documentId)) {
         const error = new Error('Mã tài liệu không hợp lệ');
@@ -297,7 +297,7 @@ async function setDocumentArchived({ documentId, archived }) {
             RETURNING id, title, source_name, visibility, status, archived_at, updated_at`;
 
     try {
-        const result = await pool.query(query, [documentId]);
+        const result = await queryable.query(query, [documentId]);
         if (!result.rows[0]) {
             const error = new Error(archived
                 ? 'Không tìm thấy tài liệu có thể lưu trữ'
@@ -307,6 +307,11 @@ async function setDocumentArchived({ documentId, archived }) {
         }
         return result.rows[0];
     } catch (error) {
+        if (error?.code === '23505') {
+            const conflictError = new Error('Không thể khôi phục vì đã có tài liệu trùng nội dung trong cùng phạm vi');
+            conflictError.status = 409;
+            throw conflictError;
+        }
         if (error?.code === '42703' || error?.code === '23514') {
             const migrationError = new Error('Cần áp dụng migration vòng đời tài liệu RAG trước khi sử dụng chức năng này');
             migrationError.status = 503;
