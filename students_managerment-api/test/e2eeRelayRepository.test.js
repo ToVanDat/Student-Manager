@@ -224,3 +224,22 @@ test('revoked device credentials cannot authenticate, pull mailbox or acknowledg
     );
     assert.ok(transactionCalls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET revoked_at')));
 });
+
+
+test('primary E2EE device slot remains protected from linked-device revocation API', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push(statement);
+            return { rows: [], rowCount: 0 };
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(repository.removeDevice(44, 1), error => error.statusCode === 409);
+    assert.deepEqual(calls, ['BEGIN', 'ROLLBACK']);
+});
