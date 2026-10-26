@@ -71,7 +71,8 @@ const generateAccessToken = (
         {
             expiresIn: ACCESS_TOKEN_EXPIRES_IN,
             issuer: JWT_ISSUER,
-            audience: JWT_AUDIENCE
+            audience: JWT_AUDIENCE,
+            algorithm: 'HS256'
         }
     );
 };
@@ -928,7 +929,8 @@ const logout = async (
                     process.env.JWT_SECRET,
                     {
                         issuer: JWT_ISSUER,
-                        audience: JWT_AUDIENCE
+                        audience: JWT_AUDIENCE,
+                        algorithms: ['HS256']
                     }
                 );
 
