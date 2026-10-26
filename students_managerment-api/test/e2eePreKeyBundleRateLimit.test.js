@@ -47,7 +47,7 @@ test('prekey bundle limiter rejects pair quota exhaustion with Retry-After', asy
 
     assert.equal(continued, false);
     assert.equal(res.statusCode, 429);
-    assert.equal(res.headers['Retry-After'], '37');
+    assert.equal(res.headers['Retry-After'], '52');
     assert.equal(res.body.code, 'E2EE_PREKEY_RATE_LIMITED');
 });
 
