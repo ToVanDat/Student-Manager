@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bot, MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles, MessageSquare, Pencil, Trash2, Check, ChevronLeft } from 'lucide-react';
+import { MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles, MessageSquare, Pencil, Trash2, Check } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { streamChatbotMessage, clearChatbotHistory, getChatbotHistory, listChatbotConversations, createChatbotConversation, renameChatbotConversation, deleteChatbotConversation } from '@/api/chatbotApi.js';
+import { streamChatbotMessage, getChatbotHistory, listChatbotConversations, createChatbotConversation, renameChatbotConversation, deleteChatbotConversation } from '@/api/chatbotApi.js';
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
@@ -74,25 +74,6 @@ export default function GlobalChatbot() {
     }, [messages, loading, open]);
 
     if (!user) return null;
-
-    const resetConversation = async () => {
-        if (loading) return;
-        try {
-            streamAbortRef.current?.abort();
-            requestVersionRef.current += 1;
-            setLoading(false);
-            await clearChatbotHistory(activeConversationId);
-            setMessages([]);
-        } catch (error) {
-            setMessages(items => [...items, {
-                role: 'assistant',
-                error: true,
-                content: error?.response?.data?.message || (language === 'vi'
-                    ? 'Không thể tạo cuộc trò chuyện mới.'
-                    : 'Could not start a new conversation.')
-            }]);
-        }
-    };
 
     const switchConversation = async id => {
         if (loading || id === activeConversationId) return;
