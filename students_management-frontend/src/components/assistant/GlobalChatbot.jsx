@@ -40,6 +40,7 @@ export default function GlobalChatbot() {
         setConversations([]);
         setActiveConversationId('default');
         setShowConversationList(false);
+        setShowKnowledgeManager(false);
         setOpen(false);
     }, [userKey]);
 
