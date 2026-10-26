@@ -32,11 +32,11 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone } 
     while (true) {
         const { value, done } = await reader.read();
         buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-        const events = buffer.split('\\n\\n');
+        const events = buffer.split(String.fromCharCode(10, 10));
         buffer = events.pop() || '';
         for (const block of events) {
             const eventName = block.match(/^event:\s*(.+)$/m)?.[1]?.trim();
-            const dataLine = block.split('\\n').find(line => line.startsWith('data:'));
+            const dataLine = block.split(String.fromCharCode(10)).find(line => line.startsWith('data:'));
             if (!dataLine) continue;
             let data;
             try { data = JSON.parse(dataLine.slice(5).trim()); } catch { continue; }
