@@ -73,6 +73,10 @@ function extractSemesterSearchTerm(message) {
     return extractNamedCatalogTerm(message, ['học kỳ', 'học kì', 'semester'], /^(nào|gì|có|là|bao nhiêu|trong)\b|^(information|details|list|catalog|data|overview)$/i);
 }
 
+function serializeUntrustedContext(context) {
+    return serializeUntrustedContext(context);
+}
+
 function normalizeHistory(history) {
     if (!Array.isArray(history)) return [];
     return history.slice(-MAX_HISTORY_MESSAGES).map(item => {
@@ -310,4 +314,4 @@ async function answer({ userId, sessionId, role, message }) {
     };
 }
 
-module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot };
+module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext };
