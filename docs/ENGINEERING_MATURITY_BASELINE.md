@@ -168,3 +168,11 @@ This slice does not change business tables, apply migrations or delete data. Con
 - Static inspection found Compose uses postgres:18 but mounts postgres_data at /var/lib/postgresql/data. The official PostgreSQL 18 image uses PGDATA=/var/lib/postgresql/18/docker and the volume target /var/lib/postgresql; see [official image documentation](https://hub.docker.com/_/postgres) and [Docker PostgreSQL guide](https://docs.docker.com/guides/postgresql/).
 - Compose also publishes host port 5433 to container port 5432. A local backend using localhost:5432 may connect to a different PostgreSQL instance than the Compose database.
 - **No Compose volume change was made** because the actual local volume contents and active PGDATA cannot be inspected through GitHub. Backup, isolated restore and a controlled data migration must precede any mount-path change.
+
+
+### E2EE follow-up (2026-10-26)
+
+- New attachment upload reservations are now blocked while a conversation's E2EE mode is paused. Historical downloads and completion of already-created pending uploads remain permitted.
+- Regression tests cover paused-mode rejection and fail-closed behavior for unavailable/disabled E2EE.
+- Details: [E2EE_SECURITY_ACCESS_AUDIT.md](./E2EE_SECURITY_ACCESS_AUDIT.md).
+- CI for the code commits: API unit tests, frontend build and E2EE migration smoke have passed; live PostgreSQL relay integration is still running. The Quality workflow was cancelled by subsequent commits, so no green Quality result is claimed for this newest code change.
