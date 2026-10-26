@@ -8,6 +8,7 @@ const {
     createDocumentEmbedding,
     getAllowedDocumentVisibility,
     assertRagSchemaReady,
+    setDocumentArchived,
     EMBEDDING_DIMENSIONS
 } = require('../service/ragService.js');
 
@@ -119,7 +120,7 @@ test('document archive and restore validate identifiers and preserve data', asyn
     const queryable = {
         query: async (sql, params) => {
             calls.push({ sql, params });
-            return { rows: [{ id: documentId, status: sql.includes("status = 'archived'") ? 'archived' : 'ready' }] };
+            return { rows: [{ id: documentId, status: sql.includes("SET status = 'archived'") ? 'archived' : 'ready' }] };
         }
     };
 
