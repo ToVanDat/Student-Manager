@@ -10,7 +10,7 @@ exports.uploadTextDocument = async (req, res) => {
             mimeType: req.file.mimetype
         });
         const document = await ragService.ingestTextDocument({
-            title: req.body?.title || extracted.sourceName.replace(/\\.txt$/i, ''),
+            title: req.body?.title || extracted.sourceName.replace(/\.txt$/i, ''),
             sourceName: extracted.sourceName,
             text: extracted.text,
             visibility: req.body?.visibility || 'all',
