@@ -47,7 +47,7 @@ test('prekey bundle limiter rejects pair quota exhaustion with Retry-After', asy
 
     assert.equal(continued, false);
     assert.equal(res.statusCode, 429);
-    assert.equal(res.headers['Retry-After'], '52');
+    assert.equal(res.headers['Retry-After'], '37');
     assert.equal(res.body.code, 'E2EE_PREKEY_RATE_LIMITED');
 });
 
@@ -77,4 +77,20 @@ test('prekey bundle limiter skips counters for a user reading their own linked d
 
     assert.equal(continued, true);
     assert.equal(calls, 0);
+});
+
+
+test('prekey bundle limiter honors the requester-wide retry window', async t => {
+    const originalEval = redisClient.eval;
+    redisClient.eval = async () => [3, 37, 61, 52];
+    t.after(() => { redisClient.eval = originalEval; });
+
+    const res = createResponse();
+    let continued = false;
+    await middleware({ user: { id: 11 }, params: { userId: '22' } }, res, () => { continued = true; });
+
+    assert.equal(continued, false);
+    assert.equal(res.statusCode, 429);
+    assert.equal(res.headers['Retry-After'], '52');
+    assert.equal(res.body.code, 'E2EE_PREKEY_RATE_LIMITED');
 });
