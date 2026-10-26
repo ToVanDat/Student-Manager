@@ -256,6 +256,7 @@ async function answer({ userId, sessionId, role, message }) {
     }
 
     let response;
+    let payload;
     try {
         response = await fetch(`${config.baseUrl}/api/chat`, {
             method: 'POST',
@@ -268,6 +269,7 @@ async function answer({ userId, sessionId, role, message }) {
                 options: { temperature: 0.2, num_predict: 512 }
             })
         });
+        if (response.ok) payload = await response.json();
     } catch (error) {
         const unavailable = new Error('Không thể kết nối Ollama. Hãy kiểm tra dịch vụ Ollama và OLLAMA_BASE_URL.');
         unavailable.status = 503;
@@ -282,7 +284,6 @@ async function answer({ userId, sessionId, role, message }) {
         throw unavailable;
     }
 
-    const payload = await response.json();
     const content = payload?.message?.content;
     if (typeof content !== 'string' || !content.trim()) {
         const unavailable = new Error('Ollama trả về phản hồi rỗng');
