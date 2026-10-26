@@ -70,19 +70,27 @@ SELECT
     )) AS orphan_class_references
 FROM students;
 
--- 5) Duplicate candidate checks. These are reports only; they do not delete or alter data.
-SELECT 'student_code' AS field, student_code AS duplicate_value, COUNT(*) AS duplicate_count
-FROM students
-WHERE student_code IS NOT NULL AND BTRIM(student_code) <> ''
-GROUP BY student_code
-HAVING COUNT(*) > 1
-UNION ALL
-SELECT 'email' AS field, LOWER(BTRIM(email)) AS duplicate_value, COUNT(*) AS duplicate_count
-FROM students
-WHERE email IS NOT NULL AND BTRIM(email) <> ''
-GROUP BY LOWER(BTRIM(email))
-HAVING COUNT(*) > 1
-ORDER BY field, duplicate_count DESC;
+-- 5) Duplicate candidate checks. Counts only: no student codes or email values are returned.
+SELECT
+    field,
+    COUNT(*)::int AS duplicate_group_count,
+    SUM(duplicate_count)::bigint AS rows_in_duplicate_groups,
+    MAX(duplicate_count)::bigint AS largest_duplicate_group
+FROM (
+    SELECT 'student_code' AS field, COUNT(*) AS duplicate_count
+    FROM students
+    WHERE student_code IS NOT NULL AND BTRIM(student_code) <> ''
+    GROUP BY student_code
+    HAVING COUNT(*) > 1
+    UNION ALL
+    SELECT 'email' AS field, COUNT(*) AS duplicate_count
+    FROM students
+    WHERE email IS NOT NULL AND BTRIM(email) <> ''
+    GROUP BY LOWER(BTRIM(email))
+    HAVING COUNT(*) > 1
+) duplicate_groups
+GROUP BY field
+ORDER BY field;
 
 
 -- 6) Inspect account/student/enrollment columns without returning personal values.
@@ -139,3 +147,52 @@ WHERE u.email IS NOT NULL
   AND BTRIM(u.email) <> ''
   AND s.email IS NOT NULL
   AND BTRIM(s.email) <> '';
+
+
+-- 9) Inspect optional authentication and assistant-RAG tables before considering migrations.
+-- Metadata only; this does not read credential material, token hashes, or document contents.
+SELECT
+    table_name,
+    ordinal_position,
+    column_name,
+    data_type,
+    udt_name,
+    is_nullable,
+    column_default
+FROM information_schema.columns
+WHERE table_schema = current_schema()
+  AND table_name IN (
+      'user_webauthn_credentials',
+      'user_oauth_accounts',
+      'qr_login_requests',
+      'assistant_documents',
+      'assistant_document_chunks',
+      'sessions',
+      'refresh_tokens'
+  )
+ORDER BY table_name, ordinal_position;
+
+-- 10) Confirm optional schema objects and pgvector availability.
+SELECT
+    'user_webauthn_credentials' AS object_name,
+    to_regclass(format('%I.%I', current_schema(), 'user_webauthn_credentials'))::text AS relation_name
+UNION ALL
+SELECT
+    'user_oauth_accounts',
+    to_regclass(format('%I.%I', current_schema(), 'user_oauth_accounts'))::text
+UNION ALL
+SELECT
+    'qr_login_requests',
+    to_regclass(format('%I.%I', current_schema(), 'qr_login_requests'))::text
+UNION ALL
+SELECT
+    'assistant_documents',
+    to_regclass(format('%I.%I', current_schema(), 'assistant_documents'))::text
+UNION ALL
+SELECT
+    'assistant_document_chunks',
+    to_regclass(format('%I.%I', current_schema(), 'assistant_document_chunks'))::text
+UNION ALL
+SELECT
+    'pgvector extension',
+    (SELECT extname || ' ' || extversion FROM pg_extension WHERE extname = 'vector');
