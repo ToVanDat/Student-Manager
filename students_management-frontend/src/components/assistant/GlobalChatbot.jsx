@@ -11,8 +11,17 @@ export default function GlobalChatbot() {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [failedPrompt, setFailedPrompt] = useState(null);
     const scrollRef = useRef(null);
+    const requestVersionRef = useRef(0);
+    const userKey = user?.id ?? user?.sub ?? user?.username ?? null;
+
+    useEffect(() => {
+        requestVersionRef.current += 1;
+        setMessages([]);
+        setInput('');
+        setLoading(false);
+        setOpen(false);
+    }, [userKey]);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -25,7 +34,6 @@ export default function GlobalChatbot() {
         try {
             await clearChatbotHistory();
             setMessages([]);
-            setFailedPrompt(null);
         } catch (error) {
             setMessages(items => [...items, {
                 role: 'assistant',
@@ -45,18 +53,19 @@ export default function GlobalChatbot() {
         setInput('');
         if (retryText === null) setMessages(items => [...items, { role: 'user', content: text }]);
         setLoading(true);
+        const requestVersion = requestVersionRef.current;
         try {
             const result = await sendChatbotMessage(text);
-            setFailedPrompt(null);
+            if (requestVersion !== requestVersionRef.current) return;
             setMessages(items => [...items, { role: 'assistant', content: result.message }]);
         } catch (error) {
             const message = error?.response?.data?.message || (language === 'vi'
                 ? 'Không thể kết nối trợ lý lúc này. Vui lòng thử lại.'
                 : 'The assistant is temporarily unavailable. Please try again.');
-            setFailedPrompt(text);
-            setMessages(items => [...items, { role: 'assistant', content: message, error: true, retryable: true }]);
+            if (requestVersion !== requestVersionRef.current) return;
+            setMessages(items => [...items, { role: 'assistant', content: message, error: true, retryable: true, retryPrompt: text }]);
         } finally {
-            setLoading(false);
+            if (requestVersion === requestVersionRef.current) setLoading(false);
         }
     };
 
@@ -84,8 +93,8 @@ export default function GlobalChatbot() {
                             <div key={index} className={`flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-[13px] leading-5 ${item.role === 'user' ? 'rounded-br-md bg-blue-600 text-white' : 'rounded-bl-md border border-slate-200 bg-white text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'} ${item.error ? 'border-amber-300 dark:border-amber-800' : ''}`}>
                                     {item.content}
-                                    {item.retryable && failedPrompt && (
-                                        <button type="button" onClick={() => void send(null, failedPrompt)} disabled={loading} className="mt-2 block rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950">
+                                    {item.retryable && item.retryPrompt && (
+                                        <button type="button" onClick={() => void send(null, item.retryPrompt)} disabled={loading} className="mt-2 block rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 hover:bg-amber-50 disabled:opacity-50 dark:border-amber-700 dark:text-amber-300 dark:hover:bg-amber-950">
                                             {language === 'vi' ? 'Thử gửi lại' : 'Try again'}
                                         </button>
                                     )}
