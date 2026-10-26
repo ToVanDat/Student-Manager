@@ -325,12 +325,16 @@ async function setDocumentArchived({ documentId, archived, queryable = pool }) {
 async function listDocuments() {
     assertRagSchemaReady(await getRagSchemaReadiness());
     const result = await pool.query(
-        `SELECT id, title, source_name, visibility, status, created_at, updated_at
-         FROM assistant_documents
-         ORDER BY created_at DESC
+        `SELECT d.id, d.title, d.source_name, d.visibility, d.status,
+                d.created_at, d.updated_at, d.archived_at,
+                COUNT(c.id)::integer AS chunk_count
+         FROM assistant_documents d
+         LEFT JOIN assistant_document_chunks c ON c.document_id = d.id
+         GROUP BY d.id
+         ORDER BY d.created_at DESC
          LIMIT 200`
     );
-    return result.rows;
+    return result.rows.map(row => ({ ...row, chunkCount: row.chunk_count }));
 }
 
 function getAllowedDocumentVisibility(role) {
