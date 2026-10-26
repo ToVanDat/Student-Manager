@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import { API_BASE_URL } from '@/utils/constants.js';
-import apiClient from '@/api/client.js';
+import apiClient, { getAccessToken } from '@/api/client.js';
 //login
 export const loginApi = async (username, password) => {
   const response = await axios.post(
