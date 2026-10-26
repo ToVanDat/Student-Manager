@@ -223,7 +223,7 @@ async function clearHistory({ userId, sessionId, redis = redisClient }) {
     await redis.del(historyKey);
     return true;
 }
-async function answer({ userId, sessionId, role, message }) {
+async function answer({ userId, sessionId, role, message, onToken = null }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
         error.status = 400;
@@ -275,7 +275,7 @@ async function answer({ userId, sessionId, role, message }) {
         ];
 
         let response;
-        let payload;
+        let content = '';
         try {
             response = await fetch(`${config.baseUrl}/api/chat`, {
                 method: 'POST',
@@ -284,24 +284,62 @@ async function answer({ userId, sessionId, role, message }) {
                 body: JSON.stringify({
                     model: config.model,
                     messages,
-                    stream: false,
+                    stream: typeof onToken === 'function',
                     options: { temperature: 0.2, num_predict: 512 }
                 })
             });
-            if (response.ok) payload = await response.json();
-        } catch {
-            const unavailable = new Error('Không thể kết nối Ollama. Hãy kiểm tra dịch vụ Ollama và OLLAMA_BASE_URL.');
+            if (!response.ok) {
+                const unavailable = new Error('Ollama chưa sẵn sàng hoặc model chưa được tải. Kiểm tra OLLAMA_MODEL.');
+                unavailable.status = 503;
+                throw unavailable;
+            }
+
+            if (typeof onToken === 'function') {
+                if (!response.body?.getReader) {
+                    const unavailable = new Error('Môi trường không hỗ trợ đọc phản hồi AI dạng stream');
+                    unavailable.status = 502;
+                    throw unavailable;
+                }
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                while (true) {
+                    const { value, done } = await reader.read();
+                    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+                    const lines = buffer.split('\\n');
+                    buffer = lines.pop() || '';
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+                        let chunk;
+                        try { chunk = JSON.parse(line); } catch { continue; }
+                        const token = chunk?.message?.content;
+                        if (typeof token === 'string' && token) {
+                            content += token;
+                            onToken(token);
+                        }
+                        if (chunk?.error) throw new Error('Ollama stream failed');
+                    }
+                    if (done) break;
+                }
+                if (buffer.trim()) {
+                    const finalChunk = JSON.parse(buffer);
+                    const token = finalChunk?.message?.content;
+                    if (typeof token === 'string' && token) {
+                        content += token;
+                        onToken(token);
+                    }
+                }
+            } else {
+                const payload = await response.json();
+                content = payload?.message?.content || '';
+            }
+        } catch (error) {
+            if (Number.isInteger(error?.status)) throw error;
+            const unavailable = new Error('Không thể kết nối hoặc đọc phản hồi Ollama. Hãy kiểm tra dịch vụ Ollama và OLLAMA_BASE_URL.');
             unavailable.status = 503;
             throw unavailable;
         }
 
-        if (!response.ok) {
-            const unavailable = new Error('Ollama chưa sẵn sàng hoặc model chưa được tải. Kiểm tra OLLAMA_MODEL.');
-            unavailable.status = 503;
-            throw unavailable;
-        }
-
-        const content = payload?.message?.content;
         if (typeof content !== 'string' || !content.trim()) {
             const unavailable = new Error('Ollama trả về phản hồi rỗng');
             unavailable.status = 502;
