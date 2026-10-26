@@ -1,6 +1,5 @@
 -- Non-destructive lifecycle extension for the admin-managed RAG knowledge base.
--- Manual prerequisite: inspect the target database and apply only after the base
--- assistant_rag_schema_migration.sql has been verified.
+-- Manual prerequisite: inspect the target database and verify the base RAG schema.
 -- This migration archives documents; it does not delete document rows or chunks.
 BEGIN;
 
@@ -8,35 +7,51 @@ DO $archive$
 DECLARE
   schema_name text := current_schema();
   documents_table regclass;
+  chunks_table regclass;
+  status_attnum smallint;
   constraint_row record;
 BEGIN
   documents_table := to_regclass(format('%I.%I', schema_name, 'assistant_documents'));
-  IF documents_table IS NULL THEN
-    RAISE EXCEPTION 'Required table %.assistant_documents does not exist', schema_name;
+  chunks_table := to_regclass(format('%I.%I', schema_name, 'assistant_document_chunks'));
+  IF documents_table IS NULL OR chunks_table IS NULL THEN
+    RAISE EXCEPTION 'Required assistant RAG tables are missing in schema %', schema_name;
   END IF;
 
-  IF to_regclass(format('%I.%I', schema_name, 'assistant_document_chunks')) IS NULL THEN
-    RAISE EXCEPTION 'Required table %.assistant_document_chunks does not exist', schema_name;
+  SELECT attnum INTO status_attnum
+    FROM pg_attribute
+   WHERE attrelid = documents_table
+     AND attname = 'status'
+     AND attnum > 0
+     AND NOT attisdropped;
+  IF status_attnum IS NULL THEN
+    RAISE EXCEPTION 'Required column %.assistant_documents.status is missing', schema_name;
   END IF;
 
-  ALTER TABLE assistant_documents
-    ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+  EXECUTE format('ALTER TABLE %I.assistant_documents ADD COLUMN IF NOT EXISTS archived_at timestamptz', schema_name);
 
-  -- Replace only CHECK constraints that govern the status column.
+  -- Drop only CHECK constraints whose sole constrained column is status.
+  -- This avoids accidentally removing unrelated multi-column business rules.
   FOR constraint_row IN
     SELECT conname
       FROM pg_constraint
      WHERE conrelid = documents_table
        AND contype = 'c'
-       AND pg_get_constraintdef(oid) ILIKE '%status%'
+       AND conkey = ARRAY[status_attnum]::smallint[]
   LOOP
     EXECUTE format('ALTER TABLE %I.assistant_documents DROP CONSTRAINT %I',
                    schema_name, constraint_row.conname);
   END LOOP;
 
-  ALTER TABLE assistant_documents
-    ADD CONSTRAINT assistant_documents_status_check
-    CHECK (status IN ('processing', 'ready', 'failed', 'archived'));
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = documents_table
+       AND conname = 'assistant_documents_status_check'
+  ) THEN
+    EXECUTE format(
+      'ALTER TABLE %I.assistant_documents ADD CONSTRAINT assistant_documents_status_check CHECK (status IN (''processing'', ''ready'', ''failed'', ''archived''))',
+      schema_name
+    );
+  END IF;
 END
 $archive$;
 
@@ -55,5 +70,4 @@ WHERE table_schema = current_schema()
 SELECT conname, pg_get_constraintdef(oid) AS definition
 FROM pg_constraint
 WHERE conrelid = to_regclass('assistant_documents')
-  AND contype = 'c'
-  AND pg_get_constraintdef(oid) ILIKE '%status%';
+  AND contype = 'c';
