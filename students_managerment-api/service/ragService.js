@@ -270,6 +270,7 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
 }
 
 async function listDocuments() {
+    assertRagSchemaReady(await getRagSchemaReadiness());
     const result = await pool.query(
         `SELECT id, title, source_name, visibility, status, created_at, updated_at
          FROM assistant_documents
