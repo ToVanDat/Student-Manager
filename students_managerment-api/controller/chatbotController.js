@@ -53,6 +53,16 @@ exports.chatStream = async (req, res) => {
     }
 };
 
+exports.getHistory = async (req, res) => {
+    try {
+        const messages = await chatbotService.getHistory({ userId: req.user.sub, sessionId: req.user.sessionId });
+        return res.json({ messages });
+    } catch (error) {
+        const status = Number.isInteger(error.status) ? error.status : 500;
+        return res.status(status).json({ message: status === 500 ? 'Không thể tải lịch sử trợ lý lúc này.' : error.message });
+    }
+};
+
 exports.clearHistory = async (req, res) => {
     try {
         await chatbotService.clearHistory({ userId: req.user.sub, sessionId: req.user.sessionId });
