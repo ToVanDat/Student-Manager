@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 
@@ -213,30 +214,109 @@ async function loadAcademicContext(role, question = '') {
     return context;
 }
 
-async function getHistory({ userId, sessionId, redis = redisClient }) {
+
+const CHAT_CONVERSATION_TTL_SECONDS = 30 * 24 * 60 * 60;
+const conversationIndexKey = (userId, sessionId) => `assistant:conversations:${String(userId)}:${String(sessionId)}`;
+const conversationHistoryKey = (userId, sessionId, conversationId) => conversationId === 'default'
+    ? `assistant:history:${String(userId)}:${String(sessionId)}`
+    : `assistant:history:${String(userId)}:${String(sessionId)}:${String(conversationId)}`;
+
+function validateConversationId(value) {
+    if (typeof value !== 'string' || !/^(default|[a-f0-9-]{36})$/i.test(value)) {
+        const error = new Error('conversationId không hợp lệ');
+        error.status = 400;
+        throw error;
+    }
+    return value;
+}
+
+async function readConversationIndex(userId, sessionId, redis = redisClient) {
+    const raw = await redis.get(conversationIndexKey(userId, sessionId));
+    if (!raw) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.filter(item =>
+            item && typeof item.id === 'string' && typeof item.title === 'string'
+            && typeof item.updatedAt === 'string'
+        ) : [];
+    } catch { return []; }
+}
+
+async function writeConversationIndex(userId, sessionId, items, redis = redisClient) {
+    await redis.set(conversationIndexKey(userId, sessionId), JSON.stringify(items), { EX: CHAT_CONVERSATION_TTL_SECONDS });
+}
+
+async function listConversations({ userId, sessionId, redis = redisClient }) {
+    if (!redis.isReady) { const error = new Error('Redis chưa sẵn sàng'); error.status = 503; throw error; }
+    const items = await readConversationIndex(userId, sessionId, redis);
+    const legacyKey = conversationHistoryKey(userId, sessionId, 'default');
+    const hasLegacyHistory = Boolean(await redis.exists(legacyKey));
+    if (hasLegacyHistory && !items.some(item => item.id === 'default')) {
+        items.push({ id: 'default', title: 'Cuộc trò chuyện trước đây', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        await writeConversationIndex(userId, sessionId, items, redis);
+    }
+    return items.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+async function createConversation({ userId, sessionId, title = 'Cuộc trò chuyện mới', redis = redisClient }) {
+    if (!redis.isReady) { const error = new Error('Redis chưa sẵn sàng'); error.status = 503; throw error; }
+    const now = new Date().toISOString();
+    const item = { id: crypto.randomUUID(), title: String(title).trim().slice(0, 80) || 'Cuộc trò chuyện mới', createdAt: now, updatedAt: now };
+    const items = await readConversationIndex(userId, sessionId, redis);
+    items.push(item);
+    await writeConversationIndex(userId, sessionId, items, redis);
+    return item;
+}
+
+async function renameConversation({ userId, sessionId, conversationId, title, redis = redisClient }) {
+    if (!redis.isReady) { const error = new Error('Redis chưa sẵn sàng'); error.status = 503; throw error; }
+    const id = validateConversationId(conversationId);
+    if (typeof title !== 'string' || !title.trim() || title.trim().length > 80) {
+        const error = new Error('Tên cuộc trò chuyện phải có từ 1 đến 80 ký tự'); error.status = 400; throw error;
+    }
+    const items = await readConversationIndex(userId, sessionId, redis);
+    const item = items.find(entry => entry.id === id);
+    if (!item) { const error = new Error('Không tìm thấy cuộc trò chuyện'); error.status = 404; throw error; }
+    item.title = title.trim();
+    item.updatedAt = new Date().toISOString();
+    await writeConversationIndex(userId, sessionId, items, redis);
+    return item;
+}
+
+async function deleteConversation({ userId, sessionId, conversationId, redis = redisClient }) {
+    if (!redis.isReady) { const error = new Error('Redis chưa sẵn sàng'); error.status = 503; throw error; }
+    const id = validateConversationId(conversationId);
+    const items = await readConversationIndex(userId, sessionId, redis);
+    if (!items.some(item => item.id === id)) { const error = new Error('Không tìm thấy cuộc trò chuyện'); error.status = 404; throw error; }
+    await redis.del(conversationHistoryKey(userId, sessionId, id));
+    await writeConversationIndex(userId, sessionId, items.filter(item => item.id !== id), redis);
+    return true;
+}
+
+async function getHistory({ userId, sessionId, conversationId = 'default', redis = redisClient }) {
     if (!redis.isReady) {
         const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
         error.status = 503;
         throw error;
     }
-    const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
+    const historyKey = conversationHistoryKey(userId, sessionId, validateConversationId(conversationId));
     const storedHistory = await redis.get(historyKey);
     if (!storedHistory) return [];
     try { return normalizeHistory(JSON.parse(storedHistory)); }
     catch { return []; }
 }
 
-async function clearHistory({ userId, sessionId, redis = redisClient }) {
+async function clearHistory({ userId, sessionId, conversationId = 'default', redis = redisClient }) {
     if (!redis.isReady) {
         const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
         error.status = 503;
         throw error;
     }
-    const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
+    const historyKey = conversationHistoryKey(userId, sessionId, validateConversationId(conversationId));
     await redis.del(historyKey);
     return true;
 }
-async function answer({ userId, sessionId, role, message, onToken = null }) {
+async function answer({ userId, sessionId, role, message, conversationId = 'default', onToken = null }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
         error.status = 400;
@@ -257,7 +337,7 @@ async function answer({ userId, sessionId, role, message, onToken = null }) {
     }
 
     try {
-        const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
+        const historyKey = conversationHistoryKey(userId, sessionId, validateConversationId(conversationId));
         let history = [];
         const storedHistory = await redisClient.get(historyKey);
         if (storedHistory) {
@@ -361,7 +441,12 @@ async function answer({ userId, sessionId, role, message, onToken = null }) {
 
         const nextHistory = [...history, { role: 'user', content: message.trim() }, { role: 'assistant', content: content.trim() }]
             .slice(-MAX_HISTORY_MESSAGES);
-        await redisClient.set(historyKey, JSON.stringify(nextHistory), { EX: 60 * 60 });
+        await redisClient.set(historyKey, JSON.stringify(nextHistory), { EX: CHAT_CONVERSATION_TTL_SECONDS });
+        const index = await readConversationIndex(userId, sessionId);
+        const existing = index.find(item => item.id === conversationId);
+        if (existing) existing.updatedAt = new Date().toISOString();
+        else index.push({ id: conversationId, title: message.trim().slice(0, 80), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
+        await writeConversationIndex(userId, sessionId, index);
 
         return {
             message: content.trim(),
@@ -379,4 +464,4 @@ async function answer({ userId, sessionId, role, message, onToken = null }) {
     }
 }
 
-module.exports = { answer, getHistory, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
+module.exports = { answer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
