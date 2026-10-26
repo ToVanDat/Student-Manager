@@ -374,7 +374,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         const context = await loadAcademicContext(role, message);
         let ragSources = [];
         try {
-            ragSources = await ragService.retrieveDocumentContext({ question: message, role });
+            ragSources = await ragService.retrieveDocumentContext({ question: message, role, signal });
         } catch (ragError) {
             // Document retrieval is an optional enrichment until pgvector and the
             // embedding model are provisioned; preserve the existing catalog assistant.
@@ -477,6 +477,12 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
             throw unavailable;
         } finally {
             ollamaAbort.cleanup();
+        }
+
+        if (signal?.aborted) {
+            const cancelled = new Error('Chat request was cancelled by the client');
+            cancelled.status = 499;
+            throw cancelled;
         }
 
         if (typeof content !== 'string' || !content.trim()) {
