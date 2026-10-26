@@ -2,7 +2,7 @@ const conversationService = require('../service/conversationService');
 const messageRepository = require('../repository/messageRepository');
 const callRepository = require('../repository/callRepository');
 const userRepository = require('../repository/userRepository');
-const { getIO } = require('../src/socket/socket');
+const { getIO, publishRealtimeEvent } = require('../src/socket/socket');
 
 const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
     try {
@@ -165,7 +165,7 @@ const updateConversationChatTheme = async (req, res, next) => {
         }
         const data = await repository.setConversationChatTheme(conversationId, theme);
         if (!data) return res.status(404).json({ message: 'Conversation không tồn tại' });
-        getIO().to(`conversation:${conversationId}`).emit('conversation:theme-updated', {
+        await publishRealtimeEvent('conversation:theme-updated', {
             conversationId,
             theme: data.chat_theme,
             updatedBy: userId,
