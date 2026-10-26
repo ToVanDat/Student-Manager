@@ -123,3 +123,6 @@ export const rateChatbotAnswer = async ({ conversationId = 'default', content, r
     const answerHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
     return (await apiClient.post('/api/assistant/feedback', { conversationId, answerHash, rating })).data;
 };
+
+export const archiveAssistantDocument = async id => (await apiClient.patch('/api/assistant/documents/' + encodeURIComponent(id) + '/archive')).data;
+export const restoreAssistantDocument = async id => (await apiClient.patch('/api/assistant/documents/' + encodeURIComponent(id) + '/restore')).data;
