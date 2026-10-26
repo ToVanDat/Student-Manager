@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FileUp, RefreshCw, LoaderCircle, BookOpen } from 'lucide-react';
 import { listAssistantDocuments, uploadAssistantDocument } from '@/api/chatbotApi.js';
 
@@ -13,7 +13,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
@@ -24,9 +24,9 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [vi]);
 
-    useEffect(() => { void load(); }, []);
+    useEffect(() => { void load(); }, [load]);
 
     const submit = async event => {
         event.preventDefault();
