@@ -112,7 +112,8 @@ const initSocket = async (server) => {
 
             const decoded = jwt.verify(accessToken, process.env.JWT_SECRET, {
                 issuer: 'student-management-api',
-                audience: 'student-management-client'
+                audience: 'student-management-client',
+                algorithms: ['HS256']
             });
 
             if (!decoded.sub || !decoded.sessionId) {
@@ -231,7 +232,8 @@ const initSocket = async (server) => {
 
                 const decoded = jwt.verify(accessToken, process.env.JWT_SECRET, {
                     issuer: 'student-management-api',
-                    audience: 'student-management-client'
+                    audience: 'student-management-client',
+                    algorithms: ['HS256']
                 });
 
                 if (
