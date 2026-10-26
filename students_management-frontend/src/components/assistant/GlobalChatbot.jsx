@@ -3,7 +3,7 @@ import { Bot, MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles } from 
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { streamChatbotMessage, clearChatbotHistory } from '@/api/chatbotApi.js';
+import { streamChatbotMessage, clearChatbotHistory, getChatbotHistory } from '@/api/chatbotApi.js';
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
@@ -12,6 +12,7 @@ export default function GlobalChatbot() {
     const [input, setInput] = useState('');
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [historyLoading, setHistoryLoading] = useState(false);
     const scrollRef = useRef(null);
     const requestVersionRef = useRef(0);
     const streamAbortRef = useRef(null);
@@ -30,6 +31,20 @@ export default function GlobalChatbot() {
         setLoading(false);
         setOpen(false);
     }, [userKey]);
+
+    useEffect(() => {
+        if (!open || !userKey || messages.length > 0 || historyLoading) return undefined;
+        let active = true;
+        setHistoryLoading(true);
+        getChatbotHistory()
+            .then(result => {
+                if (!active || !Array.isArray(result?.messages)) return;
+                setMessages(result.messages.map((item, index) => ({ id: 'history-' + index + '-' + item.role, role: item.role, content: item.content })));
+            })
+            .catch(() => {})
+            .finally(() => { if (active) setHistoryLoading(false); });
+        return () => { active = false; };
+    }, [open, userKey, messages.length, historyLoading]);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -121,7 +136,8 @@ export default function GlobalChatbot() {
                         <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Đóng trợ lý' : 'Close assistant'}><X size={18} /></button>
                     </header>
                     <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-4 dark:from-slate-950 dark:to-slate-900 sm:p-5">
-                        {messages.length === 0 && (
+                        {historyLoading && messages.length === 0 && <div className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" />{language === 'vi' ? 'Đang tải lịch sử…' : 'Loading history…'}</div>}
+                        {messages.length === 0 && !historyLoading && (
                             <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                 <p className="mb-2 font-semibold text-slate-900 dark:text-white">{isAdmin
                                     ? (language === 'vi' ? 'Xin chào quản trị viên! Tôi có thể hỗ trợ gì?' : 'Hello, administrator! How can I help?')
