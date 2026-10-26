@@ -173,3 +173,52 @@ test('prekey upload rejects untagged ML-KEM public keys and invalid algorithm ta
     }
 });
 
+
+
+test('prekey bundle lookup requires an existing direct conversation before claiming keys', async () => {
+    const oldFind = conversationRepository.findDirectConversation;
+    const oldFetch = relayRepository.fetchPreKeyBundle;
+    let fetchCalls = 0;
+    conversationRepository.findDirectConversation = async (requesterId, targetUserId) => {
+        assert.equal(requesterId, 11);
+        assert.equal(targetUserId, 22);
+        return null;
+    };
+    relayRepository.fetchPreKeyBundle = async () => { fetchCalls += 1; return { deviceId: 2 }; };
+    try {
+        await assert.rejects(
+            service.fetchPreKeyBundle(11, 22, 2),
+            error => error.statusCode === 404
+        );
+        assert.equal(fetchCalls, 0);
+    } finally {
+        conversationRepository.findDirectConversation = oldFind;
+        relayRepository.fetchPreKeyBundle = oldFetch;
+    }
+});
+
+test('prekey bundle lookup allows a direct-chat peer and own linked devices', async () => {
+    const oldFind = conversationRepository.findDirectConversation;
+    const oldFetch = relayRepository.fetchPreKeyBundle;
+    const calls = [];
+    conversationRepository.findDirectConversation = async (requesterId, targetUserId) => {
+        calls.push(['conversation', requesterId, targetUserId]);
+        return { id: 99 };
+    };
+    relayRepository.fetchPreKeyBundle = async (...args) => {
+        calls.push(['bundle', ...args]);
+        return { deviceId: args[1] };
+    };
+    try {
+        assert.deepEqual(await service.fetchPreKeyBundle(11, 22, 2), { deviceId: 2 });
+        assert.deepEqual(await service.fetchPreKeyBundle(11, 11, 3), { deviceId: 3 });
+        assert.deepEqual(calls, [
+            ['conversation', 11, 22],
+            ['bundle', 22, 2, 'aci'],
+            ['bundle', 11, 3, 'aci']
+        ]);
+    } finally {
+        conversationRepository.findDirectConversation = oldFind;
+        relayRepository.fetchPreKeyBundle = oldFetch;
+    }
+});
