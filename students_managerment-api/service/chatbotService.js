@@ -306,7 +306,7 @@ async function answer({ userId, sessionId, role, message, onToken = null }) {
                 while (true) {
                     const { value, done } = await reader.read();
                     buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-                    const lines = buffer.split('\\n');
+                    const lines = buffer.split(String.fromCharCode(10));
                     buffer = lines.pop() || '';
                     for (const line of lines) {
                         if (!line.trim()) continue;
