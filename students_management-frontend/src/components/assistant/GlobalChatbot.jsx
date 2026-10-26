@@ -89,7 +89,7 @@ export default function GlobalChatbot() {
     }, [open, userKey]);
 
     useEffect(() => {
-        if (!open || !userKey || messages.length > 0 || historyLoading) return undefined;
+        if (!open || !userKey || messages.length > 0) return undefined;
         let active = true;
         setHistoryLoading(true);
         getChatbotHistory(activeConversationId)
