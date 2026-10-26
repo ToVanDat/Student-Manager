@@ -37,7 +37,7 @@ const refreshSharedPresence = async (id, socketId) => {
     await redisClient.expire(key, PRESENCE_SOCKET_TTL_SECONDS);
     return Number(await redisClient.sCard(key));
 };
-const publishPresenceEvent = async (event, payload) => {
+const publishRealtimeEvent = async (event, payload) => {
     if (!redisClient.isReady) throw new Error('Redis presence publisher is unavailable');
     await redisClient.publish('presence:events', JSON.stringify({ event, payload }));
 };
@@ -340,7 +340,7 @@ const initSocket = async (server) => {
         if (sharedPresenceCount === 1) {
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
-                await publishPresenceEvent('presence:online', {
+                await publishRealtimeEvent('presence:online', {
                     userId,
                     recipientIds: contactIds,
                     emittedAt: new Date().toISOString()
@@ -1545,5 +1545,6 @@ module.exports = {
     initSocket,
     getIO,
     emitSessionRevoked,
-    isUserOnline
+    isUserOnline,
+    publishRealtimeEvent
 };
