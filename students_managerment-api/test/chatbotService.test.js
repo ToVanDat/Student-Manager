@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, getHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
+const { normalizeHistory, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
@@ -260,4 +260,33 @@ test('getHistory returns an empty list for missing or malformed Redis history', 
     assert.deepEqual(await getHistory({ userId: '42', sessionId: 's1', redis }), []);
     const missing = { isReady: true, get: async () => null };
     assert.deepEqual(await getHistory({ userId: '42', sessionId: 's1', redis: missing }), []);
+});
+
+
+test('conversation CRUD is scoped to the user session and stores history separately', async () => {
+    const store = new Map();
+    const redis = {
+        isReady: true,
+        get: async key => store.get(key) ?? null,
+        set: async (key, value) => { store.set(key, value); },
+        exists: async key => store.has(key),
+        del: async key => { store.delete(key); }
+    };
+    const first = await createConversation({ userId: '7', sessionId: 's1', title: '  Study plan  ', redis });
+    assert.equal(first.title, 'Study plan');
+    assert.equal((await listConversations({ userId: '7', sessionId: 's1', redis })).length, 1);
+    assert.equal((await listConversations({ userId: '7', sessionId: 's2', redis })).length, 0);
+    const renamed = await renameConversation({ userId: '7', sessionId: 's1', conversationId: first.id, title: 'Subjects', redis });
+    assert.equal(renamed.title, 'Subjects');
+    const historyKey = 'assistant:history:7:s1:' + first.id;
+    await redis.set(historyKey, JSON.stringify([{ role: 'user', content: 'hello' }]));
+    await deleteConversation({ userId: '7', sessionId: 's1', conversationId: first.id, redis });
+    assert.equal(await redis.get(historyKey), null);
+    assert.deepEqual(await listConversations({ userId: '7', sessionId: 's1', redis }), []);
+});
+
+test('conversation rename and delete reject IDs not present in the caller index', async () => {
+    const redis = { isReady: true, get: async () => null, set: async () => {}, del: async () => {} };
+    await assert.rejects(renameConversation({ userId: '7', sessionId: 's1', conversationId: '00000000-0000-0000-0000-000000000000', title: 'x', redis }), error => error.status === 404);
+    await assert.rejects(deleteConversation({ userId: '7', sessionId: 's1', conversationId: '00000000-0000-0000-0000-000000000000', redis }), error => error.status === 404);
 });
