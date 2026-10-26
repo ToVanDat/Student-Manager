@@ -310,7 +310,7 @@ test('rateAnswer stores feedback only for the latest answer and caller session',
     const crypto = require('node:crypto');
     const answer = 'Đây là câu trả lời';
     const hash = crypto.createHash('sha256').update(answer, 'utf8').digest('hex');
-    const store = new Map([['assistant:history:42:s1:default', JSON.stringify([
+    const store = new Map([['assistant:history:42:s1', JSON.stringify([
         { role: 'user', content: 'Câu hỏi' },
         { role: 'assistant', content: answer }
     ])]]);
