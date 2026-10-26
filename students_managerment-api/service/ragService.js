@@ -203,21 +203,17 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
     }
 
     documentIngestionInProgress = true;
-    let indexedChunks;
+    let client;
+    let inTransaction = false;
     try {
         // Compute vectors before opening the database transaction so slow Ollama
         // inference does not hold a PostgreSQL connection or transaction lock.
-        indexedChunks = [];
+        const indexedChunks = [];
         for (const chunk of chunks) {
             indexedChunks.push({ ...chunk, embedding: await createDocumentEmbedding(chunk.content) });
         }
-    } finally {
-        documentIngestionInProgress = false;
-    }
 
-    const client = await pool.connect();
-    let inTransaction = false;
-    try {
+        client = await pool.connect();
         await client.query('BEGIN');
         inTransaction = true;
         const duplicate = await client.query(
@@ -256,14 +252,20 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
         inTransaction = false;
         return { ...ready.rows[0], chunkCount: chunks.length };
     } catch (error) {
-        if (inTransaction) {
+        if (inTransaction && client) {
             try { await client.query('ROLLBACK'); } catch (rollbackError) {
                 console.error('[RAG] Rollback failed:', rollbackError.message);
             }
         }
+        if (error?.code === '23505') {
+            const duplicateError = new Error('Tài liệu này đã được nạp trước đó trong cùng phạm vi');
+            duplicateError.status = 409;
+            throw duplicateError;
+        }
         throw error;
     } finally {
-        client.release();
+        if (client) client.release();
+        documentIngestionInProgress = false;
     }
 }
 
