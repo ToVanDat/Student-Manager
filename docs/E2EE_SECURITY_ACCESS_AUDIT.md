@@ -138,3 +138,10 @@ This closes the window in which a newly allocated device could use its relay cre
 The SDK v11 source confirms decryption/authentication occurs before `completeProvisioning`, and acknowledgement follows local identity/state storage. This code-level sequence is not a substitute for a real two-browser test.
 
 No schema change or migration is required because `e2ee_sdk_devices.enabled` already exists.
+
+### 8. Provisioning activation is restricted to a disabled pending device
+
+- The acknowledgement update now includes `enabled = FALSE` in its predicate. A valid token cannot re-enable a device that is already active, nor can the same update silently act as a reactivation path.
+- The update remains scoped to the account, server-assigned slot, linked-device state, token hash, and creation time recorded by the provisioning session.
+- A repository regression test verifies that a failed activation rolls back and does not mark the provisioning session completed.
+- This is a state-transition hardening, not cryptographic proof that the new device decrypted the provisioning payload. The authenticated account session still receives the device token from `completeProvisioning`; a future protocol-level proof requires an SDK-supported challenge/signature or a reviewed SDK extension.
