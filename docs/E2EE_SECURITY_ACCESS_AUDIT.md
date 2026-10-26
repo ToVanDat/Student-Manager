@@ -10,7 +10,7 @@
 
 A concrete prekey access weakness was found and mitigated: the authenticated prekey-bundle endpoint previously passed `requesterId` to the service but did not use it before the repository claimed one-time prekeys for the target device. The service now requires an existing direct conversation for cross-account bundle retrieval; a user's own linked devices remain eligible. Regression tests cover both paths.
 
-The mitigation is deliberately narrow. The application allows users to initiate direct conversations, so this check is not a complete defense against deliberate prekey depletion. A requester/target-aware distributed rate limit and abuse monitoring remain follow-up work.
+The mitigation is deliberately narrow. The application allows users to initiate direct conversations, so this check is not a complete defense against deliberate prekey depletion. A Redis-backed atomic fixed-window limiter now caps cross-account bundle requests at 8 per requester-target pair and 60 per requester per minute; it fails closed with 503 if shared Redis is unavailable. Abuse monitoring and unsolicited-conversation policy remain follow-up work.
 
 ## 2. Controls verified in code
 
@@ -53,7 +53,9 @@ The mitigation is deliberately narrow. The application allows users to initiate 
 
 - `service/e2eeRelayService.js`: validate requester and target IDs; for cross-account bundle retrieval require `conversationRepository.findDirectConversation(requesterId, targetUserId)` to return an active direct conversation before calling the repository method that claims one-time prekeys.
 - Own-account linked-device bundle retrieval remains allowed for multi-device flows.
-- `test/e2eeRelayService.test.js`: added regression cases proving that no bundle/prekey claim occurs without a direct conversation and that valid peer/self-device paths are preserved.
+- `middleware/e2eePreKeyBundleRateLimit.js`: applies atomic Redis Lua counters for pair and requester-wide quotas before a cross-account bundle fetch. The middleware returns 429 with `Retry-After` when either quota is exceeded and fails closed on Redis errors rather than falling back to per-process memory.
+- `router/e2eeRelayRouter.js`: applies the distributed limiter to the prekey-bundle endpoint.
+- `test/e2eeRelayService.test.js` and `test/e2eePreKeyBundleRateLimit.test.js`: cover conversation gating, pair/requester counters, quota rejection, Redis outage and own-device bypass.
 
 This does not alter database schema or data and does not require a migration.
 
@@ -69,8 +71,8 @@ This does not alter database schema or data and does not require a migration.
 |---|---|---|
 | High | SDK `removeDevice` rejects device slot 1. The reviewed SDK route therefore cannot revoke the primary device through this operation. | Define and test a recovery-safe primary-device revocation path, including confirmation and prevention of accidental account lockout. |
 | Medium | `GET /users/:userId/devices`, `identity` and `active-devices` require account authentication but do not require a shared conversation. Identity public keys are intended for discovery; device inventory and active-device presence may disclose more metadata than necessary. | Decide which metadata is public by protocol; restrict nonessential inventory/presence to shared-conversation peers or another explicit policy. |
-| Medium | Direct conversations can be initiated by an authenticated user. The new membership check therefore reduces unrelated bundle harvesting but does not stop an attacker from initiating a chat and then repeatedly claiming prekeys. | Add requester+target scoped rate limits backed by Redis/database, monitor prekey depletion and consider abuse controls for unsolicited conversation initiation. |
-| Medium | Attachment authorization checks `enabled` but not the E2EE mode value `active`; because a paused conversation can remain enabled, new attachment reservations may still be created while envelope sends are paused. | Decide whether pause should block new uploads while preserving historical downloads; if so, split upload-active checks from historical-download access and add tests. |
+| Medium | Direct conversations can be initiated by an authenticated user. The conversation check and Redis-backed pair/requester quotas limit prekey depletion, but an attacker can still initiate chats and consume the allowed quota repeatedly. | Add prekey depletion telemetry, alerting and abuse controls for unsolicited conversation initiation. |
+| Closed | New E2EE attachment reservations require mode `active`; paused conversations preserve historical ciphertext access and completion of already-created pending uploads. Unit tests cover the pause policy. | No further change required for this finding; retain regression coverage. |
 | Medium | `removeDevice` revokes linked devices and deletes their pending envelopes/prekeys, but there is no reviewed end-to-end runtime test for stolen-device credential replay after revocation. | Add repository/integration tests for revoke → old token rejected → mailbox and envelope operations denied. |
 | Medium | Provisioning ownership/expiry is enforced in repository SQL, but no full browser/device-pairing adversarial test was observed in the reviewed CI. | Add two-client E2E tests for wrong-owner session IDs, expiry, replay, rollback and acknowledgement races. |
 
