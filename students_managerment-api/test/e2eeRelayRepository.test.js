@@ -167,3 +167,60 @@ test('notification decision is deduplicated across recipient devices and retries
         pool.connect = oldConnect;
     }
 });
+
+
+test('revoked device credentials cannot authenticate, pull mailbox or acknowledge envelopes', async t => {
+    const oldConnect = pool.connect;
+    const oldQuery = pool.query;
+    let revoked = false;
+    const transactionCalls = [];
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            transactionCalls.push({ statement, params });
+            if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
+                return { rows: [], rowCount: 0 };
+            }
+            if (statement.startsWith('SELECT id FROM e2ee_sdk_devices')) {
+                return { rows: revoked ? [] : [{ id: 12 }], rowCount: revoked ? 0 : 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET revoked_at')) {
+                revoked = true;
+                return { rows: [{ id: 12, device_id: 2 }], rowCount: 1 };
+            }
+            return { rows: [], rowCount: 1 };
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    pool.query = async (sql, params = []) => {
+        const statement = sql.replace(/\\s+/g, ' ').trim();
+        if (statement.startsWith('SELECT id, user_id, device_id, registration_id FROM e2ee_sdk_devices')) {
+            assert.ok(statement.includes('revoked_at IS NULL AND enabled = TRUE AND registered = TRUE'));
+            return { rows: revoked ? [] : [{ id: 12, user_id: 44, device_id: 2 }], rowCount: revoked ? 0 : 1 };
+        }
+        if (statement.startsWith('SELECT * FROM e2ee_sdk_devices')) {
+            assert.ok(statement.includes('revoked_at IS NULL AND enabled = TRUE AND registered = TRUE'));
+            return { rows: revoked ? [] : [{ id: 12, user_id: 44, device_id: 2 }], rowCount: revoked ? 0 : 1 };
+        }
+        if (statement.startsWith('UPDATE e2ee_sdk_envelopes')) {
+            assert.ok(statement.includes('d.revoked_at IS NULL'));
+            return { rows: [], rowCount: 0 };
+        }
+        throw new Error('Unexpected query after revocation: ' + statement);
+    };
+    t.after(() => {
+        pool.connect = oldConnect;
+        pool.query = oldQuery;
+    });
+
+    assert.deepEqual(await repository.removeDevice(44, 2), { deviceId: 2 });
+    assert.equal(revoked, true);
+    assert.equal(await repository.authenticateDeviceCredential(44, 2, 'x'.repeat(48)), null);
+    await assert.rejects(repository.pullEnvelopes(44, 2), error => error.statusCode === 403);
+    await assert.rejects(
+        repository.markDelivered(44, 2, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'),
+        error => error.statusCode === 404
+    );
+    assert.ok(transactionCalls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET revoked_at')));
+});
