@@ -68,10 +68,16 @@ const initSocket = async (server) => {
     await presenceSubscriber.subscribe('presence:events', raw => {
         try {
             const event = JSON.parse(raw);
-            if (!['presence:online', 'presence:offline'].includes(event?.event)) return;
-            const recipientIds = [...new Set((event?.payload?.recipientIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
-            for (const recipientId of recipientIds) {
-                io?.to(`user:${recipientId}`).emit(event.event, event.payload);
+            if (['presence:online', 'presence:offline'].includes(event?.event)) {
+                const recipientIds = [...new Set((event?.payload?.recipientIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
+                for (const recipientId of recipientIds) io?.to(`user:${recipientId}`).emit(event.event, event.payload);
+                return;
+            }
+            if (event?.event === 'conversation:theme-updated') {
+                const conversationId = Number(event?.payload?.conversationId);
+                if (Number.isSafeInteger(conversationId) && conversationId > 0) {
+                    io?.to(`conversation:${conversationId}`).emit(event.event, event.payload);
+                }
             }
         } catch (error) {
             console.error('[PRESENCE][pubsub message invalid]', error.message);
@@ -1447,7 +1453,7 @@ const initSocket = async (server) => {
 
                     try {
                         const contactIds = await conversationRepository.getConversationContactIds(userId);
-                        await publishPresenceEvent('presence:offline', {
+                        await publishRealtimeEvent('presence:offline', {
                             userId,
                             lastSeenAt,
                             recipientIds: contactIds,
