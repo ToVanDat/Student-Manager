@@ -6,6 +6,7 @@ const {
     chunkDocumentText,
     getEmbeddingConfig,
     createDocumentEmbedding,
+    getAllowedDocumentVisibility,
     EMBEDDING_DIMENSIONS
 } = require('../service/ragService.js');
 
@@ -66,4 +67,10 @@ test('createDocumentEmbedding validates the 768-dimensional response', async () 
         if (oldUrl === undefined) delete process.env.OLLAMA_BASE_URL;
         else process.env.OLLAMA_BASE_URL = oldUrl;
     }
+});
+
+test('document retrieval scope never exposes admin-only material to student users', () => {
+    assert.deepEqual(getAllowedDocumentVisibility('user'), ['all', 'student']);
+    assert.deepEqual(getAllowedDocumentVisibility('student'), ['all', 'student']);
+    assert.deepEqual(getAllowedDocumentVisibility('admin'), ['all', 'student', 'admin']);
 });
