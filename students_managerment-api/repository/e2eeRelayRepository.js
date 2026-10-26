@@ -768,8 +768,8 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     const deviceToken = crypto.randomBytes(32).toString('base64url');
     const deviceTokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     await client.query(
-        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash)
-         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6)`,
+        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash, enabled)
+         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6,FALSE)`,
         [userId, deviceId, registrationId, metadata.deviceType || 'web', encryptedDeviceName || null, deviceTokenHash]
     );
     await client.query(
@@ -781,15 +781,41 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     return { deviceId, deviceToken };
 });
 
-const acknowledgeProvisioning = async (userId, sessionId) => withTransaction(async client => {
+const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw httpError(401, 'Thiếu xác thực thiết bị mới', 'E2EE_DEVICE_AUTH_REQUIRED');
+    }
+    const tokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     const { rows } = await client.query(
+        `SELECT assigned_device_id, completed_at
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status = 'linked_pending_ack' AND expires_at > NOW()
+         FOR UPDATE`,
+        [sessionId, userId]
+    );
+    const session = rows[0];
+    if (!session?.assigned_device_id || !session.completed_at) {
+        throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
+    }
+    const activated = await client.query(
+        `UPDATE e2ee_sdk_devices SET enabled = TRUE
+         WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+           AND revoked_at IS NULL AND device_token_hash = $3
+           AND created_at <= $4
+         RETURNING device_id`,
+        [userId, session.assigned_device_id, tokenHash, session.completed_at]
+    );
+    if (!activated.rows[0]) throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
+    const completed = await client.query(
         `UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'
-         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' AND expires_at > NOW()
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status = 'linked_pending_ack' AND expires_at > NOW()
          RETURNING session_id`,
         [sessionId, userId]
     );
-    if (!rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
+    if (!completed.rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
 });
 
 const rollbackProvisioning = async (userId, sessionId) => withTransaction(async client => {
