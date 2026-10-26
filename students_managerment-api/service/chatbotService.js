@@ -3,24 +3,11 @@ const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const aiConfig = require('../src/config/ai.js');
 const ragService = require('./ragService.js');
+const { acquireOllamaSlot, acquireChatbotRequestSlot } = require('./ollamaRequestGate.js');
 
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_CONTEXT_ROWS = 80;
-// Keep local Ollama responsive on low-memory development machines.
-const MAX_OLLAMA_CONCURRENT_REQUESTS = 1;
-let activeOllamaRequests = 0;
-
-function acquireOllamaSlot() {
-    if (activeOllamaRequests >= MAX_OLLAMA_CONCURRENT_REQUESTS) return null;
-    activeOllamaRequests += 1;
-    let released = false;
-    return () => {
-        if (released) return;
-        released = true;
-        activeOllamaRequests = Math.max(0, activeOllamaRequests - 1);
-    };
-}
 
 function createOllamaAbortSignal(clientSignal, timeoutMs) {
     const controller = new AbortController();
@@ -355,8 +342,8 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         throw error;
     }
 
-    const releaseOllamaSlot = acquireOllamaSlot();
-    if (!releaseOllamaSlot) {
+    const releaseChatbotRequestSlot = acquireChatbotRequestSlot();
+    if (!releaseChatbotRequestSlot) {
         const busy = new Error('Trợ lý AI đang xử lý yêu cầu khác. Vui lòng thử lại sau ít phút.');
         busy.status = 503;
         throw busy;
@@ -422,6 +409,12 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
 
         let response;
         let content = '';
+        const releaseOllamaSlot = acquireOllamaSlot();
+        if (!releaseOllamaSlot) {
+            const busy = new Error('Mô hình AI đang bận xử lý yêu cầu khác. Vui lòng thử lại sau ít phút.');
+            busy.status = 503;
+            throw busy;
+        }
         const ollamaAbort = createOllamaAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
         try {
             response = await fetch(`${config.baseUrl}/api/chat`, {
@@ -487,6 +480,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
             throw unavailable;
         } finally {
             ollamaAbort.cleanup();
+            releaseOllamaSlot();
         }
 
         if (signal?.aborted) {
@@ -525,7 +519,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
             }
         };
     } finally {
-        releaseOllamaSlot();
+        releaseChatbotRequestSlot();
     }
 }
 
