@@ -1,7 +1,11 @@
-const MAX_DOCUMENT_CHARS = 2_000_000;
-const DEFAULT_CHUNK_SIZE = 1800;
-const DEFAULT_CHUNK_OVERLAP = 250;
-const EMBEDDING_DIMENSIONS = 768;
+const crypto = require('crypto');
+const pool = require('../src/config/database.js');
+const aiConfig = require('../src/config/ai.js');
+const MAX_DOCUMENT_CHARS = aiConfig.rag.maxDocumentChars;
+const DEFAULT_CHUNK_SIZE = aiConfig.rag.chunkSize;
+const DEFAULT_CHUNK_OVERLAP = aiConfig.rag.chunkOverlap;
+const MAX_DOCUMENT_CHUNKS = aiConfig.rag.maxChunksPerDocument;
+const EMBEDDING_DIMENSIONS = aiConfig.ollama.embeddingDimensions;
 
 function normalizeDocumentText(value) {
     if (typeof value !== 'string') throw new TypeError('Document text must be a string');
@@ -46,7 +50,7 @@ function chunkDocumentText(value, {
 }
 
 function getEmbeddingConfig() {
-    const rawUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
+    const rawUrl = aiConfig.ollama.baseUrl;
     let url;
     try { url = new URL(rawUrl); }
     catch {
@@ -63,7 +67,7 @@ function getEmbeddingConfig() {
     }
     return {
         endpoint: url.toString().replace(/\/$/, '') + '/api/embed',
-        model: process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text'
+        model: aiConfig.ollama.embeddingModel
     };
 }
 
@@ -72,7 +76,7 @@ async function createDocumentEmbedding(text, { fetchImpl = fetch } = {}) {
     const response = await fetchImpl(config.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(aiConfig.ollama.requestTimeoutMs),
         body: JSON.stringify({ model: config.model, input: text })
     });
     if (!response.ok) {
@@ -91,6 +95,113 @@ async function createDocumentEmbedding(text, { fetchImpl = fetch } = {}) {
     return embedding;
 }
 
+
+async function ingestTextDocument({ title, sourceName, text: sourceText, visibility, createdBy }) {
+    if (typeof title !== 'string' || !title.trim() || title.trim().length > 200) {
+        const error = new Error('Tiêu đề tài liệu phải có từ 1 đến 200 ký tự');
+        error.status = 400;
+        throw error;
+    }
+    if (!['all', 'student', 'admin'].includes(visibility)) {
+        const error = new Error('Phạm vi tài liệu không hợp lệ');
+        error.status = 400;
+        throw error;
+    }
+    if (typeof sourceName !== 'string' || !sourceName.trim() || sourceName.length > 255) {
+        const error = new Error('Tên tệp không hợp lệ');
+        error.status = 400;
+        throw error;
+    }
+    const normalized = normalizeDocumentText(sourceText);
+    const chunks = chunkDocumentText(normalized);
+    if (!chunks.length || chunks.length > MAX_DOCUMENT_CHUNKS) {
+        const error = new Error(`Tài liệu vượt quá giới hạn ${MAX_DOCUMENT_CHUNKS} đoạn`);
+        error.status = 413;
+        throw error;
+    }
+
+    const sourceSha256 = crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+    const client = await pool.connect();
+    let inTransaction = false;
+    try {
+        await client.query('BEGIN');
+        inTransaction = true;
+        const duplicate = await client.query(
+            'SELECT id, title FROM assistant_documents WHERE source_sha256 = $1 AND visibility = $2 AND status = $3 LIMIT 1',
+            [sourceSha256, visibility, 'ready']
+        );
+        if (duplicate.rows[0]) {
+            const error = new Error('Tài liệu này đã được nạp trước đó trong cùng phạm vi');
+            error.status = 409;
+            throw error;
+        }
+        const created = await client.query(
+            `INSERT INTO assistant_documents
+                (title, source_name, source_sha256, mime_type, visibility, status, created_by)
+             VALUES ($1, $2, $3, $4, $5, 'processing', $6)
+             RETURNING id, title, source_name, visibility, status, created_at`,
+            [title.trim(), sourceName, sourceSha256, 'text/plain', visibility, createdBy]
+        );
+        const document = created.rows[0];
+
+        // Sequential embedding avoids overwhelming the low-memory local Ollama instance.
+        for (const chunk of chunks) {
+            const embedding = await createDocumentEmbedding(chunk.content);
+            await client.query(
+                `INSERT INTO assistant_document_chunks
+                    (document_id, chunk_index, page_number, content, embedding)
+                 VALUES ($1, $2, NULL, $3, $4::vector)`,
+                [document.id, chunk.chunk_index, chunk.content, `[${embedding.join(',')}]`]
+            );
+        }
+        const ready = await client.query(
+            `UPDATE assistant_documents SET status = 'ready', updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1
+             RETURNING id, title, source_name, visibility, status, created_at`,
+            [document.id]
+        );
+        await client.query('COMMIT');
+        inTransaction = false;
+        return { ...ready.rows[0], chunkCount: chunks.length };
+    } catch (error) {
+        if (inTransaction) {
+            try { await client.query('ROLLBACK'); } catch (rollbackError) {
+                console.error('[RAG] Rollback failed:', rollbackError.message);
+            }
+        }
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit }) {
+    const query = normalizeDocumentText(question).slice(0, 4000);
+    const embedding = await createDocumentEmbedding(query);
+    const allowedVisibility = role === 'admin' ? ['all', 'admin'] : ['all', 'student'];
+    const result = await pool.query(
+        `SELECT d.id AS document_id, d.title, d.source_name,
+                c.chunk_index, c.page_number, c.content,
+                (c.embedding <=> $1::vector) AS distance
+         FROM assistant_document_chunks c
+         JOIN assistant_documents d ON d.id = c.document_id
+         WHERE d.status = 'ready'
+           AND d.visibility = ANY($2::varchar[])
+         ORDER BY c.embedding <=> $1::vector
+         LIMIT $3`,
+        [`[${embedding.join(',')}]`, allowedVisibility, Math.min(Math.max(Number(limit) || 5, 1), 8)]
+    );
+    return result.rows.map(row => ({
+        documentId: row.document_id,
+        title: row.title,
+        sourceName: row.source_name,
+        chunkIndex: row.chunk_index,
+        pageNumber: row.page_number,
+        content: row.content,
+        distance: Number(row.distance)
+    }));
+}
+
 module.exports = {
     MAX_DOCUMENT_CHARS,
     DEFAULT_CHUNK_SIZE,
@@ -99,5 +210,7 @@ module.exports = {
     normalizeDocumentText,
     chunkDocumentText,
     getEmbeddingConfig,
-    createDocumentEmbedding
+    createDocumentEmbedding,
+    ingestTextDocument,
+    retrieveDocumentContext
 };
