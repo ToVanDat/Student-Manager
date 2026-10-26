@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
+const { normalizeHistory, getHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
@@ -231,4 +231,33 @@ test('getOllamaConfig rejects remote plaintext, credentials and URL query string
         if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
         else process.env.OLLAMA_BASE_URL = previousUrl;
     }
+});
+
+
+test('getHistory returns normalized messages scoped to the authenticated user and session', async () => {
+    const reads = [];
+    const redis = {
+        isReady: true,
+        get: async key => {
+            reads.push(key);
+            return JSON.stringify([
+                { role: 'user', content: '  hello  ' },
+                { role: 'assistant', content: 'world' },
+                { role: 'system', content: 'must be excluded' }
+            ]);
+        }
+    };
+    const history = await getHistory({ userId: '42', sessionId: 'session-abc', redis });
+    assert.deepEqual(reads, ['assistant:history:42:session-abc']);
+    assert.deepEqual(history, [
+        { role: 'user', content: 'hello' },
+        { role: 'assistant', content: 'world' }
+    ]);
+});
+
+test('getHistory returns an empty list for missing or malformed Redis history', async () => {
+    const redis = { isReady: true, get: async () => '{invalid-json' };
+    assert.deepEqual(await getHistory({ userId: '42', sessionId: 's1', redis }), []);
+    const missing = { isReady: true, get: async () => null };
+    assert.deepEqual(await getHistory({ userId: '42', sessionId: 's1', redis: missing }), []);
 });
