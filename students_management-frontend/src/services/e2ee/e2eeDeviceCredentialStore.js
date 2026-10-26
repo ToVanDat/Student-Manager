@@ -143,7 +143,6 @@ export const setPendingE2EEProvisioningRollback = async (userId, deviceId, sessi
         const journalStore = tx.objectStore('provisionings');
         const record = await credentialStore.get(normalizedDeviceId);
         if (typeof record?.token !== 'string' || record.token.length < 32) {
-            tx.abort();
             throw new Error('Cannot queue provisioning rollback without the device credential');
         }
         const journal = await journalStore.get(normalizedSessionId);
