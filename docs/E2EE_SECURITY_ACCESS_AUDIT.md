@@ -74,10 +74,12 @@ This does not alter database schema or data and does not require a migration.
 | Closed | Device inventory and active-device presence were readable by any authenticated account; these routes now allow only self or an established direct-chat peer. Public identity-key discovery remains unchanged for protocol bootstrap. | Keep the peer-scope regression tests; revisit identity-key discovery only if the protocol's public directory policy changes. |
 | Medium | Direct conversations can be initiated by an authenticated user. The conversation check and Redis-backed pair/requester quotas limit prekey depletion, but an attacker can still initiate chats and consume the allowed quota repeatedly. | Add prekey depletion telemetry, alerting and abuse controls for unsolicited conversation initiation. |
 | Closed | New E2EE attachment reservations require mode `active`; paused conversations preserve historical ciphertext access and completion of already-created pending uploads. Unit tests cover the pause policy. | No further change required for this finding; retain regression coverage. |
-| Medium | `removeDevice` revokes linked devices and deletes their pending envelopes/prekeys, but there is no reviewed end-to-end runtime test for stolen-device credential replay after revocation. | Add repository/integration tests for revoke → old token rejected → mailbox and envelope operations denied. |
+| Closed (repository-level) | Added regression coverage for revoke → old device credential rejected → mailbox pull denied → envelope acknowledgement denied. The primary device slot remains protected and its rejection path is tested. | Retain these tests and add a live PostgreSQL/device-auth integration test before production rollout. |
 | Medium | Provisioning ownership/expiry is enforced in repository SQL, but no full browser/device-pairing adversarial test was observed in the reviewed CI. | Add two-client E2E tests for wrong-owner session IDs, expiry, replay, rollback and acknowledgement races. |
 
 ## 5. Verification evidence and limits
+
+The latest revocation regression tests are code-level repository tests using mocked PostgreSQL query behavior. They do not replace a live PostgreSQL integration test or a real stolen-browser-token replay test.
 
 On commit `b4d90c8dbe828db45b2efc3ead7350f3ad4f7042`:
 
