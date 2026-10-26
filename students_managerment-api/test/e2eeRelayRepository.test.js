@@ -406,3 +406,64 @@ test('expired completed provisioning retains completion status but scrubs encryp
     assert.ok(cleanup.statement.includes('new_device_metadata = NULL'));
     assert.deepEqual(cleanup.params, [[sessionId], 44]);
 });
+
+
+test('provisioning acknowledgement activates only the assigned linked device with its device credential', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
+                return { rows: [{ assigned_device_id: 3, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')) {
+                return { rows: [{ device_id: 3 }], rowCount: 1 };
+            }
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")) {
+                return { rows: [{ session_id: sessionId }], rowCount: 1 };
+            }
+            throw new Error('Unexpected SQL in provisioning acknowledgement test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await repository.acknowledgeProvisioning(44, sessionId, token);
+    const activation = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE'));
+    assert.deepEqual(activation.params, [44, 3, tokenHash, completedAt]);
+    assert.ok(activation.statement.includes('device_token_hash = $3'));
+    assert.ok(activation.statement.includes('created_at <= $4'));
+    assert.ok(calls.find(call => call.statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")));
+});
+
+test('provisioning acknowledgement rejects missing device credential before activating device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            throw new Error('Unexpected SQL in missing provisioning credential test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(
+        repository.acknowledgeProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', null),
+        error => error.statusCode === 401 && error.code === 'E2EE_DEVICE_AUTH_REQUIRED'
+    );
+    assert.equal(calls.some(statement => statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')), false);
+});
