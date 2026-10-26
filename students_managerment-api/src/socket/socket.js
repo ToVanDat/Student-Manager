@@ -35,6 +35,11 @@ const refreshSharedPresence = async (id, socketId) => {
     const key = presenceSocketKey(id);
     await redisClient.sAdd(key, socketId);
     await redisClient.expire(key, PRESENCE_SOCKET_TTL_SECONDS);
+    return Number(await redisClient.sCard(key));
+};
+const publishPresenceEvent = async (event, payload) => {
+    if (!redisClient.isReady) throw new Error('Redis presence publisher is unavailable');
+    await redisClient.publish('presence:events', JSON.stringify({ event, payload }));
 };
 
 const initSocket = (server) => {
@@ -56,6 +61,22 @@ const initSocket = (server) => {
         process.env.FRONTEND_URL,
         ...configuredOrigins
     ].filter(Boolean));
+
+    // Redis Pub/Sub relays presence transitions to Socket.IO nodes sharing this Redis.
+    const presenceSubscriber = redisClient.duplicate();
+    presenceSubscriber.connect()
+        .then(() => presenceSubscriber.subscribe('presence:events', raw => {
+            try {
+                const event = JSON.parse(raw);
+                if (!['presence:online', 'presence:offline'].includes(event?.event)) return;
+                const targetId = Number(event?.payload?.userId);
+                if (!Number.isSafeInteger(targetId) || targetId <= 0) return;
+                io?.to(`user:${targetId}`).emit(event.event, event.payload);
+            } catch (error) {
+                console.error('[PRESENCE][pubsub message invalid]', error.message);
+            }
+        }))
+        .catch(error => console.error('[PRESENCE][pubsub subscribe failed]', error.message));
 
     io = new Server(server, {
         // WebRTC SDP is capped at 64 KiB by payload validation; 256 KiB leaves
@@ -300,8 +321,9 @@ const initSocket = (server) => {
         }
 
         userSockets.add(socket.id);
+        let sharedPresenceCount = 0;
         try {
-            await refreshSharedPresence(userId, socket.id);
+            sharedPresenceCount = await refreshSharedPresence(userId, socket.id);
         } catch (error) {
             console.error('[PRESENCE][redis register failed]', { userId, message: error.message });
             socket.disconnect(true);
@@ -315,12 +337,12 @@ const initSocket = (server) => {
             disconnectGraceTimers.delete(userId);
                     }
 
-        if (wasOffline) {
+        if (sharedPresenceCount === 1) {
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
-                for (const contactId of contactIds) {
-                    io.to(`user:${contactId}`).emit('presence:online', { userId });
-                }
+                await Promise.all(contactIds.map(contactId =>
+                    publishPresenceEvent('presence:online', { userId, emittedAt: new Date().toISOString() })
+                ));
             } catch (error) {
                 console.error('PRESENCE ONLINE ERROR:', error);
             }
@@ -1420,13 +1442,11 @@ const initSocket = (server) => {
                     }
 
                     try {
-                        const contactIds = await conversationRepository.getConversationContactIds(userId);
-                        for (const contactId of contactIds) {
-                            io.to(`user:${contactId}`).emit('presence:offline', {
-                                userId,
-                                lastSeenAt
-                            });
-                        }
+                        await publishPresenceEvent('presence:offline', {
+                            userId,
+                            lastSeenAt,
+                            emittedAt: new Date().toISOString()
+                        });
                     } catch (error) {
                         console.error('PRESENCE OFFLINE ERROR:', error);
                     }
