@@ -36,7 +36,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
         setError('');
         setNotice('');
         if (!candidate) return;
-        if (!/\\.txt$/i.test(candidate.name) || !['text/plain', 'application/octet-stream'].includes(candidate.type || 'application/octet-stream')) {
+        if (!/\.txt$/i.test(candidate.name) || !['text/plain', 'application/octet-stream'].includes(candidate.type || 'application/octet-stream')) {
             setFile(null);
             setError(vi ? 'Hiện tại chỉ hỗ trợ tệp văn bản .txt UTF-8.' : 'Only UTF-8 .txt text files are supported right now.');
             return;
@@ -47,7 +47,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
             return;
         }
         setFile(candidate);
-        if (!title.trim()) setTitle(candidate.name.replace(/\\.txt$/i, ''));
+        if (!title.trim()) setTitle(candidate.name.replace(/\.txt$/i, ''));
     };
 
     const submit = async event => {
@@ -59,7 +59,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
         try {
             const result = await uploadAssistantDocument({
                 file,
-                title: title.trim() || file.name.replace(/\\.txt$/i, ''),
+                title: title.trim() || file.name.replace(/\.txt$/i, ''),
                 visibility
             });
             setNotice(vi
