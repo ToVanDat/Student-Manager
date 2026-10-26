@@ -260,6 +260,24 @@ test('E2EE device inventory is visible to self and established direct-chat peers
     ]);
 });
 
+test('provisioning rollback requires a device credential and forwards it to the repository', async t => {
+    const oldRollback = relayRepository.rollbackProvisioning;
+    let received;
+    relayRepository.rollbackProvisioning = async (...args) => { received = args; return { rolledBack: true }; };
+    t.after(() => { relayRepository.rollbackProvisioning = oldRollback; });
+
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    assert.deepEqual(
+        await service.rollbackProvisioning(11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', token),
+        { rolledBack: true }
+    );
+    assert.deepEqual(received, [11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', token]);
+    await assert.rejects(
+        service.rollbackProvisioning(11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', null),
+        error => error.statusCode === 401
+    );
+});
+
 test('provisioning acknowledgement reports expiry only after repository cleanup commits', async t => {
     const oldAck = relayRepository.acknowledgeProvisioning;
     let received;
