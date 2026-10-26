@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext } = require('../service/chatbotService.js');
+const { normalizeHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
@@ -194,4 +194,41 @@ test('serializeUntrustedContext escapes markup delimiters and labels context as 
     assert.ok(serialized.includes('\\u003e'));
     assert.ok(serialized.endsWith('END_UNTRUSTED_ACADEMIC_CONTEXT_JSON'));
     assert.doesNotMatch(serialized, /<system>/);
+});
+
+
+test('getOllamaConfig permits loopback HTTP and defaults to the local model', () => {
+    const previousUrl = process.env.OLLAMA_BASE_URL;
+    const previousModel = process.env.OLLAMA_MODEL;
+    try {
+        delete process.env.OLLAMA_BASE_URL;
+        delete process.env.OLLAMA_MODEL;
+        assert.deepEqual(getOllamaConfig(), {
+            baseUrl: 'http://127.0.0.1:11434',
+            model: 'qwen2.5:3b'
+        });
+        process.env.OLLAMA_BASE_URL = 'http://localhost:11434/';
+        process.env.OLLAMA_MODEL = 'qwen2.5:3b';
+        assert.equal(getOllamaConfig().baseUrl, 'http://localhost:11434');
+    } finally {
+        if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+        else process.env.OLLAMA_BASE_URL = previousUrl;
+        if (previousModel === undefined) delete process.env.OLLAMA_MODEL;
+        else process.env.OLLAMA_MODEL = previousModel;
+    }
+});
+
+test('getOllamaConfig rejects remote plaintext, credentials and URL query strings', () => {
+    const previousUrl = process.env.OLLAMA_BASE_URL;
+    try {
+        process.env.OLLAMA_BASE_URL = 'http://192.168.1.20:11434';
+        assert.throws(() => getOllamaConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://user:secret@example.com';
+        assert.throws(() => getOllamaConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://ollama.example.com?token=secret';
+        assert.throws(() => getOllamaConfig(), error => error.status === 503);
+    } finally {
+        if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+        else process.env.OLLAMA_BASE_URL = previousUrl;
+    }
 });
