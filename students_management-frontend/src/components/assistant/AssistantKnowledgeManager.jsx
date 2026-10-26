@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BookOpen, CheckCircle2, FileText, FileUp, LoaderCircle, RefreshCw, ShieldCheck, UploadCloud } from 'lucide-react';
-import { listAssistantDocuments, uploadAssistantDocument } from '@/api/chatbotApi.js';
+import { Archive, BookOpen, CheckCircle2, FileText, FileUp, LoaderCircle, RefreshCw, ShieldCheck, UploadCloud, Undo2 } from 'lucide-react';
+import { archiveAssistantDocument, listAssistantDocuments, restoreAssistantDocument, uploadAssistantDocument } from '@/api/chatbotApi.js';
 
 const MAX_FILE_BYTES = 1024 * 1024;
 
@@ -12,6 +12,7 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
     const [visibility, setVisibility] = useState('all');
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [updatingDocumentId, setUpdatingDocumentId] = useState(null);
     const [dragging, setDragging] = useState(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
@@ -80,7 +81,29 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
         if (status === 'ready') return vi ? 'Sẵn sàng' : 'Ready';
         if (status === 'processing') return vi ? 'Đang xử lý' : 'Processing';
         if (status === 'failed') return vi ? 'Thất bại' : 'Failed';
+        if (status === 'archived') return vi ? 'Đã lưu trữ' : 'Archived';
         return status || (vi ? 'Không rõ' : 'Unknown');
+    };
+
+    const changeDocumentArchiveState = async document => {
+        if (updatingDocumentId) return;
+        setUpdatingDocumentId(document.id);
+        setError('');
+        setNotice('');
+        try {
+            if (document.status === 'archived') {
+                await restoreAssistantDocument(document.id);
+                setNotice(vi ? 'Đã khôi phục tài liệu.' : 'Document restored.');
+            } else {
+                await archiveAssistantDocument(document.id);
+                setNotice(vi ? 'Đã lưu trữ tài liệu. Nội dung và các đoạn dữ liệu vẫn được giữ lại.' : 'Document archived. Its content and chunks were retained.');
+            }
+            await load();
+        } catch (err) {
+            setError(err?.response?.data?.message || (vi ? 'Không thể cập nhật trạng thái tài liệu.' : 'Could not update document status.'));
+        } finally {
+            setUpdatingDocumentId(null);
+        }
     };
 
     const visibilityLabel = value => ({
@@ -173,6 +196,20 @@ export default function AssistantKnowledgeManager({ language = 'vi' }) {
                             <p className="m-0 mt-1 truncate text-[10px] text-slate-400">{document.source_name} · {visibilityLabel(document.visibility)}</p>
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${document.status === 'ready' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : document.status === 'failed' ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'}`}>{statusLabel(document.status)}</span>
+                        {(document.status === 'ready' || document.status === 'failed' || document.status === 'archived') && (
+                            <button
+                                type="button"
+                                onClick={() => void changeDocumentArchiveState(document)}
+                                disabled={updatingDocumentId !== null}
+                                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-[10px] font-semibold text-slate-600 transition hover:border-blue-300 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:text-blue-300"
+                                aria-label={document.status === 'archived' ? (vi ? 'Khôi phục tài liệu' : 'Restore document') : (vi ? 'Lưu trữ tài liệu' : 'Archive document')}
+                            >
+                                {updatingDocumentId === document.id
+                                    ? <LoaderCircle size={12} className="animate-spin" />
+                                    : document.status === 'archived' ? <Undo2 size={12} /> : <Archive size={12} />}
+                                {document.status === 'archived' ? (vi ? 'Khôi phục' : 'Restore') : (vi ? 'Lưu trữ' : 'Archive')}
+                            </button>
+                        )}
                     </div>
                 ))}
                 {loading && documents.length === 0 && <div className="flex items-center justify-center gap-2 py-8 text-xs text-slate-400"><LoaderCircle size={15} className="animate-spin" />{vi ? 'Đang tải tài liệu...' : 'Loading documents...'}</div>}
