@@ -477,7 +477,8 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                 departments: context.departments.length,
                 classes: context.classes.length,
                 semesters: context.semesters.length,
-                adminOverviewIncluded: role === 'admin',\n                sources: ragSources.map(source => ({ title: source.title, sourceName: source.sourceName, pageNumber: source.pageNumber, chunkIndex: source.chunkIndex }))
+                adminOverviewIncluded: role === 'admin',
+                sources: ragSources.map(source => ({ title: source.title, sourceName: source.sourceName, pageNumber: source.pageNumber, chunkIndex: source.chunkIndex }))
             }
         };
     } finally {
