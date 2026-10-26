@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext } = require('../service/chatbotService.js');
+const { normalizeHistory, clearHistory, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
@@ -170,4 +170,16 @@ test('admin academic context exposes aggregate counts only, not student rows or 
     } finally {
         pool.query = originalQuery;
     }
+});
+
+
+test('Ollama generation slot allows one in-flight request and releases idempotently', () => {
+    const release = acquireOllamaSlot();
+    assert.equal(typeof release, 'function');
+    assert.equal(acquireOllamaSlot(), null);
+    release();
+    release();
+    const next = acquireOllamaSlot();
+    assert.equal(typeof next, 'function');
+    next();
 });
