@@ -42,9 +42,11 @@ module.exports = async (req, res, next) => {
         });
         const [pairCount, pairTtl, requesterCount, requesterTtl] = result.map(Number);
         if (pairCount > PAIR_LIMIT || requesterCount > REQUESTER_LIMIT) {
-            const retryAfter = Math.max(1, Math.min(
-                Number.isFinite(pairTtl) && pairTtl > 0 ? pairTtl : WINDOW_SECONDS,
-                Number.isFinite(requesterTtl) && requesterTtl > 0 ? requesterTtl : WINDOW_SECONDS
+            const exceededWindows = [];
+            if (pairCount > PAIR_LIMIT) exceededWindows.push(pairTtl);
+            if (requesterCount > REQUESTER_LIMIT) exceededWindows.push(requesterTtl);
+            const retryAfter = Math.max(1, ...exceededWindows.map(ttl =>
+                Number.isFinite(ttl) && ttl > 0 ? ttl : WINDOW_SECONDS
             ));
             res.setHeader('Retry-After', String(retryAfter));
             return res.status(429).json({
