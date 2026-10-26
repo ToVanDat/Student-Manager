@@ -4,11 +4,11 @@ const { extractTextDocument, getSafeSourceName } = require('../service/documentT
 
 test('extractTextDocument accepts UTF-8 TXT and normalizes line endings/BOM', () => {
     const result = extractTextDocument({
-        buffer: Buffer.from('\\uFEFFQuy chế\\r\\n\\r\\nĐiều 1', 'utf8'),
+        buffer: Buffer.from('\uFEFFQuy chế\r\n\r\nĐiều 1', 'utf8'),
         originalName: 'quy-che.TXT',
         mimeType: 'text/plain'
     });
-    assert.equal(result.text, 'Quy chế\\n\\nĐiều 1');
+    assert.equal(result.text, 'Quy chế\n\nĐiều 1');
     assert.equal(result.sourceName, 'quy-che.TXT');
     assert.equal(result.mimeType, 'text/plain');
     assert.equal(result.format, 'txt');
@@ -22,7 +22,7 @@ test('extractTextDocument rejects malformed UTF-8, binary data and empty files',
         mimeType: 'text/plain'
     }), error => error.status === 400);
     assert.throws(() => extractTextDocument({
-        buffer: Buffer.from('abc\\u0000def'),
+        buffer: Buffer.from('abc\u0000def'),
         originalName: 'binary.txt',
         mimeType: 'text/plain'
     }), error => error.status === 400);
@@ -53,5 +53,5 @@ test('extractTextDocument enforces byte limit and safe basename', () => {
         originalName: 'large.txt',
         mimeType: 'text/plain'
     }), error => error.status === 413);
-    assert.equal(getSafeSourceName('../../private\\\\file.txt'), 'file.txt');
+    assert.equal(getSafeSourceName('../../private\\file.txt'), 'file.txt');
 });
