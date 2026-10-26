@@ -212,9 +212,12 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => {
     return result;
 };
 
-const rollbackProvisioning = async (userId, sessionId) => {
+const rollbackProvisioning = async (userId, sessionId, deviceToken) => {
     assertSessionId(sessionId);
-    return relayRepository.rollbackProvisioning(userId, sessionId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw fail(401, 'Cần xác thực thiết bị E2EE mới');
+    }
+    return relayRepository.rollbackProvisioning(userId, sessionId, deviceToken);
 };
 
 const deleteProvisioningSession = async (userId, sessionId) => {
