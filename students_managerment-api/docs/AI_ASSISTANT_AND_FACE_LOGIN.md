@@ -22,7 +22,7 @@ The backend makes server-to-server requests to Ollama; the browser never connect
 
 The current release grounds responses in read-only subject, department, class, and semester catalog queries. It performs parameterized SQL lookups for explicitly named catalog terms. The first document-RAG slice now supports admin-only UTF-8 TXT upload (1 MB maximum), bounded chunking, `nomic-embed-text` embeddings, PostgreSQL/pgvector storage, role-filtered cosine-distance retrieval, and source metadata returned with streamed answers. PDF/DOCX parsing, OCR, re-indexing/deletion workflows, and vector ANN indexes are not implemented yet. Until the guarded schema migration is applied and pgvector is available, the assistant silently falls back to its existing catalog-only context. Admin prompts additionally receive aggregate counts only. No student PII, grades, or individual enrollment records are sent to the model. Student accounts are not yet linked to student rows through a verified foreign key, so personal grade/schedule lookup is intentionally unavailable to all chatbot users until that identity mapping and row-level authorization are audited and implemented.
 
-Conversation history is stored in Redis, scoped to the authenticated user and current login session, with a 30-day TTL for the current implementation. It is not written to PostgreSQL and expires automatically. A new login session does not automatically share the previous session's conversation list. Ollama generation and the catalog-context load are limited to one in-flight request per Node.js process to protect low-memory local machines; this is not a distributed limit across multiple backend replicas. Do not send passwords, access/refresh tokens, identity documents, or sensitive personal data to the assistant. Model output is untrusted text; it is not executed as SQL, HTML, or application commands.
+The SSE chat endpoint propagates client disconnects to the Ollama request so a closed browser stream can cancel generation and release the in-process request slot. Conversation history is stored in Redis, scoped to the authenticated user and current login session, with a 30-day TTL for the current implementation. It is not written to PostgreSQL and expires automatically. A new login session does not automatically share the previous session's conversation list. Ollama generation and the catalog-context load are limited to one in-flight request per Node.js process to protect low-memory local machines; this is not a distributed limit across multiple backend replicas. Do not send passwords, access/refresh tokens, identity documents, or sensitive personal data to the assistant. Model output is untrusted text; it is not executed as SQL, HTML, or application commands.
 
 ## Face login decision
 
@@ -39,9 +39,15 @@ A custom camera-based face matcher using MediaPipe/TF.js is not enabled in this 
 - WebAuthn requires a secure context (HTTPS, with localhost permitted for development) and correct `WEBAUTHN_ORIGIN` / `WEBAUTHN_RP_ID`.
 - No database migration is introduced by this feature.
 
-## Explicitly out of scope for this release
+## Current limitations and explicitly out-of-scope capabilities
 
-- End-to-end document RAG is not enabled yet: document upload/parsing, indexing orchestration, vector retrieval, citations, and re-indexing remain pending. A guarded pgvector schema draft and isolated text-chunking/Ollama-embedding helpers are groundwork only; no assistant RAG endpoints call them yet.
+- The current document-RAG implementation is a TXT-only MVP. PDF/DOCX parsing, OCR, re-indexing, document deletion, and vector ANN indexes are not implemented.
+- RAG requires the guarded schema migration and pgvector to be provisioned. Until both tables and the extension are available, retrieval returns no document context and the assistant falls back to catalog-only answers.
+- Document ingestion is limited to one embedding job at a time per Node.js process. This is a local process guard, not a distributed lock across multiple API replicas.
+- Chat history remains scoped to the authenticated user and login session; it is not shared automatically across new sessions or devices.
+- Personal grades, attendance, schedules, and enrollment details remain unavailable until a verified account-to-student relationship and row-level authorization are confirmed.
+- Chatbot-triggered CRUD, SQL generation/execution, or administrative actions are not supported.
+- Custom camera face recognition, biometric embeddings, and liveness/PAD are not implemented. MediaPipe detection alone is not identity verification.
 
 ## Document RAG (TXT MVP)
 
