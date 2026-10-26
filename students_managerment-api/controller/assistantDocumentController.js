@@ -21,7 +21,12 @@ exports.uploadTextDocument = async (req, res) => {
         const status = Number.isInteger(error.status) ? error.status : 500;
         if (status >= 500) console.error('[RAG] Document ingestion failed', { name: error?.name, message: error?.message });
         return res.status(status).json({
-            message: status >= 500 ? 'Không thể xử lý tài liệu. Kiểm tra cấu hình Ollama và pgvector.' : error.message
+            code: error.code || undefined,
+            message: error.code === 'RAG_SCHEMA_NOT_READY'
+                ? 'Kho tri thức chưa sẵn sàng. Cần kiểm tra migration RAG và pgvector trước khi nạp tài liệu.'
+                : status >= 500
+                    ? 'Không thể xử lý tài liệu. Kiểm tra cấu hình Ollama và pgvector.'
+                    : error.message
         });
     }
 };
