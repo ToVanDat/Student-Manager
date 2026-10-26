@@ -64,5 +64,5 @@ export const uploadAssistantDocument = async ({ file, title, visibility = 'all' 
     form.append('document', file);
     form.append('title', title);
     form.append('visibility', visibility);
-    return (await apiClient.post('/api/assistant/documents', form)).data;
+    return (await apiClient.post('/api/assistant/documents', form, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
 };
