@@ -89,9 +89,19 @@ const uploadPreKeys = async (userId, deviceId, body = {}) => {
 };
 
 const fetchPreKeyBundle = async (requesterId, targetUserId, targetDeviceId, identityType = 'aci') => {
+    integer(requesterId, 'requesterId');
     integer(targetUserId, 'userId');
     integer(targetDeviceId, 'deviceId', 1, 5);
     if (!['aci', 'pni'].includes(identityType)) throw fail(400, 'identityType không hợp lệ');
+
+    // Fetching a bundle claims one-time prekeys. Require an established direct
+    // conversation before allowing another account to consume this device's keys.
+    // A user's own linked devices remain discoverable for multi-device sessions.
+    if (Number(requesterId) !== Number(targetUserId)) {
+        const conversation = await conversationRepository.findDirectConversation(requesterId, targetUserId);
+        if (!conversation) throw fail(404, 'Không tìm thấy conversation 1-1 với người dùng này');
+    }
+
     return relayRepository.fetchPreKeyBundle(targetUserId, targetDeviceId, identityType);
 };
 
