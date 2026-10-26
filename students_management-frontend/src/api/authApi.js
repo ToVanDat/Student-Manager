@@ -1,7 +1,7 @@
 import axios from "axios";
 
 import { API_BASE_URL } from '@/utils/constants.js';
-import { getAccessToken } from '@/api/client.js';
+import apiClient from '@/api/client.js';
 //login
 export const loginApi = async (username, password) => {
   const response = await axios.post(
@@ -120,45 +120,21 @@ export const finishPasskeyLoginApi = async (challengeId, responsePayload) => {
   return response.data;
 };
 
-const authenticatedAuthConfig = () => {
-  const token = getAccessToken();
-  return {
-    withCredentials: true,
-    headers: token ? { Authorization: `Bearer ${token}` } : {}
-  };
-};
-
-export const beginPasskeyRegistrationApi = async () => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/registration/options`, {}, authenticatedAuthConfig());
-  return response.data;
-};
-export const finishPasskeyRegistrationApi = async (challengeId, responsePayload, deviceName) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/registration/verify`, { challengeId, response: responsePayload, deviceName }, authenticatedAuthConfig());
-  return response.data;
-};
+// Authenticated endpoints use the shared client so expired ATs follow the
+// application's common refresh-and-retry flow.
+export const beginPasskeyRegistrationApi = async () => (await apiClient.post('/api/auth/passkeys/registration/options', {})).data;
+export const finishPasskeyRegistrationApi = async (challengeId, responsePayload, deviceName) => (await apiClient.post('/api/auth/passkeys/registration/verify', { challengeId, response: responsePayload, deviceName })).data;
 export const listPasskeysApi = async () => {
-  const response = await axios.get(`${API_BASE_URL}/api/auth/passkeys`, authenticatedAuthConfig());
+  const response = await apiClient.get('/api/auth/passkeys');
   return response.data.credentials || [];
 };
-export const deletePasskeyApi = async id => {
-  const response = await axios.delete(`${API_BASE_URL}/api/auth/passkeys/${encodeURIComponent(id)}`, authenticatedAuthConfig());
-  return response.data;
-};
-export const linkGoogleApi = async (idToken, currentPassword, verificationToken) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/google/link`, { idToken, currentPassword, verificationToken }, authenticatedAuthConfig());
-  return response.data;
-};
+export const deletePasskeyApi = async id => (await apiClient.delete(`/api/auth/passkeys/${encodeURIComponent(id)}`)).data;
+export const linkGoogleApi = async (idToken, currentPassword, verificationToken) => (await apiClient.post('/api/auth/google/link', { idToken, currentPassword, verificationToken })).data;
 export const getGoogleLinkApi = async () => {
-  const response = await axios.get(`${API_BASE_URL}/api/auth/google/link`, authenticatedAuthConfig());
+  const response = await apiClient.get('/api/auth/google/link');
   return response.data.account || null;
 };
-export const unlinkGoogleApi = async (currentPassword, verificationToken) => {
-  const response = await axios.delete(`${API_BASE_URL}/api/auth/google/link`, {
-    ...authenticatedAuthConfig(),
-    data: { currentPassword, verificationToken }
-  });
-  return response.data;
-};
+export const unlinkGoogleApi = async (currentPassword, verificationToken) => (await apiClient.delete('/api/auth/google/link', { data: { currentPassword, verificationToken } })).data;
 
 export const createQrLoginApi = async () => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login`, {}, { withCredentials: true });
@@ -169,7 +145,7 @@ export const pollQrLoginApi = async (requestId, secret) => {
   return response.data;
 };
 export const approveQrLoginApi = async (requestId, secret) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/qr-login/approve`, { requestId, secret }, authenticatedAuthConfig());
+  const response = await apiClient.post('/api/auth/qr-login/approve', { requestId, secret });
   return response.data;
 };
 export const denyQrLoginApi = async (requestId, secret) => {
@@ -185,10 +161,10 @@ export const cancelQrLoginApi = async (requestId, secret) => {
 };
 
 export const beginSensitiveReauthApi = async purpose => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/options`, { purpose }, authenticatedAuthConfig());
+  const response = await apiClient.post('/api/auth/passkeys/reauth/options', { purpose });
   return response.data;
 };
 export const finishSensitiveReauthApi = async (challengeId, responsePayload, purpose) => {
-  const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/reauth/verify`, { challengeId, response: responsePayload, purpose }, authenticatedAuthConfig());
+  const response = await apiClient.post('/api/auth/passkeys/reauth/verify', { challengeId, response: responsePayload, purpose });
   return response.data;
 };
