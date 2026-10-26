@@ -87,7 +87,8 @@ async function issueSession(user, req) {
         }, process.env.JWT_SECRET, {
             expiresIn: ACCESS_TTL_SECONDS,
             issuer: 'student-management-api',
-            audience: 'student-management-client'
+            audience: 'student-management-client',
+            algorithm: 'HS256'
         });
 
         const accessHash = hash(accessToken);
