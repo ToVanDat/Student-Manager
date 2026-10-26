@@ -57,6 +57,12 @@ The mitigation is deliberately narrow. The application allows users to initiate 
 
 This does not alter database schema or data and does not require a migration.
 
+## 4. Additional hardening applied
+
+- Attachment authorization now distinguishes new upload reservations from historical access. A new upload ticket requires the conversation E2EE mode to be `active`; a paused conversation returns `E2EE_PAUSED`.
+- Existing uploaded ciphertext remains accessible while E2EE is paused, and already-created pending uploads can still complete. This avoids turning pause into deletion or loss of historical encrypted content.
+- Added unit tests for paused-mode rejection and fail-closed behavior when E2EE is unavailable/disabled.
+
 ## 4. Remaining risks / follow-up
 
 | Priority | Observation | Follow-up |
