@@ -1,20 +1,18 @@
 const ragService = require('../service/ragService.js');
-
-function getSafeSourceName(originalName) {
-    return String(originalName || 'document.txt').replace(/\\/g, '/').split('/').pop().slice(0, 255);
-}
+const { extractTextDocument } = require('../service/documentTextExtractor.js');
 
 exports.uploadTextDocument = async (req, res) => {
     try {
         if (!req.file?.buffer) return res.status(400).json({ message: 'Vui lòng chọn tệp .txt' });
-        const decoded = req.file.buffer.toString('utf8');
-        if (decoded.includes('\u0000') || decoded.includes('\uFFFD')) {
-            return res.status(400).json({ message: 'Tệp không phải văn bản UTF-8 hợp lệ' });
-        }
+        const extracted = extractTextDocument({
+            buffer: req.file.buffer,
+            originalName: req.file.originalname,
+            mimeType: req.file.mimetype
+        });
         const document = await ragService.ingestTextDocument({
-            title: req.body?.title || getSafeSourceName(req.file.originalname).replace(/\.txt$/i, ''),
-            sourceName: getSafeSourceName(req.file.originalname),
-            text: decoded,
+            title: req.body?.title || extracted.sourceName.replace(/\\.txt$/i, ''),
+            sourceName: extracted.sourceName,
+            text: extracted.text,
             visibility: req.body?.visibility || 'all',
             createdBy: req.user.id
         });
