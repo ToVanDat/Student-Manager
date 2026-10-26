@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { normalizeHistory, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
+const { normalizeHistory, removeLastTurn, rateAnswer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
@@ -289,4 +289,46 @@ test('conversation rename and delete reject IDs not present in the caller index'
     const redis = { isReady: true, get: async () => null, set: async () => {}, del: async () => {} };
     await assert.rejects(renameConversation({ userId: '7', sessionId: 's1', conversationId: '123e4567-e89b-42d3-a456-426614174000', title: 'x', redis }), error => error.status === 404);
     await assert.rejects(deleteConversation({ userId: '7', sessionId: 's1', conversationId: '123e4567-e89b-42d3-a456-426614174000', redis }), error => error.status === 404);
+});
+
+test('removeLastTurn removes only the latest user and assistant pair', () => {
+    const history = [
+        { role: 'user', content: 'first question' },
+        { role: 'assistant', content: 'first answer' },
+        { role: 'user', content: 'second question' },
+        { role: 'assistant', content: 'second answer' }
+    ];
+    assert.deepEqual(removeLastTurn(history), history.slice(0, 2));
+});
+
+test('removeLastTurn rejects incomplete or malformed latest turns', () => {
+    assert.throws(() => removeLastTurn([{ role: 'user', content: 'pending' }]), error => error.status === 409);
+    assert.throws(() => removeLastTurn([{ role: 'assistant', content: 'orphan' }]), error => error.status === 409);
+});
+
+test('rateAnswer stores feedback only for the latest answer and caller session', async () => {
+    const crypto = require('node:crypto');
+    const answer = 'Đây là câu trả lời';
+    const hash = crypto.createHash('sha256').update(answer, 'utf8').digest('hex');
+    const store = new Map([['assistant:history:42:s1:default', JSON.stringify([
+        { role: 'user', content: 'Câu hỏi' },
+        { role: 'assistant', content: answer }
+    ])]]);
+    const redis = {
+        isReady: true,
+        get: async key => store.get(key) ?? null,
+        set: async (key, value, options) => { store.set(key, value); assert.equal(options.EX, 30 * 24 * 60 * 60); }
+    };
+    const result = await rateAnswer({ userId: '42', sessionId: 's1', answerHash: hash, rating: 'helpful', redis });
+    assert.deepEqual(result, { rating: 'helpful' });
+    assert.ok(store.has('assistant:feedback:42:s1:default:' + hash));
+});
+
+test('rateAnswer rejects stale answer hashes and unsupported ratings', async () => {
+    const redis = {
+        isReady: true,
+        get: async () => JSON.stringify([{ role: 'assistant', content: 'current answer' }])
+    };
+    await assert.rejects(rateAnswer({ userId: '42', sessionId: 's1', answerHash: 'a'.repeat(64), rating: 'helpful', redis }), error => error.status === 409);
+    await assert.rejects(rateAnswer({ userId: '42', sessionId: 's1', answerHash: 'b'.repeat(64), rating: 'neutral', redis }), error => error.status === 400);
 });
