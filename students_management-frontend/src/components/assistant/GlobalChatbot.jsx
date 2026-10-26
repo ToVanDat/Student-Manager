@@ -44,7 +44,7 @@ export default function GlobalChatbot() {
             .catch(() => {})
             .finally(() => { if (active) setHistoryLoading(false); });
         return () => { active = false; };
-    }, [open, userKey, messages.length, historyLoading]);
+    }, [open, userKey]);
 
     useEffect(() => {
         scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
