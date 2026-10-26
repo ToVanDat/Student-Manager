@@ -1417,12 +1417,14 @@ const initSocket = async (server) => {
         socket.on('disconnect', async (reason) => {
             const userSockets = onlineUsers.get(userId);
             let sharedSocketCount = 0;
+            let sharedPresenceAvailable = true;
             try {
                 const key = presenceSocketKey(userId);
                 await redisClient.sRem(key, socket.id);
                 sharedSocketCount = Number(await redisClient.sCard(key));
                 if (sharedSocketCount === 0) await redisClient.del(key);
             } catch (error) {
+                sharedPresenceAvailable = false;
                 console.error('[PRESENCE][redis unregister failed]', { userId, message: error.message });
             }
 
@@ -1431,7 +1433,7 @@ const initSocket = async (server) => {
 
                 // Chỉ khi socket cuối cùng của user biến mất mới phát OFFLINE
                 // và ghi last_seen_at.
-                if (userSockets.size === 0 && sharedSocketCount === 0) {
+                if (userSockets.size === 0 && sharedPresenceAvailable && sharedSocketCount === 0) {
                     onlineUsers.delete(userId);
 
                     let lastSeenAt = null;
