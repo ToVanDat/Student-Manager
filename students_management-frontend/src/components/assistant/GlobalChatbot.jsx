@@ -43,6 +43,7 @@ export default function GlobalChatbot() {
     const [editingTitle, setEditingTitle] = useState('');
     const [copiedMessageId, setCopiedMessageId] = useState(null);
     const [editingLatestQuestion, setEditingLatestQuestion] = useState(false);
+    const [replaceLastTurnOnSubmit, setReplaceLastTurnOnSubmit] = useState(false);
     const [feedbackRating, setFeedbackRating] = useState(null);
     const [feedbackBusy, setFeedbackBusy] = useState(false);
     const scrollRef = useRef(null);
@@ -68,6 +69,7 @@ export default function GlobalChatbot() {
         setMessages([]);
         setInput('');
         setEditingLatestQuestion(false);
+        setReplaceLastTurnOnSubmit(false);
         setFeedbackRating(null);
         setLoading(false);
         setHistoryLoading(false);
@@ -136,6 +138,7 @@ export default function GlobalChatbot() {
         setActiveConversationId(id);
         setMessages([]);
         setEditingLatestQuestion(false);
+        setReplaceLastTurnOnSubmit(false);
         setFeedbackRating(null);
         setShowConversationList(false);
     };
@@ -148,6 +151,7 @@ export default function GlobalChatbot() {
             setConversations(items => [result.conversation, ...items.filter(item => item.id !== result.conversation.id)]);
             setMessages([]);
             setEditingLatestQuestion(false);
+            setReplaceLastTurnOnSubmit(false);
             setFeedbackRating(null);
             setActiveConversationId(result.conversation.id);
             setShowConversationList(false);
@@ -201,12 +205,17 @@ export default function GlobalChatbot() {
         const prompt = retryText ?? input.trim();
         if (!prompt || loading) return;
 
-        const replaceLastTurn = forceReplaceLastTurn || editingLatestQuestion;
+        const replaceLastTurn = forceReplaceLastTurn || replaceLastTurnOnSubmit;
         setInput('');
+        const wasEditingQuestion = editingLatestQuestion;
         setEditingLatestQuestion(false);
+        setReplaceLastTurnOnSubmit(false);
         setFeedbackRating(null);
         setMessages(items => {
-            const visibleHistory = replaceLastTurn ? items.slice(0, -2) : items;
+            const lastUserIndex = items.map(message => message.role).lastIndexOf('user');
+            const visibleHistory = wasEditingQuestion || replaceLastTurn
+                ? items.slice(0, Math.max(0, lastUserIndex))
+                : items;
             return [...visibleHistory, { id: 'user-' + Date.now(), role: 'user', content: prompt }];
         });
         setLoading(true);
@@ -272,9 +281,16 @@ export default function GlobalChatbot() {
     };
 
     const editLatestQuestion = () => {
-        const latestUser = [...messages].reverse().find(item => item.role === 'user');
-        if (!latestUser || loading) return;
+        const latestUserIndex = messages.map(item => item.role).lastIndexOf('user');
+        if (latestUserIndex < 0 || loading) return;
+        const latestUser = messages[latestUserIndex];
+        const latestAssistantIndex = messages.map(item => item.role).lastIndexOf('assistant');
+        const persistedTurn = latestAssistantIndex > latestUserIndex
+            && Boolean(messages[latestAssistantIndex]?.content)
+            && !messages[latestAssistantIndex]?.error
+            && !messages[latestAssistantIndex]?.stopped;
         setInput(latestUser.content);
+        setReplaceLastTurnOnSubmit(persistedTurn);
         setEditingLatestQuestion(true);
         textareaRef.current?.focus();
     };
@@ -487,7 +503,7 @@ export default function GlobalChatbot() {
                             </div>
 
                             <div className="shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
-                                {editingLatestQuestion && <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><span>{vi ? 'Đang chỉnh sửa câu hỏi gần nhất' : 'Editing the latest question'}</span><button type="button" onClick={() => { setEditingLatestQuestion(false); setInput(''); }} className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900" aria-label={vi ? 'Hủy chỉnh sửa' : 'Cancel edit'}><X size={13} /></button></div>}
+                                {editingLatestQuestion && <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><span>{vi ? 'Đang chỉnh sửa câu hỏi gần nhất' : 'Editing the latest question'}</span><button type="button" onClick={() => { setEditingLatestQuestion(false); setReplaceLastTurnOnSubmit(false); setInput(''); }} className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900" aria-label={vi ? 'Hủy chỉnh sửa' : 'Cancel edit'}><X size={13} /></button></div>}
                                 <form onSubmit={send} className="rounded-[20px] border border-slate-200 bg-slate-50 p-2 shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:bg-slate-900">
                                     <textarea
                                         ref={textareaRef}
