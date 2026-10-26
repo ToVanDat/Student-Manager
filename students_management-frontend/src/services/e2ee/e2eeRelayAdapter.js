@@ -398,7 +398,9 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         },
 
         async acknowledgeProvisioning(sessionId) {
-            return unwrap(await e2eeRelayApi.acknowledgeProvisioning(sessionId));
+            const deviceId = requireDevice();
+            const token = await requireCredential(deviceId);
+            return unwrap(await e2eeRelayApi.acknowledgeProvisioning(sessionId, token));
         },
 
         async rollbackProvisioning(sessionId) {
