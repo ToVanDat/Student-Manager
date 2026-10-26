@@ -4,7 +4,8 @@ import { getPinProtectedE2EEVault } from './pinProtectedE2EEVault';
 import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { createE2EER2ObjectStore } from './e2eeR2ObjectStore';
-import { getStoredE2EEDeviceId, setStoredE2EEDeviceId } from './e2eeDeviceStateStore';
+import { getStoredE2EEDeviceId, setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
+import { getE2EEProvisioningRecoveryRecords, getE2EEDeviceCredential, setPendingE2EEProvisioningRollback, finalizeE2EEProvisioningRecovery } from './e2eeDeviceCredentialStore';
 
 const listeners = new Set();
 let activeContext = null;
@@ -13,6 +14,31 @@ let initializingUserId = null;
 let generation = 0;
 const decryptedMessageListeners = new Set();
 let activeAttachmentConversationId = null;
+
+// Resolve every incomplete linked-device transaction before choosing a local
+// device slot. This must run before the no-device-ID path can mistake a
+// partially persisted linked device for a first-time account.
+const recoverProvisioningBeforeClientStart = async userId => {
+    const records = await getE2EEProvisioningRecoveryRecords(userId);
+    for (const record of records.filter(item => item.phase !== 'completed')) {
+        const deviceId = Number(record.deviceId);
+        const sessionId = record.sessionId;
+        const token = await getE2EEDeviceCredential(userId, deviceId);
+        if (!token) {
+            const error = new Error('Provisioning recovery is blocked because the linked-device credential is missing.');
+            error.code = 'E2EE_PROVISIONING_RECOVERY_CREDENTIAL_MISSING';
+            throw error;
+        }
+        await setPendingE2EEProvisioningRollback(userId, deviceId, sessionId);
+        // On timeout the server outcome is unknown. Keep journal + token and
+        // fail initialization; the next initialization retries idempotently.
+        await e2eeRelayApi.rollbackProvisioning(sessionId, token);
+        await finalizeE2EEProvisioningRecovery(userId, deviceId, sessionId);
+        if (Number(await getStoredE2EEDeviceId(userId)) === deviceId) {
+            await clearStoredE2EEDeviceId(userId);
+        }
+    }
+};
 
 export const setE2EEAttachmentConversationId = (conversationId) => {
     const value = Number(conversationId);
@@ -129,6 +155,7 @@ export const initializeE2EEClient = async (userId) => {
                 await closeResources(previous.client, previous.storage, previous.unsubscribeRelayState, previous.relay);
             }
 
+            await recoverProvisioningBeforeClientStart(normalizedUserId);
             let deviceId = await getStoredE2EEDeviceId(normalizedUserId);
             const devicesResponse = await e2eeRelayApi.getDevices(normalizedUserId);
             const serverDevices = devicesResponse.data?.data || [];
