@@ -5,17 +5,22 @@ export const sendChatbotMessage = async message => {
     return response.data;
 };
 
-export const getChatbotHistory = async () => {
-    const response = await apiClient.get('/api/assistant/history');
+export const listChatbotConversations = async () => (await apiClient.get('/api/assistant/conversations')).data;
+export const createChatbotConversation = async title => (await apiClient.post('/api/assistant/conversations', { title })).data;
+export const renameChatbotConversation = async (id, title) => (await apiClient.patch('/api/assistant/conversations/' + encodeURIComponent(id), { title })).data;
+export const deleteChatbotConversation = async id => (await apiClient.delete('/api/assistant/conversations/' + encodeURIComponent(id))).data;
+
+export const getChatbotHistory = async conversationId => {
+    const response = await apiClient.get('/api/assistant/history', { params: { conversationId } });
     return response.data;
 };
 
-export const clearChatbotHistory = async () => {
-    const response = await apiClient.delete('/api/assistant/history');
+export const clearChatbotHistory = async conversationId => {
+    const response = await apiClient.delete('/api/assistant/history', { params: { conversationId } });
     return response.data;
 };
 
-export const streamChatbotMessage = async (message, { signal, onToken, onDone } = {}) => {
+export const streamChatbotMessage = async (message, { signal, onToken, onDone, conversationId = 'default' } = {}) => {
     const response = await fetch(`${apiClient.defaults.baseURL}/api/assistant/chat/stream`, {
         method: 'POST',
         credentials: 'include',
@@ -24,7 +29,7 @@ export const streamChatbotMessage = async (message, { signal, onToken, onDone } 
             'Content-Type': 'application/json',
             ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {})
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ message, conversationId })
     });
     if (!response.ok || !response.body) {
         let payload = {};
