@@ -1,5 +1,9 @@
 const ragService = require('../service/ragService.js');
 
+function getSafeSourceName(originalName) {
+    return String(originalName || 'document.txt').replace(/\\/g, '/').split('/').pop().slice(0, 255);
+}
+
 exports.uploadTextDocument = async (req, res) => {
     try {
         if (!req.file?.buffer) return res.status(400).json({ message: 'Vui lòng chọn tệp .txt' });
@@ -8,8 +12,8 @@ exports.uploadTextDocument = async (req, res) => {
             return res.status(400).json({ message: 'Tệp không phải văn bản UTF-8 hợp lệ' });
         }
         const document = await ragService.ingestTextDocument({
-            title: req.body?.title || path.basename(req.file.originalname, path.extname(req.file.originalname)),
-            sourceName: req.file.originalname.replace(/\\\\/g, '/').split('/').pop().slice(0, 255),
+            title: req.body?.title || getSafeSourceName(req.file.originalname).replace(/\.txt$/i, ''),
+            sourceName: getSafeSourceName(req.file.originalname),
             text: decoded,
             visibility: req.body?.visibility || 'all',
             createdBy: req.user.id
