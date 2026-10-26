@@ -30,9 +30,25 @@ const recoverProvisioningBeforeClientStart = async userId => {
             throw error;
         }
         await setPendingE2EEProvisioningRollback(userId, deviceId, sessionId);
-        // On timeout the server outcome is unknown. Keep journal + token and
-        // fail initialization; the next initialization retries idempotently.
-        await e2eeRelayApi.rollbackProvisioning(sessionId, token);
+        // A lost response is an unknown outcome. Retry the same idempotent
+        // rollback while retaining the token and journal.
+        let rollbackResponse;
+        let lastError;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            try {
+                rollbackResponse = await e2eeRelayApi.rollbackProvisioning(sessionId, token);
+                lastError = null;
+                break;
+            } catch (error) {
+                lastError = error;
+                const status = Number(error?.response?.status || 0);
+                const retryable = !status || status === 408 || status === 429 || status >= 500;
+                if (!retryable || attempt === 4) break;
+                await new Promise(resolve => setTimeout(resolve, Math.min(16_000, 1_000 * (2 ** attempt))));
+            }
+        }
+        if (lastError) throw lastError;
+        if (!rollbackResponse) throw new Error('Provisioning rollback returned no confirmation.');
         await finalizeE2EEProvisioningRecovery(userId, deviceId, sessionId);
         if (Number(await getStoredE2EEDeviceId(userId)) === deviceId) {
             await clearStoredE2EEDeviceId(userId);
