@@ -111,3 +111,50 @@ test('RAG schema readiness fails closed until both tables and pgvector exist', (
         );
     }
 });
+
+
+test('document archive and restore validate identifiers and preserve data', async () => {
+    const documentId = '123e4567-e89b-42d3-a456-426614174000';
+    const calls = [];
+    const queryable = {
+        query: async (sql, params) => {
+            calls.push({ sql, params });
+            return { rows: [{ id: documentId, status: sql.includes("status = 'archived'") ? 'archived' : 'ready' }] };
+        }
+    };
+
+    await assert.rejects(
+        setDocumentArchived({ documentId: 'not-a-uuid', archived: true, queryable }),
+        error => error.status === 400
+    );
+    await assert.rejects(
+        setDocumentArchived({ documentId, archived: 'yes', queryable }),
+        error => error.status === 400
+    );
+
+    const archived = await setDocumentArchived({ documentId, archived: true, queryable });
+    assert.equal(archived.status, 'archived');
+    assert.match(calls[0].sql, /SET status = 'archived'/);
+    assert.deepEqual(calls[0].params, [documentId]);
+
+    const restored = await setDocumentArchived({ documentId, archived: false, queryable });
+    assert.equal(restored.status, 'ready');
+    assert.match(calls[1].sql, /EXISTS/);
+    assert.match(calls[1].sql, /assistant_document_chunks/);
+});
+
+test('document restore reports missing archived records and duplicate conflicts safely', async () => {
+    const documentId = '123e4567-e89b-42d3-a456-426614174000';
+    await assert.rejects(
+        setDocumentArchived({ documentId, archived: false, queryable: { query: async () => ({ rows: [] }) } }),
+        error => error.status === 404
+    );
+    await assert.rejects(
+        setDocumentArchived({
+            documentId,
+            archived: false,
+            queryable: { query: async () => { const error = new Error('unique conflict'); error.code = '23505'; throw error; } }
+        }),
+        error => error.status === 409
+    );
+});
