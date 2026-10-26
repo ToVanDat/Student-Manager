@@ -89,10 +89,13 @@ test('createDocumentEmbedding aborts when the requesting client disconnects', as
     assert.equal(requestSignal.aborted, true);
 });
 
-test('document retrieval scope never exposes admin-only material to student users', () => {
+test('document retrieval scope grants only explicitly recognized roles', () => {
     assert.deepEqual(getAllowedDocumentVisibility('user'), ['all', 'student']);
     assert.deepEqual(getAllowedDocumentVisibility('student'), ['all', 'student']);
     assert.deepEqual(getAllowedDocumentVisibility('admin'), ['all', 'student', 'admin']);
+    for (const unknownRole of [undefined, null, '', 'manager', 'ADMIN']) {
+        assert.deepEqual(getAllowedDocumentVisibility(unknownRole), []);
+    }
 });
 
 test('RAG schema readiness fails closed until both tables and pgvector exist', () => {
