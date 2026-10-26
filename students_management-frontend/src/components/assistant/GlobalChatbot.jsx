@@ -14,6 +14,7 @@ export default function GlobalChatbot() {
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef(null);
     const requestVersionRef = useRef(0);
+    const streamAbortRef = useRef(null);
     const userKey = user?.id ?? user?.sub ?? user?.username ?? null;
     const isAdmin = user?.role === 'admin';
     const assistantTitle = isAdmin
@@ -22,6 +23,8 @@ export default function GlobalChatbot() {
 
     useEffect(() => {
         requestVersionRef.current += 1;
+        streamAbortRef.current?.abort();
+        streamAbortRef.current = null;
         setMessages([]);
         setInput('');
         setLoading(false);
@@ -37,6 +40,9 @@ export default function GlobalChatbot() {
     const resetConversation = async () => {
         if (loading) return;
         try {
+            streamAbortRef.current?.abort();
+            requestVersionRef.current += 1;
+            setLoading(false);
             await clearChatbotHistory();
             setMessages([]);
         } catch (error) {
@@ -59,10 +65,13 @@ export default function GlobalChatbot() {
         if (retryText === null) setMessages(items => [...items, { role: 'user', content: text }]);
         setLoading(true);
         const requestVersion = requestVersionRef.current;
+        const assistantId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const abortController = new AbortController();
+        streamAbortRef.current = abortController;
         try {
-            const assistantId = `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`;
             setMessages(items => [...items, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
             await streamChatbotMessage(text, {
+                signal: abortController.signal,
                 onToken: token => {
                     if (requestVersion !== requestVersionRef.current) return;
                     setMessages(items => items.map(item => item.id === assistantId
@@ -79,12 +88,19 @@ export default function GlobalChatbot() {
             if (requestVersion !== requestVersionRef.current) return;
             setMessages(items => items.map(item => item.id === assistantId ? { ...item, streaming: false } : item));
         } catch (error) {
-            const message = error?.response?.data?.message || (language === 'vi'
+            if (error?.name === 'AbortError') return;
+            const message = error?.response?.data?.message || error?.message || (language === 'vi'
                 ? 'Không thể kết nối trợ lý lúc này. Vui lòng thử lại.'
                 : 'The assistant is temporarily unavailable. Please try again.');
             if (requestVersion !== requestVersionRef.current) return;
-            setMessages(items => [...items, { role: 'assistant', content: message, error: true, retryable: true, retryPrompt: text }]);
+            setMessages(items => {
+                const partial = items.some(item => item.id === assistantId);
+                return partial
+                    ? items.map(item => item.id === assistantId ? { ...item, streaming: false, error: true, retryable: true, retryPrompt: text, content: item.content || message } : item)
+                    : [...items, { id: assistantId, role: 'assistant', content: message, error: true, retryable: true, retryPrompt: text }];
+            });
         } finally {
+            if (streamAbortRef.current === abortController) streamAbortRef.current = null;
             if (requestVersion === requestVersionRef.current) setLoading(false);
         }
     };
