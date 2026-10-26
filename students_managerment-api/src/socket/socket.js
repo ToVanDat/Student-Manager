@@ -16,6 +16,7 @@ const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middlewar
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 
 let io = null;
+let presenceSubscriber = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
 const callTimers = new Map(); // callId -> timeout
 const disconnectGraceTimers = new Map(); // userId -> timeout
@@ -63,7 +64,7 @@ const initSocket = async (server) => {
     ].filter(Boolean));
 
     // Redis Pub/Sub relays presence transitions to Socket.IO nodes sharing this Redis.
-    const presenceSubscriber = redisClient.duplicate();
+    presenceSubscriber = redisClient.duplicate();
     await presenceSubscriber.connect();
     await presenceSubscriber.subscribe('presence:events', raw => {
         try {
@@ -1521,6 +1522,31 @@ const initSocket = async (server) => {
     return io;
 };
 
+const closeSocket = async () => {
+    const socketServer = io;
+    const subscriber = presenceSubscriber;
+    io = null;
+    presenceSubscriber = null;
+
+    for (const timer of callTimers.values()) clearTimeout(timer);
+    for (const timer of disconnectGraceTimers.values()) clearTimeout(timer);
+    callTimers.clear();
+    disconnectGraceTimers.clear();
+    onlineUsers.clear();
+
+    if (socketServer) {
+        await new Promise((resolve) => socketServer.close(resolve));
+    }
+
+    if (subscriber?.isOpen) {
+        try {
+            await subscriber.quit();
+        } catch {
+            subscriber.disconnect();
+        }
+    }
+};
+
 const getIO = () => {
     if (!io) throw new Error('Socket.IO chưa được khởi tạo');
     return io;
@@ -1549,6 +1575,7 @@ const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
 
 module.exports = {
     initSocket,
+    closeSocket,
     getIO,
     emitSessionRevoked,
     isUserOnline,
