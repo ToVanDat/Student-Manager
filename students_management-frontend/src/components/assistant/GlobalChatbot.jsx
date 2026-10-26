@@ -120,7 +120,7 @@ export default function GlobalChatbot() {
                     <p className="m-0 bg-white px-3 pb-2 text-[10px] text-slate-400 dark:bg-slate-900">{language === 'vi' ? 'AI có thể trả lời sai. Không nhập mật khẩu hoặc mã xác thực.' : 'AI can make mistakes. Never enter passwords or verification codes.'}</p>
                 </section>
             )}
-            <button type="button" onClick={() => setOpen(value => !value)} className="ml-auto flex size-14 items-center justify-center rounded-full bg-slate-950 text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={open ? (language === 'vi' ? 'Đóng trợ lý' : 'Close assistant') : (language === 'vi' ? 'Mở trợ lý' : 'Open assistant')} title={language === 'vi' ? 'Trợ lý học vụ' : 'Student Assistant'}>
+            <button type="button" onClick={() => setOpen(value => !value)} className="ml-auto flex size-14 items-center justify-center rounded-full bg-slate-950 text-white shadow-xl transition hover:-translate-y-0.5 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={open ? (language === 'vi' ? 'Đóng trợ lý' : 'Close assistant') : (language === 'vi' ? 'Mở trợ lý' : 'Open assistant')} title={assistantTitle}>
                 {open ? <X size={22} /> : <MessageCircle size={23} />}
             </button>
         </div>
