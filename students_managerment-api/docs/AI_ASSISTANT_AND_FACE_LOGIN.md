@@ -20,9 +20,9 @@ ollama serve
 
 The backend makes server-to-server requests to Ollama; the browser never connects directly to Ollama. Configure a private network or HTTPS endpoint when Ollama is hosted remotely. Do not expose Ollama's port publicly.
 
-The first release grounds responses in read-only subject and semester catalogs. Admin prompts additionally receive aggregate counts only. No student PII, grades, or individual enrollment records are sent to the model. Student accounts are not yet linked to student rows through a verified foreign key, so personal grade/schedule lookup is intentionally unavailable to all chatbot users until that identity mapping and row-level authorization are audited and implemented.
+The current release grounds responses in read-only subject, department, class, and semester catalog queries. It performs parameterized SQL lookups for explicitly named catalog terms; it does not yet ingest documents, create embeddings, or use a vector database, so it is not a full document-RAG pipeline. Admin prompts additionally receive aggregate counts only. No student PII, grades, or individual enrollment records are sent to the model. Student accounts are not yet linked to student rows through a verified foreign key, so personal grade/schedule lookup is intentionally unavailable to all chatbot users until that identity mapping and row-level authorization are audited and implemented.
 
-Conversation history is stored in Redis, scoped to the authenticated user and current login session, with a one-hour TTL. It is not written to PostgreSQL and is removed automatically when the Redis key expires. Do not send passwords, access/refresh tokens, identity documents, or sensitive personal data to the assistant. Model output is untrusted text; it is not executed as SQL, HTML, or application commands.
+Conversation history is stored in Redis, scoped to the authenticated user and current login session, with a one-hour TTL. It is not written to PostgreSQL and is removed automatically when the Redis key expires. Ollama generation and the catalog-context load are limited to one in-flight request per Node.js process to protect low-memory local machines; this is not a distributed limit across multiple backend replicas. Do not send passwords, access/refresh tokens, identity documents, or sensitive personal data to the assistant. Model output is untrusted text; it is not executed as SQL, HTML, or application commands.
 
 ## Face login decision
 
@@ -34,7 +34,14 @@ A custom camera-based face matcher using MediaPipe/TF.js is not enabled in this 
 
 ## Local and production boundaries
 
-- Local Ollama defaults to loopback only.
+- Local Ollama defaults to loopback only. When the API runs inside Docker, `127.0.0.1` refers to the API container, not the Windows host; configure a private, reachable Ollama endpoint using HTTPS or a trusted private network rather than exposing port `11434` publicly.
 - For remote Ollama, use HTTPS and private network access; do not expose the model endpoint to the public internet.
 - WebAuthn requires a secure context (HTTPS, with localhost permitted for development) and correct `WEBAUTHN_ORIGIN` / `WEBAUTHN_RP_ID`.
 - No database migration is introduced by this feature.
+
+## Explicitly out of scope for this release
+
+- Full document RAG (document upload/ingestion, parsing, chunking, embeddings, vector retrieval, source citations, and re-indexing).
+- Personal grades, attendance, schedules, or enrollment details until a verified account-to-student foreign-key mapping and row-level authorization are confirmed.
+- Chatbot-triggered CRUD, SQL generation/execution, or administrative actions.
+- Custom camera face recognition, biometric embeddings, or liveness/PAD. MediaPipe detection alone is not identity verification.
