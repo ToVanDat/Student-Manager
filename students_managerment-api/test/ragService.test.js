@@ -7,6 +7,7 @@ const {
     getEmbeddingConfig,
     createDocumentEmbedding,
     getAllowedDocumentVisibility,
+    assertRagSchemaReady,
     EMBEDDING_DIMENSIONS
 } = require('../service/ragService.js');
 
@@ -91,4 +92,22 @@ test('document retrieval scope never exposes admin-only material to student user
     assert.deepEqual(getAllowedDocumentVisibility('user'), ['all', 'student']);
     assert.deepEqual(getAllowedDocumentVisibility('student'), ['all', 'student']);
     assert.deepEqual(getAllowedDocumentVisibility('admin'), ['all', 'student', 'admin']);
+});
+
+test('RAG schema readiness fails closed until both tables and pgvector exist', () => {
+    assert.doesNotThrow(() => assertRagSchemaReady({
+        documents_ready: true,
+        chunks_ready: true,
+        vector_ready: true
+    }));
+    for (const readiness of [
+        { documents_ready: false, chunks_ready: true, vector_ready: true },
+        { documents_ready: true, chunks_ready: false, vector_ready: true },
+        { documents_ready: true, chunks_ready: true, vector_ready: false },
+        null
+    ]) {
+        assert.throws(() => assertRagSchemaReady(readiness), error =>
+            error.status === 503 && error.code === 'RAG_SCHEMA_NOT_READY'
+        );
+    }
 });
