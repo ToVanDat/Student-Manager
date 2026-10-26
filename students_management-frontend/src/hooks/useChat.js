@@ -332,8 +332,8 @@ export const useChat = () => {
         };
 
         const handleSocketConnect = () => {
-            // AuthContext có thể kết nối socket trước khi useChat được mount.
-            // Vì vậy khi socket connect/reconnect, luôn join lại conversation hiện tại.
+            // Rebuild presence state after every initial connect/reconnect.
+            socket.emit('presence:sync');
             joinActiveConversation();
         };
 
