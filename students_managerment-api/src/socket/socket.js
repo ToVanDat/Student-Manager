@@ -69,9 +69,10 @@ const initSocket = (server) => {
             try {
                 const event = JSON.parse(raw);
                 if (!['presence:online', 'presence:offline'].includes(event?.event)) return;
-                const targetId = Number(event?.payload?.userId);
-                if (!Number.isSafeInteger(targetId) || targetId <= 0) return;
-                io?.to(`user:${targetId}`).emit(event.event, event.payload);
+                const recipientIds = [...new Set((event?.payload?.recipientIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
+                for (const recipientId of recipientIds) {
+                    io?.to(`user:${recipientId}`).emit(event.event, event.payload);
+                }
             } catch (error) {
                 console.error('[PRESENCE][pubsub message invalid]', error.message);
             }
@@ -340,9 +341,11 @@ const initSocket = (server) => {
         if (sharedPresenceCount === 1) {
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
-                await Promise.all(contactIds.map(contactId =>
-                    publishPresenceEvent('presence:online', { userId, emittedAt: new Date().toISOString() })
-                ));
+                await publishPresenceEvent('presence:online', {
+                    userId,
+                    recipientIds: contactIds,
+                    emittedAt: new Date().toISOString()
+                });
             } catch (error) {
                 console.error('PRESENCE ONLINE ERROR:', error);
             }
@@ -1442,9 +1445,11 @@ const initSocket = (server) => {
                     }
 
                     try {
+                        const contactIds = await conversationRepository.getConversationContactIds(userId);
                         await publishPresenceEvent('presence:offline', {
                             userId,
                             lastSeenAt,
+                            recipientIds: contactIds,
                             emittedAt: new Date().toISOString()
                         });
                     } catch (error) {
