@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const pool = require('../src/config/database.js');
 const aiConfig = require('../src/config/ai.js');
+const { acquireOllamaSlot } = require('./ollamaRequestGate.js');
 const MAX_DOCUMENT_CHARS = aiConfig.rag.maxDocumentChars;
 const DEFAULT_CHUNK_SIZE = aiConfig.rag.chunkSize;
 const DEFAULT_CHUNK_OVERLAP = aiConfig.rag.chunkOverlap;
@@ -95,6 +96,15 @@ function createEmbeddingAbortSignal(clientSignal, timeoutMs) {
 }
 
 async function createDocumentEmbedding(text, { fetchImpl = fetch, signal = null } = {}) {
+    const releaseOllamaSlot = acquireOllamaSlot();
+    if (!releaseOllamaSlot) {
+        const error = new Error('Ollama đang xử lý yêu cầu khác. Vui lòng thử lại sau.');
+        error.status = 503;
+        error.code = 'OLLAMA_BUSY';
+        error.ragStage = 'capacity';
+        throw error;
+    }
+
     const config = getEmbeddingConfig();
     const requestAbort = createEmbeddingAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
     try {
@@ -120,6 +130,7 @@ async function createDocumentEmbedding(text, { fetchImpl = fetch, signal = null 
         return embedding;
     } finally {
         requestAbort.cleanup();
+        releaseOllamaSlot();
     }
 }
 
