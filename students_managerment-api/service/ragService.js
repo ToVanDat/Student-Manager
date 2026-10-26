@@ -120,6 +120,12 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
         throw error;
     }
 
+    // Compute vectors before opening the database transaction so slow Ollama
+    // inference does not hold a PostgreSQL connection or transaction lock.
+    const indexedChunks = [];
+    for (const chunk of chunks) {
+        indexedChunks.push({ ...chunk, embedding: await createDocumentEmbedding(chunk.content) });
+    }
     const sourceSha256 = crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
     const client = await pool.connect();
     let inTransaction = false;
@@ -144,14 +150,12 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
         );
         const document = created.rows[0];
 
-        // Sequential embedding avoids overwhelming the low-memory local Ollama instance.
-        for (const chunk of chunks) {
-            const embedding = await createDocumentEmbedding(chunk.content);
+        for (const chunk of indexedChunks) {
             await client.query(
                 `INSERT INTO assistant_document_chunks
                     (document_id, chunk_index, page_number, content, embedding)
                  VALUES ($1, $2, NULL, $3, $4::vector)`,
-                [document.id, chunk.chunk_index, chunk.content, `[${embedding.join(',')}]`]
+                [document.id, chunk.chunk_index, chunk.content, `[${chunk.embedding.join(',')}]`]
             );
         }
         const ready = await client.query(
@@ -195,7 +199,7 @@ async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.re
     if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) return [];
     const query = normalizeDocumentText(question).slice(0, 4000);
     const embedding = await createDocumentEmbedding(query);
-    const allowedVisibility = role === 'admin' ? ['all', 'admin'] : ['all', 'student'];
+    const allowedVisibility = role === 'admin' ? ['all', 'student', 'admin'] : ['all', 'student'];
     const result = await pool.query(
         `SELECT d.id AS document_id, d.title, d.source_name,
                 c.chunk_index, c.page_number, c.content,
