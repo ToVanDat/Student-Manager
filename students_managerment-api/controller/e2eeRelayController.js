@@ -107,7 +107,9 @@ module.exports = {
     sendProvisioningMessage: run(req => e2eeRelayService.sendProvisioningMessage(Number(req.user.id), req.params.sessionId, req.body)),
     getProvisioningMessage: run(req => e2eeRelayService.getProvisioningMessage(Number(req.user.id), req.params.sessionId)),
     completeProvisioning: run(req => e2eeRelayService.completeProvisioning(Number(req.user.id), req.params.sessionId, req.body)),
-    acknowledgeProvisioning: run(req => e2eeRelayService.acknowledgeProvisioning(Number(req.user.id), req.params.sessionId)),
+    acknowledgeProvisioning: run(req => e2eeRelayService.acknowledgeProvisioning(
+        Number(req.user.id), req.params.sessionId, req.get('X-E2EE-Device-Token')
+    )),
     rollbackProvisioning: run(req => e2eeRelayService.rollbackProvisioning(Number(req.user.id), req.params.sessionId)),
     deleteProvisioningSession: run(req => e2eeRelayService.deleteProvisioningSession(Number(req.user.id), req.params.sessionId)),
     getConversationStatus: run(req => e2eeRelayService.getConversationE2EEStatus(
