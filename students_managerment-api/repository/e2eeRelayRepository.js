@@ -714,6 +714,10 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     );
     const session = sessionResult.rows[0];
     if (!session) throw httpError(409, 'Phiên liên kết chưa sẵn sàng hoặc đã hết hạn');
+    // Serialize slot allocation across different provisioning sessions for the same account.
+    // The partial unique index remains the final database-level invariant, while this lock
+    // lets concurrent requests return the intended device-limit/business result.
+    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
     const slots = await client.query('SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
     const used = new Set(slots.rows.map(row => Number(row.device_id)));
     const deviceId = [2, 3, 4, 5].find(id => !used.has(id));
@@ -747,13 +751,20 @@ const acknowledgeProvisioning = async (userId, sessionId) => {
 
 const rollbackProvisioning = async (userId, sessionId) => withTransaction(async client => {
     const { rows } = await client.query(
-        `SELECT assigned_device_id FROM e2ee_sdk_provisioning_sessions
+        `SELECT assigned_device_id, completed_at FROM e2ee_sdk_provisioning_sessions
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' FOR UPDATE`,
         [sessionId, userId]
     );
     if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
-    if (rows[0].assigned_device_id) {
-        await client.query('DELETE FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND linked = TRUE', [userId, rows[0].assigned_device_id]);
+    if (rows[0].assigned_device_id && rows[0].completed_at) {
+        // A slot may have been revoked and reused while this session awaited ACK.
+        // Never let an old rollback delete a later device that happens to reuse that slot.
+        await client.query(
+            `DELETE FROM e2ee_sdk_devices
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND created_at <= $3`,
+            [userId, rows[0].assigned_device_id, rows[0].completed_at]
+        );
     }
     await client.query("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back' WHERE session_id = $1", [sessionId]);
 });
