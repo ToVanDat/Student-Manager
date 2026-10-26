@@ -6,6 +6,8 @@ const DEFAULT_CHUNK_SIZE = aiConfig.rag.chunkSize;
 const DEFAULT_CHUNK_OVERLAP = aiConfig.rag.chunkOverlap;
 const MAX_DOCUMENT_CHUNKS = aiConfig.rag.maxChunksPerDocument;
 const EMBEDDING_DIMENSIONS = aiConfig.ollama.embeddingDimensions;
+// A single Node process may run only one document-ingestion embedding loop at a time.
+let documentIngestionInProgress = false;
 
 function normalizeDocumentText(value) {
     if (typeof value !== 'string') throw new TypeError('Document text must be a string');
@@ -120,12 +122,28 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
         throw error;
     }
 
-    // Compute vectors before opening the database transaction so slow Ollama
-    // inference does not hold a PostgreSQL connection or transaction lock.
-    const indexedChunks = [];
-    for (const chunk of chunks) {
-        indexedChunks.push({ ...chunk, embedding: await createDocumentEmbedding(chunk.content) });
+    // Reject overlapping ingestion jobs in this Node process. This prevents
+    // multiple admin uploads from multiplying embedding memory/CPU pressure.
+    // This is intentionally not described as a distributed lock across replicas.
+    if (documentIngestionInProgress) {
+        const error = new Error('Hệ thống đang nạp một tài liệu khác. Vui lòng thử lại sau.');
+        error.status = 503;
+        throw error;
     }
+
+    documentIngestionInProgress = true;
+    let indexedChunks;
+    try {
+        // Compute vectors before opening the database transaction so slow Ollama
+        // inference does not hold a PostgreSQL connection or transaction lock.
+        indexedChunks = [];
+        for (const chunk of chunks) {
+            indexedChunks.push({ ...chunk, embedding: await createDocumentEmbedding(chunk.content) });
+        }
+    } finally {
+        documentIngestionInProgress = false;
+    }
+
     const sourceSha256 = crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
     const client = await pool.connect();
     let inTransaction = false;
