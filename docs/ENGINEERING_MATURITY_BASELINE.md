@@ -160,3 +160,11 @@ This slice does not change business tables, apply migrations or delete data. Con
 - Latest API tests and Quality checks both passed on commit `b4d90c8dbe828db45b2efc3ead7350f3ad4f7042`.
 - Remaining items include primary-device revocation/recovery, privacy scope for device discovery metadata, requester-target-aware prekey abuse limits, paused-conversation attachment policy and full two-client provisioning/revocation E2E coverage.
 - This remains a static code audit plus CI evidence, not a penetration test or production certification.
+
+
+## 10. PostgreSQL backup and volume safety
+
+- Added [POSTGRES_BACKUP_RESTORE_RUNBOOK.md](./POSTGRES_BACKUP_RESTORE_RUNBOOK.md) with read-only target identification, backup/restore drill and safe PostgreSQL 18 volume migration procedures.
+- Static inspection found Compose uses postgres:18 but mounts postgres_data at /var/lib/postgresql/data. The official PostgreSQL 18 image uses PGDATA=/var/lib/postgresql/18/docker and the volume target /var/lib/postgresql; see [official image documentation](https://hub.docker.com/_/postgres) and [Docker PostgreSQL guide](https://docs.docker.com/guides/postgresql/).
+- Compose also publishes host port 5433 to container port 5432. A local backend using localhost:5432 may connect to a different PostgreSQL instance than the Compose database.
+- **No Compose volume change was made** because the actual local volume contents and active PGDATA cannot be inspected through GitHub. Backup, isolated restore and a controlled data migration must precede any mount-path change.
