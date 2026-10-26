@@ -34,7 +34,7 @@ function createOllamaAbortSignal(clientSignal, timeoutMs) {
 }
 
 function getOllamaConfig() {
-    const rawUrl = aiConfig.ollama.baseUrl;
+    const rawUrl = process.env.OLLAMA_BASE_URL || aiConfig.ollama.baseUrl;
     let url;
     try {
         url = new URL(rawUrl);
@@ -62,7 +62,7 @@ function getOllamaConfig() {
 
     return {
         baseUrl: url.toString().replace(/\/$/, ''),
-        model: aiConfig.ollama.chatModel
+        model: process.env.OLLAMA_MODEL || aiConfig.ollama.chatModel
     };
 }
 
