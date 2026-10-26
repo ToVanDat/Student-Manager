@@ -460,7 +460,7 @@ export default function GlobalChatbot() {
                                                             {item.sources.map((source, sourceIndex) => (
                                                                 <div key={source.documentId || sourceIndex} className="flex items-start gap-2 rounded-lg bg-slate-50 px-2.5 py-2 text-[11px] leading-4 text-slate-600 dark:bg-slate-800/70 dark:text-slate-300">
                                                                     <BookOpen size={13} className="mt-0.5 shrink-0 text-blue-500" />
-                                                                    <span>{source.title}{source.pageNumber ? ` · ${vi ? 'trang' : 'page'} ${source.pageNumber}` : ''}</span>
+                                                                    <div className="min-w-0"><p className="m-0 font-semibold text-slate-700 dark:text-slate-200">{source.title}{source.pageNumber ? ` · ${vi ? 'trang' : 'page'} ${source.pageNumber}` : ''}</p>{source.excerpt && <p className="mb-0 mt-1 line-clamp-2 text-[10px] leading-4 text-slate-500 dark:text-slate-400">{source.excerpt}</p>}</div>
                                                                 </div>
                                                             ))}
                                                         </div>
