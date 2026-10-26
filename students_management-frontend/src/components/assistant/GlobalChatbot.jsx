@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Bot, MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles } from 'lucide-react';
+import { Bot, MessageCircle, Send, X, LoaderCircle, Plus, Copy, Sparkles, MessageSquare, Pencil, Trash2, Check, ChevronLeft } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
-import { streamChatbotMessage, clearChatbotHistory, getChatbotHistory } from '@/api/chatbotApi.js';
+import { streamChatbotMessage, clearChatbotHistory, getChatbotHistory, listChatbotConversations, createChatbotConversation, renameChatbotConversation, deleteChatbotConversation } from '@/api/chatbotApi.js';
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
@@ -13,6 +13,11 @@ export default function GlobalChatbot() {
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [conversations, setConversations] = useState([]);
+    const [activeConversationId, setActiveConversationId] = useState('default');
+    const [showConversationList, setShowConversationList] = useState(false);
+    const [editingConversationId, setEditingConversationId] = useState(null);
+    const [editingTitle, setEditingTitle] = useState('');
     const scrollRef = useRef(null);
     const requestVersionRef = useRef(0);
     const streamAbortRef = useRef(null);
@@ -30,14 +35,31 @@ export default function GlobalChatbot() {
         setInput('');
         setLoading(false);
         setHistoryLoading(false);
+        setConversations([]);
+        setActiveConversationId('default');
+        setShowConversationList(false);
         setOpen(false);
     }, [userKey]);
+
+    useEffect(() => {
+        if (!open || !userKey) return undefined;
+        let active = true;
+        listChatbotConversations().then(result => {
+            if (active && Array.isArray(result?.conversations)) {
+                setConversations(result.conversations);
+                if (result.conversations.length && !result.conversations.some(item => item.id === activeConversationId)) {
+                    setActiveConversationId(result.conversations[0].id);
+                }
+            }
+        }).catch(() => {});
+        return () => { active = false; };
+    }, [open, userKey, activeConversationId]);
 
     useEffect(() => {
         if (!open || !userKey || messages.length > 0 || historyLoading) return undefined;
         let active = true;
         setHistoryLoading(true);
-        getChatbotHistory()
+        getChatbotHistory(activeConversationId)
             .then(result => {
                 if (!active || !Array.isArray(result?.messages)) return;
                 setMessages(current => current.length > 0 ? current : result.messages.map((item, index) => ({ id: 'history-' + index + '-' + item.role, role: item.role, content: item.content })));
@@ -59,7 +81,7 @@ export default function GlobalChatbot() {
             streamAbortRef.current?.abort();
             requestVersionRef.current += 1;
             setLoading(false);
-            await clearChatbotHistory();
+            await clearChatbotHistory(activeConversationId);
             setMessages([]);
         } catch (error) {
             setMessages(items => [...items, {
@@ -69,6 +91,54 @@ export default function GlobalChatbot() {
                     ? 'Không thể tạo cuộc trò chuyện mới.'
                     : 'Could not start a new conversation.')
             }]);
+        }
+    };
+
+    const switchConversation = async id => {
+        if (loading || id === activeConversationId) return;
+        streamAbortRef.current?.abort();
+        requestVersionRef.current += 1;
+        setLoading(false);
+        setActiveConversationId(id);
+        setMessages([]);
+        setShowConversationList(false);
+    };
+
+    const startNewConversation = async () => {
+        if (loading) return;
+        try {
+            const result = await createChatbotConversation();
+            if (!result?.conversation?.id) return;
+            setConversations(items => [result.conversation, ...items]);
+            await switchConversation(result.conversation.id);
+        } catch (error) {
+            setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể tạo hội thoại mới.' }]);
+        }
+    };
+
+    const saveConversationTitle = async id => {
+        try {
+            const result = await renameChatbotConversation(id, editingTitle);
+            setConversations(items => items.map(item => item.id === id ? result.conversation : item));
+            setEditingConversationId(null);
+        } catch (error) {
+            setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể đổi tên hội thoại.' }]);
+        }
+    };
+
+    const removeConversation = async id => {
+        if (loading || !window.confirm(language === 'vi' ? 'Xóa cuộc trò chuyện này? Thao tác không thể hoàn tác.' : 'Delete this conversation? This cannot be undone.')) return;
+        try {
+            await deleteChatbotConversation(id);
+            const remaining = conversations.filter(item => item.id !== id);
+            setConversations(remaining);
+            if (id === activeConversationId) {
+                setMessages([]);
+                if (remaining.length) await switchConversation(remaining[0].id);
+                else setActiveConversationId('default');
+            }
+        } catch (error) {
+            setMessages(items => [...items, { role: 'assistant', error: true, content: error?.response?.data?.message || 'Không thể xóa hội thoại.' }]);
         }
     };
 
@@ -88,6 +158,7 @@ export default function GlobalChatbot() {
             setMessages(items => [...items, { id: assistantId, role: 'assistant', content: '', streaming: true }]);
             await streamChatbotMessage(text, {
                 signal: abortController.signal,
+                conversationId: activeConversationId,
                 onToken: token => {
                     if (requestVersion !== requestVersionRef.current) return;
                     setMessages(items => items.map(item => item.id === assistantId
@@ -133,9 +204,18 @@ export default function GlobalChatbot() {
                                 ? (language === 'vi' ? 'Hỗ trợ quản lý · Ollama' : 'Management support · Ollama')
                                 : (language === 'vi' ? 'Hỗ trợ học tập · Ollama' : 'Study support · Ollama')}</p>
                         </div>
-                        <button type="button" onClick={() => void resetConversation()} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'} title={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'}><Plus size={18} /></button>
+                        <button type="button" onClick={() => void startNewConversation()} disabled={loading} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white disabled:opacity-40" aria-label={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'} title={language === 'vi' ? 'Cuộc trò chuyện mới' : 'New conversation'}><Plus size={18} /></button>
+                        <button type="button" onClick={() => setShowConversationList(value => !value)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Danh sách hội thoại' : 'Conversation list'} title={language === 'vi' ? 'Danh sách hội thoại' : 'Conversation list'}><MessageSquare size={17} /></button>
                         <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-2 text-slate-300 hover:bg-white/10 hover:text-white" aria-label={language === 'vi' ? 'Đóng trợ lý' : 'Close assistant'}><X size={18} /></button>
                     </header>
+                    {showConversationList && <aside className="max-h-56 overflow-y-auto border-b border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900">
+                        {conversations.map(item => <div key={item.id} className={`flex items-center gap-1 rounded-lg px-2 py-1.5 ${item.id === activeConversationId ? 'bg-blue-50 dark:bg-slate-800' : ''}`}>
+                            {editingConversationId === item.id ? <><input autoFocus value={editingTitle} onChange={e => setEditingTitle(e.target.value)} maxLength={80} className="min-w-0 flex-1 rounded border px-2 py-1 text-xs dark:bg-slate-950" /><button onClick={() => void saveConversationTitle(item.id)} className="p-1 text-emerald-600"><Check size={14}/></button></> : <button onClick={() => void switchConversation(item.id)} disabled={loading} className="min-w-0 flex-1 truncate text-left text-xs text-slate-700 dark:text-slate-200">{item.title}</button>}
+                            <button onClick={() => { setEditingConversationId(item.id); setEditingTitle(item.title); }} title={language === 'vi' ? 'Đổi tên' : 'Rename'} className="p-1 text-slate-400 hover:text-blue-600"><Pencil size={13}/></button>
+                            <button onClick={() => void removeConversation(item.id)} title={language === 'vi' ? 'Xóa' : 'Delete'} className="p-1 text-slate-400 hover:text-red-600"><Trash2 size={13}/></button>
+                        </div>)}
+                        {conversations.length === 0 && <p className="px-2 py-3 text-xs text-slate-500">{language === 'vi' ? 'Chưa có hội thoại nào.' : 'No conversations yet.'}</p>}
+                    </aside>}
                     <div ref={scrollRef} className="flex-1 space-y-5 overflow-y-auto bg-gradient-to-b from-slate-50 to-white p-4 dark:from-slate-950 dark:to-slate-900 sm:p-5">
                         {historyLoading && messages.length === 0 && <div className="flex items-center gap-2 text-xs text-slate-500"><LoaderCircle size={15} className="animate-spin" />{language === 'vi' ? 'Đang tải lịch sử…' : 'Loading history…'}</div>}
                         {messages.length === 0 && !historyLoading && (
