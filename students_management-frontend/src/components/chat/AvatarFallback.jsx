@@ -1,4 +1,5 @@
 import React from 'react';
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 
 const PALETTE = [
     ['bg-blue-100', 'text-blue-700'],
@@ -19,14 +20,16 @@ function colorIndex(value = '') {
 
 export default function AvatarFallback({ name, src, size = 'md', showStatus = false, isOnline = false, className = '' }) {
     const [imageError, setImageError] = React.useState(false);
+    const resolvedSrc = resolveMediaUrl(src);
     const label = (name || 'U').trim() || 'U';
-    const initial = label.charAt(0).toUpperCase();
+    const initial = label.split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase();
     const [bg, text] = PALETTE[colorIndex(label.toLowerCase())];
 
     const sizes = {
         sm: 'w-7 h-7 text-[10px]',
         md: 'w-10 h-10 text-xs',
         lg: 'w-12 h-12 text-sm',
+        xl: 'w-24 h-24 text-2xl',
     };
 
     React.useEffect(() => {
@@ -35,9 +38,9 @@ export default function AvatarFallback({ name, src, size = 'md', showStatus = fa
 
     return (
         <div className={`relative flex-shrink-0 ${className}`}>
-            {src && !imageError ? (
+            {resolvedSrc && !imageError ? (
                 <img
-                    src={src}
+                    src={resolvedSrc}
                     alt={label}
                     onError={() => setImageError(true)}
                     className={`${sizes[size] || sizes.md} rounded-full object-cover`}

@@ -1,94 +1,92 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getStudents } from '@/api/studentApi.js';
 
-export function useStudents(search) {
+const emptyStatistics = { totalStudents: 0, totalClasses: 0, male: 0, female: 0 };
+
+export function useStudents(search, enabled = true, page = 1, pageSize = 10, sortBy = 'id', sortOrder = 'asc', classId = '', gender = '') {
     const [students, setStudents] = useState([]);
+    const [recentStudents, setRecentStudents] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
+    const [statistics, setStatistics] = useState(emptyStatistics);
+    const [classStatistics, setClassStatistics] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const requestSequenceRef = useRef(0);
+    const enabledRef = useRef(enabled);
+    enabledRef.current = enabled;
 
     const loadStudents = useCallback(async () => {
-        try {
-            setLoading(true);
-            setError('');
+        if (!enabledRef.current) return;
 
-            const data = await getStudents();
-            setStudents(Array.isArray(data) ? data : []);
+        const requestSequence = ++requestSequenceRef.current;
+        setLoading(true);
+        setError('');
+
+        try {
+            const query = { page, pageSize, search, sortBy, sortOrder };
+            if (classId) query.classId = classId;
+            if (gender) query.gender = gender;
+            const result = await getStudents(query);
+            if (requestSequence !== requestSequenceRef.current || !enabledRef.current) return;
+
+            if (!result || !Array.isArray(result.data) || !result.pagination) {
+                throw new Error('Phản hồi danh sách sinh viên từ máy chủ không hợp lệ.');
+            }
+
+            setStudents(result.data);
+            setTotalCount(Number(result.pagination.totalCount) || 0);
+            setStatistics({
+                totalStudents: Number(result.statistics?.totalStudents) || 0,
+                totalClasses: Number(result.statistics?.totalClasses) || 0,
+                male: Number(result.statistics?.male) || 0,
+                female: Number(result.statistics?.female) || 0
+            });
+            setClassStatistics(Array.isArray(result.classStatistics) ? result.classStatistics : []);
+            setRecentStudents(Array.isArray(result.recentStudents) ? result.recentStudents : []);
         } catch (requestError) {
-            console.error(requestError);
+            if (requestSequence !== requestSequenceRef.current || !enabledRef.current) return;
+            console.error('[STUDENTS] Could not load paginated roster:', requestError);
             setError(
                 requestError.response?.data?.message ||
-                    'Không thể kết nối đến Backend.',
+                requestError.message ||
+                'Không thể kết nối đến Backend.'
             );
         } finally {
-            setLoading(false);
+            if (requestSequence === requestSequenceRef.current && enabledRef.current) {
+                setLoading(false);
+            }
         }
-    }, []);
+    }, [enabled, page, pageSize, search, sortBy, sortOrder, classId, gender]);
 
     useEffect(() => {
-        loadStudents();
-    }, [loadStudents]);
-
-    const filteredStudents = useMemo(() => {
-        const keyword = search.trim().toLowerCase();
-
-        if (!keyword) {
-            return students;
+        if (!enabled) {
+            ++requestSequenceRef.current;
+            setStudents([]);
+            setRecentStudents([]);
+            setTotalCount(0);
+            setStatistics(emptyStatistics);
+            setClassStatistics([]);
+            setError('');
+            setLoading(false);
+            return undefined;
         }
 
-        return students.filter((student) =>
-            [
-                student.student_code,
-                student.name,
-                student.email,
-                student.class_code,
-                student.class_name,
-            ].some((value) => String(value || '').toLowerCase().includes(keyword)),
-        );
-    }, [students, search]);
-
-    const statistics = useMemo(() => {
-        const classes = new Set(
-            students.map((student) => student.class_code).filter(Boolean),
-        );
-
-        return {
-            totalStudents: students.length,
-            totalClasses: classes.size,
-            male: students.filter(
-                (student) => String(student.gender).toLowerCase() === 'male',
-            ).length,
-            female: students.filter(
-                (student) => String(student.gender).toLowerCase() === 'female',
-            ).length,
-        };
-    }, [students]);
-
-    const classStatistics = useMemo(() => {
-        const byClass = new Map();
-
-        students.forEach((student) => {
-            const code = student.class_code || 'Chưa phân lớp';
-            const current = byClass.get(code) || {
-                code,
-                name: student.class_name || '',
-                count: 0,
-            };
-
-            current.count += 1;
-            byClass.set(code, current);
-        });
-
-        return [...byClass.values()].sort((left, right) => right.count - left.count);
-    }, [students]);
+        void loadStudents();
+        return undefined;
+    }, [enabled, loadStudents]);
 
     return {
         students,
+        recentStudents,
+        totalCount,
         loading,
         error,
         setError,
         loadStudents,
-        filteredStudents,
+        // The API already applies search, sort and pagination; do not filter this
+        // page again in the browser or the result count will be incorrect.
+        filteredStudents: students,
         statistics,
-        classStatistics,
+        classStatistics
     };
 }

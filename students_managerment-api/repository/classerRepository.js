@@ -71,27 +71,26 @@ const createClass = async (data) => {
 
 // Cập nhật lớp
 const updateClass = async (id, data) => {
-
-    const {
-        class_code,
-        class_name,
-        department_id
-    } = data;
-
-    const result = await pool.query(`
-        UPDATE classes
-        SET
-            class_code = $1,
-            class_name = $2,
-            department_id = $3
-        WHERE id = $4
-        RETURNING *
-    `, [
-        class_code,
-        class_name,
-        department_id,
-        id
+    const allowedColumns = new Set([
+        'class_code',
+        'class_name',
+        'department_id'
     ]);
+    const entries = Object.entries(data || {}).filter(([key]) => allowedColumns.has(key));
+
+    if (entries.length === 0) return null;
+
+    const values = entries.map(([, value]) => value);
+    const assignments = entries.map(([key], index) => `${key} = $${index + 1}`);
+    values.push(id);
+
+    const result = await pool.query(
+        `UPDATE classes
+         SET ${assignments.join(', ')}
+         WHERE id = $${values.length}
+         RETURNING *`,
+        values
+    );
 
     return result.rows[0];
 };

@@ -1,0 +1,317 @@
+/* Minimal non-utility CSS only for browser-specific media controls and responsive chat layout.
+   Colors, spacing, borders, hover and component states belong in Tailwind classes. */
+
+.chat-workspace { min-width: 0; }
+.chat-shell, [data-chat-shell] { min-width: 0; }
+.chat-shell button, [data-chat-shell] button { -webkit-tap-highlight-color: transparent; }
+.chat-shell input, [data-chat-shell] input { min-width: 0; }
+.chat-conversation-rail { flex: 0 0 310px; }
+.chat-media-composer progress {
+  width: 100%;
+  height: 7px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: #dce8f8;
+  accent-color: #5376e8;
+}
+.chat-media-composer progress::-webkit-progress-bar {
+  border-radius: 999px;
+  background: #dce8f8;
+}
+.chat-media-composer progress::-webkit-progress-value {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #5376e8, #8bbcff);
+}
+.chat-media-composer progress::-moz-progress-bar {
+  border-radius: 999px;
+  background: linear-gradient(90deg, #5376e8, #8bbcff);
+}
+/* Dark canvas is intentional only behind media preview for contrast. */
+.chat-media-viewer {
+  background: radial-gradient(ellipse at center, #182233, #080c13 78%);
+}
+@media (max-width: 1200px) {
+  .chat-conversation-rail { flex-basis: 285px; min-width: 250px; }
+}
+@media (max-width: 1023px) {
+  .chat-workspace { padding: 10px !important; }
+  .chat-shell { border-radius: 12px; }
+}
+@media (max-width: 767px) {
+  .chat-conversation-rail {
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 12px;
+  }
+  .chat-workspace { padding: 0 !important; height: calc(100dvh - 4rem) !important; }
+  .chat-shell { border-radius: 0; border-left: 0; border-right: 0; }
+}
+@media (max-width: 640px) {
+  .chat-media-composer [data-media-grid] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Subtle neutral scrollbars for chat panels, visible on hover/focus. */
+.chat-shell .overflow-y-auto,
+.chat-shell .overflow-x-auto,
+.chat-shell .overflow-auto,
+[data-chat-shell] .overflow-y-auto,
+[data-chat-shell] .overflow-x-auto,
+[data-chat-shell] .overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.chat-shell .overflow-y-auto:hover,
+.chat-shell .overflow-y-auto:focus-within,
+.chat-shell .overflow-x-auto:hover,
+.chat-shell .overflow-auto:hover,
+[data-chat-shell] .overflow-y-auto:hover,
+[data-chat-shell] .overflow-y-auto:focus-within,
+[data-chat-shell] .overflow-x-auto:hover,
+[data-chat-shell] .overflow-auto:hover {
+  scrollbar-color: #cbd5e1 transparent;
+}
+.chat-shell .overflow-y-auto::-webkit-scrollbar,
+.chat-shell .overflow-x-auto::-webkit-scrollbar,
+.chat-shell .overflow-auto::-webkit-scrollbar,
+[data-chat-shell] .overflow-y-auto::-webkit-scrollbar,
+[data-chat-shell] .overflow-x-auto::-webkit-scrollbar,
+[data-chat-shell] .overflow-auto::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.chat-shell .overflow-y-auto::-webkit-scrollbar-track,
+.chat-shell .overflow-x-auto::-webkit-scrollbar-track,
+.chat-shell .overflow-auto::-webkit-scrollbar-track,
+[data-chat-shell] .overflow-y-auto::-webkit-scrollbar-track,
+[data-chat-shell] .overflow-x-auto::-webkit-scrollbar-track,
+[data-chat-shell] .overflow-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+.chat-shell .overflow-y-auto::-webkit-scrollbar-thumb,
+.chat-shell .overflow-x-auto::-webkit-scrollbar-thumb,
+.chat-shell .overflow-auto::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-y-auto::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-x-auto::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-auto::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+.chat-shell .overflow-y-auto:hover::-webkit-scrollbar-thumb,
+.chat-shell .overflow-y-auto:focus-within::-webkit-scrollbar-thumb,
+.chat-shell .overflow-x-auto:hover::-webkit-scrollbar-thumb,
+.chat-shell .overflow-auto:hover::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-y-auto:hover::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-y-auto:focus-within::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-x-auto:hover::-webkit-scrollbar-thumb,
+[data-chat-shell] .overflow-auto:hover::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+.chat-shell .overflow-y-auto:hover::-webkit-scrollbar-thumb:hover,
+[data-chat-shell] .overflow-y-auto:hover::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+@media (pointer: coarse) {
+  .chat-shell .overflow-y-auto,
+  .chat-shell .overflow-auto,
+  [data-chat-shell] .overflow-y-auto,
+  [data-chat-shell] .overflow-auto {
+    scrollbar-color: #cbd5e1 transparent;
+  }
+}
+
+ 
+/* Product-wide polish: neutral canvas, quieter surfaces and consistent focus states.
+   Keep component colors and inline theme variables authoritative where explicitly set. */
+body {
+  background-color: #f6f8fb;
+  background-image: none;
+}
+
+.dark body {
+  background-color: #020617;
+  background-image: none;
+}
+
+.app-card,
+.dashboard-surface,
+.feature-surface {
+  border-radius: 12px;
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .035);
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+
+.dark .app-card,
+.dark .dashboard-surface,
+.dark .feature-surface {
+  border-color: #334155;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .16);
+}
+
+.admin-overview__hero {
+  box-shadow: none;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  border-radius: 8px;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table thead th {
+  font-weight: 600;
+  letter-spacing: .01em;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-card,
+  .dashboard-surface,
+  .feature-surface {
+    transition: none;
+  }
+}
+
+/* Theme-aware surfaces inside the chat window.
+   ChatWindow already provides these semantic variables; map remaining utility-only
+   surfaces to them so the selected Chat Theme covers headers, menus and side panels too. */
+[data-chat-theme] .bg-white {
+  background-color: var(--chat-theme-surface);
+}
+[data-chat-theme] .bg-slate-50 {
+  background-color: var(--chat-theme-quote);
+}
+[data-chat-theme] .bg-slate-100 {
+  background-color: var(--chat-theme-bg);
+}
+[data-chat-theme] :is(.border-slate-100, .border-slate-200, .border-slate-300) {
+  border-color: var(--chat-theme-border);
+}
+[data-chat-theme] :is(.hover\:bg-slate-50:hover, .hover\:bg-slate-100:hover, .hover\:bg-white:hover) {
+  background-color: var(--chat-theme-quote);
+}
+[data-chat-theme] .focus\:ring-blue-50:focus {
+  --tw-ring-color: color-mix(in srgb, var(--chat-theme-accent) 20%, transparent);
+}
+
+
+
+/* -------------------------------------------------------------------------
+   Student Manager UI refresh — shared polish across management and chat.
+   Intentionally presentation-only: no routing, API, permissions, or data logic.
+   ------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+  --ui-canvas: #f5f7fb;
+  --ui-surface: #ffffff;
+  --ui-line: #e5eaf2;
+  --ui-ink: #18243a;
+  --ui-muted: #68778e;
+  --ui-accent: #4263d8;
+  --ui-accent-soft: #edf2ff;
+  --ui-radius: 14px;
+  --ui-shadow: 0 4px 18px rgba(23, 35, 60, .045);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  color: var(--ui-ink);
+  background: var(--ui-canvas);
+  font-feature-settings: "ss01" on, "cv11" on;
+  text-rendering: optimizeLegibility;
+}
+.dark {
+  color-scheme: dark;
+  --ui-canvas: #0b1120;
+  --ui-surface: #111a2b;
+  --ui-line: #27344a;
+  --ui-ink: #e6edf8;
+  --ui-muted: #9aa9bf;
+  --ui-accent: #8ba5ff;
+  --ui-accent-soft: #1c2a4a;
+  --ui-shadow: 0 6px 22px rgba(0, 0, 0, .16);
+}
+.dark body { background: var(--ui-canvas); color: var(--ui-ink); }
+
+/* Keep content readable on long admin pages and avoid horizontal overflow. */
+#root { min-height: 100vh; min-width: 320px; }
+main, section, article, aside { min-width: 0; }
+img, video, canvas, svg { max-width: 100%; }
+table { width: 100%; }
+thead th {
+  background: #f8faff;
+  color: #596981;
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .045em;
+  white-space: nowrap;
+}
+.dark thead th { background: #172237; color: #b5c2d6; }
+tbody tr { transition: background-color .14s ease; }
+tbody tr:hover { background-color: #f7f9fd; }
+.dark tbody tr:hover { background-color: #172237; }
+td, th { vertical-align: middle; }
+
+/* Shared form controls: calm borders, visible focus, and consistent heights. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select, textarea {
+  border-color: #d9e1ed;
+  background-color: #fff;
+  color: #1e293b;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):hover,
+select:hover, textarea:hover { border-color: #b8c7df; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus, textarea:focus {
+  border-color: #6381ed;
+  box-shadow: 0 0 0 3px rgba(83, 118, 232, .12);
+  outline: none;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark select, .dark textarea {
+  border-color: #35445c;
+  background-color: #111a2b;
+  color: #e6edf8;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+.dark select:focus, .dark textarea:focus {
+  border-color: #718df1;
+  box-shadow: 0 0 0 3px rgba(113, 141, 241, .16);
+}
+
+/* Reusable surfaces already used by pages become more consistent without
+   changing their markup or component behavior. */
+.app-card, .dashboard-surface, .feature-surface {
+  border-radius: var(--ui-radius);
+  box-shadow: var(--ui-shadow);
+}
+a { text-underline-offset: 3px; }
+button:disabled { opacity: .58; }
+::placeholder { opacity: 1; color: #95a2b6; }
+.dark ::placeholder { color: #8292aa; }
+
+/* Toasts and dialogs should sit above page chrome and remain usable on mobile. */
+[role="dialog"], dialog { max-width: min(96vw, 52rem); }
+@media (max-width: 640px) {
+  [role="dialog"], dialog { max-height: 88dvh; overflow-y: auto; }
+  table { font-size: .875rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}

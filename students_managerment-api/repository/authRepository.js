@@ -46,6 +46,7 @@ const findUserById = async (userId) => {
             username,
             email,
             role,
+            avatar_url,
             is_active,
             created_at,
             updated_at
@@ -75,6 +76,7 @@ const findUserByUsername = async (username) => {
             email,
             password_hash,
             role,
+            avatar_url,
             is_active
         FROM users
         WHERE username = $1
@@ -102,6 +104,7 @@ const findUserByEmail = async (email) => {
             email,
             password_hash,
             role,
+            avatar_url,
             is_active
         FROM users
         WHERE email = $1
@@ -241,6 +244,7 @@ const updateUserProfile = async (
             username,
             email,
             role,
+            avatar_url,
             is_active,
             created_at,
             updated_at
@@ -287,6 +291,165 @@ const updateUserPassword = async (
     );
 
     return result.rows[0] || null;
+};
+
+// Update the credential and revoke every existing session in one transaction.
+// This prevents a password change from succeeding while old refresh credentials
+// remain active because a later revocation query failed.
+const updatePasswordAndRevokeSessions = async (userId, passwordHash) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const updatedUser = await client.query(
+            `
+            UPDATE users
+            SET password_hash = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+              AND is_active = TRUE
+            RETURNING id, username, email, role, is_active, updated_at
+            `,
+            [passwordHash, userId]
+        );
+
+        if (updatedUser.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const revokedSessions = await client.query(
+            `
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [userId]
+        );
+
+        await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            `,
+            [userId]
+        );
+
+        await client.query('COMMIT');
+
+        return {
+            user: updatedUser.rows[0],
+            revokedSessionIds: revokedSessions.rows.map(row => row.id)
+        };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+
+// Consume a verified password-reset token, update the password, and revoke all
+// existing sessions/refresh tokens as one PostgreSQL transaction.
+const completePasswordResetAndRevokeSessions = async (resetTokenId, userId, passwordHash) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const resetToken = await client.query(
+            `
+            SELECT id
+            FROM password_reset_tokens
+            WHERE id = $1
+              AND user_id = $2
+              AND used_at IS NULL
+              AND verified_at IS NOT NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            FOR UPDATE
+            `,
+            [resetTokenId, userId]
+        );
+
+        if (resetToken.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const consumed = await client.query(
+            `
+            UPDATE password_reset_tokens
+            SET used_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND used_at IS NULL
+              AND verified_at IS NOT NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            RETURNING id
+            `,
+            [resetTokenId]
+        );
+
+        if (consumed.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const updatedUser = await client.query(
+            `
+            UPDATE users
+            SET password_hash = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+              AND is_active = TRUE
+            RETURNING id, username, email, role, is_active, updated_at
+            `,
+            [passwordHash, userId]
+        );
+
+        if (updatedUser.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const revokedSessions = await client.query(
+            `
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [userId]
+        );
+
+        await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE user_id = $1
+              AND revoked_at IS NULL
+            `,
+            [userId]
+        );
+
+        await client.query('COMMIT');
+
+        return {
+            user: updatedUser.rows[0],
+            revokedSessionIds: revokedSessions.rows.map(row => row.id)
+        };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
 };
 
 
@@ -566,6 +729,191 @@ const findRefreshToken = async (
 };
 
 
+
+// Find a historical refresh token by its hash. Used only to distinguish
+// a replayed token from a completely unknown/expired token; never returns
+// the raw token value.
+const findRefreshTokenByHash = async (tokenHash) => {
+    const result = await pool.query(
+        `
+        SELECT id, user_id, session_id, expires_at, revoked_at, created_at
+        FROM refresh_tokens
+        WHERE token_hash = $1
+        LIMIT 1
+        `,
+        [tokenHash]
+    );
+
+    return result.rows[0] || null;
+};
+
+// Revoke the session (the refresh-token family) when a previously rotated,
+// still-unexpired token is presented again. Lock order matches rotation and
+// credential-change transactions: session first, refresh_tokens second.
+const revokeSessionOnRefreshTokenReuse = async (tokenHash, userId, sessionId) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        const session = await client.query(
+            `
+            SELECT id
+            FROM sessions
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            FOR UPDATE
+            `,
+            [sessionId, userId]
+        );
+
+        if (session.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const replayedToken = await client.query(
+            `
+            SELECT id
+            FROM refresh_tokens
+            WHERE token_hash = $1
+              AND user_id = $2
+              AND session_id = $3
+              AND revoked_at IS NOT NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            FOR UPDATE
+            `,
+            [tokenHash, userId, sessionId]
+        );
+
+        if (replayedToken.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const revokedSession = await client.query(
+            `
+            UPDATE sessions
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            RETURNING id
+            `,
+            [sessionId, userId]
+        );
+
+        await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = COALESCE(revoked_at, CURRENT_TIMESTAMP)
+            WHERE session_id = $1
+              AND user_id = $2
+            `,
+            [sessionId, userId]
+        );
+
+        await client.query('COMMIT');
+        return revokedSession.rows[0] || null;
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+// Atomically consume one refresh token and issue its replacement.
+// A concurrent refresh using the same token can win only once.
+const rotateRefreshToken = async (
+    oldTokenId,
+    userId,
+    sessionId,
+    newTokenHash,
+    expiresAt
+) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // Lock the session first. Password changes/resets revoke sessions
+        // before refresh tokens, so using the same lock order avoids a
+        // session<->refresh-token deadlock during concurrent refresh/revoke.
+        const activeSession = await client.query(
+            `
+            SELECT id
+            FROM sessions
+            WHERE id = $1
+              AND user_id = $2
+              AND revoked_at IS NULL
+            FOR UPDATE
+            `,
+            [sessionId, userId]
+        );
+
+        if (activeSession.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        // Consume the presented token only after owning the session lock.
+        // Concurrent refreshes still race on this conditional update and
+        // exactly one request can rotate the same token.
+        const consumed = await client.query(
+            `
+            UPDATE refresh_tokens
+            SET revoked_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+              AND session_id = $3
+              AND revoked_at IS NULL
+              AND expires_at > CURRENT_TIMESTAMP
+            RETURNING id
+            `,
+            [oldTokenId, userId, sessionId]
+        );
+
+        if (consumed.rowCount !== 1) {
+            await client.query('ROLLBACK');
+            return null;
+        }
+
+        const inserted = await client.query(
+            `
+            INSERT INTO refresh_tokens (
+                user_id,
+                session_id,
+                token_hash,
+                expires_at
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, session_id, expires_at
+            `,
+            [userId, sessionId, newTokenHash, expiresAt]
+        );
+
+        await client.query(
+            `
+            UPDATE sessions
+            SET last_used_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+              AND user_id = $2
+            `,
+            [sessionId, userId]
+        );
+
+        await client.query('COMMIT');
+        return inserted.rows[0];
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 // ======================================================
 // REVOKE REFRESH TOKEN BY ID
 // ======================================================
@@ -696,6 +1044,35 @@ const saveResetTokenHash = async (
 
 
 // tim password reset token
+// Atomically bind the one-time reset token and consume OTP verification.
+// A concurrent correct-OTP request cannot overwrite the reset token after another request succeeds.
+const saveVerifiedPasswordResetToken = async (
+    id,
+    resetTokenHash
+) => {
+    const result = await pool.query(
+        `
+        UPDATE password_reset_tokens
+        SET
+            reset_token_hash = $1,
+            verified_at = CURRENT_TIMESTAMP
+        WHERE id = $2
+          AND used_at IS NULL
+          AND verified_at IS NULL
+          AND attempt_count < 5
+          AND expires_at > CURRENT_TIMESTAMP
+        RETURNING
+            id,
+            user_id,
+            reset_token_hash,
+            verified_at
+        `,
+        [resetTokenHash, id]
+    );
+
+    return result.rows[0] || null;
+};
+
 const findActivePasswordResetToken = async (
     userId
 ) => {
@@ -734,6 +1111,10 @@ const incrementPasswordResetAttempt = async (
             UPDATE password_reset_tokens
             SET attempt_count = attempt_count + 1
             WHERE id = $1
+              AND attempt_count < 5
+              AND used_at IS NULL
+              AND verified_at IS NULL
+              AND expires_at > CURRENT_TIMESTAMP
             RETURNING
                 id,
                 attempt_count
@@ -777,6 +1158,8 @@ const markPasswordResetUsed = async (
         SET used_at = CURRENT_TIMESTAMP
         WHERE id = $1
           AND used_at IS NULL
+          AND verified_at IS NOT NULL
+          AND expires_at > CURRENT_TIMESTAMP
         RETURNING id, used_at
         `,
         [id]
@@ -796,6 +1179,9 @@ const markPasswordResetVerified = async (
         SET verified_at = CURRENT_TIMESTAMP
         WHERE id = $1
           AND used_at IS NULL
+          AND verified_at IS NULL
+          AND attempt_count < 5
+          AND expires_at > CURRENT_TIMESTAMP
         RETURNING
             id,
             user_id,
@@ -832,6 +1218,8 @@ module.exports = {
     updateUserProfile,
 
     updateUserPassword,
+    updatePasswordAndRevokeSessions,
+    completePasswordResetAndRevokeSessions,
     
 
 
@@ -860,7 +1248,11 @@ module.exports = {
 
     saveRefreshToken,
 
+    rotateRefreshToken,
+
     findRefreshToken,
+    findRefreshTokenByHash,
+    revokeSessionOnRefreshTokenReuse,
 
     revokeRefreshToken,
 
@@ -884,6 +1276,8 @@ module.exports = {
 
     saveResetTokenHash,
 
-    markPasswordResetVerified
+    markPasswordResetVerified,
+
+    saveVerifiedPasswordResetToken
 
 };

@@ -83,25 +83,8 @@ const revokeSession = async (
     // ==============================================
 
     try {
-
-        const {
-            getIO
-        } = require('../src/socket/socket.js');
-
-
-        const io = getIO();
-
-
-        io.to(
-            `session:${sessionId}`
-        ).emit(
-            'session:revoked',
-            {
-                sessionId,
-                reason: 'SESSION_REVOKED'
-            }
-        );
-
+        const { emitSessionRevoked } = require('../src/socket/socket.js');
+        emitSessionRevoked(sessionId, 'SESSION_REVOKED');
     } catch (error) {
 
         /*
@@ -188,25 +171,8 @@ const revokeOtherSessions = async (
         // ==========================================
 
         try {
-
-            const {
-                getIO
-            } = require('../src/socket/socket.js');
-
-
-            const io = getIO();
-
-
-            io.to(
-                `session:${session.id}`
-            ).emit(
-                'session:revoked',
-                {
-                    sessionId: session.id,
-                    reason: 'OTHER_SESSIONS_REVOKED'
-                }
-            );
-
+            const { emitSessionRevoked } = require('../src/socket/socket.js');
+            emitSessionRevoked(session.id, 'OTHER_SESSIONS_REVOKED');
         } catch (error) {
 
             console.error(

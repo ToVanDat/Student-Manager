@@ -1,15 +1,30 @@
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, GraduationCap, Plus } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
 import StudentForm from '@/components/students/StudentForm.jsx';
 import StudentTable from '@/components/students/StudentTable.jsx';
 import StudentStats from '@/components/students/StudentStats.jsx';
 import StudentSearch from '@/components/students/StudentSearch.jsx';
 import StudentActivity from '@/components/students/StudentActivity.jsx';
 import StudentClassStatistics from '@/components/students/StudentClassStatistics.jsx';
+import StudentDetailsDialog from '@/components/students/StudentDetailsDialog.jsx';
 
 function StudentDashboard({
     user,
+    isAdmin = false,
     statistics,
     filteredCount,
+    sortBy = 'id',
+    sortOrder = 'asc',
+    onSortChange,
+    classFilter = '',
+    genderFilter = '',
+    classes = [],
+    classesLoading = false,
+    classesError = '',
+    onClassFilterChange,
+    onGenderFilterChange,
+    onClearRosterFilters,
     students,
     filteredStudents,
     paginatedStudents,
@@ -21,6 +36,8 @@ function StudentDashboard({
     onPageChange,
     onPageSizeChange,
     error,
+    loading = false,
+    onRetry,
     search,
     onSearchChange,
     onAdd,
@@ -51,40 +68,106 @@ function StudentDashboard({
         ];
     });
 
+    const { t } = useLanguage();
+    const [viewingStudent, setViewingStudent] = useState(null);
+
+    useEffect(() => {
+        if (!isAdmin || !showForm) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') onCloseForm?.();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [isAdmin, showForm, onCloseForm]);
+
     return (
         <>
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
-            <div className="grid grid-cols-1 items-start gap-5 min-[1600px]:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-white shadow-panel dark:border-slate-700 dark:bg-slate-900">
-                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3 px-4 pt-5 sm:px-5">
-                        <div><h2 className="m-0 font-display text-base font-bold text-ink dark:text-white">Danh sách sinh viên</h2><p className="mt-1 mb-0 text-xs text-muted">Quản lý thông tin và theo dõi học tập của sinh viên</p></div>
-                        <button className="inline-flex h-9 items-center gap-2 rounded-md bg-linear-to-r from-brand-600 to-brand-500 px-3.5 text-xs font-semibold text-white shadow-md shadow-brand-600/20 transition hover:-translate-y-px hover:shadow-lg hover:shadow-brand-600/25" onClick={onAdd}><Plus size={17} />Thêm sinh viên</button>
+            <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1440px]:grid-cols-[minmax(0,1fr)_300px]">
+                <div className="app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/80 px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900/70">
+                        <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-50 text-blue-800 ring-1 ring-inset ring-blue-200/70 dark:from-blue-950/80 dark:to-cyan-950/50 dark:text-blue-200 dark:ring-blue-900"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
+                        {isAdmin && <button className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
                     </div>
-                    <div className="px-4 sm:px-5">
+                    <div className="px-4 pt-4 sm:px-6">
                         <StudentSearch value={search} onChange={onSearchChange} />
+                        <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                            <label className="flex min-w-0 flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                <span>{t('filterByClass')}</span>
+                                <select
+                                    value={classFilter}
+                                    onChange={event => onClassFilterChange?.(event.target.value)}
+                                    disabled={classesLoading}
+                                    className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-brand-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                >
+                                    <option value="">{classesLoading ? t('loadingClasses') : t('allClasses')}</option>
+                                    {classes.map(item => (
+                                        <option key={item.id} value={String(item.id)}>
+                                            {[item.class_code, item.class_name].filter(Boolean).join(' — ') || String(item.id)}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex min-w-0 flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                <span>{t('filterByGender')}</span>
+                                <select
+                                    value={genderFilter}
+                                    onChange={event => onGenderFilterChange?.(event.target.value)}
+                                    className="h-10 min-w-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                                >
+                                    <option value="">{t('allGenders')}</option>
+                                    <option value="Nam">{t('male')}</option>
+                                    <option value="Nữ">{t('female')}</option>
+                                </select>
+                            </label>
+                            {(classFilter || genderFilter) && (
+                                <button
+                                    type="button"
+                                    onClick={onClearRosterFilters}
+                                    className="self-end rounded-lg border border-slate-200 px-3 py-2.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                >
+                                    {t('clearFilters')}
+                                </button>
+                            )}
+                        </div>
+                        {classesError && <p role="status" className="mt-2 text-xs text-rose-600 dark:text-rose-300">{classesError}</p>}
                     </div>
-                    {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-xs text-red-700">{error}</div>}
+                    {error && <div role="alert" className="mx-4 mb-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-3 text-xs leading-5 text-red-800 dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200 sm:mx-6"><span className="min-w-0 flex-1">{error}</span><button type="button" onClick={onRetry} disabled={loading} className="min-h-9 shrink-0 rounded-lg border border-red-300 px-3 py-1.5 font-semibold transition hover:bg-red-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:hover:bg-red-900/50">{t('retry')}</button></div>}
+                    {loading && <div role="status" className="mb-3 flex items-center gap-2 text-xs text-slate-500"><span className="size-3 animate-spin rounded-full border-2 border-slate-300 border-t-brand-600" />{t('loadingStudentsData')}</div>}
                     <div className="w-full min-w-0">
                         <StudentTable
                             students={paginatedStudents}
                             firstRowNumber={firstStudentIndex}
                             onEdit={onEdit}
+                            onView={setViewingStudent}
                             onDelete={onDelete}
+                            canManage={isAdmin}
+                            loading={loading}
+                            sortBy={sortBy}
+                            sortOrder={sortOrder}
+                            onSortChange={onSortChange}
                         />
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-[11px] text-muted sm:px-5 dark:border-slate-800">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-[11px] text-muted sm:px-6 dark:border-slate-800 dark:bg-slate-950/40">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span>
-                                Hiển thị {firstStudentIndex}-{lastStudentIndex} trong {filteredStudents.length} kết quả
-                                {filteredStudents.length !== students.length && ` (tổng ${students.length} sinh viên)`}
+                                {t('showing')} {firstStudentIndex}-{lastStudentIndex} {t('to')} {filteredCount} {t('resultsCount')}
+                                {filteredCount !== statistics.totalStudents && ` (${t('total')}: ${statistics.totalStudents} ${t('totalStudentsSuffix')})`}
                             </span>
                             <label className="flex items-center gap-1.5">
-                                <span>Số dòng</span>
+                                <span>{t('rows')}</span>
                                 <select
                                     className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                     value={pageSize}
                                     onChange={(event) => onPageSizeChange(Number(event.target.value))}
-                                    aria-label="Số sinh viên mỗi trang"
+                                    aria-label={t("studentsPerPage")}
                                 >
                                     {[10, 25, 50].map((size) => (
                                         <option key={size} value={size}>{size}</option>
@@ -92,13 +175,13 @@ function StudentDashboard({
                                 </select>
                             </label>
                         </div>
-                        <nav className="flex items-center gap-1" aria-label="Phân trang danh sách sinh viên">
+                        <nav className="flex items-center gap-1" aria-label={t("studentPagination")}>
                             <button
                                 className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                                 type="button"
                                 onClick={() => onPageChange(currentPage - 1)}
                                 disabled={currentPage <= 1}
-                                aria-label="Trang trước"
+                                aria-label={t("previousPage")}
                             >
                                 <ChevronLeft size={15} />
                             </button>
@@ -111,7 +194,7 @@ function StudentDashboard({
                                         key={page}
                                         type="button"
                                         onClick={() => onPageChange(page)}
-                                        aria-label={`Trang ${page}`}
+                                        aria-label={`${t("page")} ${page}`}
                                         aria-current={page === currentPage ? 'page' : undefined}
                                     >
                                         {page}
@@ -123,29 +206,38 @@ function StudentDashboard({
                                 type="button"
                                 onClick={() => onPageChange(currentPage + 1)}
                                 disabled={currentPage >= pageCount}
-                                aria-label="Trang sau"
+                                aria-label={t("nextPage")}
                             >
                                 <ChevronRight size={15} />
                             </button>
                         </nav>
                     </div>
                 </div>
-                <div className="grid gap-[17px]">
+                <div className="grid gap-4">
                     <StudentActivity />
                     <StudentClassStatistics classStatistics={classStatistics} />
-                    <div className="flex min-h-[100px] items-center gap-3 rounded-[13px] bg-linear-to-br from-[#5269e9] to-[#6256d9] p-[17px] text-white shadow-xl shadow-indigo-700/20">
-                        <div className="flex size-[43px] shrink-0 items-center justify-center rounded-[11px] bg-white/15"><GraduationCap size={25} /></div>
-                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-bold">Quản lý đào tạo</h3><p className="mt-1 mb-0 text-[9px] leading-[1.4] text-indigo-100">Theo dõi lớp học, môn học và đăng ký học tập.</p></div>
-                        <ChevronRight className="shrink-0" size={18} />
+                    <div className="flex min-h-[100px] min-w-0 items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-slate-800 sm:p-5 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><GraduationCap size={25} /></div>
+                        <div className="min-w-0 flex-1"><h3 className="m-0 text-[13px] font-semibold">{t("academicManagement")}</h3><p className="mt-1 mb-0 text-[11px] leading-4 text-slate-500 dark:text-slate-400">{t('studentOverviewCard')}</p></div>
                     </div>
                 </div>
             </div>
-            {showForm && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
-                    <div className="max-h-[90vh] w-full max-w-[700px] overflow-y-auto rounded-[18px] bg-white shadow-2xl dark:border dark:border-slate-700 dark:bg-slate-900">
+            {viewingStudent && (
+                <StudentDetailsDialog
+                    student={viewingStudent}
+                    onClose={() => setViewingStudent(null)}
+                    onEdit={student => {
+                        setViewingStudent(null);
+                        onEdit(student);
+                    }}
+                />
+            )}
+            {isAdmin && showForm && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
+                    <div role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
-                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">QUẢN LÝ SINH VIÊN</span><h2 className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? 'Cập nhật sinh viên' : 'Thêm sinh viên'}</h2></div>
-                            <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label="Đóng">×</button>
+                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 id="student-form-dialog-title" className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
+                            <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
                         </div>
                         <div className="px-5 py-5 sm:px-8">
                             <StudentForm student={selectedStudent} onSubmit={onSubmit} onCancel={onCloseForm} />

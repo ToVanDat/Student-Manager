@@ -1,5 +1,7 @@
 .env
 node_modules/
-package-lock.json
 
 storage/uploads/chat/
+
+# User-uploaded avatar files should not be newly committed.
+storage/uploads/avatars/

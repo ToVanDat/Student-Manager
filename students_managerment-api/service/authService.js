@@ -160,23 +160,10 @@ const emitSessionRevoked = (
 
     try {
 
-        const { getIO } =
-            require('../socket/socket');
+        const { emitSessionRevoked: revokeSocketSession } =
+            require('../src/socket/socket.js');
 
-        const io = getIO();
-
-        if (!io) {
-            return;
-        }
-
-        io.to(`session:${sessionId}`)
-            .emit(
-                'session:revoked',
-                {
-                    sessionId,
-                    reason
-                }
-            );
+        revokeSocketSession(sessionId, reason);
 
     } catch (error) {
 
@@ -191,6 +178,16 @@ const emitSessionRevoked = (
 // =====================================================
 // GET CURRENT USER
 // =====================================================
+
+// Revoke all sessions after a credential change and disconnect their sockets.
+const revokeUserSessions = async (userId, reason = 'CREDENTIALS_CHANGED') => {
+    const sessions = await authRepository.revokeAllSessions(userId);
+
+    for (const session of sessions || []) {
+        await authRepository.revokeRefreshTokensBySessionId(session.id);
+        emitSessionRevoked(session.id, reason);
+    }
+};
 
 const getMe = async (userId) => {
 
@@ -449,20 +446,25 @@ const changePassword = async (
     // UPDATE PASSWORD
     // =================================================
 
-    const updatedUser =
-        await authRepository
-            .updateUserPassword(
-                userId,
-                newPasswordHash
-            );
-
-    if (!updatedUser) {
-
-        throw new Error(
-            'Không thể cập nhật mật khẩu'
+    const result =
+        await authRepository.updatePasswordAndRevokeSessions(
+            userId,
+            newPasswordHash
         );
+
+    if (!result) {
+        throw new Error('Không thể cập nhật mật khẩu');
     }
 
+    // Database revocation is already committed atomically. Socket notification
+    // is best-effort and must not turn a successful credential change into 500.
+    for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            emitSessionRevoked(sessionId, 'PASSWORD_CHANGED');
+        } catch (error) {
+            console.warn('[AUTH] Không thể gửi thông báo revoke socket:', error.message);
+        }
+    }
 
     return true;
 };
@@ -750,10 +752,22 @@ const login = async (
 
 
     // =================================================
+    // MULTIPLE ACTIVE SESSIONS PER USER
+    // =================================================
+    // Keep existing sessions active when the same account signs in on another
+    // browser or device. Each login receives its own session ID and refresh
+    // token; explicit session revocation and credential changes still revoke
+    // sessions through the dedicated session/security flows.
+
+    // =================================================
     // CREATE SESSION
     // =================================================
 
-    const session =
+    let session = null;
+    let accessToken = null;
+
+    try {
+    session =
         await authRepository
             .createSession(
                 user.id,
@@ -767,7 +781,7 @@ const login = async (
     // GENERATE ACCESS TOKEN
     // =================================================
 
-    const accessToken =
+    accessToken =
         generateAccessToken(
             user,
             session.id
@@ -847,7 +861,8 @@ const login = async (
             id: user.id,
             username: user.username,
             email: user.email,
-            role: user.role
+            role: user.role,
+            avatar_url: user.avatar_url || null
         },
 
         sessionId: session.id,
@@ -856,6 +871,32 @@ const login = async (
 
         refreshToken
     };
+    } catch (error) {
+        // Password login spans PostgreSQL and Redis. Compensate partial writes
+        // so a failed login cannot leave an active orphan session.
+        if (accessToken) {
+            try {
+                await removeAccessTokenFromRedis(accessToken);
+            } catch (cleanupError) {
+                console.error('Login access-token cleanup failed:', cleanupError.code || cleanupError.message);
+            }
+        }
+
+        if (session?.id) {
+            try {
+                await authRepository.revokeRefreshTokensBySessionId(session.id);
+            } catch (cleanupError) {
+                console.error('Login refresh-token cleanup failed:', cleanupError.code || cleanupError.message);
+            }
+            try {
+                await authRepository.revokeSession(session.id);
+            } catch (cleanupError) {
+                console.error('Login session cleanup failed:', cleanupError.code || cleanupError.message);
+            }
+        }
+
+        throw error;
+    }
 };
 
 
@@ -966,15 +1007,17 @@ const logout = async (
             );
 
 
-        // =============================================
-        // SOCKET NOTIFICATION
-        // =============================================
-
-        emitSessionRevoked(
-            sessionId,
-            'LOGOUT'
-        );
-
+        // Notify every tab/socket in this session and disconnect it. The
+        // frontend treats LOGOUT as a silent local cleanup, not a forced-login
+        // warning. E2EE identity material remains in the browser keystore.
+        try {
+            const { emitSessionRevoked } = require('../src/socket/socket.js');
+            emitSessionRevoked(sessionId, 'LOGOUT');
+        } catch (socketError) {
+            // Database revocation is authoritative. Socket notification is
+            // best-effort and must not turn a successful logout into HTTP 500.
+            console.error('[AUTH][logout socket notification failed]', socketError.message);
+        }
 
         return {
             success: true
@@ -1040,10 +1083,32 @@ const refresh = async (
 
 
     if (!tokenRecord) {
-
-        throw new Error(
-            'Refresh token không hợp lệ'
+        // A known, revoked, unexpired token may be a replay of a token that
+        // was already rotated. Treat the session as the token family and
+        // revoke it atomically; unknown and expired tokens remain generic 401s.
+        const historicalToken = await authRepository.findRefreshTokenByHash(
+            refreshTokenHash
         );
+
+        if (
+            historicalToken?.revoked_at &&
+            new Date(historicalToken.expires_at) > new Date()
+        ) {
+            const revokedSession = await authRepository.revokeSessionOnRefreshTokenReuse(
+                refreshTokenHash,
+                historicalToken.user_id,
+                historicalToken.session_id
+            );
+
+            if (revokedSession) {
+                emitSessionRevoked(
+                    revokedSession.id,
+                    'REFRESH_TOKEN_REUSE'
+                );
+            }
+        }
+
+        throw new Error('Refresh token không hợp lệ');
     }
 
 
@@ -1190,43 +1255,39 @@ const refresh = async (
 
 
     // =================================================
-    // REVOKE OLD REFRESH TOKEN
+    // ATOMIC ROTATION
+    // Only one concurrent request can consume this token.
     // =================================================
 
-    await authRepository
-        .revokeRefreshToken(
-            tokenRecord.id
-        );
+    let rotatedToken;
 
-
-    // =================================================
-    // SAVE NEW REFRESH TOKEN
-    //
-    // IMPORTANT:
-    //
-    // userId
-    // sessionId
-    // tokenHash
-    // expiresAt
-    // =================================================
-
-    await authRepository
-        .saveRefreshToken(
+    try {
+        rotatedToken = await authRepository.rotateRefreshToken(
+            tokenRecord.id,
             user.id,
             session.id,
             newRefreshTokenHash,
             newRefreshTokenExpiresAt
         );
+    } catch (error) {
+        // The Redis access-token entry is not useful if DB rotation failed.
+        await removeAccessTokenFromRedis(newAccessToken).catch(() => {});
+        throw error;
+    }
 
+    if (!rotatedToken) {
+        // This request observed an active token before attempting rotation.
+        // A competing tab/request may have consumed it in the meantime.
+        // Do not classify this race as replay: doing so would revoke the
+        // legitimate session when two refreshes overlap. A later request
+        // presenting the already-revoked token is handled by the historical
+        // lookup above and triggers replay response.
+        await removeAccessTokenFromRedis(newAccessToken);
 
-    // =================================================
-    // UPDATE SESSION LAST USED
-    // =================================================
-
-    await authRepository
-        .updateSessionLastUsed(
-            session.id
+        throw new Error(
+            'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
         );
+    }
 
 
     // =================================================
@@ -1348,10 +1409,14 @@ const verifyResetOtp = async (
 
     if (otpHash !== resetToken.token_hash) {
 
-        await authRepository
+        const attempt = await authRepository
             .incrementPasswordResetAttempt(
                 resetToken.id
             );
+
+        if (!attempt || attempt.attempt_count >= 5) {
+            throw new Error('OTP đã vượt quá số lần thử');
+        }
 
         throw new Error(
             'OTP không đúng'
@@ -1373,16 +1438,15 @@ const resetTokenHash =
         .update(newResetToken)
         .digest('hex');
 
-// Lưu hash của reset token
-await authRepository.saveResetTokenHash(
+// Atomically save the reset-token hash and consume OTP verification.
+// This prevents parallel valid-OTP requests from overwriting each other's token.
+const verifiedReset = await authRepository.saveVerifiedPasswordResetToken(
     resetToken.id,
     resetTokenHash
 );
-
-// Đánh dấu OTP đã được xác thực
-await authRepository.markPasswordResetVerified(
-    resetToken.id
-);
+if (!verifiedReset) {
+    throw new Error('OTP đã hết hạn, đã được xác thực hoặc vượt quá số lần thử');
+}
 
 // Trả reset token gốc cho client
 return {
@@ -1496,42 +1560,26 @@ const resetPassword = async (
         );
 
 
-    // =============================================
-    // UPDATE PASSWORD
-    // =============================================
+    // Consume the one-time token, update the password, and revoke every
+    // existing session/refresh token atomically in PostgreSQL.
+    const result = await authRepository.completePasswordResetAndRevokeSessions(
+        resetRequest.id,
+        resetRequest.user_id,
+        passwordHash
+    );
 
-    const user =
-        await authRepository.updateUserPassword(
-            resetRequest.user_id,
-            passwordHash
-        );
-
-
-    if (!user) {
-
-        throw new Error(
-            'Không thể cập nhật mật khẩu'
-        );
+    if (!result) {
+        throw new Error('Reset token không hợp lệ, đã được sử dụng hoặc tài khoản không hoạt động');
     }
 
-
-    // =============================================
-    // MARK RESET TOKEN USED
-    // =============================================
-
-    await authRepository.markPasswordResetUsed(
-        resetRequest.id
-    );
-
-
-    // =============================================
-    // REVOKE ALL SESSIONS
-    // =============================================
-
-    await authRepository.revokeAllSessions(
-        resetRequest.user_id
-    );
-
+    // Session revocation is already committed. Socket delivery is best-effort.
+    for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            emitSessionRevoked(sessionId, 'PASSWORD_RESET');
+        } catch (error) {
+            console.warn('[AUTH] Không thể gửi thông báo revoke socket:', error.message);
+        }
+    }
 
     return {
         message:

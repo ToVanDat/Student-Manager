@@ -211,39 +211,65 @@ const authMiddleware = async (
 
 
         // ==================================================
-        // 11. SAVE USER INTO REQUEST
+        // 11. LOAD CURRENT USER STATE
+        // Never authorize from a potentially stale JWT role.
+        // ==================================================
+
+        const currentUser =
+            await authRepository.findUserById(decoded.sub);
+
+        if (!currentUser) {
+            return res.status(401).json({
+                message: 'Tài khoản không còn tồn tại'
+            });
+        }
+
+        if (!currentUser.is_active) {
+            return res.status(403).json({
+                message: 'Tài khoản đã bị khóa'
+            });
+        }
+
+        // ==================================================
+        // 12. SAVE CURRENT USER INTO REQUEST
         // ==================================================
 
         req.user = {
-            id: decoded.sub,
-            sub: decoded.sub,
-            username: decoded.username,
-            role: decoded.role,
+            id: currentUser.id,
+            sub: currentUser.id,
+            username: currentUser.username,
+            role: currentUser.role,
             sessionId: decoded.sessionId
         };
 
 
         // ==================================================
-        // 12. NEXT
+        // 13. NEXT
         // ==================================================
 
         next();
 
 
     } catch (error) {
+        // Invalid/expired JWTs are authentication failures. Redis/database
+        // outages are infrastructure failures and must not be misreported as
+        // bad credentials (or silently converted into a 401).
+        if (
+            error instanceof jwt.JsonWebTokenError ||
+            error instanceof jwt.TokenExpiredError ||
+            error instanceof jwt.NotBeforeError
+        ) {
+            return res.status(401).json({
+                message: 'Access Token không hợp lệ hoặc đã hết hạn'
+            });
+        }
 
-        console.error(
-            'JWT AUTH ERROR:',
-            error.message
-        );
-
-
-        return res.status(401).json({
-
-            message:
-                'Access Token không hợp lệ hoặc đã hết hạn'
-
+        console.error('[AUTH MIDDLEWARE]', {
+            name: error?.name,
+            message: error?.message
         });
+
+        return next(error);
     }
 };
 

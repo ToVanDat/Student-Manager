@@ -1,31 +1,48 @@
+import { resolveMediaUrl } from '@/utils/mediaUrl.js';
 import { useEffect, useRef, useState } from 'react';
 import {
     Bell,
-    LogOut,
-    Menu,
+    Sun,
     Moon,
+    Languages,
+    Menu,
+    PanelLeftClose,
+    PanelLeftOpen,
     MoreVertical,
     Search,
-    Settings,
-    Sun,
     User,
+    CheckCheck,
 } from 'lucide-react';
+import { notificationApi } from '@/api/notificationApi.js';
+import socket from '@/socket/socket.js';
+import GlobalMoreMenu from '@/components/layout/GlobalMoreMenu.jsx';
+import { useLanguage } from '@/context/LanguageContext.jsx';
+import { VN, GB } from 'country-flag-icons/react/3x2';
 
 function StudentHeader({
     user,
     search,
     onSearchChange,
+    showSearch = true,
     darkMode,
     onToggleDarkMode,
     onOpenSettings,
     onLogout,
     onToggleSidebar,
+    sidebarCollapsed = false,
+    onToggleDesktopSidebar,
     unreadCount = 0,
     onOpenNotifications,
 }) {
+    const { language, setLanguage, t } = useLanguage();
+    const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notificationItems, setNotificationItems] = useState([]);
+    const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+    const [notificationsLoading, setNotificationsLoading] = useState(false);
     const menuRef = useRef(null);
+    const notificationIdsRef = useRef(new Set());
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -38,102 +55,189 @@ function StudentHeader({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        let active = true;
+        const loadNotifications = async () => {
+            setNotificationsLoading(true);
+            try {
+                const { data } = await notificationApi.getHistory(20, 0);
+                if (!active) return;
+                const loadedItems = Array.isArray(data?.data) ? data.data : [];
+                loadedItems.forEach(item => {
+                    if (item?.id != null) notificationIdsRef.current.add(String(item.id));
+                });
+                setNotificationItems(previous => {
+                    const loadedIds = new Set(loadedItems.map(item => String(item.id)));
+                    const receivedWhileLoading = previous.filter(item => !loadedIds.has(String(item.id)));
+                    return [...receivedWhileLoading, ...loadedItems].slice(0, 20);
+                });
+                setNotificationUnreadCount(Number(data?.unreadCount) || 0);
+            } catch (error) {
+                console.error('Không tải được lịch sử thông báo:', error?.message);
+            } finally {
+                if (active) setNotificationsLoading(false);
+            }
+        };
+        const handleNewNotification = item => {
+            if (item?.id == null) return;
+            const notificationId = String(item.id);
+            if (notificationIdsRef.current.has(notificationId)) return;
+            notificationIdsRef.current.add(notificationId);
+            setNotificationItems(previous => [item, ...previous.filter(existing => String(existing.id) !== notificationId)].slice(0, 20));
+            if (!item.is_read) setNotificationUnreadCount(count => count + 1);
+        };
+        loadNotifications();
+        socket.on('notification:new', handleNewNotification);
+        return () => {
+            active = false;
+            socket.off('notification:new', handleNewNotification);
+        };
+    }, []);
+
+    const handleNotificationClick = async item => {
+        try {
+            if (!item.is_read) {
+                await notificationApi.markRead(item.id);
+                setNotificationItems(previous => previous.map(existing => existing.id === item.id ? { ...existing, is_read: true } : existing));
+                setNotificationUnreadCount(count => Math.max(0, count - 1));
+            }
+        } catch (error) {
+            console.error('Không thể đánh dấu thông báo đã đọc:', error?.message);
+        }
+        setNotificationsOpen(false);
+        onOpenNotifications?.(item);
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            await notificationApi.markAllRead();
+            setNotificationItems(previous => previous.map(item => ({ ...item, is_read: true })));
+            setNotificationUnreadCount(0);
+        } catch (error) {
+            console.error('Không thể đánh dấu tất cả thông báo đã đọc:', error?.message);
+        }
+    };
+
     const handleLogout = () => {
         setMenuOpen(false);
         onLogout();
     };
 
     return (
-        <header className="sticky top-0 z-30 flex h-[76px] items-center gap-3 border-b border-[#e9edf5] bg-white/90 px-4 backdrop-blur-[16px] sm:px-6 lg:px-[30px] dark:border-slate-800 dark:bg-slate-950/95">
-            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-600 hover:bg-slate-100 min-[801px]:hidden dark:text-slate-300 dark:hover:bg-slate-800" onClick={onToggleSidebar} aria-label="Mở menu">
+        <header className="sticky top-0 z-30 flex h-[72px] items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_4px_18px_rgba(15,23,42,0.025)] backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/90 sm:px-6 lg:px-[30px]">
+            <button className="flex size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:hidden" onClick={onToggleSidebar} aria-label={t("openMenu")} title={t("openMenu")}>
                 <Menu size={22} />
             </button>
+            <button
+                type="button"
+                className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[#64748b] dark:text-slate-400 transition-colors hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] min-[801px]:inline-flex"
+                onClick={onToggleDesktopSidebar}
+                aria-label={sidebarCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+                title={sidebarCollapsed ? t('expandSidebar') : t('collapseSidebar')}
+            >
+                {sidebarCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+            </button>
 
-            <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f3f6fb] px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white focus-within:shadow-sm dark:bg-slate-900 dark:focus-within:bg-slate-900">
+            {showSearch && <div className="flex h-10 w-[45%] min-w-0 max-w-[460px] flex-1 items-center gap-2.5 rounded-lg border border-transparent bg-[#f1f5fb] dark:bg-slate-800 px-[13px] text-slate-400 transition focus-within:border-brand-500 focus-within:bg-white dark:focus-within:bg-slate-900 focus-within:shadow-sm">
                 <Search size={18} className="shrink-0" />
                 <input
-                    className="min-w-0 flex-1 border-0 bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100"
+                    className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[#293b55] dark:text-slate-100 outline-none placeholder:text-slate-400"
                     type="text"
-                    placeholder="Tìm kiếm sinh viên, lớp học, mã sinh viên, email..."
+                    placeholder={t("searchStudents")}
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
                 />
-            </div>
+            </div>}
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
-                <button onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Thông báo">
-                    <Bell size={20} />
-                    <span className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">{unreadCount > 9 ? '9+' : unreadCount}</span>
+                <div className="relative">
+                    <button type="button" onClick={() => setLanguageMenuOpen(open => !open)} className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#71829b] transition hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300" aria-label={t('quickLanguage')} title={t('quickLanguage')} aria-expanded={languageMenuOpen}>
+                        <Languages size={18} />{language === "vi" ? <VN title="Tiếng Việt" className="h-3.5 w-5 rounded-[2px]" /> : <GB title="English" className="h-3.5 w-5 rounded-[2px]" />}<span>{language.toUpperCase()}</span>
+                    </button>
+                    {languageMenuOpen && <div className="absolute right-0 top-[44px] z-50 w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-slate-700 dark:bg-slate-900" role="menu" aria-label={t('language')}>
+                        {[{ value: 'vi', label: t('vietnamese'), Flag: VN }, { value: 'en', label: t('english'), Flag: GB }].map(option => <button key={option.value} type="button" role="menuitemradio" aria-checked={language === option.value} onClick={() => { setLanguage(option.value); setLanguageMenuOpen(false); }} className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm ${language === option.value ? 'bg-blue-50 font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'}`}><span className="flex items-center gap-2"><option.Flag aria-hidden="true" className="h-3.5 w-5 rounded-[2px]" />{option.label}</span><span>{language === option.value ? '✓' : ''}</span></button>)}
+                    </div>}
+                </div>
+                <button
+                    type="button"
+                    onClick={onToggleDarkMode}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-300 transition hover:bg-brand-50 dark:hover:bg-slate-800 hover:text-brand-700 dark:hover:text-blue-300"
+                    aria-label={darkMode ? t('themeLight') : t('themeDark')}
+                    title={darkMode ? t('themeLight') : t('themeDark')}
+                >
+                    {darkMode ? <Sun size={19} /> : <Moon size={19} />}
                 </button>
-                {notificationsOpen && (
-                    <div className="absolute top-[62px] right-[130px] z-50 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-                        <div className="flex items-center justify-between px-2 py-1">
-                            <strong className="text-sm text-slate-800 dark:text-slate-100">Thông báo</strong>
-                            <span className="text-[11px] text-slate-400">{unreadCount} chưa đọc</span>
+                <div className="relative">
+                    <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-slate-800 hover:text-brand-700 dark:hover:text-blue-300" aria-label={t('notifications')} aria-expanded={notificationsOpen}>
+                        <Bell size={20} />
+                        {notificationUnreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}</span>}
+                    </button>
+                    {notificationsOpen && (
+                        <div className="absolute right-0 top-[48px] z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[#e3eaf4] dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl">
+                            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3">
+                                <div>
+                                    <strong className="text-sm text-[#293b55] dark:text-slate-100">{t('notifications')}</strong>
+                                    <p className="mt-0.5 text-[11px] text-slate-400">{notificationUnreadCount} {t('unread')}</p>
+                                </div>
+                                <button type="button" onClick={handleMarkAllNotificationsRead} disabled={notificationUnreadCount === 0} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40 disabled:cursor-not-allowed disabled:opacity-40" title={t("markAllRead")}>
+                                    <CheckCheck size={14} /> {t('markAllRead')}
+                                </button>
+                            </div>
+                            <div className="max-h-[min(65vh,26rem)] overflow-y-auto">
+                                {notificationsLoading && notificationItems.length === 0 ? (
+                                    <p className="px-4 py-8 text-center text-xs text-slate-400">{t('loadingNotifications')}</p>
+                                ) : notificationItems.length ? notificationItems.map(item => (
+                                    <button key={item.id} type="button" onClick={() => handleNotificationClick(item)} className={`block w-full border-b border-slate-100 dark:border-slate-800 px-4 py-3 text-left transition hover:bg-blue-50 dark:hover:bg-slate-800 ${item.is_read ? 'bg-white dark:bg-slate-900' : 'bg-blue-50/60 dark:bg-blue-950/40'}`}>
+                                        <span className="flex items-start gap-2">
+                                            {!item.is_read && <span className="mt-1.5 size-2 shrink-0 rounded-full bg-blue-600" />}
+                                            <span className="min-w-0 flex-1">
+                                                <span className="block truncate text-xs font-semibold text-[#293b55] dark:text-slate-100">{item.title}</span>
+                                                <span className="mt-1 block break-words text-xs leading-5 text-[#71829b] dark:text-slate-400">{item.body}</span>
+                                                <span className="mt-1 block text-[10px] text-slate-400">{item.created_at ? new Date(item.created_at).toLocaleString() : ''}</span>
+                                            </span>
+                                        </span>
+                                    </button>
+                                )) : (
+                                    <p className="px-4 py-8 text-center text-xs text-slate-400">{t('noNotifications')}</p>
+                                )}
+                            </div>
+                            <div className="border-t border-slate-100 dark:border-slate-800 p-2">
+                                <button type="button" onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="w-full rounded-lg px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/40">{t('openNotifications')}</button>
+                            </div>
                         </div>
-                        {unreadCount > 0 ? (
-                            <button onClick={() => { setNotificationsOpen(false); onOpenNotifications?.(); }} className="mt-2 w-full rounded-lg bg-blue-50 p-3 text-left hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50">
-                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">Tin nhắn mới</p>
-                                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">Bạn có {unreadCount} tin nhắn chưa đọc.</p>
-                            </button>
-                        ) : (
-                            <p className="px-2 py-6 text-center text-xs text-slate-400">Không có thông báo mới</p>
-                        )}
-                    </div>
-                )}
-                <button className="flex size-9 items-center justify-center rounded-lg text-slate-500 hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800" onClick={onToggleDarkMode} aria-label="Đổi giao diện">
-                    {darkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
+                    )}
+                </div>
 
                 <div className="relative" ref={menuRef}>
                     <button
-                        className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-slate-50 dark:hover:bg-slate-800 sm:gap-3"
+                        className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-[#f5f8ff] sm:gap-3"
                         onClick={() => setMenuOpen((open) => !open)}
                     >
-                        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
-                            {user?.username?.charAt(0)?.toUpperCase() || 'U'}
-                        </div>
+                        {user?.avatar_url || user?.avatar ? (
+                            <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-8 shrink-0 rounded-full object-cover" />
+                        ) : (
+                            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
+                                {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                            </div>
+                        )}
                         <div className="hidden min-w-0 flex-col sm:flex">
-                            <strong className="max-w-28 truncate text-xs text-slate-800 dark:text-slate-100">{user?.username || 'User'}</strong>
-                            <span className="text-[10px] text-slate-500">
-                                {user?.role === 'admin' ? 'Quản trị viên' : 'Người dùng'}
+                            <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.username || 'User'}</strong>
+                            <span className="text-[10px] text-[#71829b] dark:text-slate-400">
+                                {user?.role === 'admin' ? t('administrator') : t('user')}
                             </span>
                         </div>
                         <MoreVertical size={20} />
                     </button>
 
                     {menuOpen && (
-                        <div className="absolute top-full right-0 z-50 mt-2 w-64 rounded-lg border border-slate-200 bg-white p-2 shadow-xl dark:border-slate-700 dark:bg-slate-900">
-                            <div className="flex items-center gap-3 p-2">
-                                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-200">
-                                    {user?.username?.charAt(0)?.toUpperCase() || 'U'}
-                                </div>
-                                <div className="min-w-0">
-                                    <strong className="block truncate text-xs text-slate-800 dark:text-slate-100">{user?.username || 'User'}</strong>
-                                    <span className="block truncate text-[11px] text-slate-500">{user?.email || 'user@example.com'}</span>
-                                </div>
-                            </div>
-                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                            <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800">
-                                <User size={18} />
-                                <span>Thông tin người dùng</span>
-                            </button>
-                            <button
-                                className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                                onClick={() => {
-                                    setMenuOpen(false);
-                                    onOpenSettings();
-                                }}
-                            >
-                                <Settings size={18} />
-                                <span>Cài đặt tài khoản</span>
-                            </button>
-                            <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                            <button className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40" onClick={handleLogout}>
-                                <LogOut size={18} />
-                                <span>Đăng xuất</span>
-                            </button>
-                        </div>
+                        <GlobalMoreMenu
+                            user={user}
+                            onSelectSettings={(tab) => {
+                                setMenuOpen(false);
+                                onOpenSettings(tab);
+                            }}
+                            onLogout={handleLogout}
+                        />
                     )}
                 </div>
             </div>

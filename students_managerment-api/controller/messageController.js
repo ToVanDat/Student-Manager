@@ -1,6 +1,11 @@
 const messageService = require('../service/messageService');
 const { getIO } = require('../src/socket/socket');
 const messageRepository = require('../repository/messageRepository');
+const conversationRepository = require('../repository/conversationRepository');
+const webPushService = require('../service/webPushService');
+const notificationDeliveryService = require('../service/notificationDeliveryService');
+const userRepository = require('../repository/userRepository');
+const e2eeRepository = require('../repository/e2eeRepository');
 
 /**
  * Gửi message
@@ -38,6 +43,18 @@ const createMessage = async (req, res) => {
             });
         }
 
+        // Never let the legacy plaintext endpoint bypass E2EE once a conversation
+        // has been activated. A dedicated encrypted-envelope sender must be used.
+        if (!await conversationRepository.isConversationMember(conversationId, senderId)) {
+            return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
+        }
+        if (await e2eeRepository.isConversationE2EEEnabled(conversationId)) {
+            return res.status(409).json({
+                code: 'E2EE_REQUIRED',
+                message: 'Cuộc trò chuyện đã bật E2EE; cần gửi ciphertext qua luồng mã hóa.'
+            });
+        }
+
         const message =
             await messageService.createMessage(
                 conversationId,
@@ -45,6 +62,35 @@ const createMessage = async (req, res) => {
                 content,
                 replyToMessageId
             );
+
+        await conversationRepository.unhideConversationForMembers(
+            conversationId,
+            senderId
+        );
+
+        // REST fallback cũng đồng bộ realtime cho các client đang trong conversation.
+        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
+
+        const memberIds = await conversationRepository.getConversationMemberIds(conversationId);
+        for (const memberId of memberIds) {
+            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+                conversationId,
+                lastMessage: message,
+                senderId,
+                updatedAt: message.created_at
+            });
+        }
+
+        // Notification delivery is best-effort: message persistence succeeds even if a push provider fails.
+        const sender = await userRepository.findActiveUserById(senderId);
+        try {
+            await notificationDeliveryService.notifyMessageRecipients({
+                io: getIO(), conversationId, senderId,
+                senderName: sender?.username || 'Tin nhắn mới', message
+            });
+        } catch (notificationError) {
+            console.error('[NOTIFICATION] REST delivery failed:', notificationError.message);
+        }
 
         return res.status(201).json({
             message: 'Gửi message thành công',
@@ -56,6 +102,10 @@ const createMessage = async (req, res) => {
             'CREATE MESSAGE ERROR:',
             error
         );
+
+        if (error.statusCode === 409 || error.statusCode === 403) {
+            return res.status(error.statusCode).json({ message: error.message, code: error.statusCode === 409 ? 'E2EE_REQUIRED' : undefined });
+        }
 
         if (
             error.message ===
@@ -153,6 +203,32 @@ const getMessagesByConversation = async (req, res) => {
 /**
  * Chỉnh sửa message
  */
+const searchMessages = async (req, res) => {
+    try {
+        const userId = Number(req.user.id);
+        const conversationId = Number(req.params.conversationId);
+        const query = req.query.q;
+        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 30, 1), 50);
+
+        if (!Number.isInteger(conversationId) || conversationId <= 0) {
+            return res.status(400).json({ message: 'conversationId không hợp lệ' });
+        }
+
+        const data = await messageService.searchMessages(
+            conversationId,
+            userId,
+            query,
+            limit
+        );
+
+        return res.status(200).json({ data });
+    } catch (error) {
+        return res.status(error.statusCode || 500).json({
+            message: error.message || 'Không thể tìm kiếm message'
+        });
+    }
+};
+
 const updateMessage = async (req, res) => {
     try {
         const userId = Number(req.user.id);
@@ -445,6 +521,7 @@ const removeReaction = async (req, res) => {
 module.exports = {
     createMessage,
     getMessagesByConversation,
+    searchMessages,
     updateMessage,
     recallMessage,
     deleteMessageForMe,

@@ -1,0 +1,4 @@
+# Copy this file to .dev.vars for local development.
+# Generate a fresh random value; do not reuse a committed or production secret.
+E2EE_ATTACHMENT_TICKET_SECRET=REPLACE_WITH_AT_LEAST_32_RANDOM_BYTES
+E2EE_FRONTEND_ORIGIN=http://localhost:5173

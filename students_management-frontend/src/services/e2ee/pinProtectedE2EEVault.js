@@ -1,5 +1,3 @@
-import { IndexedDbSignalProtocolSecretVault } from '@open-e2ee/signal-protocol-sdk/local/vault/indexed-db';
-
 const DB_NAME = 'student-manager-e2ee-pin-vault-v1';
 const STORE_NAME = 'wrapped-keys';
 const ITERATIONS = 310000;
@@ -8,6 +6,14 @@ const activeWrappingKeys = new Map();
 const databaseNameForUser = userId => `student-manager-e2ee-user-${String(userId)}.db`;
 const encode = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes)));
 const decode = value => Uint8Array.from(atob(value), char => char.charCodeAt(0));
+const bytesEqual = (left, right) => {
+    const a = new Uint8Array(left);
+    const b = new Uint8Array(right);
+    if (a.length !== b.length) return false;
+    let difference = 0;
+    for (let index = 0; index < a.length; index += 1) difference |= a[index] ^ b[index];
+    return difference === 0;
+};
 
 function openDatabase() {
     if (!globalThis.indexedDB) throw new Error('IndexedDB không khả dụng trong trình duyệt này.');
@@ -67,6 +73,78 @@ async function deleteRecord(name) {
         db.close();
     }
 }
+
+/*
+ * Compatibility bridge to the SDK's documented default web vault layout.
+ * The SDK does not export its IndexedDB vault implementation as a public
+ * package subpath, so use the same DB/store/key shape for one-time migration.
+ */
+const LEGACY_DB_NAME = 'open-e2ee-secret-vault';
+const LEGACY_STORE_NAME = 'secrets';
+
+function openLegacyDatabase() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(LEGACY_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            if (!request.result.objectStoreNames.contains(LEGACY_STORE_NAME)) {
+                request.result.createObjectStore(LEGACY_STORE_NAME);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('Không mở được kho khóa E2EE cũ.'));
+    });
+}
+
+async function legacyGetSecret(name) {
+    const db = await openLegacyDatabase();
+    try {
+        return await new Promise((resolve, reject) => {
+            const tx = db.transaction(LEGACY_STORE_NAME, 'readonly');
+            const request = tx.objectStore(LEGACY_STORE_NAME).get(name);
+            request.onsuccess = () => resolve(request.result ?? null);
+            request.onerror = () => reject(request.error || new Error('Không đọc được khóa E2EE cũ.'));
+            tx.onabort = () => reject(tx.error || new Error('Đọc khóa E2EE cũ bị hủy.'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+async function legacySetSecret(name, value) {
+    const db = await openLegacyDatabase();
+    try {
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(LEGACY_STORE_NAME, 'readwrite');
+            tx.objectStore(LEGACY_STORE_NAME).put(new Uint8Array(value), name);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('Không ghi được khóa E2EE cũ.'));
+            tx.onabort = () => reject(tx.error || new Error('Ghi khóa E2EE cũ bị hủy.'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+async function legacyDeleteSecret(name) {
+    const db = await openLegacyDatabase();
+    try {
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction(LEGACY_STORE_NAME, 'readwrite');
+            tx.objectStore(LEGACY_STORE_NAME).delete(name);
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error || new Error('Không xóa được khóa E2EE cũ.'));
+            tx.onabort = () => reject(tx.error || new Error('Xóa khóa E2EE cũ bị hủy.'));
+        });
+    } finally {
+        db.close();
+    }
+}
+
+const legacyVault = {
+    getSecret: legacyGetSecret,
+    setSecret: legacySetSecret,
+    deleteSecret: legacyDeleteSecret
+};
 
 async function deriveWrappingKey(pin, salt) {
     const material = await crypto.subtle.importKey(
@@ -147,15 +225,20 @@ export async function unlockPinProtectedE2EEVault(userId, pin) {
     }
     activeWrappingKeys.set(name, wrappingKey);
 
-    const legacyVault = new IndexedDbSignalProtocolSecretVault();
     try {
         const legacyKey = await legacyVault.getSecret(name);
         if (legacyKey) {
             if (!record.ciphertext) {
                 const wrapped = await encryptSecret(legacyKey, wrappingKey, decode(record.salt), name);
                 await writeRecord(name, wrapped);
+                record = wrapped;
+            } else {
+                const wrappedKey = await decryptSecret(record, wrappingKey, name);
+                if (!bytesEqual(wrappedKey, legacyKey)) {
+                    throw new Error('Khóa trong kho cũ khác khóa đã bọc; giữ nguyên bản gốc để tránh mất lịch sử E2EE.');
+                }
             }
-            // Delete the unwrapped copy only after the wrapped copy is durable.
+            // Delete the unwrapped copy only after the wrapped copy is durable and verified.
             await legacyVault.deleteSecret(name);
         }
     } catch (error) {
@@ -183,7 +266,6 @@ export function createPinProtectedE2EEVault(userId) {
 
             // Migration path for a pre-PIN installation whose SDK key is still
             // in the legacy vault. This does not reset or recreate the database.
-            const legacyVault = new IndexedDbSignalProtocolSecretVault();
             const legacyKey = await legacyVault.getSecret(name);
             if (!legacyKey) return null;
             const salt = record?.salt ? decode(record.salt) : crypto.getRandomValues(new Uint8Array(16));
@@ -213,7 +295,6 @@ export async function removePinProtectionFromE2EEVault(userId) {
     if (record?.ciphertext) {
         const wrappingKey = requireWrappingKey(name);
         const key = await decryptSecret(record, wrappingKey, name);
-        const legacyVault = new IndexedDbSignalProtocolSecretVault();
         await legacyVault.setSecret(name, key);
     }
     await deleteRecord(name);
@@ -241,8 +322,7 @@ export async function cancelPinProtectedE2EEVaultSetup(userId) {
     if (record?.ciphertext) {
         const wrappingKey = requireWrappingKey(name);
         const key = await decryptSecret(record, wrappingKey, name);
-        const legacyVault = new IndexedDbSignalProtocolSecretVault();
-        await legacyVault.setSecret(name, key);
+            await legacyVault.setSecret(name, key);
     }
     await deleteRecord(name);
     activeWrappingKeys.delete(name);

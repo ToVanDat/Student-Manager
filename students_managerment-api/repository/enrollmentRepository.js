@@ -120,37 +120,25 @@ const createEnrollment = async (data) => {
 
 // Cập nhật đăng ký môn học
 const updateEnrollment = async (id, data) => {
+    const allowedFields = {
+        student_id: 'student_id',
+        subject_id: 'subject_id',
+        semester_id: 'semester_id',
+        midterm_score: 'midterm_score',
+        final_score: 'final_score',
+        total_score: 'total_score'
+    };
+    const entries = Object.entries(data).filter(([key]) => Object.hasOwn(allowedFields, key));
+    if (entries.length === 0) return null;
 
-    const {
-        student_id,
-        subject_id,
-        semester_id,
-        midterm_score,
-        final_score,
-        total_score
-    } = data;
+    const assignments = entries.map(([key], index) => `${allowedFields[key]} = $${index + 1}`);
+    const values = entries.map(([, value]) => value);
+    values.push(id);
 
-    const result = await pool.query(`
-        UPDATE enrollments
-        SET
-            student_id = $1,
-            subject_id = $2,
-            semester_id = $3,
-            midterm_score = $4,
-            final_score = $5,
-            total_score = $6
-        WHERE id = $7
-        RETURNING *
-    `, [
-        student_id,
-        subject_id,
-        semester_id,
-        midterm_score,
-        final_score,
-        total_score,
-        id
-    ]);
-
+    const result = await pool.query(
+        `UPDATE enrollments SET ${assignments.join(', ')} WHERE id = $${values.length} RETURNING *`,
+        values
+    );
     return result.rows[0];
 };
 

@@ -4,7 +4,9 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --omit=dev
+# This repository currently does not track a package-lock.json, so npm ci would fail.
+# Prefer adding and committing a lockfile, then switch back to npm ci for reproducible builds.
+RUN npm install --omit=dev
 
 COPY . .
 

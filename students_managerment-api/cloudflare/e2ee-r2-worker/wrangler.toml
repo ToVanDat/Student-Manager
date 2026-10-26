@@ -1,0 +1,10 @@
+name = "student-manager-e2ee-r2"
+main = "src/index.js"
+compatibility_date = "2026-10-18"
+
+[[r2_buckets]]
+binding = "E2EE_BUCKET"
+bucket_name = "student-manager-e2ee-attachments"
+
+[vars]
+E2EE_FRONTEND_ORIGIN = "http://localhost:5173"  

@@ -1,0 +1,47 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+const {
+    MAX_SESSION_DESCRIPTION_BYTES,
+    MAX_ICE_CANDIDATE_BYTES,
+    isValidSessionDescription,
+    isValidIceCandidate
+} = require('../service/socketPayloadValidation');
+
+test('accepts bounded WebRTC offer and answer descriptions', () => {
+    assert.equal(isValidSessionDescription({ type: 'offer', sdp: 'v=0\\r\\n' }, 'offer'), true);
+    assert.equal(isValidSessionDescription({ type: 'answer', sdp: 'v=0\\r\\n' }, 'answer'), true);
+});
+
+test('rejects malformed, mismatched and oversized session descriptions', () => {
+    assert.equal(isValidSessionDescription(null, 'offer'), false);
+    assert.equal(isValidSessionDescription([], 'offer'), false);
+    assert.equal(isValidSessionDescription({ type: 'answer', sdp: 'v=0' }, 'offer'), false);
+    assert.equal(isValidSessionDescription({ type: 'offer', sdp: '' }, 'offer'), false);
+    assert.equal(isValidSessionDescription({
+        type: 'offer',
+        sdp: 'a'.repeat(MAX_SESSION_DESCRIPTION_BYTES + 1)
+    }, 'offer'), false);
+});
+
+test('accepts standard ICE candidate JSON including end-of-candidates', () => {
+    assert.equal(isValidIceCandidate({
+        candidate: 'candidate:1 1 UDP 123 192.0.2.1 5000 typ host',
+        sdpMid: '0',
+        sdpMLineIndex: 0,
+        usernameFragment: 'abc'
+    }), true);
+    assert.equal(isValidIceCandidate({ candidate: '' }), true);
+});
+
+test('rejects malformed and oversized ICE candidate fields', () => {
+    assert.equal(isValidIceCandidate(null), false);
+    assert.equal(isValidIceCandidate({ candidate: 123 }), false);
+    assert.equal(isValidIceCandidate({
+        candidate: 'a'.repeat(MAX_ICE_CANDIDATE_BYTES + 1)
+    }), false);
+    assert.equal(isValidIceCandidate({ candidate: 'x', sdpMid: 'm'.repeat(257) }), false);
+    assert.equal(isValidIceCandidate({ candidate: 'x', sdpMLineIndex: -1 }), false);
+    assert.equal(isValidIceCandidate({ candidate: 'x', sdpMLineIndex: 1.5 }), false);
+    assert.equal(isValidIceCandidate({ candidate: 'x', usernameFragment: 42 }), false);
+});

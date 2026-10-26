@@ -1,4 +1,5 @@
 const subjectService = require('../service/subjectService.js');
+const { respondWithDatabaseError } = require('../utils/databaseErrorResponse.js');
 
     
 const getSubjects = async (req, res) => {
@@ -10,12 +11,7 @@ const getSubjects = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -36,12 +32,7 @@ const getSubjectById = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể tải dữ liệu');
     }
 };
 
@@ -55,12 +46,7 @@ const createSubject = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể thêm môn học',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể thêm môn học');
     }
 };
 
@@ -84,12 +70,7 @@ const updateSubject = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể cập nhật môn học',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể cập nhật môn học');
     }
 };
 
@@ -113,12 +94,7 @@ const deleteSubject = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
-
-        res.status(500).json({
-            message: 'Không thể xóa môn học',
-            error: error.message
-        });
+        return respondWithDatabaseError(res, error, 'Không thể xóa môn học');
     }
 };
 
