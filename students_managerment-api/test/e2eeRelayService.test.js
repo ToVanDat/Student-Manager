@@ -259,3 +259,23 @@ test('E2EE device inventory is visible to self and established direct-chat peers
         ['conversation', 11, 33]
     ]);
 });
+
+test('provisioning acknowledgement reports expiry only after repository cleanup commits', async t => {
+    const oldAck = relayRepository.acknowledgeProvisioning;
+    let received;
+    relayRepository.acknowledgeProvisioning = async (...args) => {
+        received = args;
+        return { expiredOrUnavailable: true };
+    };
+    t.after(() => { relayRepository.acknowledgeProvisioning = oldAck; });
+
+    await assert.rejects(
+        service.acknowledgeProvisioning(11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', 'device-token-for-new-device-which-is-long-enough'),
+        error => error.statusCode === 409
+    );
+    assert.deepEqual(received, [
+        11,
+        'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d',
+        'device-token-for-new-device-which-is-long-enough'
+    ]);
+});
