@@ -369,7 +369,7 @@ test('expired completed provisioning retains completion status but scrubs encryp
     const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push({ statement, params });
             if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) {
