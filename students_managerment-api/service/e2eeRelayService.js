@@ -29,7 +29,23 @@ const registerDevice = async (userId, input = {}) => {
     return relayRepository.registerDevice(userId, { deviceId, registrationId, deviceType, encryptedDeviceName: input.encryptedDeviceName });
 };
 
-const getDevices = (userId, targetUserId) => relayRepository.getDevices(targetUserId, userId);
+const assertDeviceInventoryAccess = async (requesterId, targetUserId) => {
+    integer(requesterId, 'requesterId');
+    integer(targetUserId, 'userId');
+    if (Number(requesterId) === Number(targetUserId)) return;
+    const conversation = await conversationRepository.findDirectConversation(requesterId, targetUserId);
+    if (!conversation) throw fail(404, 'Không tìm thấy conversation 1-1 với người dùng này');
+};
+
+const getDevices = async (requesterId, targetUserId) => {
+    await assertDeviceInventoryAccess(requesterId, targetUserId);
+    return relayRepository.getDevices(targetUserId);
+};
+
+const getActiveDevices = async (requesterId, targetUserId) => {
+    await assertDeviceInventoryAccess(requesterId, targetUserId);
+    return relayRepository.getActiveDevices(targetUserId);
+};
 const removeDevice = (userId, deviceId) => relayRepository.removeDevice(userId, integer(deviceId, 'deviceId', 1, 5));
 
 const provisionIdentity = async (userId, deviceId, body = {}) => {
@@ -247,7 +263,7 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, removeDevice, provisionIdentity, rotateIdentityKey,
+    registerDevice, getDevices, getActiveDevices, removeDevice, provisionIdentity, rotateIdentityKey,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, uploadPreKeys,
     fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
