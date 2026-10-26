@@ -287,35 +287,98 @@ test('provisioning serializes device-slot allocation by locking the owning accou
     assert.deepEqual(calls[accountLock].params, [44]);
 });
 
-test('provisioning rollback cannot delete a later device that reused the assigned slot', async t => {
+test('provisioning rollback revokes a completed device when ACK response was lost', async t => {
     const oldConnect = pool.connect;
     const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
     const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\s+/g, ' ').trim();
+            const statement = sql.replace(/\\s+/g, ' ').trim();
             calls.push({ statement, params });
-            if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
-                return { rows: [], rowCount: 0 };
-            }
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
-            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
-                return { rows: [{ assigned_device_id: 2, completed_at: completedAt }], rowCount: 1 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ assigned_device_id: 2, completed_at: completedAt, status: 'completed' }], rowCount: 1 };
             }
-            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = FALSE')) {
+                return { rows: [{ id: 71 }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_envelopes') || statement.startsWith('DELETE FROM e2ee_sdk_prekeys')) {
+                return { rows: [], rowCount: 1 };
+            }
             if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [], rowCount: 1 };
-            throw new Error('Unexpected SQL in provisioning rollback test: ' + statement);
+            throw new Error('Unexpected SQL in completed provisioning rollback test: ' + statement);
         },
         release() {}
     };
     pool.connect = async () => client;
     t.after(() => { pool.connect = oldConnect; });
 
-    await repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d');
-    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
-    assert.ok(deletion.statement.includes('revoked_at IS NULL'));
-    assert.ok(deletion.statement.includes('created_at <= $3'));
-    assert.deepEqual(deletion.params, [44, 2, completedAt]);
+    assert.deepEqual(await repository.rollbackProvisioning(44, sessionId, token), { rolledBack: true });
+    const revoke = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = FALSE'));
+    assert.deepEqual(revoke.params, [44, 2, tokenHash, completedAt]);
+    assert.ok(revoke.statement.includes('enabled = TRUE'));
+    assert.ok(revoke.statement.includes('device_token_hash = $3'));
+    assert.ok(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_envelopes')));
+    assert.ok(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_prekeys')));
+    assert.ok(calls.some(call => call.statement === "COMMIT"));
+});
+
+test('provisioning rollback rejects a wrong credential for a completed device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ assigned_device_id: 2, completed_at: new Date(), status: 'completed' }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = FALSE')) return { rows: [], rowCount: 0 };
+            throw new Error('Unexpected SQL in wrong credential rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(
+        repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', 'wrong-device-token-value-that-is-long-enough'),
+        error => error.statusCode === 401 && error.code === 'E2EE_DEVICE_AUTH_FAILED'
+    );
+    assert.ok(calls.includes('ROLLBACK'));
+    assert.equal(calls.some(statement => statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")), false);
+});
+
+test('provisioning rollback treats an already expired session as an idempotent cleanup', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT 1 FROM e2ee_sdk_provisioning_sessions')) return { rows: [{}], rowCount: 1 };
+            throw new Error('Unexpected SQL in expired rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    assert.deepEqual(
+        await repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', 'device-token-for-new-device-which-is-long-enough'),
+        { rolledBack: false, alreadyFinalized: true }
+    );
+    assert.ok(calls.includes('COMMIT'));
+    assert.equal(calls.includes('ROLLBACK'), false);
 });
 
 
