@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     BookOpen, Check, ChevronDown, Copy, LoaderCircle, MessageCircle, MessageSquare,
-    Pencil, Plus, Search, Send, Sparkles, Square, Trash2, X
+    Pencil, Plus, RefreshCw, Search, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, X
 } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import AssistantKnowledgeManager from '@/components/assistant/AssistantKnowledgeManager.jsx';
@@ -9,7 +9,7 @@ import { useAuth } from '@/hooks/useAuth.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import {
     streamChatbotMessage, getChatbotHistory, listChatbotConversations,
-    createChatbotConversation, renameChatbotConversation, deleteChatbotConversation
+    createChatbotConversation, renameChatbotConversation, deleteChatbotConversation, rateChatbotAnswer
 } from '@/api/chatbotApi.js';
 
 const QUICK_PROMPTS = {
@@ -42,6 +42,9 @@ export default function GlobalChatbot() {
     const [editingConversationId, setEditingConversationId] = useState(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [copiedMessageId, setCopiedMessageId] = useState(null);
+    const [editingLatestQuestion, setEditingLatestQuestion] = useState(false);
+    const [feedbackRating, setFeedbackRating] = useState(null);
+    const [feedbackBusy, setFeedbackBusy] = useState(false);
     const scrollRef = useRef(null);
     const requestVersionRef = useRef(0);
     const streamAbortRef = useRef(null);
@@ -64,6 +67,8 @@ export default function GlobalChatbot() {
         streamAbortRef.current = null;
         setMessages([]);
         setInput('');
+        setEditingLatestQuestion(false);
+        setFeedbackRating(null);
         setLoading(false);
         setHistoryLoading(false);
         setConversations([]);
@@ -130,6 +135,8 @@ export default function GlobalChatbot() {
         setLoading(false);
         setActiveConversationId(id);
         setMessages([]);
+        setEditingLatestQuestion(false);
+        setFeedbackRating(null);
         setShowConversationList(false);
     };
 
@@ -140,6 +147,8 @@ export default function GlobalChatbot() {
             if (!result?.conversation?.id) return;
             setConversations(items => [result.conversation, ...items.filter(item => item.id !== result.conversation.id)]);
             setMessages([]);
+            setEditingLatestQuestion(false);
+            setFeedbackRating(null);
             setActiveConversationId(result.conversation.id);
             setShowConversationList(false);
             setShowKnowledgeManager(false);
@@ -187,16 +196,19 @@ export default function GlobalChatbot() {
         }
     };
 
-    const send = async (event, retryText = null) => {
+    const send = async (event, retryText = null, forceReplaceLastTurn = false) => {
         event?.preventDefault();
         const prompt = retryText ?? input.trim();
         if (!prompt || loading) return;
 
+        const replaceLastTurn = forceReplaceLastTurn || editingLatestQuestion;
         setInput('');
-        // A retry is a new backend turn, so keep its repeated prompt visible in the transcript.
-        setMessages(items => [...items, {
-            id: 'user-' + Date.now(), role: 'user', content: prompt
-        }]);
+        setEditingLatestQuestion(false);
+        setFeedbackRating(null);
+        setMessages(items => {
+            const visibleHistory = replaceLastTurn ? items.slice(0, -2) : items;
+            return [...visibleHistory, { id: 'user-' + Date.now(), role: 'user', content: prompt }];
+        });
         setLoading(true);
         const requestVersion = requestVersionRef.current;
         const assistantId = 'assistant-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -208,6 +220,7 @@ export default function GlobalChatbot() {
             await streamChatbotMessage(prompt, {
                 signal: abortController.signal,
                 conversationId: activeConversationId,
+                replaceLastTurn,
                 onToken: token => {
                     if (requestVersion !== requestVersionRef.current) return;
                     setMessages(items => items.map(item => item.id === assistantId
@@ -256,6 +269,28 @@ export default function GlobalChatbot() {
             ? { ...item, streaming: false, stopped: true }
             : item));
         setLoading(false);
+    };
+
+    const editLatestQuestion = () => {
+        const latestUser = [...messages].reverse().find(item => item.role === 'user');
+        if (!latestUser || loading) return;
+        setInput(latestUser.content);
+        setEditingLatestQuestion(true);
+        textareaRef.current?.focus();
+    };
+
+    const submitFeedback = async rating => {
+        const latestAssistant = [...messages].reverse().find(item => item.role === 'assistant' && item.content && !item.streaming && !item.error && !item.stopped);
+        if (!latestAssistant || feedbackBusy) return;
+        setFeedbackBusy(true);
+        try {
+            await rateChatbotAnswer({ conversationId: activeConversationId, content: latestAssistant.content, rating });
+            setFeedbackRating(rating);
+        } catch (error) {
+            setMessages(items => [...items, { id: 'feedback-error-' + Date.now(), role: 'assistant', error: true, content: error?.response?.data?.message || error?.message || (vi ? 'Không thể lưu đánh giá.' : 'Could not save feedback.') }]);
+        } finally {
+            setFeedbackBusy(false);
+        }
     };
 
     const copyMessage = async (id, content) => {
@@ -386,7 +421,12 @@ export default function GlobalChatbot() {
                                     </div>
                                 )}
                                 <div className="space-y-5">
-                                    {messages.map((item, index) => (
+                                    {messages.map((item, index) => {
+                                        const lastUserIndex = messages.map(message => message.role).lastIndexOf('user');
+                                        const lastAssistantIndex = messages.map(message => message.role).lastIndexOf('assistant');
+                                        const isLatestUser = item.role === 'user' && index === lastUserIndex;
+                                        const isLatestAssistant = item.role === 'assistant' && index === lastAssistantIndex;
+                                        return (
                                         <div key={item.id || index} className={`group flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                             {item.role === 'assistant' && (
                                                 <div className="mr-2 mt-1 flex size-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white"><Sparkles size={14} /></div>
@@ -418,17 +458,25 @@ export default function GlobalChatbot() {
                                                     </button>
                                                 )}
                                                 {item.role === 'assistant' && item.content && !item.streaming && (
-                                                    <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                                                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
                                                         <span className="text-[10px] text-slate-400">{item.model || 'AI Assistant'}</span>
+                                                        <div className="flex flex-wrap items-center gap-1">
+                                                        {isLatestAssistant && !item.error && !item.stopped && <>
+                                                            <button type="button" onClick={() => void send(null, messages[lastUserIndex]?.content || '', true)} disabled={loading || lastUserIndex < 0 || feedbackBusy} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 disabled:opacity-40 dark:hover:bg-slate-800" title={vi ? 'Tạo lại câu trả lời' : 'Regenerate response'}><RefreshCw size={12} />{vi ? 'Tạo lại' : 'Regenerate'}</button>
+                                                            <button type="button" onClick={() => void submitFeedback('helpful')} disabled={feedbackBusy} className={`rounded-lg p-1.5 transition hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40 dark:hover:bg-emerald-950 ${feedbackRating === 'helpful' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'text-slate-400'}`} title={vi ? 'Câu trả lời hữu ích' : 'Helpful'}><ThumbsUp size={13} /></button>
+                                                            <button type="button" onClick={() => void submitFeedback('unhelpful')} disabled={feedbackBusy} className={`rounded-lg p-1.5 transition hover:bg-rose-50 hover:text-rose-700 disabled:opacity-40 dark:hover:bg-rose-950 ${feedbackRating === 'unhelpful' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300' : 'text-slate-400'}`} title={vi ? 'Câu trả lời chưa hữu ích' : 'Not helpful'}><ThumbsDown size={13} /></button>
+                                                        </>}
                                                         <button type="button" onClick={() => void copyMessage(item.id || String(index), item.content)} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200">
                                                             {copiedMessageId === (item.id || String(index)) ? <Check size={12} /> : <Copy size={12} />}
                                                             {copiedMessageId === (item.id || String(index)) ? (vi ? 'Đã sao chép' : 'Copied') : (vi ? 'Sao chép' : 'Copy')}
                                                         </button>
+                                                        </div>
                                                     </div>
                                                 )}
+                                                {isLatestUser && <div className="mt-2 flex justify-end border-t border-white/20 pt-1"><button type="button" onClick={editLatestQuestion} disabled={loading} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-blue-100 transition hover:bg-white/10 disabled:opacity-40"><Pencil size={11} />{vi ? 'Chỉnh sửa' : 'Edit'}</button></div>}
                                             </div>
                                         </div>
-                                    ))}
+                                    ); })}
                                 </div>
                                 {loading && (
                                     <div className="mt-4 flex items-center gap-2 pl-9 text-xs text-slate-500 dark:text-slate-400">
@@ -439,6 +487,7 @@ export default function GlobalChatbot() {
                             </div>
 
                             <div className="shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
+                                {editingLatestQuestion && <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><span>{vi ? 'Đang chỉnh sửa câu hỏi gần nhất' : 'Editing the latest question'}</span><button type="button" onClick={() => { setEditingLatestQuestion(false); setInput(''); }} className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900" aria-label={vi ? 'Hủy chỉnh sửa' : 'Cancel edit'}><X size={13} /></button></div>}
                                 <form onSubmit={send} className="rounded-[20px] border border-slate-200 bg-slate-50 p-2 shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:bg-slate-900">
                                     <textarea
                                         ref={textareaRef}
