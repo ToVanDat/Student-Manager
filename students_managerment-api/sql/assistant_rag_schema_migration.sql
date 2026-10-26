@@ -50,6 +50,9 @@ CREATE INDEX assistant_documents_visibility_status_idx
   ON assistant_documents (visibility, status, created_at DESC);
 CREATE INDEX assistant_documents_created_by_idx
   ON assistant_documents (created_by, created_at DESC);
+CREATE UNIQUE INDEX assistant_documents_hash_visibility_uidx
+  ON assistant_documents (source_sha256, visibility)
+  WHERE status = 'ready';
 
 CREATE TABLE assistant_document_chunks (
   id bigserial PRIMARY KEY,
