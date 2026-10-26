@@ -103,9 +103,9 @@ No live user database was accessed or modified. No migration was run. No merge w
 ### Still unverified before production
 
 - The SDK's exact v11 provisioning wire encoding for ephemeral public keys has not been independently confirmed from the installed package artifact. Do not add a guessed fixed-length validation to Base64 values.
-- The SDK's internal ordering of decrypt → complete → acknowledgement has not been verified against the installed v11 runtime source. Adapter methods exist and the relay adapter persists the returned device token, but this is not proof of the two-browser handshake.
+- The exact SDK v11.0.0 source was inspected at tag `v11.0.0`: it decrypts/authenticates the payload before `completeProvisioning`, stores identity/device/group state locally, then calls `acknowledgeProvisioning`; on any error after server completion it attempts server rollback and local-state cleanup.
 - No real-browser two-device pairing, wrong-key rejection, provisioning replay, or PostgreSQL concurrency test was run in this environment. The next required test is a real primary/new-browser pair with network interruption between decrypt, completion, acknowledgement and client initialization.
-- The current `completeProvisioning` endpoint is authenticated by the account session and returns a device credential. Its proof-of-possession boundary should be reviewed against the SDK v11 handshake before production; do not infer that successful HTTP authentication proves possession of the primary device's local identity key.
+- `completeProvisioning` remains authenticated by the account session and returns a device credential. This is not server-verifiable proof that the caller decrypted the AES-GCM payload; do not infer that HTTP authentication proves possession of the primary device's local identity key.
 
 No schema change, migration, live database operation, or merge was performed for this follow-up.
 
@@ -152,3 +152,17 @@ No schema change or migration is required because `e2ee_sdk_devices.enabled` alr
 - The ACK repository now returns an internal `expiredOrUnavailable` sentinel after the cleanup path, allowing the transaction to commit. The service maps that sentinel to HTTP 409 only after the repository promise resolves.
 - Regression coverage checks that expired ACK removes the pending device, scrubs session payloads, commits the transaction, and never executes device activation. A service-level test checks the sentinel is translated to a conflict.
 - If expiry occurs in the narrow interval after the initial cleanup scan but before the final ACK update, the ACK remains fail-closed (device stays disabled); cleanup is retried on the next provisioning operation.
+
+## 9. Provisioning rollback handles a lost ACK response
+
+The SDK v11 receiver catches errors after `completeProvisioning`, calls `rollbackProvisioning`, and then clears partially stored local identity/device/group state. A network interruption can occur after the ACK transaction commits but before the browser receives its response. Previously the server would reject rollback because the session was already `completed`; the SDK would still clear local state, leaving an enabled server device with no corresponding local identity state.
+
+The rollback path now:
+
+- Requires the new device's `X-E2EE-Device-Token` and validates its SHA-256 hash against the assigned device.
+- For `linked_pending_ack`, removes only the matching disabled pending device, constrained by account, assigned slot, linked flag, token hash and creation time.
+- For `completed`, revokes only the matching enabled linked device, clears its device credential hash, and removes its unacknowledged mailbox envelopes and prekeys in the same transaction.
+- Marks the provisioning session `rolled_back` in that transaction. A bad token cannot revoke the device or change the session state.
+- Treats an already `expired` or `rolled_back` session as an idempotent cleanup result so the adapter can clear the local credential after expiry cleanup already removed the pending server row.
+
+The adapter now sends the per-device credential on rollback and clears the local credential only after the server confirms rollback/idempotent finalization. This addresses the server-committed-ACK / lost-response recovery case at the relay boundary. It still requires a real browser test that drops the ACK response after commit and verifies both local keystore cleanup and server revocation. It does not solve the separate lack of server-verifiable cryptographic proof at `completeProvisioning`.
