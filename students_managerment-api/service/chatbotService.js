@@ -8,6 +8,7 @@ const { acquireOllamaSlot, acquireChatbotRequestSlot } = require('./ollamaReques
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_CONTEXT_ROWS = 80;
+const CHAT_FEEDBACK_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function createOllamaAbortSignal(clientSignal, timeoutMs) {
     const controller = new AbortController();
@@ -329,7 +330,22 @@ async function clearHistory({ userId, sessionId, conversationId = 'default', red
     await redis.del(historyKey);
     return true;
 }
-async function answer({ userId, sessionId, role, message, conversationId = 'default', onToken = null, signal = null }) {
+async function rateAnswer({ userId, sessionId, conversationId = 'default', answerHash, rating, redis = redisClient }) {
+    if (!redis.isReady) { const error = new Error('Dịch vụ lưu đánh giá chưa sẵn sàng'); error.status = 503; throw error; }
+    const id = validateConversationId(conversationId);
+    if (!['helpful', 'unhelpful'].includes(rating)) { const error = new Error('Đánh giá không hợp lệ'); error.status = 400; throw error; }
+    if (typeof answerHash !== 'string' || !/^[a-f0-9]{64}$/i.test(answerHash)) { const error = new Error('Mã câu trả lời không hợp lệ'); error.status = 400; throw error; }
+    const history = await getHistory({ userId, sessionId, conversationId: id, redis });
+    const lastAnswer = history[history.length - 1];
+    if (lastAnswer?.role !== 'assistant') { const error = new Error('Không tìm thấy câu trả lời để đánh giá'); error.status = 404; throw error; }
+    const expectedHash = crypto.createHash('sha256').update(lastAnswer.content, 'utf8').digest('hex');
+    if (expectedHash !== answerHash.toLowerCase()) { const error = new Error('Câu trả lời đã thay đổi. Hãy tải lại hội thoại trước khi đánh giá'); error.status = 409; throw error; }
+    const key = `assistant:feedback:${String(userId)}:${String(sessionId)}:${id}:${expectedHash}`;
+    await redis.set(key, JSON.stringify({ rating, updatedAt: new Date().toISOString() }), { EX: CHAT_FEEDBACK_TTL_SECONDS });
+    return { rating };
+}
+
+async function answer({ userId, sessionId, role, message, conversationId = 'default', onToken = null, signal = null, replaceLastTurn = false }) {
     if (typeof message !== 'string' || !message.trim() || message.length > MAX_MESSAGE_LENGTH) {
         const error = new Error('Tin nhắn phải có từ 1 đến 4000 ký tự');
         error.status = 400;
@@ -355,6 +371,16 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         const storedHistory = await redisClient.get(historyKey);
         if (storedHistory) {
             try { history = normalizeHistory(JSON.parse(storedHistory)); } catch { history = []; }
+        }
+        if (replaceLastTurn) {
+            const lastAssistant = history[history.length - 1];
+            const lastUser = history[history.length - 2];
+            if (lastAssistant?.role !== 'assistant' || lastUser?.role !== 'user') {
+                const error = new Error('Không tìm thấy lượt trao đổi gần nhất để chỉnh sửa hoặc tạo lại');
+                error.status = 409;
+                throw error;
+            }
+            history = history.slice(0, -2);
         }
 
         const config = getOllamaConfig();
@@ -523,4 +549,4 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
     }
 }
 
-module.exports = { answer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
+module.exports = { answer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, rateAnswer, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
