@@ -285,7 +285,7 @@ async function setDocumentArchived({ documentId, archived, queryable = pool }) {
     const query = archived
         ? `UPDATE assistant_documents
               SET status = 'archived', archived_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1 AND status IN ('ready', 'failed')
+            WHERE id = $1 AND status = 'ready'
             RETURNING id, title, source_name, visibility, status, archived_at, updated_at`
         : `UPDATE assistant_documents d
               SET status = 'ready', archived_at = NULL, updated_at = CURRENT_TIMESTAMP
