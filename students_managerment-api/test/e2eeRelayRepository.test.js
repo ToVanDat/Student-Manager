@@ -471,3 +471,39 @@ test('provisioning acknowledgement rejects missing device credential before acti
     );
     assert.equal(calls.some(statement => statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')), false);
 });
+
+test('provisioning acknowledgement cannot reactivate an already-enabled or mismatched device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
+                return { rows: [{ assigned_device_id: 3, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')) {
+                assert.ok(statement.includes('enabled = FALSE'));
+                return { rows: [], rowCount: 0 };
+            }
+            throw new Error('Unexpected SQL in rejected provisioning acknowledgement test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(
+        repository.acknowledgeProvisioning(44, sessionId, token),
+        error => error.statusCode === 401 && error.code === 'E2EE_DEVICE_AUTH_FAILED'
+    );
+    assert.ok(calls.some(call => call.statement === 'ROLLBACK'));
+    assert.equal(calls.some(call => call.statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")), false);
+    const activation = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE'));
+    assert.ok(activation.statement.includes('enabled = FALSE'));
+});
