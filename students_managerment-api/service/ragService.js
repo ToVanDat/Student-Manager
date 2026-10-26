@@ -175,6 +175,16 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
     }
 }
 
+async function listDocuments() {
+    const result = await pool.query(
+        `SELECT id, title, source_name, visibility, status, created_at, updated_at
+         FROM assistant_documents
+         ORDER BY created_at DESC
+         LIMIT 200`
+    );
+    return result.rows;
+}
+
 async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit }) {
     const schemaReady = await pool.query(
         `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
@@ -219,5 +229,6 @@ module.exports = {
     getEmbeddingConfig,
     createDocumentEmbedding,
     ingestTextDocument,
-    retrieveDocumentContext
+    retrieveDocumentContext,
+    listDocuments
 };
