@@ -13,7 +13,7 @@ const startServer = async () => {
         await connectRedis();
   
         // Khởi tạo Socket.IO
-        initSocket(server);
+        await initSocket(server);
     
         // Chạy HTTP server
         server.listen(PORT, () => {
