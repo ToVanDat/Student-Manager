@@ -244,7 +244,13 @@ async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.re
                 EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_ready`
     );
     const readiness = schemaReady.rows[0];
-    if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) return [];
+    if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) {
+        const error = new Error('Document RAG schema or pgvector is not ready');
+        error.status = 503;
+        error.code = 'RAG_SCHEMA_NOT_READY';
+        error.ragStage = 'schema';
+        throw error;
+    }
     const query = normalizeDocumentText(question).slice(0, 4000);
     const embedding = await createDocumentEmbedding(query, { signal });
     const allowedVisibility = getAllowedDocumentVisibility(role);
