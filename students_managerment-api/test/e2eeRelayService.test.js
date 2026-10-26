@@ -222,3 +222,40 @@ test('prekey bundle lookup allows a direct-chat peer and own linked devices', as
         relayRepository.fetchPreKeyBundle = oldFetch;
     }
 });
+
+
+test('E2EE device inventory is visible to self and established direct-chat peers only', async t => {
+    const oldFind = conversationRepository.findDirectConversation;
+    const oldDevices = relayRepository.getDevices;
+    const oldActive = relayRepository.getActiveDevices;
+    const calls = [];
+    conversationRepository.findDirectConversation = async (requesterId, targetUserId) => {
+        calls.push(['conversation', requesterId, targetUserId]);
+        return requesterId === 11 && targetUserId === 22 ? { id: 99 } : null;
+    };
+    relayRepository.getDevices = async userId => { calls.push(['devices', userId]); return [{ deviceId: 2 }]; };
+    relayRepository.getActiveDevices = async userId => { calls.push(['active', userId]); return [{ deviceId: 2 }]; };
+    t.after(() => {
+        conversationRepository.findDirectConversation = oldFind;
+        relayRepository.getDevices = oldDevices;
+        relayRepository.getActiveDevices = oldActive;
+    });
+
+    assert.deepEqual(await service.getDevices(11, 11), [{ deviceId: 2 }]);
+    assert.deepEqual(await service.getActiveDevices(11, 11), [{ deviceId: 2 }]);
+    assert.deepEqual(await service.getDevices(11, 22), [{ deviceId: 2 }]);
+    assert.deepEqual(await service.getActiveDevices(11, 22), [{ deviceId: 2 }]);
+    await assert.rejects(service.getDevices(11, 33), error => error.statusCode === 404);
+    await assert.rejects(service.getActiveDevices(11, 33), error => error.statusCode === 404);
+
+    assert.deepEqual(calls, [
+        ['devices', 11],
+        ['active', 11],
+        ['conversation', 11, 22],
+        ['devices', 22],
+        ['conversation', 11, 22],
+        ['active', 22],
+        ['conversation', 11, 33],
+        ['conversation', 11, 33]
+    ]);
+});
