@@ -15,6 +15,7 @@ router.post('/documents', authMiddleware, requireRole('admin'), chatbotRateLimit
 // AI requests always run under the current authenticated account.
 router.post('/chat', authMiddleware, chatbotRateLimiter, chatbotController.chat);
 router.post('/chat/stream', authMiddleware, chatbotRateLimiter, chatbotController.chatStream);
+router.post('/feedback', authMiddleware, chatbotRateLimiter, chatbotController.rateAnswer);
 router.get('/conversations', authMiddleware, chatbotRateLimiter, chatbotController.listConversations);
 router.post('/conversations', authMiddleware, chatbotRateLimiter, chatbotController.createConversation);
 router.patch('/conversations/:conversationId', authMiddleware, chatbotRateLimiter, chatbotController.renameConversation);
