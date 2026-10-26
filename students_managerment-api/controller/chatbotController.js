@@ -28,7 +28,7 @@ exports.chatStream = async (req, res) => {
     });
     res.flushHeaders?.();
     const send = (event, data) => {
-        if (!res.writableEnded) res.write(`event: ${event}\\ndata: ${JSON.stringify(data)}\\n\\n`);
+        if (!res.writableEnded) res.write('event: ' + event + String.fromCharCode(10) + 'data: ' + JSON.stringify(data) + String.fromCharCode(10, 10));
     };
     try {
         const result = await chatbotService.answer({
