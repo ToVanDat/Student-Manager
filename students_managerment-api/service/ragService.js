@@ -10,6 +10,26 @@ const EMBEDDING_DIMENSIONS = aiConfig.ollama.embeddingDimensions;
 // A single Node process may run only one document-ingestion embedding loop at a time.
 let documentIngestionInProgress = false;
 
+
+function assertRagSchemaReady(readiness) {
+    if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) {
+        const error = new Error('Document RAG schema or pgvector is not ready');
+        error.status = 503;
+        error.code = 'RAG_SCHEMA_NOT_READY';
+        error.ragStage = 'schema';
+        throw error;
+    }
+}
+
+async function getRagSchemaReadiness(queryable = pool) {
+    const result = await queryable.query(
+        `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
+                to_regclass('assistant_document_chunks') IS NOT NULL AS chunks_ready,
+                EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_ready`
+    );
+    return result.rows[0];
+}
+
 function normalizeDocumentText(value) {
     if (typeof value !== 'string') throw new TypeError('Document text must be a string');
     const normalized = value.replace(/\r\n?/g, '\n').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').trim();
@@ -159,6 +179,20 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
         throw error;
     }
 
+    // Fail before expensive Ollama inference when the operator has not provisioned
+    // the guarded RAG schema or pgvector extension.
+    assertRagSchemaReady(await getRagSchemaReadiness());
+    const sourceSha256 = crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
+    const existingDocument = await pool.query(
+        'SELECT id, title FROM assistant_documents WHERE source_sha256 = $1 AND visibility = $2 AND status = $3 LIMIT 1',
+        [sourceSha256, visibility, 'ready']
+    );
+    if (existingDocument.rows[0]) {
+        const error = new Error('Tài liệu này đã được nạp trước đó trong cùng phạm vi');
+        error.status = 409;
+        throw error;
+    }
+
     // Reject overlapping ingestion jobs in this Node process. This prevents
     // multiple admin uploads from multiplying embedding memory/CPU pressure.
     // This is intentionally not described as a distributed lock across replicas.
@@ -181,7 +215,6 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
         documentIngestionInProgress = false;
     }
 
-    const sourceSha256 = crypto.createHash('sha256').update(normalized, 'utf8').digest('hex');
     const client = await pool.connect();
     let inTransaction = false;
     try {
@@ -249,19 +282,7 @@ function getAllowedDocumentVisibility(role) {
 }
 
 async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit, signal = null }) {
-    const schemaReady = await pool.query(
-        `SELECT to_regclass('assistant_documents') IS NOT NULL AS documents_ready,
-                to_regclass('assistant_document_chunks') IS NOT NULL AS chunks_ready,
-                EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') AS vector_ready`
-    );
-    const readiness = schemaReady.rows[0];
-    if (!readiness?.documents_ready || !readiness?.chunks_ready || !readiness?.vector_ready) {
-        const error = new Error('Document RAG schema or pgvector is not ready');
-        error.status = 503;
-        error.code = 'RAG_SCHEMA_NOT_READY';
-        error.ragStage = 'schema';
-        throw error;
-    }
+    assertRagSchemaReady(await getRagSchemaReadiness());
     const query = normalizeDocumentText(question).slice(0, 4000);
     const embedding = await createDocumentEmbedding(query, { signal });
     const allowedVisibility = getAllowedDocumentVisibility(role);
@@ -300,5 +321,7 @@ module.exports = {
     ingestTextDocument,
     retrieveDocumentContext,
     getAllowedDocumentVisibility,
+    assertRagSchemaReady,
+    getRagSchemaReadiness,
     listDocuments
 };
