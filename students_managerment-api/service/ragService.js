@@ -341,7 +341,10 @@ async function listDocuments() {
 }
 
 function getAllowedDocumentVisibility(role) {
-    return role === 'admin' ? ['all', 'student', 'admin'] : ['all', 'student'];
+    if (role === 'admin') return ['all', 'student', 'admin'];
+    if (role === 'user' || role === 'student') return ['all', 'student'];
+    // Unknown or missing roles must not inherit student document access.
+    return [];
 }
 
 async function retrieveDocumentContext({ question, role, limit = aiConfig.rag.retrievalLimit, signal = null }) {
