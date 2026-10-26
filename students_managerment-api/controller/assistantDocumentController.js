@@ -1,4 +1,3 @@
-const path = require('path');
 const ragService = require('../service/ragService.js');
 
 exports.uploadTextDocument = async (req, res) => {
@@ -10,7 +9,7 @@ exports.uploadTextDocument = async (req, res) => {
         }
         const document = await ragService.ingestTextDocument({
             title: req.body?.title || path.basename(req.file.originalname, path.extname(req.file.originalname)),
-            sourceName: path.basename(req.file.originalname).slice(0, 255),
+            sourceName: req.file.originalname.replace(/\\\\/g, '/').split('/').pop().slice(0, 255),
             text: decoded,
             visibility: req.body?.visibility || 'all',
             createdBy: req.user.id
