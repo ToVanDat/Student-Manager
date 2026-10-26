@@ -4,6 +4,20 @@ const { redisClient } = require('../src/config/redis.js');
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_CONTEXT_ROWS = 80;
+// Keep local Ollama responsive on low-memory development machines.
+const MAX_OLLAMA_CONCURRENT_REQUESTS = 1;
+let activeOllamaRequests = 0;
+
+function acquireOllamaSlot() {
+    if (activeOllamaRequests >= MAX_OLLAMA_CONCURRENT_REQUESTS) return null;
+    activeOllamaRequests += 1;
+    let released = false;
+    return () => {
+        if (released) return;
+        released = true;
+        activeOllamaRequests = Math.max(0, activeOllamaRequests - 1);
+    };
+}
 
 function getOllamaConfig() {
     const rawUrl = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
@@ -234,6 +248,13 @@ async function answer({ userId, sessionId, role, message }) {
         { role: 'user', content: message.trim() }
     ];
 
+    const releaseOllamaSlot = acquireOllamaSlot();
+    if (!releaseOllamaSlot) {
+        const busy = new Error('Trợ lý AI đang xử lý yêu cầu khác. Vui lòng thử lại sau ít phút.');
+        busy.status = 503;
+        throw busy;
+    }
+
     let response;
     try {
         response = await fetch(`${config.baseUrl}/api/chat`, {
@@ -251,6 +272,8 @@ async function answer({ userId, sessionId, role, message }) {
         const unavailable = new Error('Không thể kết nối Ollama. Hãy kiểm tra dịch vụ Ollama và OLLAMA_BASE_URL.');
         unavailable.status = 503;
         throw unavailable;
+    } finally {
+        releaseOllamaSlot();
     }
 
     if (!response.ok) {
@@ -284,4 +307,4 @@ async function answer({ userId, sessionId, role, message }) {
     };
 }
 
-module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm };
+module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot };
