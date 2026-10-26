@@ -134,7 +134,7 @@ const getConversationChatTheme = async (req, res, next) => {
         if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
             return res.status(503).json({
                 code: 'THEME_MIGRATION_REQUIRED',
-                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/shared_conversation_chat_theme_migration.sql trong DBeaver.'
             });
         }
         if (error?.code === '42P01' && /conversation_user_settings/i.test(error.message || '')) {
@@ -176,7 +176,7 @@ const updateConversationChatTheme = async (req, res, next) => {
         if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
             return res.status(503).json({
                 code: 'THEME_MIGRATION_REQUIRED',
-                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/shared_conversation_chat_theme_migration.sql trong DBeaver.'
             });
         }
         if (error?.code === '42P01' && /conversation_user_settings/i.test(error.message || '')) {
