@@ -462,7 +462,12 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         async acknowledgeProvisioning(sessionId) {
             const deviceId = requireDevice();
             const token = await requireCredential(deviceId);
-            await markE2EEProvisioningPhase(userId, sessionId, 'awaiting_ack');
+            const journaled = await markE2EEProvisioningPhase(userId, sessionId, 'awaiting_ack');
+            if (!journaled) {
+                const error = new Error('Provisioning recovery journal is missing; refusing to acknowledge an untracked device.');
+                error.code = 'E2EE_PROVISIONING_RECOVERY_JOURNAL_MISSING';
+                throw error;
+            }
             const result = unwrap(await e2eeRelayApi.acknowledgeProvisioning(sessionId, token));
             // If this local finalization fails, startup recovery safely rolls back.
             await completeE2EEProvisioningRecovery(userId, deviceId, sessionId);
