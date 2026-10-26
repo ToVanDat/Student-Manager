@@ -131,7 +131,13 @@ A focused security-hardening slice has been committed:
 
 Existing route-level controls were also reviewed: student records and enrollment/grade data remain admin-only until a verified student-account mapping exists; chatbot knowledge documents are admin-managed; retrieval filters ready documents by role visibility; chat history keys are scoped by user and session. These are code-level observations, not a complete penetration test.
 
-## 7. Immediate implementation progress
+## 7. Data-integrity audit progress
+
+- Added [DATABASE_MIGRATION_AUDIT.md](./DATABASE_MIGRATION_AUDIT.md), inventorying the tracked SQL scripts and documenting prerequisites, transaction coverage, overlapping group/presence migrations and a safe manual-application procedure.
+- Added an explicit transaction, preflight and read-only postflight queries to `e2ee_attachment_retry_identity_migration.sql`.
+- No database was connected and no migration was applied. The two legacy group/presence scripts remain unreconciled until the target schema and application dependencies are verified.
+
+## 8. Immediate implementation progress
 
 The first operational slice has been added to the working branch:
 
