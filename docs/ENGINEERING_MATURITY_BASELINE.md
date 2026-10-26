@@ -54,7 +54,7 @@ These are repository observations, not claims about unobserved local or hosted i
 
 - The API Dockerfile uses `npm install --omit=dev` and explicitly notes that the API package lockfile is not tracked. Add a real generated lockfile before switching to `npm ci`; do not hand-edit lockfiles.
 - Docker Compose has no explicit container health checks or dependency readiness conditions. `depends_on` alone does not prove PostgreSQL/Redis are ready to accept requests.
-- The API server currently starts an HTTP server and has no explicit SIGTERM/SIGINT graceful-shutdown path in `src/server.js`.
+- Graceful shutdown is now implemented; its runtime behavior still needs a staging termination/restart exercise.
 - No dedicated liveness/readiness endpoints were observed in the inspected Express app.
 - Operational monitoring, structured request correlation, alert thresholds and incident runbooks need evidence.
 - Add browser-level E2E coverage for critical journeys; current CI has unit/integration tests and build/lint checks but no configured browser E2E job in the inspected workflows.
