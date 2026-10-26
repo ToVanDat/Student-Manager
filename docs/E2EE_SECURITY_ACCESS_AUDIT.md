@@ -145,3 +145,10 @@ No schema change or migration is required because `e2ee_sdk_devices.enabled` alr
 - The update remains scoped to the account, server-assigned slot, linked-device state, token hash, and creation time recorded by the provisioning session.
 - A repository regression test verifies that a failed activation rolls back and does not mark the provisioning session completed.
 - This is a state-transition hardening, not cryptographic proof that the new device decrypted the provisioning payload. The authenticated account session still receives the device token from `completeProvisioning`; a future protocol-level proof requires an SDK-supported challenge/signature or a reviewed SDK extension.
+
+### 9. Expired ACK cleanup must commit before returning a conflict
+
+- Previously, the repository expiry helper could delete an expired pending device and mark its session expired, then throw a conflict from inside the same transaction. That exception caused the transaction wrapper to roll back the cleanup.
+- The ACK repository now returns an internal `expiredOrUnavailable` sentinel after the cleanup path, allowing the transaction to commit. The service maps that sentinel to HTTP 409 only after the repository promise resolves.
+- Regression coverage checks that expired ACK removes the pending device, scrubs session payloads, commits the transaction, and never executes device activation. A service-level test checks the sentinel is translated to a conflict.
+- If expiry occurs in the narrow interval after the initial cleanup scan but before the final ACK update, the ACK remains fail-closed (device stays disabled); cleanup is retried on the next provisioning operation.
