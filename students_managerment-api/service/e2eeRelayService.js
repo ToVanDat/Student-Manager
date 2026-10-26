@@ -200,9 +200,12 @@ const completeProvisioning = async (userId, sessionId, body = {}) => {
     return relayRepository.completeProvisioning(userId, sessionId, body.encryptedDeviceName || null, metadata);
 };
 
-const acknowledgeProvisioning = async (userId, sessionId) => {
+const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => {
     assertSessionId(sessionId);
-    return relayRepository.acknowledgeProvisioning(userId, sessionId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw fail(401, 'Cần xác thực thiết bị E2EE mới');
+    }
+    return relayRepository.acknowledgeProvisioning(userId, sessionId, deviceToken);
 };
 
 const rollbackProvisioning = async (userId, sessionId) => {
