@@ -656,11 +656,11 @@ const enableConversationE2EE = async (requesterId, conversationId) => withTransa
 });
 const expireProvisioningSessions = async (client, userId) => {
     const { rows } = await client.query(
-        \`SELECT session_id, status, assigned_device_id, completed_at
+        `SELECT session_id, status, assigned_device_id, completed_at
          FROM e2ee_sdk_provisioning_sessions
          WHERE owner_user_id = $1 AND expires_at <= NOW()
            AND status NOT IN ('completed', 'rolled_back', 'expired')
-         FOR UPDATE\`,
+         FOR UPDATE`,
         [userId]
     );
     if (!rows.length) return 0;
@@ -670,9 +670,9 @@ const expireProvisioningSessions = async (client, userId) => {
     for (const session of rows) {
         if (session.status === 'linked_pending_ack' && session.assigned_device_id && session.completed_at) {
             await client.query(
-                \`DELETE FROM e2ee_sdk_devices
+                `DELETE FROM e2ee_sdk_devices
                  WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
-                   AND revoked_at IS NULL AND created_at <= $3\`,
+                   AND revoked_at IS NULL AND created_at <= $3`,
                 [userId, session.assigned_device_id, session.completed_at]
             );
         }
@@ -680,11 +680,11 @@ const expireProvisioningSessions = async (client, userId) => {
 
     const sessionIds = rows.map(row => row.session_id);
     await client.query(
-        \`UPDATE e2ee_sdk_provisioning_sessions
+        `UPDATE e2ee_sdk_provisioning_sessions
          SET status = 'expired', new_device_ephemeral_public_key = NULL,
              new_device_metadata = NULL, encrypted_message = NULL, encrypted_device_name = NULL
          WHERE session_id = ANY($1::uuid[]) AND owner_user_id = $2
-           AND status NOT IN ('completed', 'rolled_back', 'expired')\`,
+           AND status NOT IN ('completed', 'rolled_back', 'expired')`,
         [sessionIds, userId]
     );
     return rows.length;
@@ -697,8 +697,8 @@ const createProvisioningSession = async (userId, ephemeralPublicKey) => {
     return withTransaction(async client => {
         await expireProvisioningSessions(client, userId);
         const { rows } = await client.query(
-            \`INSERT INTO e2ee_sdk_provisioning_sessions (session_id, owner_user_id, owner_ephemeral_public_key)
-             VALUES ($1,$2,$3) RETURNING session_id, expires_at\`,
+            `INSERT INTO e2ee_sdk_provisioning_sessions (session_id, owner_user_id, owner_ephemeral_public_key)
+             VALUES ($1,$2,$3) RETURNING session_id, expires_at`,
             [sessionId, userId, ephemeralPublicKey]
         );
         return { sessionId: rows[0].session_id, expiresAt: new Date(rows[0].expires_at).getTime() };
@@ -708,11 +708,11 @@ const createProvisioningSession = async (userId, ephemeralPublicKey) => {
 const connectNewDevice = async (userId, sessionId, ephemeralPublicKey, metadata) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     const { rows } = await client.query(
-        \`UPDATE e2ee_sdk_provisioning_sessions
+        `UPDATE e2ee_sdk_provisioning_sessions
          SET new_device_ephemeral_public_key = $3, new_device_metadata = $4::jsonb, status = 'connected'
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'waiting'
            AND expires_at > NOW()
-         RETURNING session_id\`,
+         RETURNING session_id`,
         [sessionId, userId, ephemeralPublicKey, JSON.stringify(metadata || {})]
     );
     if (!rows[0]) throw httpError(404, 'Phiên liên kết thiết bị không tồn tại hoặc đã hết hạn');
@@ -721,10 +721,10 @@ const connectNewDevice = async (userId, sessionId, ephemeralPublicKey, metadata)
 const sendProvisioningMessage = async (userId, sessionId, encryptedMessage) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     const { rows } = await client.query(
-        \`UPDATE e2ee_sdk_provisioning_sessions SET encrypted_message = $3, status = 'ready'
+        `UPDATE e2ee_sdk_provisioning_sessions SET encrypted_message = $3, status = 'ready'
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'connected'
            AND expires_at > NOW() AND new_device_ephemeral_public_key IS NOT NULL
-         RETURNING session_id\`,
+         RETURNING session_id`,
         [sessionId, userId, encryptedMessage]
     );
     if (!rows[0]) throw httpError(409, 'Phiên liên kết chưa sẵn sàng để gửi gói mã hóa');
@@ -733,9 +733,9 @@ const sendProvisioningMessage = async (userId, sessionId, encryptedMessage) => w
 const getProvisioningMessage = async (userId, sessionId) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     const { rows } = await client.query(
-        \`SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at
+        `SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at
          FROM e2ee_sdk_provisioning_sessions
-         WHERE session_id = $1 AND owner_user_id = $2 LIMIT 1\`,
+         WHERE session_id = $1 AND owner_user_id = $2 LIMIT 1`,
         [sessionId, userId]
     );
     if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết thiết bị');
@@ -750,9 +750,9 @@ const getProvisioningMessage = async (userId, sessionId) => withTransaction(asyn
 const completeProvisioning = async (userId, sessionId, encryptedDeviceName, metadata = {}) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     const sessionResult = await client.query(
-        \`SELECT * FROM e2ee_sdk_provisioning_sessions
+        `SELECT * FROM e2ee_sdk_provisioning_sessions
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'ready' AND expires_at > NOW()
-         FOR UPDATE\`,
+         FOR UPDATE`,
         [sessionId, userId]
     );
     const session = sessionResult.rows[0];
@@ -767,14 +767,14 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     const deviceToken = crypto.randomBytes(32).toString('base64url');
     const deviceTokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     await client.query(
-        \`INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash)
-         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6)\`,
+        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash)
+         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6)`,
         [userId, deviceId, registrationId, metadata.deviceType || 'web', encryptedDeviceName || null, deviceTokenHash]
     );
     await client.query(
-        \`UPDATE e2ee_sdk_provisioning_sessions SET assigned_device_id = $2, encrypted_device_name = $3,
+        `UPDATE e2ee_sdk_provisioning_sessions SET assigned_device_id = $2, encrypted_device_name = $3,
              status = 'linked_pending_ack', completed_at = NOW(), expires_at = NOW() + INTERVAL '5 minutes'
-         WHERE session_id = $1\`,
+         WHERE session_id = $1`,
         [sessionId, deviceId, encryptedDeviceName || null]
     );
     return { deviceId, deviceToken };
@@ -783,9 +783,9 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
 const acknowledgeProvisioning = async (userId, sessionId) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     const { rows } = await client.query(
-        \`UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'
+        `UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' AND expires_at > NOW()
-         RETURNING session_id\`,
+         RETURNING session_id`,
         [sessionId, userId]
     );
     if (!rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
@@ -794,16 +794,16 @@ const acknowledgeProvisioning = async (userId, sessionId) => withTransaction(asy
 const rollbackProvisioning = async (userId, sessionId) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     const { rows } = await client.query(
-        \`SELECT assigned_device_id, completed_at FROM e2ee_sdk_provisioning_sessions
-         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' FOR UPDATE\`,
+        `SELECT assigned_device_id, completed_at FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' FOR UPDATE`,
         [sessionId, userId]
     );
     if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
     if (rows[0].assigned_device_id && rows[0].completed_at) {
         await client.query(
-            \`DELETE FROM e2ee_sdk_devices
+            `DELETE FROM e2ee_sdk_devices
              WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
-               AND revoked_at IS NULL AND created_at <= $3\`,
+               AND revoked_at IS NULL AND created_at <= $3`,
             [userId, rows[0].assigned_device_id, rows[0].completed_at]
         );
     }
@@ -813,8 +813,8 @@ const rollbackProvisioning = async (userId, sessionId) => withTransaction(async 
 const deleteProvisioningSession = async (userId, sessionId) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     await client.query(
-        \`DELETE FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1 AND owner_user_id = $2
-         AND status IN ('waiting', 'connected', 'ready', 'rolled_back', 'expired')\`,
+        `DELETE FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1 AND owner_user_id = $2
+         AND status IN ('waiting', 'connected', 'ready', 'rolled_back', 'expired')`,
         [sessionId, userId]
     );
 });
