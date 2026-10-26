@@ -213,6 +213,19 @@ async function loadAcademicContext(role, question = '') {
     return context;
 }
 
+async function getHistory({ userId, sessionId, redis = redisClient }) {
+    if (!redis.isReady) {
+        const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
+        error.status = 503;
+        throw error;
+    }
+    const historyKey = `assistant:history:${String(userId)}:${String(sessionId)}`;
+    const storedHistory = await redis.get(historyKey);
+    if (!storedHistory) return [];
+    try { return normalizeHistory(JSON.parse(storedHistory)); }
+    catch { return []; }
+}
+
 async function clearHistory({ userId, sessionId, redis = redisClient }) {
     if (!redis.isReady) {
         const error = new Error('Dịch vụ lưu phiên hội thoại chưa sẵn sàng');
@@ -366,4 +379,4 @@ async function answer({ userId, sessionId, role, message, onToken = null }) {
     }
 }
 
-module.exports = { answer, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
+module.exports = { answer, getHistory, clearHistory, normalizeHistory, loadAcademicContext, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig };
