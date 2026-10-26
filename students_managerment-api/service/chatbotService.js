@@ -372,13 +372,20 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
 
         const config = getOllamaConfig();
         const context = await loadAcademicContext(role, message);
+        if (signal?.aborted) throw signal.reason || new Error('Chat request cancelled');
+
         let ragSources = [];
         try {
             ragSources = await ragService.retrieveDocumentContext({ question: message, role, signal });
         } catch (ragError) {
-            // Document retrieval is an optional enrichment until pgvector and the
-            // embedding model are provisioned; preserve the existing catalog assistant.
-            console.error('[RAG] Retrieval skipped:', { message: ragError?.message });
+            if (signal?.aborted) throw ragError;
+            // Document retrieval is optional until pgvector and the embedding model
+            // are provisioned; keep catalog answers available but log the failure.
+            console.error('[RAG] Retrieval skipped:', {
+                stage: ragError?.status === 502 || ragError?.status === 503 ? 'embedding_or_service' : 'retrieval',
+                code: ragError?.code,
+                message: ragError?.message
+            });
         }
         context.documentSources = ragSources.map(source => ({
             title: source.title,
