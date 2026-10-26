@@ -16,8 +16,7 @@ function fail(res, error) {
         return res.status(503).json({ code: 'AUTH_CONFIG_NOT_READY', message });
     }
 
-    if (['42P01', '42703'].includes(error?.code)
-        && /user_webauthn_credentials|user_oauth_accounts|qr_login_requests/i.test(message)) {
+    if (error?.code === '42P01' || error?.code === '42703') {
         console.error('[AdvancedAuth] Required schema unavailable', { code: error.code });
         return res.status(503).json({
             code: 'ADVANCED_AUTH_SCHEMA_NOT_READY',
