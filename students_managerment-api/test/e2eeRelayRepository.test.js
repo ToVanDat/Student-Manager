@@ -243,3 +243,71 @@ test('primary E2EE device slot remains protected from linked-device revocation A
     await assert.rejects(repository.removeDevice(44, 1), error => error.statusCode === 409);
     assert.deepEqual(calls, ['BEGIN', 'ROLLBACK']);
 });
+
+
+test('provisioning serializes device-slot allocation by locking the owning account row', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
+                return { rows: [], rowCount: 0 };
+            }
+            if (statement.startsWith('SELECT * FROM e2ee_sdk_provisioning_sessions')) {
+                return { rows: [{ session_id: 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d' }], rowCount: 1 };
+            }
+            if (statement === 'SELECT id FROM users WHERE id = $1 FOR UPDATE') {
+                return { rows: [{ id: 44 }], rowCount: 1 };
+            }
+            if (statement.startsWith('SELECT device_id FROM e2ee_sdk_devices')) {
+                return { rows: [{ device_id: 1 }, { device_id: 2 }], rowCount: 2 };
+            }
+            if (statement.startsWith('INSERT INTO e2ee_sdk_devices')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET assigned_device_id')) return { rows: [], rowCount: 1 };
+            throw new Error('Unexpected SQL in provisioning allocation test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    const result = await repository.completeProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', null, {});
+    assert.equal(result.deviceId, 3);
+    const accountLock = calls.findIndex(call => call.statement === 'SELECT id FROM users WHERE id = $1 FOR UPDATE');
+    const slotRead = calls.findIndex(call => call.statement.startsWith('SELECT device_id FROM e2ee_sdk_devices'));
+    assert.ok(accountLock > 0);
+    assert.ok(slotRead > accountLock);
+    assert.deepEqual(calls[accountLock].params, [44]);
+});
+
+test('provisioning rollback cannot delete a later device that reused the assigned slot', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
+                return { rows: [], rowCount: 0 };
+            }
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
+                return { rows: [{ assigned_device_id: 2, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [], rowCount: 1 };
+            throw new Error('Unexpected SQL in provisioning rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d');
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.ok(deletion.statement.includes('revoked_at IS NULL'));
+    assert.ok(deletion.statement.includes('created_at <= $3'));
+    assert.deepEqual(deletion.params, [44, 2, completedAt]);
+});
