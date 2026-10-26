@@ -269,6 +269,54 @@ async function ingestTextDocument({ title, sourceName, text: sourceText, visibil
     }
 }
 
+async function setDocumentArchived({ documentId, archived }) {
+    if (typeof documentId !== 'string'
+        || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(documentId)) {
+        const error = new Error('Mã tài liệu không hợp lệ');
+        error.status = 400;
+        throw error;
+    }
+    if (typeof archived !== 'boolean') {
+        const error = new Error('Trạng thái lưu trữ không hợp lệ');
+        error.status = 400;
+        throw error;
+    }
+
+    const query = archived
+        ? `UPDATE assistant_documents
+              SET status = 'archived', archived_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1 AND status IN ('ready', 'failed')
+            RETURNING id, title, source_name, visibility, status, archived_at, updated_at`
+        : `UPDATE assistant_documents d
+              SET status = 'ready', archived_at = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE d.id = $1 AND d.status = 'archived'
+              AND EXISTS (
+                  SELECT 1 FROM assistant_document_chunks c
+                   WHERE c.document_id = d.id
+              )
+            RETURNING id, title, source_name, visibility, status, archived_at, updated_at`;
+
+    try {
+        const result = await pool.query(query, [documentId]);
+        if (!result.rows[0]) {
+            const error = new Error(archived
+                ? 'Không tìm thấy tài liệu có thể lưu trữ'
+                : 'Không tìm thấy tài liệu đã lưu trữ có dữ liệu để khôi phục');
+            error.status = 404;
+            throw error;
+        }
+        return result.rows[0];
+    } catch (error) {
+        if (error?.code === '42703' || error?.code === '23514') {
+            const migrationError = new Error('Cần áp dụng migration vòng đời tài liệu RAG trước khi sử dụng chức năng này');
+            migrationError.status = 503;
+            migrationError.code = 'RAG_ARCHIVE_SCHEMA_NOT_READY';
+            throw migrationError;
+        }
+        throw error;
+    }
+}
+
 async function listDocuments() {
     assertRagSchemaReady(await getRagSchemaReadiness());
     const result = await pool.query(
@@ -326,5 +374,6 @@ module.exports = {
     getAllowedDocumentVisibility,
     assertRagSchemaReady,
     getRagSchemaReadiness,
-    listDocuments
+    listDocuments,
+    setDocumentArchived
 };
