@@ -5,6 +5,11 @@ export const sendChatbotMessage = async message => {
     return response.data;
 };
 
+export const getChatbotHistory = async () => {
+    const response = await apiClient.get('/api/assistant/history');
+    return response.data;
+};
+
 export const clearChatbotHistory = async () => {
     const response = await apiClient.delete('/api/assistant/history');
     return response.data;
