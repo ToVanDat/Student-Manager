@@ -2,9 +2,10 @@ import {useCallback, useEffect, useState} from 'react';
 import { Languages, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
-import { loginApi, beginBiometricLoginApi, finishBiometricLoginApi } from '@/api/authApi.js';
+import { loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
+import FaceLoginCapture from '@/components/auth/FaceLoginCapture.jsx';
 import AdvancedLoginMethods from '@/components/auth/AdvancedLoginMethods.jsx';
 import QrLoginPanel from '@/components/auth/QrLoginPanel.jsx';
 import RegisterForm from '@/components/auth/RegisterForm.jsx';
@@ -34,6 +35,7 @@ function Login() {
 
     const [mode, setMode] = useState('login');
     const [showQrLogin, setShowQrLogin] = useState(false);
+    const [showFaceLogin, setShowFaceLogin] = useState(false);
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -258,54 +260,22 @@ function Login() {
     };
 
 
-    const handleFaceLogin = async () => {
+    const handleFaceLogin = () => {
         setError('');
         setSuccess('');
         if (!username.trim()) {
-            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Face Login.' : 'Enter your username before using device biometric login.');
+            setError(language === 'vi'
+                ? 'Nhập username trước khi đăng nhập bằng Face Login.'
+                : 'Enter your username before using Face Login.');
             return;
         }
-        if (!window.isSecureContext || !navigator.credentials?.get) {
-            setError(language === 'vi' ? 'Face Login cần HTTPS và trình duyệt hỗ trợ xác thực sinh trắc học/WebAuthn.' : 'Device biometric sign-in requires HTTPS and a browser that supports WebAuthn.');
-            return;
-        }
+        setShowFaceLogin(true);
+    };
 
-        setLoading(true);
-        sessionStorage.setItem('auth:login-in-progress', 'true');
-        try {
-            const { challengeId, options } = await beginBiometricLoginApi(username.trim());
-            const publicKey = {
-                ...options,
-                challenge: decodeBase64Url(options.challenge),
-                allowCredentials: (options.allowCredentials || []).map(item => ({
-                    ...item,
-                    id: decodeBase64Url(item.id)
-                }))
-            };
-            const credential = await navigator.credentials.get({ publicKey });
-            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh sinh trắc học.' : 'Device verification was cancelled.');
-            const response = {
-                id: credential.id,
-                rawId: encodeBase64Url(credential.rawId),
-                type: credential.type,
-                authenticatorAttachment: credential.authenticatorAttachment,
-                response: {
-                    clientDataJSON: encodeBase64Url(credential.response.clientDataJSON),
-                    authenticatorData: encodeBase64Url(credential.response.authenticatorData),
-                    signature: encodeBase64Url(credential.response.signature),
-                    userHandle: credential.response.userHandle ? encodeBase64Url(credential.response.userHandle) : null
-                },
-                clientExtensionResults: credential.getClientExtensionResults()
-            };
-            const data = await finishBiometricLoginApi(challengeId, response);
-            loginUser(data);
-            navigate('/students?view=dashboard', { replace: true });
-        } catch (error) {
-            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập sinh trắc học thất bại.' : 'Device biometric sign-in failed.'));
-        } finally {
-            sessionStorage.removeItem('auth:login-in-progress');
-            setLoading(false);
-        }
+    const handleFaceLoginSuccess = data => {
+        loginUser(data);
+        setShowFaceLogin(false);
+        navigate('/students?view=dashboard', { replace: true });
     };
 
     // =================================================
@@ -680,6 +650,13 @@ function Login() {
                     <div className="mt-7 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">
                         Student Manager · Secure account access
                     </div>
+                    {showFaceLogin && (
+                        <FaceLoginCapture
+                            username={username.trim()}
+                            onClose={() => setShowFaceLogin(false)}
+                            onSuccess={handleFaceLoginSuccess}
+                        />
+                    )}
                 </div>
             </section>
         </main>
