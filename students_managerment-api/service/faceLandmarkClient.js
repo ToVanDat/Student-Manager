@@ -62,6 +62,11 @@ async function detectFaceLandmarks(imageBuffer) {
         !result.bbox || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(result.bbox[key]))) {
         throw serviceError('Landmark service returned invalid coordinates');
     }
+    const requiredSignals = ['eyeBlinkLeft', 'eyeBlinkRight', 'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
+    if (!result.liveness || requiredSignals.some(key =>
+        !Number.isFinite(result.liveness[key]) || result.liveness[key] < 0 || result.liveness[key] > 1)) {
+        throw serviceError('Landmark service returned incomplete liveness signals', 'FACE_LIVENESS_SIGNALS_INVALID');
+    }
     return result;
 }
 
