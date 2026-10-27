@@ -149,6 +149,24 @@ jobs:
             IF (SELECT COUNT(*) FROM student_account_link_audit) <> 1 THEN
               RAISE EXCEPTION 'expected one audit event';
             END IF;
+            BEGIN
+              DELETE FROM students WHERE id = 1;
+              RAISE EXCEPTION 'deleting a linked student must be blocked';
+            EXCEPTION WHEN foreign_key_violation THEN
+              NULL;
+            END;
+            BEGIN
+              DELETE FROM users WHERE id = 2;
+              RAISE EXCEPTION 'deleting a linked user must be blocked';
+            EXCEPTION WHEN foreign_key_violation THEN
+              NULL;
+            END;
+            IF (SELECT COUNT(*) FROM student_account_links) <> 1 THEN
+              RAISE EXCEPTION 'linked mapping must survive rejected parent deletion';
+            END IF;
+            IF (SELECT COUNT(*) FROM student_account_link_audit) <> 1 THEN
+              RAISE EXCEPTION 'audit event must survive rejected parent deletion';
+            END IF;
           END $verify$;
           SQL
 
