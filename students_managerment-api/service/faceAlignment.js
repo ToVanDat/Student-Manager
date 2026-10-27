@@ -163,6 +163,16 @@ function prepareFaceTensors(rgb, width, height, landmarks) {
     if (!landmarks || landmarks.width !== width || landmarks.height !== height) {
         throw invalid('Server landmark dimensions do not match decoded image');
     }
+    validateFivePoints(landmarks.five);
+    if (landmarks.five.some(([x, y]) => x < 0 || y < 0 || x >= width || y >= height)) {
+        throw invalid('Server landmarks fall outside the decoded image');
+    }
+    const bbox = landmarks.bbox;
+    if (!bbox || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(bbox[key])) ||
+        bbox.x < 0 || bbox.y < 0 || bbox.width < 40 || bbox.height < 40 ||
+        bbox.x + bbox.width > width + 1 || bbox.y + bbox.height > height + 1) {
+        throw invalid('Server face bounding box is outside the decoded image');
+    }
     const aligned = alignRgbFace(rgb, width, height, landmarks.five);
     const padCrop = cropPadRgb(rgb, width, height, landmarks.bbox, 2.7);
     return {
