@@ -597,20 +597,8 @@ function Login() {
                     </div>
                 </div>
 
-                <style>{`
-                    @keyframes authCardEnter {
-                        from { opacity: 0; transform: translate3d(0, 18px, 0) scale(.992); }
-                        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-                    }
-                    @media (prefers-reduced-motion: no-preference) {
-                        .auth-login-card { animation: authCardEnter 720ms cubic-bezier(.22,1,.36,1) both; }
-                    }
-                    @media (prefers-reduced-motion: reduce) {
-                        .auth-login-card { animation: none !important; }
-                    }
-                `}</style>
-                <div className="auth-login-card w-full max-w-[460px] rounded-[28px] border border-slate-200/80 bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 min-[801px]:px-10">
-                    <div className="mb-7 flex items-center gap-3 sm:mb-9">
+                <div data-auth-motion className="auth-login-card w-full max-w-[460px] rounded-[28px] border border-slate-200/80 bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 min-[801px]:px-10">
+                    <div className="auth-brand-row mb-7 flex items-center gap-3 sm:mb-9">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold tracking-wide text-white">
                             SM
                         </div>
@@ -620,7 +608,7 @@ function Login() {
                         </div>
                     </div>
 
-                    <div className="mb-6">
+                    <div className="auth-heading mb-6">
                         <p className="mb-2 inline-flex text-xs font-semibold text-blue-700">
                             {mode === 'login' ? 'STUDENT MANAGER' : mode === 'register' ? 'CREATE ACCOUNT' : 'ACCOUNT RECOVERY'}
                         </p>
@@ -636,6 +624,7 @@ function Login() {
                         </p>
                     </div>
 
+                    <div key={mode} className="auth-mode-panel">
                     {mode === 'login' && (
                         <>
                             {renderLogin()}
@@ -686,6 +675,7 @@ function Login() {
                             setSuccess={setSuccess}
                         />
                     )}
+                    </div>
 
                     <div className="mt-7 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">
                         Student Manager · Secure account access
