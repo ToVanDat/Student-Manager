@@ -2,7 +2,6 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const { redisClient } = require('../src/config/redis.js');
 const authRepository = require('../repository/authRepository');
 const emailService = require('./emailService.js');
 
