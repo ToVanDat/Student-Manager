@@ -98,10 +98,13 @@ Do not log plaintext, private keys, shared secrets, proof keys, proof bytes, or 
 
 - Source audit: complete for the files listed above.
 - Proof protocol and deterministic vector: specified in the companion documents.
-- Upstream SDK source fork: not created.
-- SDK source patch: not applied.
-- Backend proof verification/schema: not implemented.
-- Runtime tests and CI for this work: not run.
+- Upstream SDK source fork: not created; the available GitHub integration cannot create a repository/fork.
+- SDK source patch: not applied; the frontend still uses the pinned upstream v11.0.0 package.
+- Backend: an opt-in proof-v1 persistence and ACK gate has been implemented on the application branch. It stores a 32-byte challenge, primary commitment, exact-ciphertext SHA-256 digest, proof-consumption timestamp, and ACK digest. The primary commitment is never returned by the message-read endpoint. Proof-enabled sessions reject missing proofs; invalid proofs do not activate the pending device. ACK and owner abort continue to lock the same session row.
+- Additive migration: `students_managerment-api/sql/e2ee_provisioning_proof_v1_migration.sql`; it has not been applied to any user or production database. CI migration-smoke and PostgreSQL integration are configured to apply it only to disposable test databases.
+- Backend verification is a constant-time equality check of the receiver's proof against the primary's stored commitment, plus a re-check of the stored ciphertext digest. The server does not possess the ECDH secret and cannot independently derive the HMAC. Correct transcript construction and post-decryption proof generation remain SDK responsibilities; this is not remote attestation.
+- Frontend adapter does not request proof protocol v1 yet. Existing sessions remain legacy; do not enable v1 from the UI until the patched SDK is built, pinned, and proven interoperable.
+- Latest backend code and tests have been committed, but the CI runs for those commits must be checked before claiming the integration gates passed.
 
 
 ## Backend schema baseline inspected
