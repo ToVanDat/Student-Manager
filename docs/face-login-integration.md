@@ -46,6 +46,7 @@ The existing `/api/auth/biometric-login/*` endpoints currently alias Passkey/Web
 - `faceTemplateCrypto.js` uses AES-256-GCM, a random 12-byte nonce, a 16-byte tag, and account/model/version-bound AAD.
 - The keyring supports `FACE_TEMPLATE_ENCRYPTION_KEYS` as a JSON object keyed by key version, with `FACE_TEMPLATE_KEY_VERSION` selecting the active key. For a single initial key, `FACE_TEMPLATE_ENCRYPTION_KEY` is accepted for the active version.
 - `faceAuthService.storeVerifiedTemplate` and `compareVerifiedTemplate` are internal service functions. They must only be called after trusted server-side inference; no public route accepts a browser-supplied embedding.
+- `completeLoginAfterTrustedInference` is an internal completion boundary: after a trusted inference caller supplies the verified live embedding, it checks the account-bound one-time challenge, compares the template, and delegates session/AT/RT creation to the existing `advancedAuthService.issueSession`. The public login verify route remains fail-closed until the trusted inference caller exists.
 - Face Login settings show the credential status and provide a disable action. Enrollment remains disabled in the UI until trusted server inference is deployed.
 
 ## Local server configuration
