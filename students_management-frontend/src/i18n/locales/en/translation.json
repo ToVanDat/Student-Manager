@@ -624,5 +624,10 @@
   "studentCalls": "Calls",
   "studentCallsDetail": "Open the calling space",
   "studentAccountSettings": "Account settings",
-  "studentAccountSettingsDetail": "Profile and security"
+  "studentAccountSettingsDetail": "Profile and security",
+  "authProgress": "Authentication progress",
+  "authStepOf": "Step {{current}} of {{total}}",
+  "forgotStepEmail": "Email",
+  "forgotStepOtp": "Verify OTP",
+  "forgotStepPassword": "New password"
 }
