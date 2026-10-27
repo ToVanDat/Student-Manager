@@ -12,7 +12,7 @@ Required release gates:
 - `FACE_MATCH_THRESHOLD`: calibrated 1:1 identity threshold
 - `FACE_TEMPLATE_ENCRYPTION_KEY` and `FACE_TEMPLATE_KEY_VERSION`
 - `onnxruntime-node` installed and lockfile synchronized
-- Verified model files in `FACE_MODEL_DIR` with the expected SHA-256 hashes. The supplied archive layout is supported (`recognition/mobile_facenet.onnx`, `recognition/mobile_facenet.data`, `anti-spoofing/minifasnet-v2.onnx`); the extra top-level `face-models/` directory created when extracting into the model directory is also supported.
+- Verified model files and `recognition/metadata.json` in `FACE_MODEL_DIR` with the expected SHA-256 hashes. The supplied archive layout is supported (`recognition/mobile_facenet.onnx`, `recognition/mobile_facenet.data`, `anti-spoofing/minifasnet-v2.onnx`); the extra top-level `face-models/` directory created when extracting into the model directory is also supported.
 
 Install and lock the native runtime from the API directory before model smoke testing:
 
