@@ -12,6 +12,7 @@ export const e2eeRelayApi = {
     completeProvisioning: (sessionId, payload) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/complete`, payload),
     acknowledgeProvisioning: (sessionId, token) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/ack`, {}, deviceAuth(token)),
     rollbackProvisioning: (sessionId, token) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/rollback`, {}, deviceAuth(token)),
+    abortProvisioningSession: (sessionId) => client.post(`${root}/provisioning/${encodeURIComponent(sessionId)}/abort`, {}),
     deleteProvisioningSession: (sessionId) => client.delete(`${root}/provisioning/${encodeURIComponent(sessionId)}`),
     getDevices: (userId) => client.get(`${root}/users/${encodeURIComponent(userId)}/devices`),
     getIdentityKey: (userId, identityType = 'aci') => client.get(`${root}/users/${encodeURIComponent(userId)}/identity`, { params: { identityType } }),
