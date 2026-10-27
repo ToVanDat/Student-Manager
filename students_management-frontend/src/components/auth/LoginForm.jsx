@@ -21,7 +21,7 @@ function LoginForm({
     const { t } = useLanguage();
 
     return (
-        <form className="flex w-full flex-col gap-4" onSubmit={onSubmit}>
+        <form className="auth-form-content flex w-full flex-col gap-4" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
                 <label htmlFor="login-username" className="text-sm font-medium text-slate-700">{t('username')}</label>
                 <input
