@@ -12,6 +12,8 @@ const authRateLimiter =
     require('../middleware/authRateLimiter.js');
 const biometricAuthRateLimiter =
     require('../middleware/biometricAuthRateLimiter.js');
+const faceAuthRateLimiter =
+    require('../middleware/faceAuthRateLimiter.js');
 const loginRateLimiter =
     require('../middleware/loginRateLimiter.js');
 
@@ -23,7 +25,18 @@ const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
 const avatarController = require('../controller/avatarController');
 const userPreferencesController = require('../controller/userPreferencesController.js');
 const advancedAuthController = require('../controller/advancedAuthController.js');
+const faceAuthController = require('../controller/faceAuthController.js');
 
+
+
+// Application-managed Face Login is separate from Passkey/WebAuthn.
+// Login and enrollment remain fail-closed until server-side model inference/PAD is deployed.
+router.get('/face/status', authMiddleware, faceAuthController.status);
+router.post('/face/enrollment/options', authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
+router.post('/face/enrollment/verify', authMiddleware, faceAuthRateLimiter, faceAuthController.finishEnrollment);
+router.delete('/face/credential', authMiddleware, faceAuthRateLimiter, faceAuthController.disable);
+router.post('/face/login/options', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.beginLogin);
+router.post('/face/login/verify', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.finishLogin);
 
 // Advanced account authentication. These routes reuse the existing JWT/session middleware.
 router.post('/google/login', requireTrustedOrigin, authRateLimiter, advancedAuthController.loginGoogle);
