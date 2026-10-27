@@ -1,6 +1,6 @@
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import socket from '@/socket/socket.js';
-import { getE2EEDeviceCredential, saveE2EEDeviceCredential, deleteE2EEDeviceCredential, setPendingE2EEProvisioningRollback, getPendingE2EEProvisioningRollback, saveE2EEProvisioningRecovery, getE2EEProvisioningRecoveryRecords, finalizeE2EEProvisioningRecovery, completeE2EEProvisioningRecovery, markE2EEProvisioningPhase } from './e2eeDeviceCredentialStore';
+import { getE2EEDeviceCredential, saveE2EEDeviceCredential, deleteE2EEDeviceCredential, setPendingE2EEProvisioningRollback, getPendingE2EEProvisioningRollback, saveE2EEProvisioningRecovery, getE2EEProvisioningRecoveryRecords, finalizeE2EEProvisioningRecovery, completeE2EEProvisioningRecovery, markE2EEProvisioningPhase, saveE2EEProvisioningOwnerRecovery, finalizeE2EEProvisioningOwnerRecovery } from './e2eeDeviceCredentialStore';
 import { getStoredE2EEDeviceId, setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
 
 const unwrap = response => response?.data?.data;
@@ -98,7 +98,16 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         try {
             // Enumerate from the credential DB, not the independent device-state DB.
             const records = await getE2EEProvisioningRecoveryRecords(userId);
-            const pending = records.filter(record => record.phase !== 'completed');
+            const ownerPending = records.filter(record => record.kind === 'owner');
+            for (const ownerRecord of ownerPending) {
+                const result = unwrap(await e2eeRelayApi.abortProvisioningSession(ownerRecord.sessionId));
+                if (result?.aborted || result?.alreadyFinalized || result?.alreadyCompleted) {
+                    await finalizeE2EEProvisioningOwnerRecovery(userId, ownerRecord.sessionId);
+                } else {
+                    throw new Error('Owner provisioning abort did not reach a confirmed terminal state');
+                }
+            }
+            const pending = records.filter(record => record.kind !== 'owner' && record.phase !== 'completed');
             for (const record of pending) {
                 const deviceId = Number(record.deviceId);
                 const sessionId = record.sessionId;
@@ -438,6 +447,18 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             return unwrap(await e2eeRelayApi.getProvisioningMessage(sessionId));
         },
 
+        async prepareProvisioningRecovery(sessionId) {
+            await saveE2EEProvisioningOwnerRecovery(userId, sessionId);
+        },
+
+        async abortProvisioningSession(sessionId) {
+            const result = unwrap(await e2eeRelayApi.abortProvisioningSession(sessionId));
+            if (result?.aborted || result?.alreadyFinalized || result?.alreadyCompleted) {
+                await finalizeE2EEProvisioningOwnerRecovery(userId, sessionId);
+            }
+            return result;
+        },
+
         async completeProvisioning(sessionId, deviceMetadata = {}) {
             const payload = {
                 ...deviceMetadata,
@@ -454,6 +475,7 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
                 currentDeviceId = Number(result.deviceId);
                 // Persist token + journal atomically before the separate device-state write.
                 await saveE2EEProvisioningRecovery(userId, currentDeviceId, result.deviceToken, sessionId);
+                await finalizeE2EEProvisioningOwnerRecovery(userId, sessionId);
                 await setStoredE2EEDeviceId(userId, currentDeviceId);
             }
             return result;
