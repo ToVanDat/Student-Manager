@@ -18,6 +18,7 @@ test('rejects an access token when its PostgreSQL session is revoked even if Red
         },
     );
 
+    const previousJwtSecret = process.env.JWT_SECRET;
     process.env.JWT_SECRET = 'session-middleware-test-secret';
 
     const redisClient = {
@@ -78,5 +79,7 @@ test('rejects an access token when its PostgreSQL session is revoked even if Red
         delete require.cache[middlewarePath];
         delete require.cache[repositoryPath];
         delete require.cache[redisConfigPath];
+        if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;
+        else process.env.JWT_SECRET = previousJwtSecret;
     });
 });
