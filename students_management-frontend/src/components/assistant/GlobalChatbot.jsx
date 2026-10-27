@@ -326,20 +326,24 @@ export default function GlobalChatbot() {
             : assistantTitle;
 
     return (
-        <div className="fixed bottom-4 right-4 z-[70] sm:bottom-5 sm:right-5">
+        <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[70]">
             {open && (
                 <section
-                    className="fixed inset-2 flex flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_28px_100px_-30px_rgba(15,23,42,.55)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-16 sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(500px,calc(100vw-40px))]"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="global-assistant-title"
+                    onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}
+                    className="fixed inset-x-0 bottom-0 flex h-[min(88dvh,820px)] flex-col overflow-hidden rounded-t-[26px] border border-slate-200/90 bg-[#fbfcff] shadow-[0_24px_90px_-28px_rgba(15,23,42,.48)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-[76px] sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(440px,calc(100vw-32px))] sm:rounded-[24px]"
                     aria-label={vi ? 'Trợ lý Student Manager' : 'Student Manager assistant'}
                     aria-live="off"
                 >
-                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
+                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-5 sm:py-3.5">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
                             <Sparkles size={19} />
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                                <h2 className="m-0 truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">{panelTitle}</h2>
+                                <h2 id="global-assistant-title" className="m-0 truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">{panelTitle}</h2>
                                 {!showKnowledgeManager && !showConversationList && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">AI</span>}
                             </div>
                             <p className="m-0 mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
@@ -544,8 +548,8 @@ export default function GlobalChatbot() {
                 </section>
             )}
             {!open && (
-                <button type="button" onClick={() => setOpen(true)} className="ml-auto flex size-14 items-center justify-center rounded-[20px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-950/25 transition hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} title={assistantTitle}>
-                    <MessageCircle size={23} />
+                <button type="button" onClick={() => setOpen(true)} className="group flex size-14 items-center justify-center rounded-full border border-white/70 bg-blue-600 text-white shadow-[0_10px_30px_-8px_rgba(37,99,235,.65)] transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.04] hover:bg-blue-700 hover:shadow-[0_14px_34px_-8px_rgba(37,99,235,.7)] active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} aria-expanded={open} aria-haspopup="dialog" title={assistantTitle}>
+                    <MessageCircle size={23} className="transition-transform duration-200 group-hover:scale-105" />
                 </button>
             )}
         </div>

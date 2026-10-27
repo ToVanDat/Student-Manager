@@ -64,6 +64,134 @@ jobs:
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/advanced_auth_features_migration.sql
           psql -h localhost -U postgres -d e2ee_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/advanced_auth_features_migration.sql
 
+  student-account-link-migration-smoke:
+    name: Student account-link migration smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: student_link_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d student_link_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Create minimal application schema fixture
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d student_link_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE users (
+            id BIGSERIAL PRIMARY KEY,
+            username TEXT,
+            full_name TEXT,
+            email TEXT,
+            role TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE
+          );
+          CREATE TABLE students (id BIGSERIAL PRIMARY KEY);
+          CREATE TABLE permissions (
+            permission_key TEXT PRIMARY KEY,
+            module_key TEXT NOT NULL,
+            label_vi TEXT NOT NULL,
+            label_en TEXT NOT NULL,
+            description_vi TEXT NOT NULL DEFAULT '',
+            description_en TEXT NOT NULL DEFAULT '',
+            is_sensitive BOOLEAN NOT NULL DEFAULT FALSE
+          );
+          CREATE TABLE role_permissions (
+            role TEXT NOT NULL,
+            permission_key TEXT NOT NULL REFERENCES permissions(permission_key),
+            allowed BOOLEAN NOT NULL DEFAULT FALSE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (role, permission_key)
+          );
+          INSERT INTO users (username, full_name, email, role)
+          VALUES ('admin-smoke', 'Admin Smoke', 'admin-smoke@example.invalid', 'admin'),
+                 ('student-smoke', 'Student Smoke', 'student-smoke@example.invalid', 'user');
+          INSERT INTO students DEFAULT VALUES;
+          SQL
+      - name: Apply base and workflow migrations (workflow migration idempotency)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d student_link_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/student_account_link_schema_migration.sql
+          psql -h localhost -U postgres -d student_link_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/student_account_link_admin_workflow_migration.sql
+          psql -h localhost -U postgres -d student_link_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/student_account_link_admin_workflow_migration.sql
+          psql -h localhost -U postgres -d student_link_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO student_account_links
+            (user_id, student_id, verified_at, verified_by, verification_method, verification_note)
+          VALUES (2, 1, CURRENT_TIMESTAMP, 1, 'admin_manual_review', 'Verified against registrar records');
+          INSERT INTO student_account_link_audit
+            (action, user_id, student_id, actor_user_id, verification_method, note)
+          VALUES ('linked', '2', '1', '1', 'admin_manual_review', 'Verified against registrar records');
+          DO $verify$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM role_permissions
+              WHERE role = 'admin' AND permission_key = 'students.link_accounts' AND allowed = TRUE
+            ) THEN RAISE EXCEPTION 'admin link permission was not seeded'; END IF;
+            IF NOT EXISTS (
+              SELECT 1 FROM role_permissions
+              WHERE role = 'user' AND permission_key = 'students.link_accounts' AND allowed = FALSE
+            ) THEN RAISE EXCEPTION 'user link permission must remain denied'; END IF;
+            IF (SELECT COUNT(*) FROM student_account_links) <> 1 THEN
+              RAISE EXCEPTION 'expected exactly one verified account link';
+            END IF;
+            IF (SELECT COUNT(*) FROM student_account_link_audit) <> 1 THEN
+              RAISE EXCEPTION 'expected one audit event';
+            END IF;
+            BEGIN
+              DELETE FROM students WHERE id = 1;
+              RAISE EXCEPTION 'deleting a linked student must be blocked';
+            EXCEPTION WHEN foreign_key_violation THEN
+              NULL;
+            END;
+            BEGIN
+              DELETE FROM users WHERE id = 2;
+              RAISE EXCEPTION 'deleting a linked user must be blocked';
+            EXCEPTION WHEN foreign_key_violation THEN
+              NULL;
+            END;
+            IF (SELECT COUNT(*) FROM student_account_links) <> 1 THEN
+              RAISE EXCEPTION 'linked mapping must survive rejected parent deletion';
+            END IF;
+            IF (SELECT COUNT(*) FROM student_account_link_audit) <> 1 THEN
+              RAISE EXCEPTION 'audit event must survive rejected parent deletion';
+            END IF;
+            BEGIN
+              UPDATE student_account_link_audit SET note = 'tampered' WHERE id = 1;
+              RAISE EXCEPTION 'audit UPDATE must be blocked';
+            EXCEPTION WHEN SQLSTATE '55000' THEN
+              NULL;
+            END;
+            BEGIN
+              DELETE FROM student_account_link_audit WHERE id = 1;
+              RAISE EXCEPTION 'audit DELETE must be blocked';
+            EXCEPTION WHEN SQLSTATE '55000' THEN
+              NULL;
+            END;
+            BEGIN
+              TRUNCATE student_account_link_audit;
+              RAISE EXCEPTION 'audit TRUNCATE must be blocked';
+            EXCEPTION WHEN SQLSTATE '55000' THEN
+              NULL;
+            END;
+            IF (SELECT COUNT(*) FROM student_account_link_audit) <> 1
+               OR (SELECT note FROM student_account_link_audit WHERE id = 1) <> 'Verified against registrar records' THEN
+              RAISE EXCEPTION 'audit history must remain unchanged after rejected mutations';
+            END IF;
+          END $verify$;
+          SQL
+
   test-api:
     runs-on: ubuntu-latest
     defaults:

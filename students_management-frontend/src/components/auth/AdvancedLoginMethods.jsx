@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
 import { googleLoginApi } from '@/api/authApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
@@ -117,7 +116,6 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
             {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                 <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
             )}
-            <p className="text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật.</p>
         </div>
     );
 }

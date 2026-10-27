@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Fingerprint, Link2, Trash2, Unlink } from 'lucide-react';
+import { Fingerprint, Link2, Trash2, Unlink, ShieldCheck } from 'lucide-react';
 import {
     beginPasskeyRegistrationApi, finishPasskeyRegistrationApi, listPasskeysApi,
     deletePasskeyApi, linkGoogleApi, getGoogleLinkApi, unlinkGoogleApi,
-    beginSensitiveReauthApi, finishSensitiveReauthApi
+    beginSensitiveReauthApi, finishSensitiveReauthApi, getBiometricLoginStatusApi
 } from '@/api/authApi.js';
 
 const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), c => c.charCodeAt(0));
@@ -11,6 +11,7 @@ const encode = value => btoa(String.fromCharCode(...new Uint8Array(value))).repl
 
 export default function AdvancedSecurityMethods() {
     const [credentials, setCredentials] = useState([]);
+    const [biometricStatus, setBiometricStatus] = useState(null);
     const [passkeysLoading, setPasskeysLoading] = useState(true);
     const [passkeysError, setPasskeysError] = useState('');
     const [googleStatusLoading, setGoogleStatusLoading] = useState(true);
@@ -30,9 +31,10 @@ export default function AdvancedSecurityMethods() {
         setGoogleStatusLoading(true);
         setPasskeysError('');
         setGoogleStatusError('');
-        const [passkeysResult, googleResult] = await Promise.allSettled([
+        const [passkeysResult, googleResult, biometricResult] = await Promise.allSettled([
             listPasskeysApi(),
-            getGoogleLinkApi()
+            getGoogleLinkApi(),
+            getBiometricLoginStatusApi()
         ]);
         const errors = [];
 
@@ -40,6 +42,12 @@ export default function AdvancedSecurityMethods() {
             setCredentials(passkeysResult.value);
         } else {
             setPasskeysError(passkeysResult.reason?.response?.data?.message || 'Không tải được danh sách passkey. Kiểm tra đăng nhập và bảng user_webauthn_credentials.');
+        }
+
+        if (biometricResult.status === 'fulfilled') {
+            setBiometricStatus(biometricResult.value);
+        } else {
+            setBiometricStatus(null);
         }
 
         if (googleResult.status === 'fulfilled') {
@@ -213,13 +221,17 @@ export default function AdvancedSecurityMethods() {
         <section className="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
                 <Fingerprint size={19} className="text-blue-600" />
-                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Passkey và tài khoản Google</h3>
+                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Face Login, Passkey và tài khoản Google</h3>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Passkey có thể dùng Face ID, Windows Hello, vân tay hoặc PIN tùy thiết bị. Hệ điều hành thực hiện xác minh; ứng dụng không nhận hay lưu ảnh khuôn mặt và máy chủ chỉ lưu khóa công khai. Google chỉ liên kết sau khi bạn xác thực trong phiên tài khoản hiện tại.
+                Face Login sử dụng xác thực sinh trắc học của thiết bị thông qua WebAuthn. Thiết bị có thể dùng Face ID, Windows Hello, vân tay hoặc PIN tùy khả năng hỗ trợ; ứng dụng không nhận hay lưu ảnh khuôn mặt hoặc mẫu sinh trắc học. Máy chủ chỉ lưu khóa công khai. Google chỉ liên kết sau khi bạn xác thực trong phiên tài khoản hiện tại.
             </p>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-200"><ShieldCheck size={15} /> Xác thực thiết bị cho Face Login</div>
+                <span className={((biometricStatus?.configured ?? (credentials.length > 0))) ? 'rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'rounded-full bg-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300'}>{(biometricStatus?.configured ?? (credentials.length > 0)) ? `Đã đăng ký ${biometricStatus?.credentialCount ?? credentials.length} Passkey` : 'Chưa thiết lập'}</span>
+            </div>
             <button type="button" disabled={busy} onClick={registerPasskey} className="mb-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-                <Fingerprint size={16} /> Đăng ký Passkey (sinh trắc học trên thiết bị)
+                <Fingerprint size={16} /> {credentials.length ? 'Thêm thiết bị xác thực' : 'Bật Face Login trên thiết bị'}
             </button>
             <div className="mb-4 space-y-2">
                 {credentials.map(item => (
@@ -233,7 +245,7 @@ export default function AdvancedSecurityMethods() {
                 ))}
                 {passkeysLoading && <p role="status" className="text-xs text-slate-500">Đang tải danh sách passkey…</p>}
                 {!passkeysLoading && passkeysError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{passkeysError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">Thử lại</button></div>}
-                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa đăng ký passkey trên tài khoản này.</p>}
+                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa đăng ký Passkey. Hãy thiết lập trên thiết bị đang sử dụng để bật đăng nhập sinh trắc học nếu thiết bị hỗ trợ.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
             {googleStatusLoading && <p role="status" className="text-xs text-slate-500">Đang kiểm tra trạng thái Google…</p>}

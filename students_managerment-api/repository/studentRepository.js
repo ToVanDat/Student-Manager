@@ -226,9 +226,187 @@ const deleteStudent = async (id) => {
     return result.rows[0];
 };
 
+const getStudentPortalByUserId = async (userId) => {
+    // Only a verified, backend-created mapping may expose a student's private academic record.
+    // Never infer ownership from matching email addresses or browser-supplied student IDs.
+    const studentResult = await pool.query(`
+        SELECT s.id, s.student_code, s.name, s.email, s.date_of_birth, s.gender,
+               s.class_id, c.class_code, c.class_name, d.department_code, d.department_name
+        FROM student_account_links sal
+        JOIN students s ON s.id = sal.student_id
+        LEFT JOIN classes c ON c.id = s.class_id
+        LEFT JOIN departments d ON d.id = c.department_id
+        WHERE sal.user_id = $1 AND sal.verified_at IS NOT NULL
+        LIMIT 1
+    `, [userId]);
+    const student = studentResult.rows[0] || null;
+    if (!student) return { linked: false, student: null, enrollments: [] };
+
+    const enrollmentResult = await pool.query(`
+        SELECT e.id, e.subject_id, sub.subject_code, sub.subject_name, sub.credits,
+               e.semester_id, sem.semester_name, sem.academic_year,
+               e.midterm_score, e.final_score, e.total_score
+        FROM enrollments e
+        JOIN subjects sub ON sub.id = e.subject_id
+        JOIN semesters sem ON sem.id = e.semester_id
+        WHERE e.student_id = $1
+        ORDER BY sem.id DESC, sub.subject_code ASC, e.id ASC
+    `, [student.id]);
+    return { linked: true, student, enrollments: enrollmentResult.rows };
+};
+
+
+const listStudentAccountLinkAdminData = async (search = '') => {
+    const term = String(search || '').trim();
+    const pattern = `%${term}%`;
+    const [linkedResult, usersResult, studentsResult, auditResult] = await Promise.all([
+        pool.query(`
+            SELECT sal.user_id, sal.student_id, sal.verified_at, sal.verification_method,
+                   sal.verification_note, sal.verified_by,
+                   u.username, u.full_name, u.email,
+                   st.student_code, st.name AS student_name, st.email AS student_email,
+                   st.class_id, c.class_code, c.class_name,
+                   verifier.username AS verified_by_username
+            FROM student_account_links sal
+            JOIN users u ON u.id = sal.user_id
+            JOIN students st ON st.id = sal.student_id
+            LEFT JOIN classes c ON c.id = st.class_id
+            LEFT JOIN users verifier ON verifier.id = sal.verified_by
+            WHERE ($1 = '' OR u.username ILIKE $2 OR u.email ILIKE $2
+                   OR u.full_name ILIKE $2 OR st.student_code ILIKE $2
+                   OR st.name ILIKE $2 OR st.email ILIKE $2)
+            ORDER BY sal.verified_at DESC, sal.user_id DESC
+            LIMIT 100
+        `, [term, pattern]),
+        pool.query(`
+            SELECT u.id, u.username, u.full_name, u.email
+            FROM users u
+            WHERE u.role = 'user' AND u.is_active = TRUE
+              AND NOT EXISTS (SELECT 1 FROM student_account_links sal WHERE sal.user_id = u.id)
+              AND ($1 = '' OR u.username ILIKE $2 OR u.email ILIKE $2 OR u.full_name ILIKE $2)
+            ORDER BY u.username ASC
+            LIMIT 50
+        `, [term, pattern]),
+        pool.query(`
+            SELECT st.id, st.student_code, st.name, st.email, st.class_id,
+                   c.class_code, c.class_name
+            FROM students st
+            LEFT JOIN classes c ON c.id = st.class_id
+            WHERE NOT EXISTS (SELECT 1 FROM student_account_links sal WHERE sal.student_id = st.id)
+              AND ($1 = '' OR st.student_code ILIKE $2 OR st.name ILIKE $2 OR st.email ILIKE $2)
+            ORDER BY st.student_code ASC
+            LIMIT 50
+        `, [term, pattern]),
+        pool.query(`
+            SELECT a.id, a.action, a.user_id, a.student_id, a.verification_method,
+                   a.note, a.occurred_at, actor.username AS actor_username,
+                   u.username, st.student_code, st.name AS student_name
+            FROM student_account_link_audit a
+            LEFT JOIN users actor ON actor.id::text = a.actor_user_id
+            LEFT JOIN users u ON u.id::text = a.user_id
+            LEFT JOIN students st ON st.id::text = a.student_id
+            ORDER BY a.occurred_at DESC, a.id DESC
+            LIMIT 20
+        `)
+    ]);
+
+    return {
+        linked: linkedResult.rows,
+        availableUsers: usersResult.rows,
+        availableStudents: studentsResult.rows,
+        audit: auditResult.rows
+    };
+};
+
+const createVerifiedStudentAccountLink = async ({ userId, studentId, actorId, note }) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const userResult = await client.query(
+            'SELECT id, role, is_active FROM users WHERE id = $1 FOR UPDATE',
+            [userId]
+        );
+        if (!userResult.rowCount || userResult.rows[0].role !== 'user' || !userResult.rows[0].is_active) {
+            await client.query('ROLLBACK');
+            return { kind: 'user_unavailable' };
+        }
+
+        const studentResult = await client.query(
+            'SELECT id FROM students WHERE id = $1 FOR UPDATE',
+            [studentId]
+        );
+        if (!studentResult.rowCount) {
+            await client.query('ROLLBACK');
+            return { kind: 'student_not_found' };
+        }
+
+        const existing = await client.query(
+            'SELECT user_id, student_id FROM student_account_links WHERE user_id = $1 OR student_id = $2 FOR UPDATE',
+            [userId, studentId]
+        );
+        if (existing.rowCount) {
+            await client.query('ROLLBACK');
+            return { kind: 'already_linked' };
+        }
+
+        const inserted = await client.query(`
+            INSERT INTO student_account_links
+                (user_id, student_id, verified_at, verified_by, verification_method, verification_note)
+            VALUES ($1, $2, CURRENT_TIMESTAMP, $3, 'admin_manual_review', $4)
+            RETURNING user_id, student_id, verified_at, verified_by, verification_method, verification_note
+        `, [userId, studentId, actorId, note || null]);
+
+        await client.query(`
+            INSERT INTO student_account_link_audit
+                (action, user_id, student_id, actor_user_id, verification_method, note)
+            VALUES ('linked', $1::text, $2::text, $3::text, 'admin_manual_review', $4)
+        `, [userId, studentId, actorId, note || null]);
+        await client.query('COMMIT');
+        return { kind: 'ok', link: inserted.rows[0] };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+const removeStudentAccountLink = async ({ userId, actorId, reason }) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const deleted = await client.query(
+            'DELETE FROM student_account_links WHERE user_id = $1 RETURNING user_id, student_id',
+            [userId]
+        );
+        if (!deleted.rowCount) {
+            await client.query('ROLLBACK');
+            return { kind: 'not_found' };
+        }
+        const link = deleted.rows[0];
+        await client.query(`
+            INSERT INTO student_account_link_audit
+                (action, user_id, student_id, actor_user_id, verification_method, note)
+            VALUES ('unlinked', $1::text, $2::text, $3::text, 'admin_manual_review', $4)
+        `, [link.user_id, link.student_id, actorId, reason]);
+        await client.query('COMMIT');
+        return { kind: 'ok', userId: link.user_id, studentId: link.student_id };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 module.exports = {
     getAllStudents,
     getStudentPage,
+    getStudentPortalByUserId,
+    listStudentAccountLinkAdminData,
+    createVerifiedStudentAccountLink,
+    removeStudentAccountLink,
     getStudentById,
     createStudent,
     updateStudent,

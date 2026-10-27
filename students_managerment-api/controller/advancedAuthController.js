@@ -99,6 +99,26 @@ exports.finishPasskeyLogin = async (req, res) => {
         return sendSession(res, await advancedAuth.finishPasskeyLogin(req.body?.challengeId, req.body?.response, req));
     } catch (error) { return fail(res, error); }
 };
+exports.beginBiometricLogin = async (req, res) => {
+    try { return res.json(await advancedAuth.beginPasskeyLogin(req.body?.username)); }
+    catch (error) { return fail(res, error); }
+};
+exports.finishBiometricLogin = async (req, res) => {
+    try {
+        return sendSession(res, await advancedAuth.finishPasskeyLogin(req.body?.challengeId, req.body?.response, req));
+    } catch (error) { return fail(res, error); }
+};
+exports.getBiometricLoginStatus = async (req, res) => {
+    try {
+        const credentials = await advancedAuth.listPasskeys(req.user.sub);
+        return res.json({
+            configured: credentials.length > 0,
+            credentialCount: credentials.length,
+            method: 'webauthn-device-verification',
+            biometricMethodSelectedByDevice: true
+        });
+    } catch (error) { return fail(res, error); }
+};
 exports.listPasskeys = async (req, res) => {
     try { return res.json({ credentials: await advancedAuth.listPasskeys(req.user.sub) }); }
     catch (error) { return fail(res, error); }

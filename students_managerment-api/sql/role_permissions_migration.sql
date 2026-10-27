@@ -35,6 +35,7 @@ VALUES
  ('semesters.manage','semesters','Quản lý học kỳ','Manage semesters','Thêm, sửa và xóa học kỳ.','Create, update and delete semesters.',FALSE),
  ('enrollments.view','enrollments','Xem đăng ký và điểm','View enrollments','Xem đăng ký học và điểm; chỉ quản trị viên được phép.','View enrollments and grades; admin-only.',TRUE),
  ('enrollments.manage','enrollments','Quản lý đăng ký và điểm','Manage enrollments','Thêm, sửa và xóa đăng ký học/điểm; chỉ quản trị viên được phép.','Create, update and delete enrollments/grades; admin-only.',TRUE),
+ ('students.link_accounts','students','Liên kết tài khoản với hồ sơ sinh viên','Link accounts to student records','Xác minh danh tính và liên kết một tài khoản user với một hồ sơ sinh viên.','Verify identity and link one user account to one student record.',TRUE),
  ('accounts.manage','accounts','Quản lý tài khoản','Manage accounts','Đổi vai trò và trạng thái tài khoản.','Change account roles and active status.',TRUE),
  ('permissions.manage','permissions','Quản lý phân quyền','Manage permissions','Xem và cập nhật quyền theo vai trò.','View and update role permissions.',TRUE)
 ON CONFLICT (permission_key) DO UPDATE SET

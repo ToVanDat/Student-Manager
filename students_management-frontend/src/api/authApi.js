@@ -119,6 +119,19 @@ export const finishPasskeyLoginApi = async (challengeId, responsePayload) => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/login/verify`, { challengeId, response: responsePayload }, { withCredentials: true });
   return response.data;
 };
+ 
+export const beginBiometricLoginApi = async username => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/biometric-login/options`, { username }, { withCredentials: true });
+  return response.data;
+};
+export const finishBiometricLoginApi = async (challengeId, responsePayload) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/biometric-login/verify`, { challengeId, response: responsePayload }, { withCredentials: true });
+  return response.data;
+};
+export const getBiometricLoginStatusApi = async () => {
+  const response = await apiClient.get('/api/auth/biometric-login/status');
+  return response.data;
+};
 
 // Authenticated endpoints use the shared client so expired ATs follow the
 // application's common refresh-and-retry flow.
