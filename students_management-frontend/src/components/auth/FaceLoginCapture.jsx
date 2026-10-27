@@ -32,6 +32,7 @@ const wait = ms => new Promise(resolve => window.setTimeout(resolve, ms));
 export default function FaceLoginCapture({ username, onClose, onSuccess }) {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
+    const cancelledRef = useRef(false);
     const [cameraActive, setCameraActive] = useState(false);
     const [busy, setBusy] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -39,6 +40,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
     const [error, setError] = useState('');
 
     const stopCamera = () => {
+        cancelledRef.current = true;
         streamRef.current?.getTracks().forEach(track => track.stop());
         streamRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
@@ -51,6 +53,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
     }, []);
 
     const startCapture = async () => {
+        cancelledRef.current = false;
         setBusy(true);
         setError('');
         setProgress(0);
@@ -74,8 +77,10 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
             const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
             setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
+            await wait(900);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
+                if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình xác minh.');
                 const frame = await captureJpeg(videoRef.current);
                 const result = await captureFaceLoginFrameApi(
                     challenge.challengeId,
@@ -83,6 +88,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
                     frame,
                 );
                 setProgress(Math.min(FRAME_COUNT, result.frameCount || index + 1));
+                if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình xác minh.');
                 if (index < FRAME_COUNT - 1) await wait(FRAME_INTERVAL_MS);
             }
 
@@ -91,7 +97,9 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             stopCamera();
             onSuccess(data);
         } catch (requestError) {
-            setError(requestError.response?.data?.message || requestError.message || 'Đăng nhập bằng Face Login thất bại.');
+            if (!cancelledRef.current) {
+                setError(requestError.response?.data?.message || requestError.message || 'Đăng nhập bằng Face Login thất bại.');
+            }
             stopCamera();
         } finally {
             setBusy(false);
@@ -131,7 +139,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
                             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <Camera size={16} />}
                             {error ? 'Thử lại' : 'Bắt đầu xác minh'}
                         </button>}
-                        {cameraActive && <button type="button" onClick={stopCamera} disabled={busy} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
+                        {cameraActive && <button type="button" onClick={stopCamera} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
                             <CameraOff size={16} /> Dừng camera
                         </button>}
                         <button type="button" onClick={onClose} disabled={busy} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300">Hủy</button>
