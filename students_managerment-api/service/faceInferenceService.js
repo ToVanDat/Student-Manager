@@ -22,10 +22,20 @@ function configError(message, cause) {
     return error;
 }
 
+function resolveArtifactPath(fileName) {
+    const subdirectory = fileName.startsWith('mobile_facenet') ? 'recognition' : 'anti-spoofing';
+    const candidates = [
+        path.join(MODEL_DIR, subdirectory, fileName),
+        path.join(MODEL_DIR, 'face-models', subdirectory, fileName),
+        path.join(MODEL_DIR, fileName)
+    ];
+    return candidates.find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile()) || candidates[0];
+}
+
 function verifyArtifact(fileName) {
-    const filePath = path.join(MODEL_DIR, fileName);
+    const filePath = resolveArtifactPath(fileName);
     if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
-        throw configError('Thiếu model Face Login: ' + fileName);
+        throw configError('Thiếu model Face Login: ' + fileName + ' (recognition/ hoặc anti-spoofing/)');
     }
     const digest = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
     if (digest !== EXPECTED_HASHES[fileName]) {
@@ -155,4 +165,4 @@ async function ensureFaceInferenceReady() {
     return true;
 }
 
-module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES };
+module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES };
