@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
+const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require('./faceTemplateCrypto.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
 
@@ -31,6 +32,78 @@ async function consumeChallenge(kind, id) {
     );
     if (!raw) return null;
     try { return JSON.parse(raw); } catch { return null; }
+}
+
+
+function cosineSimilarity(left, right) {
+    const a = validateEmbedding(left);
+    const b = validateEmbedding(right);
+    return a.reduce((sum, value, index) => sum + value * b[index], 0);
+}
+
+// Internal service boundary: callers must pass an embedding produced by trusted
+// server-side inference. No HTTP controller accepts an embedding from a browser.
+async function storeVerifiedTemplate(userId, embedding, modelId, modelVersion) {
+    const envelope = encryptFaceTemplate({ userId, embedding, modelId, modelVersion });
+    const result = await pool.query(
+        `INSERT INTO user_face_credentials (
+            user_id, ciphertext, nonce, auth_tag, key_version,
+            model_id, model_version, template_format, enrolled_at,
+            last_used_at, disabled_at, updated_at
+         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, NULL, NULL, CURRENT_TIMESTAMP)
+         ON CONFLICT (user_id) DO UPDATE SET
+            ciphertext = EXCLUDED.ciphertext,
+            nonce = EXCLUDED.nonce,
+            auth_tag = EXCLUDED.auth_tag,
+            key_version = EXCLUDED.key_version,
+            model_id = EXCLUDED.model_id,
+            model_version = EXCLUDED.model_version,
+            template_format = EXCLUDED.template_format,
+            enrolled_at = CURRENT_TIMESTAMP,
+            last_used_at = NULL,
+            disabled_at = NULL,
+            updated_at = CURRENT_TIMESTAMP
+         RETURNING id, enrolled_at`,
+        [userId, envelope.ciphertext, envelope.nonce, envelope.authTag,
+            envelope.keyVersion, envelope.modelId, envelope.modelVersion, envelope.templateFormat]
+    );
+    return result.rows[0];
+}
+
+async function compareVerifiedTemplate(userId, liveEmbedding) {
+    const result = await pool.query(
+        `SELECT ciphertext, nonce, auth_tag, key_version, model_id, model_version
+         FROM user_face_credentials
+         WHERE user_id = $1 AND disabled_at IS NULL LIMIT 1`,
+        [userId]
+    );
+    const stored = result.rows[0];
+    if (!stored) return { matched: false, reason: 'NO_ACTIVE_CREDENTIAL' };
+
+    const template = decryptFaceTemplate({
+        userId,
+        ciphertext: stored.ciphertext,
+        nonce: stored.nonce,
+        authTag: stored.auth_tag,
+        keyVersion: stored.key_version,
+        modelId: stored.model_id,
+        modelVersion: stored.model_version
+    });
+    const similarity = cosineSimilarity(template, liveEmbedding);
+    const threshold = Number(process.env.FACE_MATCH_THRESHOLD);
+    if (!Number.isFinite(threshold) || threshold <= 0 || threshold > 1) {
+        const error = new Error('FACE_MATCH_THRESHOLD chưa được cấu hình hợp lệ');
+        error.code = 'FACE_AUTH_CONFIG_NOT_READY';
+        throw error;
+    }
+    const matched = similarity >= threshold;
+    if (matched) {
+        await pool.query(
+            'UPDATE user_face_credentials SET last_used_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND disabled_at IS NULL',
+            [userId]
+        );
+    }
+    return { matched, similarity };
 }
 
 function inferenceNotReady() {
@@ -130,5 +203,7 @@ module.exports = {
     finishEnrollment,
     beginLogin,
     finishLogin,
-    disable
+    disable,
+    storeVerifiedTemplate,
+    compareVerifiedTemplate
 };
