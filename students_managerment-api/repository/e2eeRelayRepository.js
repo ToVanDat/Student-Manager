@@ -685,7 +685,9 @@ const expireProvisioningSessions = async (client, userId) => {
          SET status = CASE WHEN status = 'completed' THEN 'completed' ELSE 'expired' END,
              new_device_ephemeral_public_key = NULL, new_device_metadata = NULL,
              encrypted_message = NULL, encrypted_device_name = NULL,
-             proof_challenge = NULL
+             proof_challenge = NULL, proof_commitment = NULL,
+             proof_ciphertext_digest = NULL,
+             proof_ack_digest = CASE WHEN status = 'completed' THEN proof_ack_digest ELSE NULL END
          WHERE session_id = ANY($1::uuid[]) AND owner_user_id = $2
            AND status NOT IN ('rolled_back', 'expired')`,
         [sessionIds, userId]
@@ -837,7 +839,7 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = n
     let proofBytes = null;
     let proofAckDigest = null;
     if (session.proof_protocol_version === 1) {
-        if (typeof proof !== 'string' || !session.proof_commitment) {
+        if (typeof proof !== 'string') {
             throw httpError(409, 'Phiên yêu cầu provisioning proof v1', 'E2EE_PROVISIONING_PROOF_REQUIRED');
         }
         try {
@@ -846,7 +848,8 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = n
             throw httpError(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
         }
         if (session.status === 'linked_pending_ack') {
-            if (!session.proof_challenge || !session.proof_ciphertext_digest || !session.encrypted_message) {
+            if (!session.proof_challenge || !session.proof_commitment ||
+                !session.proof_ciphertext_digest || !session.encrypted_message) {
                 proofBytes.fill(0);
                 throw httpError(409, 'Phiên proof v1 thiếu dữ liệu transcript', 'E2EE_PROVISIONING_PROOF_NOT_READY');
             }
@@ -972,9 +975,12 @@ const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTrans
         }
     }
     await client.query(
-        `UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET status = 'rolled_back', proof_challenge = NULL,
+             proof_commitment = NULL, proof_ciphertext_digest = NULL,
+             proof_ack_digest = NULL
          WHERE session_id = $1 AND owner_user_id = $2
-           AND status IN ('linked_pending_ack', 'completed')`,
+           AND status IN ('linked_pending_ack', 'completed')`
         [sessionId, userId]
     );
     return { rolledBack: true };
@@ -1022,7 +1028,9 @@ const abortProvisioningSession = async (userId, sessionId) => withTransaction(as
         `UPDATE e2ee_sdk_provisioning_sessions
          SET status = 'rolled_back', new_device_ephemeral_public_key = NULL,
              new_device_metadata = NULL, encrypted_message = NULL,
-             encrypted_device_name = NULL
+             encrypted_device_name = NULL, proof_challenge = NULL,
+             proof_commitment = NULL, proof_ciphertext_digest = NULL,
+             proof_ack_digest = NULL
          WHERE session_id = $1 AND owner_user_id = $2
            AND status IN ('waiting', 'connected', 'ready', 'linked_pending_ack')
          RETURNING session_id`,
