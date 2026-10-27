@@ -32,28 +32,74 @@ const bannerBackgrounds = [
 function AuthBanner() {
     const { t } = useLanguage();
     const bannerRef = useRef(null);
+    const parallaxTarget = useRef({ x: 0, y: 0 });
+    const parallaxCurrent = useRef({
+        background: { x: 0, y: 0 },
+        glow: { x: 0, y: 0 },
+        grid: { x: 0, y: 0 },
+    });
+    const parallaxFrame = useRef(null);
 
-    // Pointer-driven parallax is deliberately confined to the decorative
-    // background. Text, controls and the login card remain perfectly still.
+    // Smooth, frame-synced motion with a different response weight per layer.
+    // Only decorative transforms move; copy, controls and the login card stay still.
+    const animateParallax = () => {
+        const element = bannerRef.current;
+        if (!element) {
+            parallaxFrame.current = null;
+            return;
+        }
+
+        const target = parallaxTarget.current;
+        const current = parallaxCurrent.current;
+        const layers = [
+            { key: 'background', factor: -0.16, easing: 0.055, x: '--parallax-back-x', y: '--parallax-back-y' },
+            { key: 'glow', factor: 0.34, easing: 0.085, x: '--parallax-glow-x', y: '--parallax-glow-y' },
+            { key: 'grid', factor: -0.48, easing: 0.045, x: '--parallax-grid-x', y: '--parallax-grid-y' },
+        ];
+
+        let moving = false;
+        layers.forEach(({ key, factor, easing, x, y }) => {
+            const layer = current[key];
+            const nextX = target.x * factor;
+            const nextY = target.y * factor;
+            layer.x += (nextX - layer.x) * easing;
+            layer.y += (nextY - layer.y) * easing;
+            if (Math.abs(nextX - layer.x) > 0.015 || Math.abs(nextY - layer.y) > 0.015) moving = true;
+            element.style.setProperty(x, `${layer.x.toFixed(3)}px`);
+            element.style.setProperty(y, `${layer.y.toFixed(3)}px`);
+        });
+
+        if (moving) {
+            parallaxFrame.current = window.requestAnimationFrame(animateParallax);
+        } else {
+            parallaxFrame.current = null;
+        }
+    };
+
     const handlePointerMove = (event) => {
         const element = bannerRef.current;
         if (!element || event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
         const bounds = element.getBoundingClientRect();
-        const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 28;
-        const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 28;
-        element.style.setProperty('--parallax-back-x', `${(x * -0.16).toFixed(2)}px`);
-        element.style.setProperty('--parallax-back-y', `${(y * -0.16).toFixed(2)}px`);
-        element.style.setProperty('--parallax-glow-x', `${(x * 0.34).toFixed(2)}px`);
-        element.style.setProperty('--parallax-glow-y', `${(y * 0.34).toFixed(2)}px`);
-        element.style.setProperty('--parallax-grid-x', `${(x * -0.48).toFixed(2)}px`);
-        element.style.setProperty('--parallax-grid-y', `${(y * -0.48).toFixed(2)}px`);
+        if (!bounds.width || !bounds.height) return;
+        parallaxTarget.current = {
+            x: Math.max(-1, Math.min(1, (event.clientX - bounds.left) / bounds.width - 0.5)) * 18,
+            y: Math.max(-1, Math.min(1, (event.clientY - bounds.top) / bounds.height - 0.5)) * 18,
+        };
+        if (parallaxFrame.current === null) {
+            parallaxFrame.current = window.requestAnimationFrame(animateParallax);
+        }
     };
 
     const resetParallax = () => {
-        const element = bannerRef.current;
-        if (!element) return;
-        ['--parallax-back-x', '--parallax-back-y', '--parallax-glow-x', '--parallax-glow-y', '--parallax-grid-x', '--parallax-grid-y'].forEach(property => element.style.setProperty(property, '0px'));
+        parallaxTarget.current = { x: 0, y: 0 };
+        if (parallaxFrame.current === null && bannerRef.current) {
+            parallaxFrame.current = window.requestAnimationFrame(animateParallax);
+        }
     };
+
+    useEffect(() => () => {
+        if (parallaxFrame.current !== null) window.cancelAnimationFrame(parallaxFrame.current);
+    }, []);
     const [currentIndex, setCurrentIndex] = useState(0);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
@@ -101,12 +147,12 @@ function AuthBanner() {
         >
             <div
                 key={currentIndex}
-                className={`absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]} transition-transform duration-300 ease-out motion-reduce:transform-none`}
+                className={`absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]} will-change-transform motion-reduce:transform-none`}
                 style={{ transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                 aria-hidden="true"
             />
             <div
-                className="pointer-events-none absolute -inset-12 z-[2] opacity-70 transition-transform duration-500 ease-out motion-reduce:transform-none"
+                className="pointer-events-none absolute -inset-12 z-[2] opacity-65 will-change-transform motion-reduce:transform-none"
                 style={{
                     transform: 'translate3d(var(--parallax-glow-x, 0px), var(--parallax-glow-y, 0px), 0)',
                     background: 'radial-gradient(ellipse at 18% 24%, rgba(94, 234, 212, 0.18), transparent 34%), radial-gradient(ellipse at 78% 72%, rgba(96, 165, 250, 0.17), transparent 38%), radial-gradient(ellipse at 52% 48%, rgba(255,255,255,0.045), transparent 56%)'
@@ -114,7 +160,7 @@ function AuthBanner() {
                 aria-hidden="true"
             />
             <div
-                className="pointer-events-none absolute -inset-6 z-[2] opacity-25 transition-transform duration-700 ease-out motion-reduce:transform-none"
+                className="pointer-events-none absolute -inset-6 z-[2] opacity-20 will-change-transform motion-reduce:transform-none"
                 style={{
                     transform: 'translate3d(var(--parallax-grid-x, 0px), var(--parallax-grid-y, 0px), 0)',
                     backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.22) 1px, transparent 0)',
