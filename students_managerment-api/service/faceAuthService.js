@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require('./faceTemplateCrypto.js');
-const { verifySensitiveAction } = require('./advancedAuthService.js');
+const { verifySensitiveAction, issueSession } = require('./advancedAuthService.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
 
@@ -188,6 +188,38 @@ async function finishLogin(challengeId) {
     inferenceNotReady();
 }
 
+// Internal completion boundary for the future trusted server-side inference pipeline.
+// Never expose this method through a route that accepts browser-supplied embeddings/PAD scores.
+async function completeLoginAfterTrustedInference(challengeId, liveEmbedding, req) {
+    const state = await consumeChallenge('login', challengeId);
+    if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
+        throw new Error('Face login challenge đã hết hạn hoặc đã được sử dụng');
+    }
+    if (!state.userId) {
+        const error = new Error('Không thể đăng nhập bằng Face Login. Hãy kiểm tra thông tin hoặc dùng mật khẩu.');
+        error.code = 'FACE_LOGIN_FAILED';
+        throw error;
+    }
+    const userResult = await pool.query(
+        `SELECT id, username, email, role, avatar_url, is_active
+         FROM users WHERE id = $1 LIMIT 1`,
+        [state.userId]
+    );
+    const user = userResult.rows[0];
+    if (!user?.is_active) {
+        const error = new Error('Không thể đăng nhập bằng Face Login. Hãy kiểm tra thông tin hoặc dùng mật khẩu.');
+        error.code = 'FACE_LOGIN_FAILED';
+        throw error;
+    }
+    const comparison = await compareVerifiedTemplate(state.userId, liveEmbedding);
+    if (!comparison.matched) {
+        const error = new Error('Không thể đăng nhập bằng Face Login. Hãy kiểm tra thông tin hoặc dùng mật khẩu.');
+        error.code = 'FACE_LOGIN_FAILED';
+        throw error;
+    }
+    return issueSession(user, req);
+}
+
 async function disable(userId) {
     const result = await pool.query(
         `UPDATE user_face_credentials
@@ -206,6 +238,7 @@ module.exports = {
     finishEnrollment,
     beginLogin,
     finishLogin,
+    completeLoginAfterTrustedInference,
     disable,
     storeVerifiedTemplate,
     compareVerifiedTemplate
