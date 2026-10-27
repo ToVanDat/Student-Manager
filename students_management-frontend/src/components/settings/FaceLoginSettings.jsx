@@ -102,6 +102,7 @@ export default function FaceLoginSettings() {
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
             const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
             setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
+            await wait(900);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
                 const frame = await captureJpeg(videoRef.current);
