@@ -117,7 +117,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
             {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                 <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
             )}
-            <p className="text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật.</p>
+            <p className="text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Lần đầu dùng Google có thể tạo tài khoản Student Manager mới. Nếu email đã thuộc tài khoản hiện có, hãy đăng nhập tài khoản đó rồi liên kết Google trong Cài đặt bảo mật.</p>
         </div>
     );
 }
