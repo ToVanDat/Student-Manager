@@ -135,7 +135,7 @@ const revokeOtherSessions = async (
         sessions.filter(
             (session) =>
                 session.revoked_at === null &&
-                session.id !== currentSessionId
+                String(session.id) !== String(currentSessionId)
         );
 
 
