@@ -174,6 +174,20 @@ Do not invent a match threshold. Calibrate it with genuine/impostor pairs for th
 5. MiniFASNet-V2 must be evaluated against presentation attacks and a representative validation set. Its output is not a guarantee of liveness.
 6. No production migration or live database operation is performed by these commits.
 
+Run the Python landmark extraction unit tests from `students_managerment-api/face-landmark-service` after installing the service requirements:
+
+```cmd
+python -m unittest test_landmarks.py
+```
+
+Run the Node API tests from `students_managerment-api`:
+
+```cmd
+npm test
+```
+
+These commands are documented but have not yet been executed against the repository in this environment.
+
 Run the AES helper tests from `students_managerment-api` with:
 
 ```cmd
