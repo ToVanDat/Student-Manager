@@ -837,8 +837,7 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = n
     let proofBytes = null;
     let proofAckDigest = null;
     if (session.proof_protocol_version === 1) {
-        if (typeof proof !== 'string' || !session.proof_challenge ||
-            !session.proof_commitment || !session.proof_ciphertext_digest) {
+        if (typeof proof !== 'string' || !session.proof_commitment) {
             throw httpError(409, 'Phiên yêu cầu provisioning proof v1', 'E2EE_PROVISIONING_PROOF_REQUIRED');
         }
         try {
@@ -846,17 +845,21 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = n
         } catch {
             throw httpError(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
         }
-        const storedDigest = Buffer.from(session.proof_ciphertext_digest);
-        const currentDigest = session.encrypted_message
-            ? Buffer.from(digestProvisioningCiphertext(session.encrypted_message), 'base64')
-            : null;
-        if (!currentDigest || !crypto.timingSafeEqual(storedDigest, currentDigest) ||
-            !verifyProvisioningProof({
-                commitment: Buffer.from(session.proof_commitment).toString('base64'),
-                proof
-            })) {
-            proofBytes.fill(0);
-            throw httpError(401, 'Provisioning proof không khớp phiên liên kết', 'E2EE_PROVISIONING_PROOF_MISMATCH');
+        if (session.status === 'linked_pending_ack') {
+            if (!session.proof_challenge || !session.proof_ciphertext_digest || !session.encrypted_message) {
+                proofBytes.fill(0);
+                throw httpError(409, 'Phiên proof v1 thiếu dữ liệu transcript', 'E2EE_PROVISIONING_PROOF_NOT_READY');
+            }
+            const storedDigest = Buffer.from(session.proof_ciphertext_digest);
+            const currentDigest = Buffer.from(digestProvisioningCiphertext(session.encrypted_message), 'base64');
+            if (!crypto.timingSafeEqual(storedDigest, currentDigest) ||
+                !verifyProvisioningProof({
+                    commitment: Buffer.from(session.proof_commitment).toString('base64'),
+                    proof
+                })) {
+                proofBytes.fill(0);
+                throw httpError(401, 'Provisioning proof không khớp phiên liên kết', 'E2EE_PROVISIONING_PROOF_MISMATCH');
+            }
         }
         proofAckDigest = crypto.createHash('sha256').update(proofBytes).digest();
     } else if (proof != null) {
