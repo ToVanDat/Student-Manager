@@ -37,7 +37,7 @@ The MobileFaceNet contract was cross-checked against Qualcomm's public AI Hub im
 
 ## Server ONNX runtime foundation
 
-The API now contains an internal inference module at `students_managerment-api/service/faceInferenceService.js`. It:
+The API now contains an internal bounded image decoder at `students_managerment-api/service/faceImageDecoder.js` and an ONNX inference module at `students_managerment-api/service/faceInferenceService.js`. The decoder accepts JPEG/PNG/WebP buffers up to 5 MB, caps decoded input at 16 megapixels, applies EXIF orientation, converts to RGB, and resizes within 1280x1280. It does not perform face detection or alignment. The ONNX module:
 - verifies SHA-256 for the three supplied model artifacts before loading sessions;
 - loads MobileFaceNet and MiniFASNet through ONNX Runtime Node.js with CPU execution;
 - checks the expected MobileFaceNet input/output names and single-input/single-output PAD graph;
@@ -54,7 +54,7 @@ npm install --save-exact onnxruntime-node@1.30.0
 
 This command must be run in the developer's actual API checkout so npm updates both `package.json` and `package-lock.json` consistently. Do not hand-edit the lockfile. ONNX Runtime Node.js requires Node 16 or newer and recommends Node 20; the published CPU binary supports Windows x64 and Linux x64. See [official Node binding docs](https://onnxruntime.ai/docs/get-started/with-javascript/node.html) and [package release](https://www.npmjs.com/package/onnxruntime-node).
 
-The model runtime is not yet called by the public enrollment/login endpoints. The trusted image decode, MediaPipe task asset/runtime, server-side landmark extraction, 5-point alignment, PAD crop generation, and dataset-calibrated PAD/match thresholds remain required. Until those pieces and end-to-end tests exist, the API continues to return `FACE_SERVER_INFERENCE_NOT_READY`.
+The model runtime is not yet called by the public enrollment/login endpoints. The MediaPipe task asset/runtime, server-side landmark extraction, 5-point alignment, PAD crop generation, and dataset-calibrated PAD/match thresholds remain required. The image decoder and ONNX runner are foundations only; no public route invokes them. Until those pieces and end-to-end tests exist, the API continues to return `FACE_SERVER_INFERENCE_NOT_READY`.
 
 ## Data protection
 
