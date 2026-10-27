@@ -43,7 +43,10 @@ export default function StudentAccountLinkManagement() {
 
     useEffect(() => {
         const timer = setTimeout(() => { void load(); }, 250);
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+            requestIdRef.current += 1;
+        };
     }, [load]);
 
     const link = async event => {
