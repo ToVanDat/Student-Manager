@@ -103,7 +103,7 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer) {
     `;
     const appended = await redisClient.eval(script, {
         keys: [key],
-        arguments: [JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES), '1500', String(CHALLENGE_TTL_SECONDS)]
+        arguments: [JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES), '3000', String(CHALLENGE_TTL_SECONDS)]
     });
     if (appended < 1) {
         const codes = { '-1': 'FACE_CHALLENGE_EXPIRED', '-2': 'FACE_CHALLENGE_EXPIRED', '-3': 'FACE_CAPTURE_LIMIT', '-4': 'FACE_FRAME_SEQUENCE_INVALID' };
