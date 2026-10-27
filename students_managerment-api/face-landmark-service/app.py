@@ -122,6 +122,9 @@ async def landmarks(request: Request, authorization: str | None = Header(default
             if source.width * source.height > MAX_PIXELS:
                 raise HTTPException(status_code=413, detail="Image dimensions exceed limit")
             image = ImageOps.exif_transpose(source).convert("RGB")
+            image = ImageOps.contain(image, (1280, 1280), method=Image.Resampling.LANCZOS)
+            if image.width < 160 or image.height < 160:
+                raise HTTPException(status_code=400, detail="Image dimensions are too small after resize")
             rgb = np.asarray(image, dtype=np.uint8).copy()
     except HTTPException:
         raise
