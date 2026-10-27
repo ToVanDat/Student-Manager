@@ -123,8 +123,10 @@ async function getRuntime() {
 }
 
 // rgb112 must be produced by a trusted server-side landmark alignment pipeline.
-// Layout: RGB NCHW [1,3,112,112], float32 [0,1]. Qualcomm's graph performs
-// torchvision normalization and horizontal-flip TTA internally.
+// Layout: RGB NCHW [1,3,112,112], float32 [0,1]. The exported graph has
+// two image inputs and returns one 128-D embedding per input. For a single
+// capture frame, the same aligned crop is supplied to both inputs; row 0 is used.
+// Pixel normalization is performed inside the exported graph.
 async function inferFaceImage(imageBuffer) {
     const tensors = await prepareFaceInferenceTensors(imageBuffer);
     return inferAlignedFace(tensors);
