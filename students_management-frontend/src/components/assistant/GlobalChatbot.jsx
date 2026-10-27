@@ -326,18 +326,18 @@ export default function GlobalChatbot() {
             : assistantTitle;
 
     return (
-        <div className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[70] sm:bottom-5 sm:right-5">
+        <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[70]">
             {open && (
                 <section
                     role="dialog"
                     aria-modal="true"
                     aria-labelledby="global-assistant-title"
                     onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}
-                    className="fixed inset-2 flex flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_28px_100px_-30px_rgba(15,23,42,.55)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-16 sm:right-0 sm:h-[min(780px,calc(100dvh-112px))] sm:w-[min(540px,calc(100vw-40px))]"
+                    className="fixed inset-x-0 bottom-0 flex h-[min(88dvh,820px)] flex-col overflow-hidden rounded-t-[26px] border border-slate-200/90 bg-[#fbfcff] shadow-[0_24px_90px_-28px_rgba(15,23,42,.48)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-[76px] sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(440px,calc(100vw-32px))] sm:rounded-[24px]"
                     aria-label={vi ? 'Trợ lý Student Manager' : 'Student Manager assistant'}
                     aria-live="off"
                 >
-                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
+                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-5 sm:py-3.5">
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
                             <Sparkles size={19} />
                         </div>
