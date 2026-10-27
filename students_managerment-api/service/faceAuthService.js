@@ -8,6 +8,7 @@ const { verifySensitiveAction, issueSession } = require('./advancedAuthService.j
 const { createLivenessChallenge, verifyLivenessSequence } = require('./faceLivenessChallenge.js');
 const { inferFaceImage, ensureFaceInferenceReady } = require('./faceInferenceService.js');
 const { verifyCapturePayload } = require('./faceCaptureValidation.js');
+const { ensureLandmarkServiceReady } = require('./faceLandmarkClient.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
 const MAX_CAPTURE_FRAMES = 40;
@@ -222,6 +223,7 @@ async function getStatus(userId) {
     if (process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' && process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true') {
         try {
             requirePipelineConfig();
+            await ensureLandmarkServiceReady();
             await ensureFaceInferenceReady();
             pipelineReady = true;
         } catch {
