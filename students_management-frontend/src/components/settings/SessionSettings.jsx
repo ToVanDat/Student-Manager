@@ -120,7 +120,7 @@ function SessionSettings({
             ) : (
                 <div className="grid gap-3">
                     {sessions.map((session) => {
-                        const isCurrent = session.id === currentSessionId;
+                        const isCurrent = currentSessionId != null && String(session.id) === String(currentSessionId);
                         const isRevoked = Boolean(session.revoked_at);
                         const DeviceIcon = getDeviceIcon(session);
 
