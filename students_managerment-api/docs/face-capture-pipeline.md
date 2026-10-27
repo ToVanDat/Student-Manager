@@ -17,7 +17,7 @@ Required release gates:
 Install and lock the native runtime from the API directory before model smoke testing:
 
 ```bat
-npm install onnxruntime-node@1.30.0
+npm install onnxruntime-node
 npm ci
 npm run face:verify-models
 ```
