@@ -8,6 +8,7 @@ const { prepareFaceInferenceTensors } = require('./facePreprocessingService.js')
 const EXPECTED_HASHES = Object.freeze({
     'mobile_facenet.onnx': '3ac0b9597efd5dc49c5397e5c21269f98cceb42e7193fcc1afbb0fa992c88e4e',
     'mobile_facenet.data': '5164ee5cdd52328da0b1959913e23fd1866b1696b690fc4ad0bbc5cd32ae319c',
+    'metadata.json': '2639a8261232328665a2a6204abc8e41805730f323feda1a1c147006685fe92e',
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 });
 const MODEL_DIR = path.resolve(
@@ -23,7 +24,7 @@ function configError(message, cause) {
 }
 
 function resolveArtifactPath(fileName) {
-    const subdirectory = fileName.startsWith('mobile_facenet') ? 'recognition' : 'anti-spoofing';
+    const subdirectory = fileName.startsWith('mobile_facenet') || fileName === 'metadata.json' ? 'recognition' : 'anti-spoofing';
     const candidates = [
         path.join(MODEL_DIR, subdirectory, fileName),
         path.join(MODEL_DIR, 'face-models', subdirectory, fileName),
@@ -95,6 +96,7 @@ async function createRuntime(ortOverride) {
 
     const mobilePath = verifyArtifact('mobile_facenet.onnx');
     verifyArtifact('mobile_facenet.data');
+    verifyArtifact('metadata.json');
     const padPath = verifyArtifact('minifasnet-v2.onnx');
     const options = { executionProviders: ['cpu'], graphOptimizationLevel: 'all' };
     const [mobile, pad] = await Promise.all([
@@ -126,7 +128,7 @@ async function getRuntime() {
 // Layout: RGB NCHW [1,3,112,112], float32 [0,1]. The exported graph has
 // two image inputs and returns one 128-D embedding per input. For a single
 // capture frame, the same aligned crop is supplied to both inputs; row 0 is used.
-// Pixel normalization is performed inside the exported graph.
+// Input values are RGB float32 in [0,1], as pinned by the supplied model metadata.
 async function inferFaceImage(imageBuffer) {
     const tensors = await prepareFaceInferenceTensors(imageBuffer);
     return inferAlignedFace(tensors);
