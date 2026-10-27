@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { Eye, EyeOff, Camera } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 function LoginForm({
@@ -75,7 +75,7 @@ function LoginForm({
                 {loading ? t('loading') : t('login')}
             </button>
             <button type="button" onClick={onFaceLogin} disabled={loading || !username.trim()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50">
-                <Fingerprint size={18} /> Đăng nhập bằng Face Login
+                <Camera size={18} /> Đăng nhập bằng Face Login
             </button>
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <span>{t('noAccountYet')}</span>
