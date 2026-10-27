@@ -256,8 +256,8 @@ async function getStatus(userId) {
     };
 }
 
-async function beginEnrollment(userId, verificationToken) {
-    await verifySensitiveAction(userId, null, verificationToken, 'face-enroll');
+async function beginEnrollment(userId, verificationToken, currentPassword) {
+    await verifySensitiveAction(userId, currentPassword, verificationToken, 'face-enroll');
     const id = token(18);
     const state = createCaptureState();
     await saveChallenge('enrollment', id, { ...state, userId: String(userId) });
