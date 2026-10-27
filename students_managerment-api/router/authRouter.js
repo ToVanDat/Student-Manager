@@ -19,7 +19,14 @@ const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
 const avatarController = require('../controller/avatarController');
 const userPreferencesController = require('../controller/userPreferencesController.js');
 const advancedAuthController = require('../controller/advancedAuthController.js');
+const faceAuthController = require('../controller/faceAuthController.js');
 
+
+// Face credential management. Login verification remains disabled until server-verifiable liveness/model verification is implemented.
+router.post('/face/enrollment/challenge', authMiddleware, authRateLimiter, faceAuthController.createEnrollmentChallenge);
+router.post('/face/enrollment/complete', authMiddleware, authRateLimiter, faceAuthController.completeEnrollment);
+router.get('/face/credential', authMiddleware, faceAuthController.getCredential);
+router.delete('/face/credential', authMiddleware, authRateLimiter, faceAuthController.revokeCredential);
 
 // Advanced account authentication. These routes reuse the existing JWT/session middleware.
 router.post('/google/login', requireTrustedOrigin, authRateLimiter, advancedAuthController.loginGoogle);
