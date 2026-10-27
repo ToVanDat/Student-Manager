@@ -776,7 +776,7 @@ const getProvisioningMessage = async (userId, sessionId) => withTransaction(asyn
             proofChallenge: rows[0].proof_challenge?.toString('base64') || null
         } : {})
     };
-};
+});
 
 const completeProvisioning = async (userId, sessionId, encryptedDeviceName, metadata = {}) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
