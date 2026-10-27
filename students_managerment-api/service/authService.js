@@ -22,132 +22,11 @@ const JWT_AUDIENCE =
     'student-management-client';
 
 
-// =====================================================
-// HASH ACCESS TOKEN
-// =====================================================
-
-const hashAccessToken = (token) => {
-
-    return crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex');
-};
-
-
-// =====================================================
-// HASH REFRESH TOKEN
-// =====================================================
-
-const hashRefreshToken = (token) => {
-
-    return crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex');
-};
-
-
-// =====================================================
-// GENERATE ACCESS TOKEN
-// =====================================================
-
-const generateAccessToken = (
-    user,
-    sessionId
-) => {
-
-    return jwt.sign(
-
-        {
-            sub: user.id,
-            username: user.username,
-            role: user.role,
-            sessionId: sessionId
-        },
-
-        process.env.JWT_SECRET,
-
-        {
-            expiresIn: ACCESS_TOKEN_EXPIRES_IN,
-            issuer: JWT_ISSUER,
-            audience: JWT_AUDIENCE,
-            algorithm: 'HS256'
-        }
-    );
-};
-
-
-// =====================================================
-// SAVE ACCESS TOKEN TO REDIS
-// =====================================================
-
-const saveAccessTokenToRedis = async (
-    accessToken,
-    userId
-) => {
-
-    const tokenHash =
-        hashAccessToken(accessToken);
-
-    const key =
-        `access_token:${tokenHash}`;
-
-    const decoded =
-        jwt.decode(accessToken);
-
-    if (!decoded || !decoded.exp) {
-
-        throw new Error(
-            'Access token không hợp lệ'
-        );
-    }
-
-    const currentTime =
-        Math.floor(Date.now() / 1000);
-
-    const ttl =
-        decoded.exp - currentTime;
-
-    if (ttl <= 0) {
-
-        throw new Error(
-            'Access token đã hết hạn'
-        );
-    }
-
-    await redisClient.set(
-        key,
-        String(userId),
-        {
-            EX: ttl
-        }
-    );
-
-    return key;
-};
-
-
-// =====================================================
-// REMOVE ACCESS TOKEN FROM REDIS
-// =====================================================
-
-const removeAccessTokenFromRedis = async (
-    accessToken
-) => {
-
-    if (!accessToken) {
-        return;
-    }
-
-    const tokenHash =
-        hashAccessToken(accessToken);
-
-    const key =
-        `access_token:${tokenHash}`;
-
-    await redisClient.del(key);
-};
+const {
+    saveAccessTokenToRedis,
+    removeAccessTokenFromRedis,
+    removeAccessTokensForSession,
+} = require('./accessTokenStore.js');
 
 
 // =====================================================
@@ -186,6 +65,11 @@ const revokeUserSessions = async (userId, reason = 'CREDENTIALS_CHANGED') => {
 
     for (const session of sessions || []) {
         await authRepository.revokeRefreshTokensBySessionId(session.id);
+        try {
+            await removeAccessTokensForSession(session.id);
+        } catch (error) {
+            console.warn('[AUTH] Could not clear revoked session access tokens:', error.message);
+        }
         emitSessionRevoked(session.id, reason);
     }
 };
@@ -460,6 +344,11 @@ const changePassword = async (
     // Database revocation is already committed atomically. Socket notification
     // is best-effort and must not turn a successful credential change into 500.
     for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            await removeAccessTokensForSession(sessionId);
+        } catch (error) {
+            console.warn('[AUTH] Could not clear password-change access tokens:', error.message);
+        }
         try {
             emitSessionRevoked(sessionId, 'PASSWORD_CHANGED');
         } catch (error) {
@@ -1008,6 +897,11 @@ const logout = async (
                 sessionId
             );
 
+        try {
+            await removeAccessTokensForSession(sessionId);
+        } catch (cleanupError) {
+            console.warn('[AUTH] Could not clear logout access tokens:', cleanupError.message);
+        }
 
         // Notify every tab/socket in this session and disconnect it. The
         // frontend treats LOGOUT as a silent local cleanup, not a forced-login
@@ -1576,6 +1470,11 @@ const resetPassword = async (
 
     // Session revocation is already committed. Socket delivery is best-effort.
     for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            await removeAccessTokensForSession(sessionId);
+        } catch (error) {
+            console.warn('[AUTH] Could not clear password-reset access tokens:', error.message);
+        }
         try {
             emitSessionRevoked(sessionId, 'PASSWORD_RESET');
         } catch (error) {
