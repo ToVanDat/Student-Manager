@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libglib2.0-0 li
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
+COPY models/face_landmarker.task ./models/face_landmarker.task
 RUN useradd --create-home --uid 10001 appuser && mkdir -p /app/models && chown -R appuser:appuser /app
 USER appuser
 
