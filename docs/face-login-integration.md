@@ -18,7 +18,7 @@ Important: MobileFaceNet is exported as a paired/two-image graph, not a single-i
 - Encrypt the template using AES-256-GCM with a random 12-byte nonce and a 16-byte authentication tag.
 - The encryption key must be a server-side secret, independent of JWT secrets and database credentials. Keep a key version for rotation.
 - Disable/delete credentials through an authenticated operation; never expose ciphertext or key material in API responses.
-- Enrollment must require an authenticated account and recent step-up authentication.
+- Enrollment requires an authenticated account and a one-time, purpose-bound recent step-up token (`face-enroll`) from the existing Passkey re-authentication flow. The enrollment endpoint consumes that token before issuing a challenge.
 - Login challenges must be short-lived, account-bound, one-time, and rate-limited.
 
 ## Critical security gate
