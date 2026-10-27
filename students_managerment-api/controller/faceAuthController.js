@@ -36,7 +36,7 @@ exports.beginEnrollment = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.captureEnrollmentFrame = async (req, res) => {
-    try { return res.status(202).json(await faceAuth.appendCaptureFrame('enrollment', req.body?.challengeId, req.body?.livenessNonce, req.file?.buffer)); }
+    try { return res.status(202).json(await faceAuth.appendCaptureFrame('enrollment', req.body?.challengeId, req.body?.livenessNonce, req.file?.buffer, req.user.sub)); }
     catch (error) { return fail(res, error); }
 };
 exports.captureLoginFrame = async (req, res) => {
