@@ -50,5 +50,5 @@ Enrollment stores only the aggregate embedding, encrypted with AES-256-GCM. Logi
 - MiniFASNet's score is not proof of liveness; evaluate print, replay, mask, lighting, camera, and demographic variation.
 - Redis is required. Losing the challenge state invalidates the capture.
 - The API rate-limits challenge creation separately from frame uploads.
-- The status endpoint reports availability only when both release flags are explicitly set, thresholds are valid, and the ONNX runtime can load the hash-verified models.
+- The status endpoint reports availability only when both release flags are explicitly set, thresholds and AES key are valid, the authenticated MediaPipe sidecar health probe succeeds, and ONNX Runtime can load the hash-verified models.
 - This implementation does not set release flags, apply database migrations, or enable the UI automatically.
