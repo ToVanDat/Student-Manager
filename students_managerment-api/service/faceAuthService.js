@@ -297,23 +297,6 @@ async function finishLogin(challengeId, req) {
     return issueSession(user, req);
 }
 
-async function completeLoginAfterTrustedInference(challengeId, liveEmbedding, req) {
-    validateChallengeId(challengeId);
-    const state = await consumeChallenge('login', challengeId);
-    if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
-        throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face login challenge đã hết hạn hoặc đã được sử dụng');
-    }
-    if (!state.userId) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
-    const userResult = await pool.query(
-        `SELECT id, username, email, role, avatar_url, is_active FROM users WHERE id = $1 LIMIT 1`,
-        [state.userId]
-    );
-    const user = userResult.rows[0];
-    if (!user?.is_active) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
-    const comparison = await compareVerifiedTemplate(state.userId, liveEmbedding);
-    if (!comparison.matched) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
-    return issueSession(user, req);
-}
 
 async function disable(userId) {
     const result = await pool.query(
@@ -334,7 +317,6 @@ module.exports = {
     appendCaptureFrame,
     beginLogin,
     finishLogin,
-    completeLoginAfterTrustedInference,
     disable,
     storeVerifiedTemplate,
     compareVerifiedTemplate
