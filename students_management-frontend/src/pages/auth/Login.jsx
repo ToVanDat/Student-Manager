@@ -262,11 +262,11 @@ function Login() {
         setError('');
         setSuccess('');
         if (!username.trim()) {
-            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Face Login.' : 'Enter your username before using a passkey.');
+            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Face Login.' : 'Enter your username before using device biometric login.');
             return;
         }
         if (!window.isSecureContext || !navigator.credentials?.get) {
-            setError(language === 'vi' ? 'Face Login cần HTTPS và trình duyệt hỗ trợ xác thực sinh trắc học/WebAuthn.' : 'Passkey sign-in requires HTTPS and a browser that supports WebAuthn.');
+            setError(language === 'vi' ? 'Face Login cần HTTPS và trình duyệt hỗ trợ xác thực sinh trắc học/WebAuthn.' : 'Device biometric sign-in requires HTTPS and a browser that supports WebAuthn.');
             return;
         }
 
@@ -283,7 +283,7 @@ function Login() {
                 }))
             };
             const credential = await navigator.credentials.get({ publicKey });
-            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh sinh trắc học.' : 'Passkey verification was cancelled.');
+            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh sinh trắc học.' : 'Device verification was cancelled.');
             const response = {
                 id: credential.id,
                 rawId: encodeBase64Url(credential.rawId),
@@ -301,7 +301,7 @@ function Login() {
             loginUser(data);
             navigate('/students?view=dashboard', { replace: true });
         } catch (error) {
-            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập sinh trắc học thất bại.' : 'Passkey sign-in failed.'));
+            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập sinh trắc học thất bại.' : 'Device biometric sign-in failed.'));
         } finally {
             sessionStorage.removeItem('auth:login-in-progress');
             setLoading(false);
