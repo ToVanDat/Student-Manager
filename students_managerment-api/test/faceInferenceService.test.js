@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { l2Normalize, softmax, assertPixels, EXPECTED_HASHES } = require('../service/faceInferenceService.js');
+const { l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES } = require('../service/faceInferenceService.js');
 
 test('MobileFaceNet embedding is L2-normalized', () => {
   const embedding = l2Normalize(Float32Array.from({ length: 128 }, (_, i) => i + 1));
@@ -16,13 +16,13 @@ test('MobileFaceNet rejects wrong dimensions and non-finite outputs', () => {
 });
 
 test('MiniFASNet logits become stable probabilities', () => {
-  const probabilities = softmax([1000, 999, -1000]);
+  const probabilities = classProbabilities([1000, 999, -1000]);
   assert.ok(Math.abs(probabilities.reduce((a, b) => a + b, 0) - 1) < 1e-12);
   assert.ok(probabilities[0] > probabilities[1]);
 });
 
 test('MiniFASNet rejects invalid class count', () => {
-  assert.throws(() => softmax([0, 1]), /3 logits/);
+  assert.throws(() => classProbabilities([0, 1]), /3 logits/);
 });
 
 test('pixel tensors enforce exact shape and range', () => {
