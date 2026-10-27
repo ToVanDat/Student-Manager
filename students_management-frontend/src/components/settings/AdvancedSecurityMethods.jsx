@@ -3,7 +3,7 @@ import { Fingerprint, Link2, Trash2, Unlink, ShieldCheck } from 'lucide-react';
 import {
     beginPasskeyRegistrationApi, finishPasskeyRegistrationApi, listPasskeysApi,
     deletePasskeyApi, linkGoogleApi, getGoogleLinkApi, unlinkGoogleApi,
-    beginSensitiveReauthApi, finishSensitiveReauthApi
+    beginSensitiveReauthApi, finishSensitiveReauthApi, getBiometricLoginStatusApi
 } from '@/api/authApi.js';
 
 const decode = value => Uint8Array.from(atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)), c => c.charCodeAt(0));
@@ -11,6 +11,7 @@ const encode = value => btoa(String.fromCharCode(...new Uint8Array(value))).repl
 
 export default function AdvancedSecurityMethods() {
     const [credentials, setCredentials] = useState([]);
+    const [biometricStatus, setBiometricStatus] = useState(null);
     const [passkeysLoading, setPasskeysLoading] = useState(true);
     const [passkeysError, setPasskeysError] = useState('');
     const [googleStatusLoading, setGoogleStatusLoading] = useState(true);
@@ -30,9 +31,10 @@ export default function AdvancedSecurityMethods() {
         setGoogleStatusLoading(true);
         setPasskeysError('');
         setGoogleStatusError('');
-        const [passkeysResult, googleResult] = await Promise.allSettled([
+        const [passkeysResult, googleResult, biometricResult] = await Promise.allSettled([
             listPasskeysApi(),
-            getGoogleLinkApi()
+            getGoogleLinkApi(),
+            getBiometricLoginStatusApi()
         ]);
         const errors = [];
 
@@ -40,6 +42,12 @@ export default function AdvancedSecurityMethods() {
             setCredentials(passkeysResult.value);
         } else {
             setPasskeysError(passkeysResult.reason?.response?.data?.message || 'Không tải được danh sách passkey. Kiểm tra đăng nhập và bảng user_webauthn_credentials.');
+        }
+
+        if (biometricResult.status === 'fulfilled') {
+            setBiometricStatus(biometricResult.value);
+        } else {
+            setBiometricStatus(null);
         }
 
         if (googleResult.status === 'fulfilled') {
