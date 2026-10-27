@@ -8,8 +8,9 @@ The workflow deliberately does not infer identity from matching email addresses.
 ## Migration order
 1. Back up the target PostgreSQL database and confirm the active database/schema.
 2. Run `student_schema_readonly_audit.sql` and review the output. This file contains SELECT statements only.
-3. Review and apply `student_account_link_schema_migration.sql` if `student_account_links` does not already exist. It creates the one-to-one mapping table only.
-4. Review and apply `student_account_link_admin_workflow_migration.sql`. It adds verification metadata, an append-only application audit table and the `students.link_accounts` permission.
+3. If the `permissions` and `role_permissions` tables do not exist, review/apply `role_permissions_migration.sql` first.
+4. Review and apply `student_account_link_schema_migration.sql` if `student_account_links` does not already exist. It creates the one-to-one mapping table only.
+5. Review and apply `student_account_link_admin_workflow_migration.sql`. It adds verification metadata, an append-only application audit table and the `students.link_accounts` permission.
 5. Verify both migrations using information_schema and pg_constraint queries before deploying the API.
 
 Neither migration auto-links accounts, copies student data, or deletes existing records. Do not run the base migration again if the table already exists: it intentionally stops for manual inspection.

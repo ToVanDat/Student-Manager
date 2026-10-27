@@ -9,12 +9,19 @@ DECLARE
     target_schema text := current_schema();
     users_table regclass;
     links_table regclass;
+    permissions_table regclass;
+    role_permissions_table regclass;
     users_id_type text;
 BEGIN
     users_table := to_regclass(format('%I.%I', target_schema, 'users'));
     links_table := to_regclass(format('%I.%I', target_schema, 'student_account_links'));
+    permissions_table := to_regclass(format('%I.%I', target_schema, 'permissions'));
+    role_permissions_table := to_regclass(format('%I.%I', target_schema, 'role_permissions'));
     IF users_table IS NULL OR links_table IS NULL THEN
         RAISE EXCEPTION 'Apply the base student_account_link_schema_migration.sql first';
+    END IF;
+    IF permissions_table IS NULL OR role_permissions_table IS NULL THEN
+        RAISE EXCEPTION 'Apply role_permissions_migration.sql before the student account-link workflow migration';
     END IF;
 
     SELECT format_type(a.atttypid, a.atttypmod)
