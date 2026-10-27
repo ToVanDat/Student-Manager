@@ -49,7 +49,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
     const [notifications, setNotifications] = useState([]);
     const [notificationError, setNotificationError] = useState('');
     const [reloadKey, setReloadKey] = useState(0);
-    const copy = language === 'en' ? {
+    const copy = useMemo(() => language === 'en' ? {
         linked: 'Student record linked', notLinked: 'This account is not linked to a student record',
         linkHelp: 'For privacy, accounts are never matched by email alone. Contact an administrator or the academic office to verify and link your record.',
         class: 'Class', department: 'Department', email: 'Student email', gender: 'Gender', dob: 'Date of birth',
@@ -65,7 +65,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
         scheduleHelp: 'Nguồn dữ liệu đào tạo hiện chưa cung cấp ca học, phòng học và thời gian học.',
         retry: 'Thử lại', loadFail: 'Không thể tải cổng sinh viên. Vui lòng thử lại.',
         noticeFail: 'Không thể tải thông báo.', fallback: 'Thông báo mới',
-    };
+    }, [language]);
     const displayName = portal?.student?.name || user?.full_name || user?.name || user?.username || t('user');
     const date = useMemo(() => new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()), [language]);
 
@@ -73,6 +73,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
         let active = true;
         setLoading(true);
         setError('');
+        setNotificationError('');
         getMyStudentPortal()
             .then(data => { if (active) setPortal(data); })
             .catch(requestError => {
@@ -85,7 +86,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
             .then(({ data }) => { if (active) setNotifications(Array.isArray(data?.data) ? data.data : []); })
             .catch(() => { if (active) setNotificationError(copy.noticeFail); });
         return () => { active = false; };
-    }, [reloadKey, language]);
+    }, [reloadKey, copy]);
 
     const student = portal?.student;
     const enrollments = Array.isArray(portal?.enrollments) ? portal.enrollments : [];

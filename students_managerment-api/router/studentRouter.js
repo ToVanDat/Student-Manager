@@ -56,7 +56,7 @@ router.delete(
 );
 
 
-// Admin only: student records are not yet linked to user accounts for self-service access.
+// Direct student record lookup remains admin-only; standard users use the verified /me endpoint.
 router.get(
     '/:id',
     authMiddleware,
