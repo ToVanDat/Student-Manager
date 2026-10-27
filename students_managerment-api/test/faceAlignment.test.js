@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-  REFERENCE_POINTS, estimateSimilarityTransform, alignRgbFace, cropPadRgb, toNchwFloat
+  REFERENCE_POINTS, estimateSimilarityTransform, alignRgbFace, cropPadRgb, toNchwFloat, prepareFaceTensors
 } = require('../service/faceAlignment.js');
 
 test('five-point similarity transform maps detected landmarks to canonical coordinates', () => {
@@ -40,4 +40,18 @@ test('NCHW conversion applies BGR channel order and [0,1] scaling', () => {
   const rgb = Buffer.from([255, 128, 0]);
   const tensor = toNchwFloat(rgb, 1, 1, [2, 1, 0]);
   assert.deepEqual(Array.from(tensor), [0, 128 / 255, 1]);
+});
+
+test('preprocessing scales trusted landmarks to the decoded image dimensions', () => {
+  const width = 256, height = 256;
+  const rgb = Buffer.alloc(width * height * 3, 100);
+  const sourceFive = [[80, 80], [176, 82], [128, 135], [92, 190], [164, 188]];
+  const scaled = {
+    width: 128, height: 128,
+    five: sourceFive.map(([x, y]) => [x / 2, y / 2]),
+    bbox: { x: 45, y: 35, width: 38, height: 48 }
+  };
+  const tensors = prepareFaceTensors(rgb, width, height, scaled);
+  assert.equal(tensors.rgb112.length, 3 * 112 * 112);
+  assert.equal(tensors.bgr80.length, 3 * 80 * 80);
 });
