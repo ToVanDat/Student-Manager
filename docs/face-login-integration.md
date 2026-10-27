@@ -37,3 +37,46 @@ Before enabling Face Login for real accounts, add a server-verifiable PAD/infere
 6. PostgreSQL: persist encrypted credential metadata only.
 
 The existing `/api/auth/biometric-login/*` endpoints currently alias Passkey/WebAuthn. Keep that behavior distinct until a dedicated Face Login API has been implemented and reviewed.
+
+## Backend foundation now present
+
+- Dedicated routes under `/api/auth/face/*`; these are distinct from the legacy `/biometric-login/*` Passkey aliases.
+- Redis-backed 180-second challenges use atomic GET-and-DEL consumption.
+- Face endpoints have an isolated Redis-backed rate-limit namespace.
+- `faceTemplateCrypto.js` uses AES-256-GCM, a random 12-byte nonce, a 16-byte tag, and account/model/version-bound AAD.
+- The keyring supports `FACE_TEMPLATE_ENCRYPTION_KEYS` as a JSON object keyed by key version, with `FACE_TEMPLATE_KEY_VERSION` selecting the active key. For a single initial key, `FACE_TEMPLATE_ENCRYPTION_KEY` is accepted for the active version.
+- `faceAuthService.storeVerifiedTemplate` and `compareVerifiedTemplate` are internal service functions. They must only be called after trusted server-side inference; no public route accepts a browser-supplied embedding.
+- Face Login settings show the credential status and provide a disable action. Enrollment remains disabled in the UI until trusted server inference is deployed.
+
+## Local server configuration
+
+Generate a random 32-byte key in Windows Command Prompt (run from the API directory):
+
+```cmd
+node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Put the generated value in the real local API `.env` file (never commit it):
+
+```dotenv
+FACE_TEMPLATE_KEY_VERSION=1
+FACE_TEMPLATE_ENCRYPTION_KEY=<generated-base64-value>
+FACE_MATCH_THRESHOLD=<calibrated-value>
+```
+
+Do not invent a match threshold. Calibrate it with genuine/impostor pairs for the exact model build and expected camera population. For key rotation, configure `FACE_TEMPLATE_ENCRYPTION_KEYS` as a JSON object containing every still-needed historical key version and the new active version; retain old keys until all templates have been re-encrypted. Keep this key independent from JWT, OAuth, database, and R2 secrets.
+
+## Remaining production blockers
+
+1. The supplied MobileFaceNet graph has two image inputs (`img1`, `img2`) and a two-row embedding output. The model bundle does not establish the intended pairing contract, reference alignment template, or color normalization sufficiently to ship a correct inference pipeline.
+2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision is installed in the frontend, but camera capture/detection/alignment is not yet connected to a verified model asset.
+3. The server does not yet have a trusted ONNX inference runtime and model deployment path. Browser inference alone is not trusted for authentication.
+4. The current public enrollment/login verify endpoints deliberately consume the one-time challenge and return `FACE_SERVER_INFERENCE_NOT_READY`. This is fail-closed behavior, not a completed login implementation.
+5. MiniFASNet-V2 must be evaluated against presentation attacks and a representative validation set. Its output is not a guarantee of liveness.
+6. No production migration or live database operation is performed by these commits.
+
+Run the AES helper tests from `students_managerment-api` with:
+
+```cmd
+node --test test/faceTemplateCrypto.test.js
+```
