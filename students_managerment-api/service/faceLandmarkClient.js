@@ -80,6 +80,10 @@ async function ensureLandmarkServiceReady() {
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
     }
+    if (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '::1'].includes(url.hostname) &&
+        process.env.NODE_ENV === 'production' && process.env.FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP !== 'true') {
+        throw serviceError('Production landmark service phải dùng HTTPS hoặc private loopback network', 'FACE_AUTH_CONFIG_INVALID');
+    }
     try {
         const response = await fetch(url.toString() + '/health', {
             headers: { authorization: 'Bearer ' + token },
