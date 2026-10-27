@@ -2,6 +2,11 @@ import { apiClient } from '@/api/client.js';
 
 const STUDENT_API_URL = '/api/students';
 
+export const getMyStudentPortal = async () => {
+  const response = await apiClient.get(`${STUDENT_API_URL}/me`);
+  return response.data;
+};
+
 export const getStudents = async (params) => {
   const response = params
     ? await apiClient.get(STUDENT_API_URL, { params })

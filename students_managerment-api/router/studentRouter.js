@@ -15,6 +15,9 @@ const requirePermission = require('../middleware/permissionMiddleware.js');
 const validateStudent = require('../middleware/studentValidation.js');
 
 
+// Standard users can only read their own verified student link and academic records.
+router.get('/me', authMiddleware, requireRole('user'), studentController.getMyStudentPortal);
+
 // Admin only: list responses include personal student data.
 router.get(
     '/',

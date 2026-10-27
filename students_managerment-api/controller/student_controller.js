@@ -77,6 +77,21 @@ const getAllStudents = async (req, res) => {
     }
 };
 
+const getMyStudentPortal = async (req, res) => {
+    try {
+        const portal = await studentService.getStudentPortalByUserId(req.user.id);
+        return res.status(200).json(portal);
+    } catch (error) {
+        if (error?.code === '42P01') {
+            return res.status(503).json({
+                code: 'STUDENT_LINK_SCHEMA_NOT_READY',
+                message: 'Chức năng hồ sơ sinh viên chưa được cấu hình trên cơ sở dữ liệu. Vui lòng liên hệ quản trị viên.'
+            });
+        }
+        return handleStudentError(res, error, 'Không thể tải cổng thông tin sinh viên.');
+    }
+};
+
 const getStudentById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -157,6 +172,7 @@ const deleteStudent = async (req, res) => {
 
 module.exports = {
     getAllStudents,
+    getMyStudentPortal,
     getStudentById,
     createStudent,
     updateStudent,

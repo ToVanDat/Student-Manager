@@ -226,9 +226,39 @@ const deleteStudent = async (id) => {
     return result.rows[0];
 };
 
+const getStudentPortalByUserId = async (userId) => {
+    // Only a verified, backend-created mapping may expose a student's private academic record.
+    // Never infer ownership from matching email addresses or browser-supplied student IDs.
+    const studentResult = await pool.query(`
+        SELECT s.id, s.student_code, s.name, s.email, s.date_of_birth, s.gender,
+               s.class_id, c.class_code, c.class_name, d.department_code, d.department_name
+        FROM student_account_links sal
+        JOIN students s ON s.id = sal.student_id
+        LEFT JOIN classes c ON c.id = s.class_id
+        LEFT JOIN departments d ON d.id = c.department_id
+        WHERE sal.user_id = $1 AND sal.verified_at IS NOT NULL
+        LIMIT 1
+    `, [userId]);
+    const student = studentResult.rows[0] || null;
+    if (!student) return { linked: false, student: null, enrollments: [] };
+
+    const enrollmentResult = await pool.query(`
+        SELECT e.id, e.subject_id, sub.subject_code, sub.subject_name, sub.credits,
+               e.semester_id, sem.semester_name, sem.academic_year,
+               e.midterm_score, e.final_score, e.total_score
+        FROM enrollments e
+        JOIN subjects sub ON sub.id = e.subject_id
+        JOIN semesters sem ON sem.id = e.semester_id
+        WHERE e.student_id = $1
+        ORDER BY sem.id DESC, sub.subject_code ASC, e.id ASC
+    `, [student.id]);
+    return { linked: true, student, enrollments: enrollmentResult.rows };
+};
+
 module.exports = {
     getAllStudents,
     getStudentPage,
+    getStudentPortalByUserId,
     getStudentById,
     createStudent,
     updateStudent,
