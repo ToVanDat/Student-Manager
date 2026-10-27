@@ -279,6 +279,9 @@ async function finishEnrollment(userId, challengeId) {
 }
 
 async function beginLogin(username) {
+    requirePipelineConfig();
+    await ensureLandmarkServiceReady();
+    await ensureFaceInferenceReady();
     const normalized = typeof username === 'string' ? username.trim() : '';
     const found = normalized ? await pool.query(
         `SELECT u.id FROM users u
