@@ -28,7 +28,7 @@ function pipelineError(code, message) {
 }
 
 function requirePipelineConfig() {
-    if (process.env.FACE_AUTH_PIPELINE_ENABLED !== 'true') {
+    if (process.env.FACE_AUTH_PIPELINE_ENABLED !== 'true' || process.env.FACE_AUTH_PIPELINE_VALIDATED !== 'true') {
         throw pipelineError('FACE_SERVER_INFERENCE_NOT_READY', 'Face Login vẫn đang khóa cho đến khi hoàn tất kiểm định mô hình và pipeline.');
     }
     const padThreshold = Number(process.env.FACE_PAD_MIN_SCORE);
@@ -58,7 +58,7 @@ async function consumeChallenge(kind, id) {
     try { return JSON.parse(raw); } catch { return null; }
 }
 
-async function appendCaptureFrame(kind, id, imageBuffer) {
+async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer) {
     requirePipelineConfig();
     const key = challengeKey(kind, id);
     const rawState = await redisClient.get(key);
@@ -67,6 +67,11 @@ async function appendCaptureFrame(kind, id, imageBuffer) {
     try { state = JSON.parse(rawState); } catch { throw pipelineError('FACE_CHALLENGE_INVALID', 'Face challenge không hợp lệ'); }
     if (!state.liveness || Date.now() > state.liveness.expiresAt) {
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face challenge đã hết hạn');
+    }
+
+    if (typeof livenessNonce !== 'string' || livenessNonce.length !== state.liveness.nonce.length ||
+        !crypto.timingSafeEqual(Buffer.from(livenessNonce), Buffer.from(state.liveness.nonce))) {
+        throw pipelineError('FACE_CHALLENGE_INVALID', 'Liveness nonce không hợp lệ.');
     }
 
     // Inference is performed only by the trusted Node/Python server-side pipeline.
@@ -189,7 +194,7 @@ async function getStatus(userId) {
         [userId]
     );
     const credential = result.rows[0] || null;
-    const enabled = process.env.FACE_AUTH_PIPELINE_ENABLED === 'true';
+    const enabled = process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' && process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true';
     return {
         configured: Boolean(credential && !credential.disabled_at),
         credential: credential ? {
