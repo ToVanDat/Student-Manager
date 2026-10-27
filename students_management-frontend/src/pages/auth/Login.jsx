@@ -568,12 +568,12 @@ function Login() {
     // =================================================
 
     return (
-        <main className="relative min-h-[100svh] overflow-x-hidden bg-[#f5f7fb] text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)]">
-            <div className="hidden min-h-[100svh] overflow-hidden p-4 lg:block xl:p-5">
+        <main className="auth-login-page relative min-h-[100svh] overflow-x-hidden bg-[#f5f7fb] text-slate-900 selection:bg-blue-100 selection:text-blue-950 min-[801px]:grid min-[801px]:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)]">
+            <div className="min-h-[34svh] overflow-hidden p-3 min-[601px]:min-h-[38svh] min-[601px]:p-4 min-[801px]:min-h-[100svh] xl:p-5">
                 <AuthBanner />
             </div>
 
-            <section className="relative flex min-h-[100svh] items-center justify-center px-4 pb-10 pt-20 sm:px-8 sm:pb-12 lg:px-10 lg:py-16 xl:px-16">
+            <section className="relative flex min-h-[66svh] items-center justify-center px-4 pb-8 pt-5 sm:px-8 sm:pb-12 min-[801px]:min-h-[100svh] min-[801px]:px-10 min-[801px]:py-16 xl:px-16">
                 <div className="absolute right-4 top-4 z-20 sm:right-8 sm:top-6 lg:right-8 xl:right-12">
                     <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 p-1 shadow-sm backdrop-blur" role="group" aria-label={t('language')}>
                         <Languages size={14} aria-hidden="true" className="ml-2 text-slate-400" />
@@ -597,7 +597,19 @@ function Login() {
                     </div>
                 </div>
 
-                <div className="w-full max-w-[460px] rounded-[28px] border border-slate-200/80 bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 lg:px-10">
+                <style>{`
+                    @keyframes authCardEnter {
+                        from { opacity: 0; transform: translate3d(0, 18px, 0) scale(.992); }
+                        to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+                    }
+                    @media (prefers-reduced-motion: no-preference) {
+                        .auth-login-card { animation: authCardEnter 720ms cubic-bezier(.22,1,.36,1) both; }
+                    }
+                    @media (prefers-reduced-motion: reduce) {
+                        .auth-login-card { animation: none !important; }
+                    }
+                `}</style>
+                <div className="auth-login-card w-full max-w-[460px] rounded-[28px] border border-slate-200/80 bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 min-[801px]:px-10">
                     <div className="mb-7 flex items-center gap-3 sm:mb-9">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold tracking-wide text-white">
                             SM
