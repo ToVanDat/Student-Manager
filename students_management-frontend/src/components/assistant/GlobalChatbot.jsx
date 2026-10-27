@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     BookOpen, Check, ChevronDown, Copy, LoaderCircle, MessageCircle, MessageSquare,
-    Pencil, Plus, RefreshCw, Search, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, X
+    Pencil, Plus, RefreshCw, Search, Send, Square, ThumbsDown, ThumbsUp, Trash2, X
 } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import AssistantKnowledgeManager from '@/components/assistant/AssistantKnowledgeManager.jsx';
