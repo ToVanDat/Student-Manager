@@ -21,7 +21,7 @@ No default threshold is supplied. Never copy benchmark thresholds into productio
 1. Start enrollment or login:
    - `POST /api/auth/face/enrollment/options`
    - `POST /api/auth/face/login/options`
-2. The response includes `challengeId`, randomized `actions`, `livenessNonce`, and `livenessExpiresAt`.
+2. The response includes `challengeId`, randomized `actions`, `livenessNonce`, and `livenessExpiresAt`. Login challenge creation first checks the release flags, authenticated landmark sidecar, and ONNX model runtime; it does not issue a challenge while the pipeline is unavailable.
 3. Capture at least six sequential JPEG/PNG/WebP frames and send each as multipart:
    - enrollment: `POST /api/auth/face/enrollment/frame`
    - login: `POST /api/auth/face/login/frame`
@@ -29,6 +29,8 @@ No default threshold is supplied. Never copy benchmark thresholds into productio
 4. Complete:
    - `POST /api/auth/face/enrollment/verify`
    - `POST /api/auth/face/login/verify`
+
+The settings page now requests password reauthentication before enrollment and captures camera frames only after an explicit user action. The login page uses a dedicated camera dialog and sends the same multipart frame sequence. Both flows display the randomized blink/smile order and stop camera tracks when the capture ends or is cancelled.
 
 The API accepts at most 40 frames per challenge and 5 MB per frame. The server timestamps frames after trusted inference; client timestamps are never accepted. Redis stores the short-lived challenge and temporary per-frame signals/embeddings with a TTL. Raw image bytes are not persisted by the API or landmark sidecar.
 
@@ -51,4 +53,4 @@ Enrollment stores only the aggregate embedding, encrypted with AES-256-GCM. Logi
 - Redis is required. Losing the challenge state invalidates the capture.
 - The API rate-limits challenge creation separately from frame uploads.
 - The status endpoint reports availability only when both release flags are explicitly set, thresholds and AES key are valid, the authenticated MediaPipe sidecar health probe succeeds, and ONNX Runtime can load the hash-verified models.
-- This implementation does not set release flags, apply database migrations, or enable the UI automatically.
+- This implementation does not set release flags or apply database migrations. The UI is wired to the API, but enrollment and login controls remain unavailable until the server status reports both pipeline release gates as ready.
