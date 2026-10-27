@@ -56,3 +56,29 @@
 @media (max-width: 640px) {
   .auth-login-card[data-auth-motion] { --auth-motion-duration: 420ms; }
 }
+
+/* Stagger the actual controls inside form and social-login groups. */
+@media (prefers-reduced-motion: no-preference) {
+  .auth-login-card .auth-form-content > * ,
+  .auth-login-card .auth-methods-content > * {
+    animation: auth-enter 480ms cubic-bezier(.2,.8,.2,1) both;
+  }
+  .auth-login-card .auth-form-content > *:nth-child(1) { animation-delay: 90ms; }
+  .auth-login-card .auth-form-content > *:nth-child(2) { animation-delay: 135ms; }
+  .auth-login-card .auth-form-content > *:nth-child(3) { animation-delay: 180ms; }
+  .auth-login-card .auth-form-content > *:nth-child(4) { animation-delay: 225ms; }
+  .auth-login-card .auth-form-content > *:nth-child(5) { animation-delay: 270ms; }
+  .auth-login-card .auth-form-content > *:nth-child(6) { animation-delay: 315ms; }
+  .auth-login-card .auth-form-content > *:nth-child(7) { animation-delay: 360ms; }
+  .auth-login-card .auth-methods-content > *:nth-child(1) { animation-delay: 220ms; }
+  .auth-login-card .auth-methods-content > *:nth-child(2) { animation-delay: 280ms; }
+  .auth-login-card .auth-methods-content > *:nth-child(3) { animation-delay: 340ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-login-card .auth-form-content > *,
+  .auth-login-card .auth-methods-content > * {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
