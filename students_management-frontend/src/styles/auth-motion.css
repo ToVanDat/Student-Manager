@@ -1,0 +1,58 @@
+/* Shared authentication motion system.
+   Motion is progressive enhancement: state changes and feedback remain visible
+   when the user requests reduced motion or when animation is unsupported. */
+.auth-login-card[data-auth-motion] { --auth-motion-duration: 560ms; }
+@media (prefers-reduced-motion: no-preference) {
+  .auth-login-card[data-auth-motion] .auth-brand-row,
+  .auth-login-card[data-auth-motion] .auth-heading,
+  .auth-login-card[data-auth-motion] .auth-mode-panel > * {
+    animation: auth-enter 560ms cubic-bezier(.2,.8,.2,1) both;
+  }
+  .auth-login-card[data-auth-motion] .auth-heading { animation-delay: 65ms; }
+  .auth-login-card[data-auth-motion] .auth-mode-panel > *:nth-child(1) { animation-delay: 110ms; }
+  .auth-login-card[data-auth-motion] .auth-mode-panel > *:nth-child(2) { animation-delay: 170ms; }
+  .auth-login-card[data-auth-motion] .auth-mode-panel > *:nth-child(3) { animation-delay: 230ms; }
+  .auth-login-card[data-auth-motion] .auth-mode-panel > *:nth-child(4) { animation-delay: 290ms; }
+  .auth-login-card[data-auth-motion] :is(input, select, textarea, button) {
+    transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease, color 150ms ease, transform 150ms ease;
+  }
+  .auth-login-card[data-auth-motion] :is(input, select, textarea):focus-visible {
+    outline: 2px solid #5376e8;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgb(83 118 232 / 13%);
+  }
+  .auth-login-card[data-auth-motion] button:not(:disabled):hover { transform: translateY(-1px); }
+  .auth-login-card[data-auth-motion] button:active:not(:disabled) { transform: translateY(0); }
+}
+@keyframes auth-enter {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.auth-login-card [role="alert"] { border-inline-start-width: 3px; }
+.auth-login-card :is(input[aria-invalid="true"],input[aria-invalid="true"]:focus-visible) {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 12%);
+}
+.auth-login-card button:disabled { cursor: not-allowed; }
+.auth-login-card :is(.animate-spin, [data-loading="true"]) { transform-origin: center; }
+@media (prefers-reduced-motion: reduce) {
+  .auth-login-card[data-auth-motion] .auth-brand-row,
+  .auth-login-card[data-auth-motion] .auth-heading,
+  .auth-login-card[data-auth-motion] .auth-mode-panel > * {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+  .auth-login-card[data-auth-motion] :is(input, select, textarea, button) {
+    transition-duration: 0.01ms;
+  }
+  /* Loading remains perceivable without continuous rotation. */
+  .auth-login-card .animate-spin {
+    animation: none !important;
+    border-top-color: #2563eb;
+    opacity: .9;
+  }
+}
+@media (max-width: 640px) {
+  .auth-login-card[data-auth-motion] { --auth-motion-duration: 420ms; }
+}
