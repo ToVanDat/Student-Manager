@@ -6,7 +6,7 @@ const MAX_CIPHERTEXT_BYTES = 700_000;
 
 const decodeCanonical32 = (value, name = 'value') => {
     if (typeof value !== 'string' ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)$/.test(value)) {
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
         throw new TypeError(`${name} must be canonical padded Base64`);
     }
     const decoded = Buffer.from(value, 'base64');
