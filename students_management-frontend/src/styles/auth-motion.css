@@ -60,7 +60,8 @@
 /* Stagger the actual controls inside form and social-login groups. */
 @media (prefers-reduced-motion: no-preference) {
   .auth-login-card .auth-form-content > * ,
-  .auth-login-card .auth-methods-content > * {
+  .auth-login-card .auth-methods-content > *,
+  .auth-login-card .auth-step-transition {
     animation: auth-enter 480ms cubic-bezier(.2,.8,.2,1) both;
   }
   .auth-login-card .auth-form-content > *:nth-child(1) { animation-delay: 90ms; }
@@ -73,6 +74,7 @@
   .auth-login-card .auth-methods-content > *:nth-child(1) { animation-delay: 220ms; }
   .auth-login-card .auth-methods-content > *:nth-child(2) { animation-delay: 280ms; }
   .auth-login-card .auth-methods-content > *:nth-child(3) { animation-delay: 340ms; }
+  .auth-login-card .auth-step-transition { animation: auth-enter 480ms cubic-bezier(.2,.8,.2,1) both; }
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-login-card .auth-form-content > *,
