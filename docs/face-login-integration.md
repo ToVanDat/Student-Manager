@@ -69,7 +69,7 @@ Do not invent a match threshold. Calibrate it with genuine/impostor pairs for th
 ## Remaining production blockers
 
 1. The supplied MobileFaceNet graph has two image inputs (`img1`, `img2`) and a two-row embedding output. The model bundle does not establish the intended pairing contract, reference alignment template, or color normalization sufficiently to ship a correct inference pipeline.
-2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision is installed in the frontend, but camera capture/detection/alignment is not yet connected to a verified model asset.
+2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision and ONNX Runtime Web have not yet been committed as frontend dependencies because the existing package-lock must be regenerated consistently when the model pipeline is added.
 3. The server does not yet have a trusted ONNX inference runtime and model deployment path. Browser inference alone is not trusted for authentication.
 4. The current public enrollment/login verify endpoints deliberately consume the one-time challenge and return `FACE_SERVER_INFERENCE_NOT_READY`. This is fail-closed behavior, not a completed login implementation.
 5. MiniFASNet-V2 must be evaluated against presentation attacks and a representative validation set. Its output is not a guarantee of liveness.
