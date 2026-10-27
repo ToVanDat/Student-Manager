@@ -978,7 +978,7 @@ const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTrans
              proof_commitment = NULL, proof_ciphertext_digest = NULL,
              proof_ack_digest = NULL
          WHERE session_id = $1 AND owner_user_id = $2
-           AND status IN ('linked_pending_ack', 'completed')`
+           AND status IN ('linked_pending_ack', 'completed')`,
         [sessionId, userId]
     );
     return { rolledBack: true };
