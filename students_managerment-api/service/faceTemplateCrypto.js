@@ -6,22 +6,29 @@ const KEY_BYTES = 32;
 const NONCE_BYTES = 12;
 const TAG_BYTES = 16;
 
-function getKey() {
-    const encoded = process.env.FACE_TEMPLATE_ENCRYPTION_KEY;
+function getKey(version = getKeyVersion()) {
+    let encoded;
+    if (process.env.FACE_TEMPLATE_ENCRYPTION_KEYS) {
+        let keyring;
+        try { keyring = JSON.parse(process.env.FACE_TEMPLATE_ENCRYPTION_KEYS); }
+        catch {
+            const error = new Error('FACE_TEMPLATE_ENCRYPTION_KEYS phải là JSON object ánh xạ version sang base64 key');
+            error.code = 'FACE_AUTH_CONFIG_INVALID';
+            throw error;
+        }
+        encoded = keyring?.[String(version)];
+    } else if (version === getKeyVersion()) {
+        encoded = process.env.FACE_TEMPLATE_ENCRYPTION_KEY;
+    }
+
     if (!encoded) {
-        const error = new Error('FACE_TEMPLATE_ENCRYPTION_KEY chưa được cấu hình');
+        const error = new Error(`Không tìm thấy FACE template key cho version ${version}`);
         error.code = 'FACE_AUTH_CONFIG_NOT_READY';
         throw error;
     }
-
-    let key;
-    try {
-        key = Buffer.from(encoded, 'base64');
-    } catch {
-        key = Buffer.alloc(0);
-    }
+    const key = Buffer.from(encoded, 'base64');
     if (key.length !== KEY_BYTES) {
-        const error = new Error('FACE_TEMPLATE_ENCRYPTION_KEY phải là base64 của đúng 32 byte');
+        const error = new Error(`FACE template key version ${version} phải là base64 của đúng 32 byte`);
         error.code = 'FACE_AUTH_CONFIG_INVALID';
         throw error;
     }
@@ -62,7 +69,7 @@ function encryptFaceTemplate({ userId, embedding, modelId, modelVersion }) {
     const normalized = validateEmbedding(embedding);
     const keyVersion = getKeyVersion();
     const nonce = crypto.randomBytes(NONCE_BYTES);
-    const cipher = crypto.createCipheriv('aes-256-gcm', getKey(), nonce);
+    const cipher = crypto.createCipheriv('aes-256-gcm', getKey(keyVersion), nonce);
     cipher.setAAD(associatedData(userId, keyVersion, modelId, modelVersion));
     const ciphertext = Buffer.concat([
         cipher.update(Buffer.from(JSON.stringify(normalized), 'utf8')),
@@ -83,7 +90,7 @@ function decryptFaceTemplate({ userId, ciphertext, nonce, authTag, keyVersion, m
     if (!userId || !ciphertext || !nonce || !authTag || !keyVersion || !modelId || !modelVersion) {
         throw new TypeError('Face credential envelope không đầy đủ');
     }
-    const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(), Buffer.from(nonce));
+    const decipher = crypto.createDecipheriv('aes-256-gcm', getKey(Number(keyVersion)), Buffer.from(nonce));
     decipher.setAAD(associatedData(userId, keyVersion, modelId, modelVersion));
     decipher.setAuthTag(Buffer.from(authTag));
     const plaintext = Buffer.concat([
