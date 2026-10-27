@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Monitor, Smartphone } from 'lucide-react';
+import { apiClient } from '@/api/client.js';
 import {
     getSessionsApi,
     revokeOtherSessionsApi,
     revokeSessionApi,
 } from '@/api/sessionApi.js';
-import { API_BASE_URL } from '@/utils/constants.js';
 
 export function useStudentSettings(user) {
     const [settingsTab, setSettingsTab] = useState('account');
@@ -100,16 +99,11 @@ export function useStudentSettings(user) {
         setAccountMessage('');
 
         try {
-            const accessToken = localStorage.getItem('accessToken');
-            await axios.patch(
-                `${API_BASE_URL}/api/auth/me`,
+            await apiClient.patch(
+                '/api/auth/me',
                 {
                     username: accountForm.username,
                     email: accountForm.email,
-                },
-                {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${accessToken}` },
                 },
             );
 
@@ -150,17 +144,11 @@ export function useStudentSettings(user) {
 
         try {
             setPasswordSaving(true);
-            const accessToken = localStorage.getItem('accessToken');
-
-            await axios.post(
-                `${API_BASE_URL}/api/auth/change-password`,
+            await apiClient.post(
+                '/api/auth/change-password',
                 {
                     currentPassword: passwordForm.currentPassword,
                     newPassword: passwordForm.newPassword,
-                },
-                {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${accessToken}` },
                 },
             );
 
