@@ -70,11 +70,17 @@ async function saveChallenge(kind, id, payload) {
 }
 
 async function consumeChallenge(kind, id) {
+    if (!redisClient.isReady) throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Redis Face Login chưa sẵn sàng');
     const key = challengeKey(kind, id);
-    const raw = await redisClient.eval(
+    let raw;
+    try {
+        raw = await redisClient.eval(
         "local value = redis.call('GET', KEYS[1]); if value then redis.call('DEL', KEYS[1]); end; return value",
         { keys: [key], arguments: [] }
-    );
+        );
+    } catch {
+        throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Không thể đọc challenge Face Login từ Redis.');
+    }
     if (!raw) return null;
     try { return JSON.parse(raw); } catch { return null; }
 }
@@ -82,8 +88,11 @@ async function consumeChallenge(kind, id) {
 async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expectedUserId = null) {
     validateChallengeId(id);
     requirePipelineConfig();
+    if (!redisClient.isReady) throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Redis Face Login chưa sẵn sàng');
     const key = challengeKey(kind, id);
-    const rawState = await redisClient.get(key);
+    let rawState;
+    try { rawState = await redisClient.get(key); }
+    catch { throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Không thể đọc challenge Face Login từ Redis.'); }
     if (!rawState) throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face challenge đã hết hạn hoặc đã được sử dụng');
     let state;
     try { state = JSON.parse(rawState); } catch { throw pipelineError('FACE_CHALLENGE_INVALID', 'Face challenge không hợp lệ'); }
@@ -126,10 +135,15 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
         redis.call('SET', KEYS[1], cjson.encode(state), 'EX', tonumber(ARGV[5]))
         return #frames
     `;
-    const appended = await redisClient.eval(script, {
-        keys: [key],
-        arguments: [JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES), '3000', String(CHALLENGE_TTL_SECONDS)]
-    });
+    let appended;
+    try {
+        appended = await redisClient.eval(script, {
+            keys: [key],
+            arguments: [JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES), '3000', String(CHALLENGE_TTL_SECONDS)]
+        });
+    } catch {
+        throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Không thể cập nhật capture challenge trong Redis.');
+    }
     if (appended < 1) {
         const codes = { '-1': 'FACE_CHALLENGE_EXPIRED', '-2': 'FACE_CHALLENGE_EXPIRED', '-3': 'FACE_CAPTURE_LIMIT', '-4': 'FACE_FRAME_SEQUENCE_INVALID' };
         throw pipelineError(codes[String(appended)] || 'FACE_CAPTURE_FAILED', 'Không thể tiếp nhận frame Face Login.');
