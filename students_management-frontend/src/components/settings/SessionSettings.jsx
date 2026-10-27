@@ -46,7 +46,7 @@ function SessionSettings({
                     disabled={
                         loading ||
                         activeSessions.filter(
-                            (session) => session.id !== currentSessionId,
+                            (session) => String(session.id) !== String(currentSessionId),
                         ).length === 0
                     }
                 >
