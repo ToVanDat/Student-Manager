@@ -6,7 +6,7 @@ const ACTIONS = Object.freeze(['blink', 'smile']);
 const MAX_FRAMES = 40;
 const MIN_FRAMES = 6;
 const MAX_DURATION_MS = 12_000;
-const MAX_FRAME_GAP_MS = 1_500;
+const MAX_FRAME_GAP_MS = 3_000;
 
 function createLivenessChallenge(now = Date.now()) {
     const actions = crypto.randomInt(0, 2) === 0 ? [...ACTIONS] : [...ACTIONS].reverse();
@@ -15,7 +15,7 @@ function createLivenessChallenge(now = Date.now()) {
         nonce: crypto.randomBytes(32).toString('base64url'),
         actions,
         issuedAt: now,
-        expiresAt: now + 20_000
+        expiresAt: now + 30_000
     });
 }
 
