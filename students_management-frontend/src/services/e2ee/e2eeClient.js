@@ -5,7 +5,7 @@ import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { createE2EER2ObjectStore } from './e2eeR2ObjectStore';
 import { getStoredE2EEDeviceId, setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
-import { getE2EEProvisioningRecoveryRecords, getE2EEDeviceCredential, setPendingE2EEProvisioningRollback, finalizeE2EEProvisioningRecovery } from './e2eeDeviceCredentialStore';
+import { getE2EEProvisioningRecoveryRecords, getE2EEDeviceCredential, setPendingE2EEProvisioningRollback, finalizeE2EEProvisioningRecovery, finalizeE2EEProvisioningOwnerRecovery } from './e2eeDeviceCredentialStore';
 
 const listeners = new Set();
 let activeContext = null;
@@ -20,7 +20,22 @@ let activeAttachmentConversationId = null;
 // partially persisted linked device for a first-time account.
 const recoverProvisioningBeforeClientStart = async userId => {
     const records = await getE2EEProvisioningRecoveryRecords(userId);
-    for (const record of records.filter(item => item.phase !== 'completed')) {
+
+    // Owner journals have no linked-device token or deviceId. Resolve them
+    // with the authenticated account session before processing device journals.
+    // In particular, do not feed owner records into device-token rollback.
+    for (const record of records.filter(item => item.kind === 'owner')) {
+        const result = (await e2eeRelayApi.abortProvisioningSession(record.sessionId))?.data?.data;
+        if (!result?.aborted && !result?.alreadyFinalized && !result?.alreadyCompleted) {
+            const error = new Error('Owner provisioning recovery did not reach a confirmed terminal state.');
+            error.code = 'E2EE_OWNER_PROVISIONING_RECOVERY_UNCONFIRMED';
+            throw error;
+        }
+        // alreadyCompleted is terminal but must not revoke the active device.
+        await finalizeE2EEProvisioningOwnerRecovery(userId, record.sessionId);
+    }
+
+    for (const record of records.filter(item => item.kind !== 'owner' && item.phase !== 'completed')) {
         const deviceId = Number(record.deviceId);
         const sessionId = record.sessionId;
         const token = await getE2EEDeviceCredential(userId, deviceId);
