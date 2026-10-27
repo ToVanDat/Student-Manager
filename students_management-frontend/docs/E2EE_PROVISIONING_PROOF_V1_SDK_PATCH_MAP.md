@@ -104,7 +104,7 @@ Do not log plaintext, private keys, shared secrets, proof keys, proof bytes, or 
 - Additive migration: `students_managerment-api/sql/e2ee_provisioning_proof_v1_migration.sql`; it has not been applied to any user or production database. CI migration-smoke and PostgreSQL integration are configured to apply it only to disposable test databases.
 - Backend verification is a constant-time equality check of the receiver's proof against the primary's stored commitment, plus a re-check of the stored ciphertext digest. The server does not possess the ECDH secret and cannot independently derive the HMAC. Correct transcript construction and post-decryption proof generation remain SDK responsibilities; this is not remote attestation.
 - Frontend adapter does not request proof protocol v1 yet. Existing sessions remain legacy; do not enable v1 from the UI until the patched SDK is built, pinned, and proven interoperable.
-- Latest backend code and tests have been committed, but the CI runs for those commits must be checked before claiming the integration gates passed.
+- Backend CI at commit `a127b9c3bbf30be87bf84b292becb2e5b36d2b55`: API unit tests, PostgreSQL relay integration (including proof v1 activation/replay), migration idempotency smoke, frontend lint/build, and E2EE frontend tests all passed. This validates the staged backend path, not the unimplemented SDK fork or browser interoperability.
 
 
 ## Backend schema baseline inspected
