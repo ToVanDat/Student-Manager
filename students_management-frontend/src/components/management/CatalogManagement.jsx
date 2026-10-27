@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/api/client.js';
@@ -31,21 +31,28 @@ export default function CatalogManagement({ resource }) {
     const [formOpen, setFormOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
+    const requestVersionRef = useRef(0);
 
     const loadItems = useCallback(async () => {
+        const requestVersion = ++requestVersionRef.current;
         setLoading(true);
         setError('');
         try {
             const response = await apiClient.get(config.endpoint);
+            if (requestVersion !== requestVersionRef.current) return;
             setItems(Array.isArray(response.data) ? response.data : []);
         } catch (err) {
+            if (requestVersion !== requestVersionRef.current) return;
             setError(err?.response?.data?.message || t('catalogLoadFailed'));
         } finally {
-            setLoading(false);
+            if (requestVersion === requestVersionRef.current) setLoading(false);
         }
     }, [config.endpoint, t]);
 
-    useEffect(() => { void loadItems(); }, [loadItems]);
+    useEffect(() => {
+        void loadItems();
+        return () => { requestVersionRef.current += 1; };
+    }, [loadItems]);
 
     const visibleItems = useMemo(() => {
         const term = query.trim().toLocaleLowerCase();
