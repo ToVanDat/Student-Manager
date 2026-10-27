@@ -23,6 +23,12 @@ function fail(res, error) {
     if (/challenge.*(hết hạn|đã được sử dụng)/i.test(error?.message || '')) {
         return res.status(400).json({ message: error.message });
     }
+    if (/mật khẩu.*không đúng|hãy xác minh|xác minh.*(hết hạn|không đúng|đã được sử dụng)/i.test(error?.message || '')) {
+        return res.status(400).json({ code: 'FACE_REAUTH_REQUIRED', message: error.message });
+    }
+    if (/tài khoản không hoạt động/i.test(error?.message || '')) {
+        return res.status(403).json({ code: 'FACE_ACCOUNT_INACTIVE', message: error.message });
+    }
     console.error('[FaceAuth] Request failed', { code: error?.code, name: error?.name });
     return res.status(500).json({ message: 'Không thể xử lý yêu cầu Face Login.' });
 }
