@@ -294,6 +294,62 @@ test('provisioning acknowledgement reports expiry only after repository cleanup 
     assert.deepEqual(received, [
         11,
         'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d',
-        'device-token-for-new-device-which-is-long-enough'
+        'device-token-for-new-device-which-is-long-enough',
+        null
     ]);
+});
+
+
+test('proof v1 provisioning session is explicitly opt-in and rejects unsupported versions', async t => {
+    const oldCreate = relayRepository.createProvisioningSession;
+    let received;
+    relayRepository.createProvisioningSession = async (...args) => { received = args; return { sessionId: 'created' }; };
+    t.after(() => { relayRepository.createProvisioningSession = oldCreate; });
+
+    await service.createProvisioningSession(11, {
+        ephemeralPublicKey: Buffer.alloc(32, 1).toString('base64'),
+        proofProtocolVersion: 1
+    });
+    assert.deepEqual(received, [11, Buffer.alloc(32, 1).toString('base64'), 1]);
+    await assert.rejects(
+        service.createProvisioningSession(11, {
+            ephemeralPublicKey: Buffer.alloc(32, 1).toString('base64'),
+            proofProtocolVersion: 2
+        }),
+        error => error.statusCode === 400
+    );
+});
+
+test('proof v1 commitment must be canonical 32-byte Base64 before repository write', async t => {
+    const oldSend = relayRepository.sendProvisioningMessage;
+    let calls = 0;
+    relayRepository.sendProvisioningMessage = async () => { calls += 1; };
+    t.after(() => { relayRepository.sendProvisioningMessage = oldSend; });
+
+    await assert.rejects(
+        service.sendProvisioningMessage(11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', {
+            encryptedMessage: 'opaque-ciphertext',
+            proofCommitment: 'not-base64'
+        }),
+        error => error.statusCode === 400 && error.code === 'E2EE_PROVISIONING_PROOF_INVALID'
+    );
+    await service.sendProvisioningMessage(11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', {
+        encryptedMessage: 'opaque-ciphertext',
+        proofCommitment: Buffer.alloc(32, 2).toString('base64')
+    });
+    assert.equal(calls, 1);
+});
+
+test('proof ACK is forwarded separately from the per-device credential', async t => {
+    const oldAck = relayRepository.acknowledgeProvisioning;
+    let received;
+    relayRepository.acknowledgeProvisioning = async (...args) => { received = args; return { acknowledged: true }; };
+    t.after(() => { relayRepository.acknowledgeProvisioning = oldAck; });
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const proof = Buffer.alloc(32, 3).toString('base64');
+    assert.deepEqual(
+        await service.acknowledgeProvisioning(11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', token, proof),
+        { acknowledged: true }
+    );
+    assert.deepEqual(received, [11, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', token, proof]);
 });
