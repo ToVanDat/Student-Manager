@@ -11,6 +11,7 @@ const {
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const authRepository = require('../repository/authRepository.js');
+const { saveAccessTokenToRedis, removeAccessTokenFromRedis } = require('./accessTokenStore.js');
 
 const googleClient = new OAuth2Client();
 const CHALLENGE_TTL_SECONDS = 300;
@@ -91,8 +92,7 @@ async function issueSession(user, req) {
             algorithm: 'HS256'
         });
 
-        const accessHash = hash(accessToken);
-        await redisClient.set(`access_token:${accessHash}`, String(user.id), { EX: ACCESS_TTL_SECONDS });
+        await saveAccessTokenToRedis(accessToken, user.id);
 
         const refreshToken = randomToken(64);
         await authRepository.saveRefreshToken(
@@ -106,7 +106,7 @@ async function issueSession(user, req) {
         // active session or a usable access-token entry behind.
         if (accessToken) {
             try {
-                await redisClient.del(`access_token:${hash(accessToken)}`);
+                await removeAccessTokenFromRedis(accessToken);
             } catch (cleanupError) {
                 console.error('[AdvancedAuth] Failed to clean partial access token', {
                     code: cleanupError.code || 'ACCESS_TOKEN_CLEANUP_FAILED'
