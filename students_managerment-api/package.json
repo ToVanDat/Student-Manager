@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "face:verify-models": "node scripts/verify-face-models.js",
-    "face:smoke": "node scripts/smoke-face-inference.js"
+    "face:smoke": "node scripts/smoke-face-inference.js",
+    "face:runtime-smoke": "node scripts/smoke-face-runtime.js"
   },
   "keywords": [],
   "author": "",
