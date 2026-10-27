@@ -57,7 +57,7 @@ const createRedisMock = () => {
 const createAccessToken = (sessionId, userId = 'user-1') => jwt.sign(
     { sub: userId, sessionId },
     'test-secret',
-    { expiresIn: '5m', issuer: 'student-management-api', audience: 'student-management-client' }
+    { expiresIn: '5m', issuer: 'student-management-api', audience: 'student-management-client', jwtid: crypto.randomUUID() }
 );
 
 const installRedisMock = (mock) => {
