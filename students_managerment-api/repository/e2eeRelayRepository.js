@@ -672,7 +672,7 @@ const expireProvisioningSessions = async (client, userId) => {
             await client.query(
                 `DELETE FROM e2ee_sdk_devices
                  WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
-                   AND revoked_at IS NULL AND created_at <= $3`,
+                   AND revoked_at IS NULL AND created_at < $3 + INTERVAL '1 millisecond'`,
                 [userId, session.assigned_device_id, session.completed_at]
             );
         }
@@ -805,7 +805,7 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => withTr
         `UPDATE e2ee_sdk_devices SET enabled = TRUE
          WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
            AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
-           AND created_at <= $4
+           AND created_at < $4 + INTERVAL '1 millisecond'
          RETURNING device_id`,
         [userId, session.assigned_device_id, tokenHash, session.completed_at]
     );
@@ -856,7 +856,7 @@ const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTrans
             `UPDATE e2ee_sdk_devices SET enabled = FALSE, revoked_at = NOW(), device_token_hash = NULL
              WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
                AND revoked_at IS NULL AND enabled = TRUE AND device_token_hash = $3
-               AND created_at <= $4
+               AND created_at < $4 + INTERVAL '1 millisecond'
              RETURNING id`,
             [userId, session.assigned_device_id, tokenHash, session.completed_at]
         );
@@ -870,7 +870,7 @@ const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTrans
             `DELETE FROM e2ee_sdk_devices
              WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
                AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
-               AND created_at <= $4
+               AND created_at < $4 + INTERVAL '1 millisecond'
              RETURNING id`,
             [userId, session.assigned_device_id, tokenHash, session.completed_at]
         );
@@ -915,7 +915,7 @@ const abortProvisioningSession = async (userId, sessionId) => withTransaction(as
             `DELETE FROM e2ee_sdk_devices
              WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
                AND revoked_at IS NULL AND enabled = FALSE
-               AND created_at <= $3
+               AND created_at < $3 + INTERVAL '1 millisecond'
              RETURNING id`,
             [userId, session.assigned_device_id, session.completed_at]
         );
