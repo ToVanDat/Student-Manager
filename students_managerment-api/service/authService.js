@@ -997,6 +997,12 @@ const refresh = async (
             );
 
             if (revokedSession) {
+                try {
+                    await removeAccessTokensForSession(revokedSession.id);
+                } catch (cleanupError) {
+                    console.warn('[AUTH] Could not clear replayed session access tokens:', cleanupError.message);
+                }
+
                 emitSessionRevoked(
                     revokedSession.id,
                     'REFRESH_TOKEN_REUSE'
