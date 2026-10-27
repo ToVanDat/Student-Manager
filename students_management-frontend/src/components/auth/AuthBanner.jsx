@@ -41,15 +41,18 @@ function AuthBanner() {
         const bounds = element.getBoundingClientRect();
         const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 28;
         const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 28;
-        element.style.setProperty('--parallax-x', `${x.toFixed(2)}px`);
-        element.style.setProperty('--parallax-y', `${y.toFixed(2)}px`);
+        element.style.setProperty('--parallax-back-x', `${(x * -0.16).toFixed(2)}px`);
+        element.style.setProperty('--parallax-back-y', `${(y * -0.16).toFixed(2)}px`);
+        element.style.setProperty('--parallax-glow-x', `${(x * 0.34).toFixed(2)}px`);
+        element.style.setProperty('--parallax-glow-y', `${(y * 0.34).toFixed(2)}px`);
+        element.style.setProperty('--parallax-grid-x', `${(x * -0.48).toFixed(2)}px`);
+        element.style.setProperty('--parallax-grid-y', `${(y * -0.48).toFixed(2)}px`);
     };
 
     const resetParallax = () => {
         const element = bannerRef.current;
         if (!element) return;
-        element.style.setProperty('--parallax-x', '0px');
-        element.style.setProperty('--parallax-y', '0px');
+        ['--parallax-back-x', '--parallax-back-y', '--parallax-glow-x', '--parallax-glow-y', '--parallax-grid-x', '--parallax-grid-y'].forEach(property => element.style.setProperty(property, '0px'));
     };
     const [currentIndex, setCurrentIndex] = useState(0);
     const touchStartX = useRef(null);
@@ -99,13 +102,13 @@ function AuthBanner() {
             <div
                 key={currentIndex}
                 className={`absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]} transition-transform duration-300 ease-out motion-reduce:transform-none`}
-                style={{ transform: 'translate3d(calc(var(--parallax-x, 0px) * -0.16), calc(var(--parallax-y, 0px) * -0.16), 0) scale(1.015)' }}
+                style={{ transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                 aria-hidden="true"
             />
             <div
                 className="pointer-events-none absolute -inset-12 z-[2] opacity-70 transition-transform duration-500 ease-out motion-reduce:transform-none"
                 style={{
-                    transform: 'translate3d(calc(var(--parallax-x, 0px) * 0.34), calc(var(--parallax-y, 0px) * 0.34), 0)',
+                    transform: 'translate3d(var(--parallax-glow-x, 0px), var(--parallax-glow-y, 0px), 0)',
                     background: 'radial-gradient(ellipse at 18% 24%, rgba(94, 234, 212, 0.18), transparent 34%), radial-gradient(ellipse at 78% 72%, rgba(96, 165, 250, 0.17), transparent 38%), radial-gradient(ellipse at 52% 48%, rgba(255,255,255,0.045), transparent 56%)'
                 }}
                 aria-hidden="true"
@@ -113,7 +116,7 @@ function AuthBanner() {
             <div
                 className="pointer-events-none absolute -inset-6 z-[2] opacity-25 transition-transform duration-700 ease-out motion-reduce:transform-none"
                 style={{
-                    transform: 'translate3d(calc(var(--parallax-x, 0px) * -0.48), calc(var(--parallax-y, 0px) * -0.48), 0)',
+                    transform: 'translate3d(var(--parallax-grid-x, 0px), var(--parallax-grid-y, 0px), 0)',
                     backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.22) 1px, transparent 0)',
                     backgroundSize: '34px 34px',
                     maskImage: 'linear-gradient(135deg, black, transparent 78%)'
