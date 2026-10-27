@@ -5,12 +5,14 @@ import hmac
 import io
 import os
 from contextlib import asynccontextmanager
+from threading import Lock
 from typing import Any
 
 import mediapipe as mp
 import numpy as np
 from fastapi import FastAPI, Header, HTTPException, Request
 from PIL import Image, ImageOps, UnidentifiedImageError
+from starlette.concurrency import run_in_threadpool
 
 MAX_BYTES = 5 * 1024 * 1024
 MAX_PIXELS = 16_000_000
@@ -22,6 +24,7 @@ MODEL_PATH = os.environ.get(
 SERVICE_TOKEN = os.environ.get("FACE_LANDMARK_SERVICE_TOKEN", "")
 MODEL_SHA256 = "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
 landmarker: Any = None
+inference_lock = Lock()
 
 
 def _point(face: list, index: int, width: int, height: int) -> tuple[float, float]:
@@ -152,7 +155,10 @@ async def landmarks(request: Request, authorization: str | None = Header(default
 
     try:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-        result = landmarker.detect(mp_image)
+        def detect_serialized(image: mp.Image):
+            with inference_lock:
+                return landmarker.detect(image)
+        result = await run_in_threadpool(detect_serialized, mp_image)
         faces = result.face_landmarks or []
         if len(faces) != 1:
             raise HTTPException(status_code=422, detail="Exactly one face must be visible")
