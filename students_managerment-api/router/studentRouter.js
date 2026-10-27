@@ -18,6 +18,11 @@ const validateStudent = require('../middleware/studentValidation.js');
 // Standard users can only read their own verified student link and academic records.
 router.get('/me', authMiddleware, requireRole('user'), studentController.getMyStudentPortal);
 
+// Sensitive admin-only account-to-student identity verification workflow.
+router.get('/account-links', authMiddleware, requireRole('admin'), requirePermission('students.link_accounts'), studentController.getStudentAccountLinks);
+router.post('/account-links', authMiddleware, requireRole('admin'), requirePermission('students.link_accounts'), studentController.createStudentAccountLink);
+router.delete('/account-links/:userId', authMiddleware, requireRole('admin'), requirePermission('students.link_accounts'), studentController.deleteStudentAccountLink);
+
 // Admin only: list responses include personal student data.
 router.get(
     '/',

@@ -2,6 +2,21 @@ import { apiClient } from '@/api/client.js';
 
 const STUDENT_API_URL = '/api/students';
 
+export const getStudentAccountLinks = async (search = '') => {
+  const response = await apiClient.get(`${STUDENT_API_URL}/account-links`, { params: { search } });
+  return response.data?.data;
+};
+
+export const createStudentAccountLink = async (payload) => {
+  const response = await apiClient.post(`${STUDENT_API_URL}/account-links`, payload);
+  return response.data;
+};
+
+export const deleteStudentAccountLink = async (userId, reason) => {
+  const response = await apiClient.delete(`${STUDENT_API_URL}/account-links/${encodeURIComponent(userId)}`, { data: { reason } });
+  return response.data;
+};
+
 export const getMyStudentPortal = async () => {
   const response = await apiClient.get(`${STUDENT_API_URL}/me`);
   return response.data;

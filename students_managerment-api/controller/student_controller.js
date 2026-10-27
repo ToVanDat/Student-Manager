@@ -92,6 +92,71 @@ const getMyStudentPortal = async (req, res) => {
     }
 };
 
+
+const getStudentAccountLinks = async (req, res) => {
+    try {
+        const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+        if (search.length > 100) return res.status(400).json({ message: 'Từ khóa tìm kiếm quá dài.' });
+        const data = await studentService.listStudentAccountLinkAdminData(search);
+        return res.status(200).json({ data });
+    } catch (error) {
+        if (error?.code === '42P01' || error?.code === '42703') {
+            return res.status(503).json({
+                code: 'STUDENT_LINK_SCHEMA_NOT_READY',
+                message: 'Cấu trúc liên kết tài khoản sinh viên chưa được cài đặt đầy đủ. Vui lòng kiểm tra migration.'
+            });
+        }
+        return handleStudentError(res, error, 'Không thể tải dữ liệu liên kết tài khoản.');
+    }
+};
+
+const createStudentAccountLink = async (req, res) => {
+    try {
+        const result = await studentService.createStudentAccountLink(
+            req.body?.userId, req.body?.studentId, req.user.id, req.body
+        );
+        const responses = {
+            invalid_id: [400, 'ID tài khoản hoặc hồ sơ sinh viên không hợp lệ.'],
+            invalid_body: [400, 'Dữ liệu yêu cầu không hợp lệ.'],
+            invalid_confirmation: [400, 'Cần xác nhận đã kiểm tra danh tính theo quy trình chính thức.'],
+            user_unavailable: [409, 'Tài khoản không tồn tại, không hoạt động hoặc không có role user.'],
+            student_not_found: [404, 'Không tìm thấy hồ sơ sinh viên.'],
+            already_linked: [409, 'Tài khoản hoặc hồ sơ sinh viên đã được liên kết với bản ghi khác.']
+        };
+        if (result.kind !== 'ok') {
+            const [status, message] = responses[result.kind] || [400, 'Không thể tạo liên kết.'];
+            return res.status(status).json({ message, code: result.kind });
+        }
+        return res.status(201).json({ data: result.link, message: 'Đã xác minh và liên kết tài khoản sinh viên.' });
+    } catch (error) {
+        if (error?.code === '42P01' || error?.code === '42703') {
+            return res.status(503).json({ code: 'STUDENT_LINK_SCHEMA_NOT_READY', message: 'Cấu trúc liên kết tài khoản sinh viên chưa được cài đặt đầy đủ.' });
+        }
+        if (error?.code === '23505') return res.status(409).json({ message: 'Tài khoản hoặc hồ sơ đã được liên kết.' });
+        return handleStudentError(res, error, 'Không thể liên kết tài khoản sinh viên.');
+    }
+};
+
+const deleteStudentAccountLink = async (req, res) => {
+    try {
+        const result = await studentService.unlinkStudentAccount(req.params.userId, req.user.id, req.body);
+        const responses = {
+            invalid_id: [400, 'ID tài khoản không hợp lệ.'],
+            invalid_body: [400, 'Dữ liệu yêu cầu không hợp lệ.'],
+            invalid_reason: [400, 'Lý do hủy liên kết phải có từ 10 đến 500 ký tự.'],
+            not_found: [404, 'Không tìm thấy liên kết tài khoản.']
+        };
+        if (result.kind !== 'ok') {
+            const [status, message] = responses[result.kind] || [400, 'Không thể hủy liên kết.'];
+            return res.status(status).json({ message, code: result.kind });
+        }
+        return res.status(200).json({ data: result, message: 'Đã hủy liên kết; lịch sử thao tác được lưu lại.' });
+    } catch (error) {
+        if (error?.code === '42P01') return res.status(503).json({ code: 'STUDENT_LINK_SCHEMA_NOT_READY', message: 'Bảng lịch sử liên kết chưa được cài đặt.' });
+        return handleStudentError(res, error, 'Không thể hủy liên kết tài khoản.');
+    }
+};
+
 const getStudentById = async (req, res) => {
     try {
         const { id } = req.params;
@@ -173,6 +238,9 @@ const deleteStudent = async (req, res) => {
 module.exports = {
     getAllStudents,
     getMyStudentPortal,
+    getStudentAccountLinks,
+    createStudentAccountLink,
+    deleteStudentAccountLink,
     getStudentById,
     createStudent,
     updateStudent,
