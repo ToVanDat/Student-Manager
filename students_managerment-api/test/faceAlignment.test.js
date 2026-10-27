@@ -1,0 +1,43 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const {
+  REFERENCE_POINTS, estimateSimilarityTransform, alignRgbFace, cropPadRgb, toNchwFloat
+} = require('../service/faceAlignment.js');
+
+test('five-point similarity transform maps detected landmarks to canonical coordinates', () => {
+  const source = [[100, 120], [220, 125], [160, 190], [115, 255], [210, 252]];
+  const transform = estimateSimilarityTransform(source);
+  const mapped = source.map(([x, y]) => [
+    transform.a * x - transform.b * y + transform.tx,
+    transform.b * x + transform.a * y + transform.ty
+  ]);
+  mapped.forEach((point, index) => {
+    assert.ok(Math.abs(point[0] - REFERENCE_POINTS[index][0]) < 1e-5);
+    assert.ok(Math.abs(point[1] - REFERENCE_POINTS[index][1]) < 1e-5);
+  });
+});
+
+test('similarity transform rejects degenerate landmarks', () => {
+  assert.throws(() => estimateSimilarityTransform(Array(5).fill([1, 1])), /degenerate/);
+});
+
+test('alignment creates a 112x112 RGB crop', () => {
+  const width = 256, height = 256;
+  const rgb = Buffer.alloc(width * height * 3, 127);
+  const source = [[80, 80], [176, 82], [128, 135], [92, 190], [164, 188]];
+  const aligned = alignRgbFace(rgb, width, height, source);
+  assert.equal(aligned.length, 112 * 112 * 3);
+});
+
+test('PAD crop is a square 80x80 crop expanded around the face box', () => {
+  const rgb = Buffer.alloc(200 * 200 * 3, 200);
+  const crop = cropPadRgb(rgb, 200, 200, { x: 70, y: 60, width: 60, height: 80 });
+  assert.equal(crop.length, 80 * 80 * 3);
+});
+
+test('NCHW conversion applies BGR channel order and [0,1] scaling', () => {
+  const rgb = Buffer.from([255, 128, 0]);
+  const tensor = toNchwFloat(rgb, 1, 1, [2, 1, 0]);
+  assert.deepEqual(Array.from(tensor), [0, 128 / 255, 1]);
+});
