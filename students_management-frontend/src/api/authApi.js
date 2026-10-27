@@ -186,6 +186,20 @@ export const finishSensitiveReauthApi = async (challengeId, responsePayload, pur
 export const getFaceLoginStatusApi = async () => (await apiClient.get('/api/auth/face/status')).data;
 export const beginFaceEnrollmentApi = async verificationToken => (await apiClient.post('/api/auth/face/enrollment/options', { verificationToken })).data;
 export const finishFaceEnrollmentApi = async challengeId => (await apiClient.post('/api/auth/face/enrollment/verify', { challengeId })).data;
+export const captureFaceEnrollmentFrameApi = async (challengeId, livenessNonce, frame) => {
+  const body = new FormData();
+  body.append('challengeId', challengeId);
+  body.append('livenessNonce', livenessNonce);
+  body.append('frame', frame, 'face-frame.jpg');
+  return (await apiClient.post('/api/auth/face/enrollment/frame', body)).data;
+};
 export const disableFaceLoginApi = async () => (await apiClient.delete('/api/auth/face/credential')).data;
 export const beginFaceLoginApi = async username => (await axios.post(`${API_BASE_URL}/api/auth/face/login/options`, { username }, { withCredentials: true })).data;
+export const captureFaceLoginFrameApi = async (challengeId, livenessNonce, frame) => {
+  const body = new FormData();
+  body.append('challengeId', challengeId);
+  body.append('livenessNonce', livenessNonce);
+  body.append('frame', frame, 'face-frame.jpg');
+  return (await axios.post(`${API_BASE_URL}/api/auth/face/login/frame`, body, { withCredentials: true })).data;
+};
 export const finishFaceLoginApi = async challengeId => (await axios.post(`${API_BASE_URL}/api/auth/face/login/verify`, { challengeId }, { withCredentials: true })).data;
