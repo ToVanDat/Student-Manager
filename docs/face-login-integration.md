@@ -54,7 +54,7 @@ npm install --save-exact onnxruntime-node@1.30.0
 
 This command must be run in the developer's actual API checkout so npm updates both `package.json` and `package-lock.json` consistently. Do not hand-edit the lockfile. ONNX Runtime Node.js requires Node 16 or newer and recommends Node 20; the published CPU binary supports Windows x64 and Linux x64. See [official Node binding docs](https://onnxruntime.ai/docs/get-started/with-javascript/node.html) and [package release](https://www.npmjs.com/package/onnxruntime-node).
 
-The model runtime is not yet called by the public enrollment/login endpoints. The MediaPipe task asset/runtime, server-side landmark extraction, 5-point alignment, PAD crop generation, and dataset-calibrated PAD/match thresholds remain required. The image decoder and ONNX runner are foundations only; no public route invokes them. Until those pieces and end-to-end tests exist, the API continues to return `FACE_SERVER_INFERENCE_NOT_READY`.
+The internal inference pipeline now includes bounded image decoding, a private MediaPipe landmark service, five-point alignment, PAD crop generation, and ONNX model execution. It is not yet invoked by public enrollment/login endpoints. The task asset and ONNX Runtime dependency must be installed locally, then the pipeline must pass reference-image, model-contract, PAD, and replay tests before authentication routes can be enabled. Until then, public verification endpoints remain fail-closed with `FACE_SERVER_INFERENCE_NOT_READY`.
 
 ## Private MediaPipe landmark service and Node preprocessing
 
