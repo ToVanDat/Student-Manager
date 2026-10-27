@@ -10,7 +10,23 @@ The supplied model bundle contains:
 - MobileFaceNet metadata: two inputs `img1`, `img2`, each `float32 [1,3,112,112]`, values [0,1]; output `embeddings float32 [2,128]`.
 - MiniFASNet-V2 ONNX: 1,744,116 bytes (SHA-256: `d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b`).
 
-Important: MobileFaceNet is exported as a paired/two-image graph, not a one-image encoder. Inspection of the ONNX graph's embedded PyTorch export trace confirms the forward path: normalize each input independently, horizontally flip each normalized input, concatenate `[img1, flip(img1), img2, flip(img2)]` as a batch, run the shared backbone, sum each image's original/flip feature pair (TTA), then return the two 128-D vectors as rows `[2,128]`. Therefore `img1` and `img2` represent two separate face crops; they are not two temporal frames and the output is not a similarity score. For single-image embedding, the same validated crop can be supplied to both inputs and one returned row selected. The ONNX trace shows `normalize_image_torchvision`, but this archive does not provide a human-readable reference preprocessing implementation or test vectors; exact channel order, mean/std constants, face alignment template, crop geometry, and output normalization still require confirmation against the matching Qualcomm model source. Do not guess those values or a match threshold.
+Important: MobileFaceNet is exported as a paired/two-image verification graph. The matching Qualcomm AI Hub source (`models/mobile_facenet/model.py` and `app.py`) confirms RGB NCHW inputs in `[0,1]`, then torchvision normalization with mean `[0.485, 0.456, 0.406]` and std `[0.229, 0.224, 0.225]`. The graph independently normalizes each image, horizontally flips each normalized image, runs the four-image batch through the shared backbone, sums original+flip features per image (TTA), and returns interleaved rows `[embedding(img1), embedding(img2)]` with shape `[2,128]`. The rows are not a similarity score; L2-normalize them before cosine comparison. Qualcomm's reference app aligns 5 points in the order left eye, right eye, nose, left mouth, right mouth to a 112x112 crop using `default_square=true`, `inner_padding_factor=0.25`, and no outer padding. The reference template is derived from the original MobileFaceNet points; MediaPipe landmark-to-five-point mapping must still be validated against reference examples before production. The Qualcomm evaluator expresses its default threshold as a cosine angle in degrees (74.18° in `model.py`), while this project's `FACE_MATCH_THRESHOLD` is a cosine similarity in `[-1,1]`; do not copy the numeric value across units, and do not treat a public benchmark threshold as a calibrated authentication threshold.
+
+## Model artifact deployment and integrity
+
+Do not commit model binaries to Git. Extract the supplied archive so the following files are side by side in `students_managerment-api/storage/face-models/`:
+
+- `mobile_facenet.onnx`
+- `mobile_facenet.data` (required external initializer data; do not rename)
+- `minifasnet-v2.onnx`
+
+The API ignores this local directory in Git. Verify the exact uploaded archive artifacts from the API directory with:
+
+```cmd
+npm run face:verify-models
+```
+
+To use another directory, set `FACE_MODEL_DIR` to its absolute path before running the command. The verifier checks SHA-256 against the uploaded bundle. A successful integrity check proves only that the files match that bundle; it does not prove model accuracy, correct preprocessing, inference compatibility, PAD effectiveness, or readiness for authentication.
 
 ## Data protection
 
@@ -69,9 +85,9 @@ Do not invent a match threshold. Calibrate it with genuine/impostor pairs for th
 
 ## Remaining production blockers
 
-1. The MobileFaceNet graph's paired-input and horizontal-flip TTA behavior is now confirmed from its embedded export trace, but exact preprocessing constants/channel order, face alignment template, crop geometry, output normalization, and a validated reference test vector are still missing. These are required before calibrating similarity.
+1. The matching Qualcomm source now establishes RGB preprocessing, torchvision mean/std normalization, paired-input TTA, and the 112x112 five-point alignment template. The MediaPipe-to-five-point landmark mapping and image-warp implementation still need reference-image tests and numerical parity checks before similarity calibration.
 2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision and ONNX Runtime Web have not yet been committed as frontend dependencies because the existing package-lock must be regenerated consistently when the model pipeline is added.
-3. The server does not yet have a trusted ONNX inference runtime and model deployment path. Browser inference alone is not trusted for authentication.
+3. The model artifact deployment path and SHA-256 verifier are now documented/committed, but `onnxruntime-node` is not installed or locked in the API package yet, no server inference session is wired, and the MediaPipe Face Landmarker task asset is absent. Browser inference alone is not trusted for authentication.
 4. The current public enrollment/login verify endpoints deliberately consume the one-time challenge and return `FACE_SERVER_INFERENCE_NOT_READY`. This is fail-closed behavior, not a completed login implementation.
 5. MiniFASNet-V2 must be evaluated against presentation attacks and a representative validation set. Its output is not a guarantee of liveness.
 6. No production migration or live database operation is performed by these commits.
