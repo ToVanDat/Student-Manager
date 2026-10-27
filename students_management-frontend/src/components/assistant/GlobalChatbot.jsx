@@ -508,7 +508,7 @@ export default function GlobalChatbot() {
 
                             <div className="shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
                                 {editingLatestQuestion && <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><span>{vi ? 'Đang chỉnh sửa câu hỏi gần nhất' : 'Editing the latest question'}</span><button type="button" onClick={() => { setEditingLatestQuestion(false); setReplaceLastTurnOnSubmit(false); setInput(''); }} className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900" aria-label={vi ? 'Hủy chỉnh sửa' : 'Cancel edit'}><X size={13} /></button></div>}
-                                <form onSubmit={send} className="rounded-2xl border border-slate-200 bg-white p-2.5 shadow-[0_4px_18px_-12px_rgba(15,23,42,.28)] transition focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-200/70 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:ring-slate-700/60">
+                                <form onSubmit={send} className="relative flex min-h-[68px] items-center rounded-[18px] border border-slate-200 bg-white px-4 py-2 shadow-[0_2px_8px_rgba(15,23,42,.045)] transition duration-200 focus-within:border-slate-300 focus-within:shadow-[0_4px_14px_rgba(15,23,42,.08)] dark:border-slate-700 dark:bg-slate-900">
                                     <textarea
                                         ref={textareaRef}
                                         value={input}
@@ -519,27 +519,21 @@ export default function GlobalChatbot() {
                                                 void send(event);
                                             }
                                         }}
-                                        rows={2}
+                                        rows={1}
                                         maxLength={4000}
-                                        placeholder={vi ? 'Nhắn tin cho trợ lý...' : 'Message the assistant...'}
+                                        placeholder={vi ? 'Hỏi tôi bất cứ điều gì...' : 'Ask me anything...'}
                                         aria-label={vi ? 'Nội dung câu hỏi' : 'Your message'}
-                                        className="max-h-36 min-h-[76px] w-full resize-y rounded-xl bg-slate-50/70 px-3 py-2.5 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 focus:bg-white dark:bg-slate-800/70 dark:text-white dark:focus:bg-slate-800"
+                                        className="max-h-32 min-h-[48px] w-full resize-y bg-transparent py-2 pr-14 text-[15px] leading-6 text-slate-700 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
                                     />
-                                    <div className="flex items-center justify-between gap-2 px-1">
-                                        <span className="text-[10px] text-slate-400">{vi ? 'Tối đa 4.000 ký tự' : 'Up to 4,000 characters'}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] tabular-nums text-slate-400">{input.length}/4000</span>
-                                            {loading ? (
-                                                <button type="button" onClick={stopGeneration} className="flex size-9 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-red-600 dark:bg-slate-700" aria-label={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'} title={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'}>
-                                                    <Square size={14} fill="currentColor" />
-                                                </button>
-                                            ) : (
-                                                <button type="submit" disabled={!input.trim()} className="flex size-10 items-center justify-center rounded-xl bg-[#2457a7] text-white transition hover:bg-[#1d478b] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-white" aria-label={vi ? 'Gửi tin nhắn' : 'Send message'}>
-                                                    <Send size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
+                                    {loading ? (
+                                        <button type="button" onClick={stopGeneration} className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300 dark:bg-slate-700 dark:text-white" aria-label={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'} title={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'}>
+                                            <Square size={14} fill="currentColor" />
+                                        </button>
+                                    ) : (
+                                        <button type="submit" disabled={!input.trim()} className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-[#82c9b4] text-white transition hover:bg-[#6bb89f] disabled:cursor-not-allowed disabled:bg-[#cbd5d1] disabled:text-white" aria-label={vi ? 'Gửi tin nhắn' : 'Send message'}>
+                                            <Send size={17} className="-rotate-45" />
+                                        </button>
+                                    )}
                                 </form>
                                 
                             </div>
