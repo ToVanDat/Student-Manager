@@ -56,6 +56,60 @@ This command must be run in the developer's actual API checkout so npm updates b
 
 The model runtime is not yet called by the public enrollment/login endpoints. The MediaPipe task asset/runtime, server-side landmark extraction, 5-point alignment, PAD crop generation, and dataset-calibrated PAD/match thresholds remain required. The image decoder and ONNX runner are foundations only; no public route invokes them. Until those pieces and end-to-end tests exist, the API continues to return `FACE_SERVER_INFERENCE_NOT_READY`.
 
+## Private MediaPipe landmark service and Node preprocessing
+
+The API now has a small internal MediaPipe Tasks service in `students_managerment-api/face-landmark-service/`. This is a deliberate runtime boundary: Google's Face Landmarker JavaScript guide targets web applications, while the documented Python Tasks API provides a server-side runtime. The Python service only returns server-computed coordinates; Node.js remains the application API, owns challenge/session state, performs crop/normalization, and runs the supplied ONNX recognition/PAD models.
+
+The private service:
+- loads the versioned Face Landmarker float16 task bundle;
+- accepts only JPEG, PNG, or WebP bytes up to 5 MB and 16 MP;
+- applies EXIF orientation and resizes to the same 1280-pixel maximum as the Node decoder;
+- requires exactly one detected face;
+- derives eye centers from mesh indices 33/133 and 362/263, nose tip 1, mouth corners 61/291, and a face-oval crop box from 10/152/234/454;
+- does not persist or log submitted image bytes.
+
+The Node side uses `faceLandmarkClient.js`, `faceAlignment.js`, and `facePreprocessingService.js` to call the private service, validate the response, perform the five-point similarity warp to 112x112, and generate the 2.7x square PAD crop at 80x80. The five-point target coordinates are derived from the Qualcomm MobileFaceNet app's documented `default_square=true`, `inner_padding_factor=0.25`, and no outer padding configuration. The ONNX inference module now exposes an internal `inferFaceImage(imageBuffer)` entry point that invokes this pipeline.
+
+### Download and run locally (Windows)
+
+The MediaPipe task model is not committed. From PowerShell:
+
+```powershell
+cd .\students_managerment-api\face-landmark-service
+.\download-model.ps1
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --upgrade pip
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+The downloader uses the versioned Google Storage URL and verifies SHA-256 `64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`. The checksum is pinned from independently published copies of the same versioned asset; the script deletes the downloaded file if it does not match.
+
+Set a fresh shared secret in both processes. Generate one with Node.js:
+
+```cmd
+node -e "process.stdout.write(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Run the landmark service in PowerShell (replace the placeholder with the generated secret):
+
+```powershell
+$env:FACE_LANDMARK_SERVICE_TOKEN = "REPLACE_WITH_RANDOM_SECRET"
+.\.venv\Scripts\python.exe -m uvicorn app:app --host 127.0.0.1 --port 3010 --no-access-log
+```
+
+Set these in the backend's actual local `.env` (do not commit secrets):
+
+```dotenv
+FACE_LANDMARK_SERVICE_URL=http://127.0.0.1:3010
+FACE_LANDMARK_SERVICE_TOKEN=REPLACE_WITH_THE_SAME_RANDOM_SECRET
+```
+
+The service binds to loopback for local development and disables interactive API docs. For containers, put it on a private network with no public port mapping; only then may `FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP=true` be set for an isolated private HTTP hop. Otherwise use HTTPS. The shared token is mandatory. The `/health` endpoint is intentionally a liveness probe and does not expose model paths or secrets.
+
+### Important limitation
+
+This service computes landmarks; it does not prove liveness. MiniFASNet's single-frame classification remains only a PAD signal. A production login must additionally enforce a server-issued, one-time randomized action challenge over multiple captured frames, bind every frame to the same unexpired challenge, reject replay/reused submissions, calibrate PAD and match thresholds against a representative validation set, and rate-limit failures. The public enrollment/login verify routes remain fail-closed until that complete protocol is implemented and tested.
+
 ## Data protection
 
 - `user_face_credentials` stores only an encrypted embedding envelope, never camera frames.
@@ -115,7 +169,7 @@ Do not invent a match threshold. Calibrate it with genuine/impostor pairs for th
 
 1. The matching Qualcomm source now establishes RGB preprocessing, torchvision mean/std normalization, paired-input TTA, and the 112x112 five-point alignment template. The MediaPipe-to-five-point landmark mapping and image-warp implementation still need reference-image tests and numerical parity checks before similarity calibration.
 2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision and ONNX Runtime Web have not yet been committed as frontend dependencies because the existing package-lock must be regenerated consistently when the model pipeline is added.
-3. The model artifact deployment path, SHA-256 verifier, and internal ONNX session runner are committed. The developer must install and lock `onnxruntime-node@1.30.0` from the API checkout. The MediaPipe Face Landmarker task asset and server-side image decode/detection/alignment stage are still absent; browser inference alone is not trusted for authentication.
+3. The bounded Node image decoder, internal ONNX runner, private MediaPipe landmark service, five-point similarity alignment, and 2.7x PAD crop preprocessing are committed. The developer must download the versioned MediaPipe task asset with the PowerShell checksum verifier and install the pinned Python service requirements. The developer must also install and lock `onnxruntime-node@1.30.0` from the API checkout.
 4. The current public enrollment/login verify endpoints deliberately consume the one-time challenge and return `FACE_SERVER_INFERENCE_NOT_READY`. This is fail-closed behavior, not a completed login implementation.
 5. MiniFASNet-V2 must be evaluated against presentation attacks and a representative validation set. Its output is not a guarantee of liveness.
 6. No production migration or live database operation is performed by these commits.
