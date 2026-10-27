@@ -10,6 +10,8 @@ const authMiddleware =
 
 const authRateLimiter =
     require('../middleware/authRateLimiter.js');
+const biometricAuthRateLimiter =
+    require('../middleware/biometricAuthRateLimiter.js');
 
 const requireTrustedOrigin =
     require('../middleware/requireTrustedOrigin.js');
@@ -39,8 +41,8 @@ router.post('/passkeys/login/verify', requireTrustedOrigin, authRateLimiter, adv
  // Device biometric login (Face ID / Windows Hello when supported) uses WebAuthn.
  // The server verifies an assertion and never receives biometric samples.
  router.get('/biometric-login/status', authMiddleware, advancedAuthController.getBiometricLoginStatus);
- router.post('/biometric-login/options', requireTrustedOrigin, authRateLimiter, advancedAuthController.beginBiometricLogin);
- router.post('/biometric-login/verify', requireTrustedOrigin, authRateLimiter, advancedAuthController.finishBiometricLogin);
+ router.post('/biometric-login/options', requireTrustedOrigin, biometricAuthRateLimiter, advancedAuthController.beginBiometricLogin);
+ router.post('/biometric-login/verify', requireTrustedOrigin, biometricAuthRateLimiter, advancedAuthController.finishBiometricLogin);
 
 router.post('/qr-login', authRateLimiter, advancedAuthController.createQrLogin);
 router.post('/qr-login/approve', authMiddleware, authRateLimiter, advancedAuthController.approveQrLogin);
