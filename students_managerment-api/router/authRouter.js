@@ -12,6 +12,8 @@ const authRateLimiter =
     require('../middleware/authRateLimiter.js');
 const biometricAuthRateLimiter =
     require('../middleware/biometricAuthRateLimiter.js');
+const loginRateLimiter =
+    require('../middleware/loginRateLimiter.js');
 
 const requireTrustedOrigin =
     require('../middleware/requireTrustedOrigin.js');
@@ -53,7 +55,7 @@ router.post('/qr-login/poll', requireTrustedOrigin, authRateLimiter, advancedAut
 router.post('/register', authRateLimiter, authController.register);
 
 // LOGIN
-router.post('/login', requireTrustedOrigin, authRateLimiter, authController.login);
+router.post('/login', requireTrustedOrigin, loginRateLimiter, authController.login);
 
 // REFRESH
 router.post('/refresh', requireTrustedOrigin, authRateLimiter, authController.refresh);
