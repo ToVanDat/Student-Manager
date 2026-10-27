@@ -359,7 +359,7 @@ test('provisioning rollback removes only the matching disabled pending device', 
     const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
     assert.deepEqual(deletion.params, [44, 4, tokenHash, completedAt]);
     assert.ok(deletion.statement.includes('enabled = FALSE'));
-    assert.ok(deletion.statement.includes('created_at <= $4'));
+    assert.ok(deletion.statement.includes('created_at < $4 + INTERVAL '1 millisecond''));
     assert.ok(calls.some(call => call.statement === 'COMMIT'));
 });
 
@@ -458,7 +458,7 @@ test('expired pending-ack provisioning revokes its unacknowledged device and cle
         expiresAt: null
     });
     const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
-    assert.ok(deletion.statement.includes('created_at <= $3'));
+    assert.ok(deletion.statement.includes('created_at < $3 + INTERVAL '1 millisecond''));
     assert.deepEqual(deletion.params, [44, 2, completedAt]);
     const expiryUpdate = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE'));
     assert.ok(expiryUpdate.statement.includes('encrypted_message = NULL'));
@@ -545,7 +545,7 @@ test('provisioning acknowledgement activates only the assigned linked device wit
     const activation = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE'));
     assert.deepEqual(activation.params, [44, 3, tokenHash, completedAt]);
     assert.ok(activation.statement.includes('device_token_hash = $3'));
-    assert.ok(activation.statement.includes('created_at <= $4'));
+    assert.ok(activation.statement.includes('created_at < $4 + INTERVAL '1 millisecond''));
     assert.ok(calls.find(call => call.statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")));
 });
 
@@ -692,7 +692,7 @@ test('owner abort removes a disabled linked device after a lost complete respons
     const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
     assert.deepEqual(deletion.params, [44, 3, completedAt]);
     assert.ok(deletion.statement.includes('enabled = FALSE'));
-    assert.ok(deletion.statement.includes('created_at <= $3'));
+    assert.ok(deletion.statement.includes('created_at < $3 + INTERVAL '1 millisecond''));
     assert.ok(calls.some(call => call.statement === 'COMMIT'));
 });
 
