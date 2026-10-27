@@ -17,6 +17,10 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
         path.join(__dirname, '..', 'sql', 'e2ee_pause_mode_migration.sql'),
         'utf8'
     );
+    const provisioningProofMigration = fs.readFileSync(
+        path.join(__dirname, '..', 'sql', 'e2ee_provisioning_proof_v1_migration.sql'),
+        'utf8'
+    );
 
     try {
         await pool.query('CREATE TABLE IF NOT EXISTS users (id BIGSERIAL PRIMARY KEY)');
@@ -30,6 +34,7 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
         )`);
         await pool.query(migration);
         await pool.query(pauseModeMigration);
+        await pool.query(provisioningProofMigration);
 
         const userRows = await pool.query(
             'INSERT INTO users DEFAULT VALUES RETURNING id'
@@ -180,6 +185,73 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
                 [senderId, active.deviceId]
             );
             assert.equal(retained.rowCount, 1);
+        });
+
+        await t.test('proof v1 gates activation, consumes challenge, and supports same-proof ACK retry', async () => {
+            const session = await repository.createProvisioningSession(
+                senderId,
+                Buffer.alloc(32, 41).toString('base64'),
+                1
+            );
+            const connected = await repository.connectNewDevice(
+                senderId,
+                session.sessionId,
+                Buffer.alloc(32, 42).toString('base64'),
+                { deviceType: 'web' }
+            );
+            assert.equal(connected.proofProtocolVersion, 1);
+            assert.equal(Buffer.from(connected.proofChallenge, 'base64').length, 32);
+
+            const encryptedMessage = JSON.stringify({
+                ciphertext: 'AQIDBA==',
+                iv: 'BQUFBQUFBQUFBQUF',
+                authTag: 'BgYGBgYGBgYGBgYGBgYGBg=='
+            });
+            const commitment = Buffer.alloc(32, 43).toString('base64');
+            await repository.sendProvisioningMessage(senderId, session.sessionId, encryptedMessage, commitment);
+            const linked = await repository.completeProvisioning(senderId, session.sessionId, null, { deviceType: 'web' });
+
+            await assert.rejects(
+                repository.acknowledgeProvisioning(
+                    senderId, session.sessionId, linked.deviceToken, Buffer.alloc(32, 44).toString('base64')
+                ),
+                error => error.code === 'E2EE_PROVISIONING_PROOF_MISMATCH'
+            );
+            const stillDisabled = await pool.query(
+                'SELECT enabled FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND device_token_hash IS NOT NULL',
+                [senderId, linked.deviceId]
+            );
+            assert.equal(stillDisabled.rows[0].enabled, false, 'invalid proof must not activate the linked device');
+
+            assert.deepEqual(
+                await repository.acknowledgeProvisioning(senderId, session.sessionId, linked.deviceToken, commitment),
+                { acknowledged: true }
+            );
+            const activated = await pool.query(
+                'SELECT enabled FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2',
+                [senderId, linked.deviceId]
+            );
+            assert.equal(activated.rows[0].enabled, true);
+
+            const consumed = await pool.query(
+                'SELECT proof_challenge, proof_consumed_at, proof_ack_digest, status FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1',
+                [session.sessionId]
+            );
+            assert.equal(consumed.rows[0].proof_challenge, null);
+            assert.ok(consumed.rows[0].proof_consumed_at);
+            assert.equal(consumed.rows[0].proof_ack_digest.length, 32);
+            assert.equal(consumed.rows[0].status, 'completed');
+
+            assert.deepEqual(
+                await repository.acknowledgeProvisioning(senderId, session.sessionId, linked.deviceToken, commitment),
+                { acknowledged: true, alreadyCompleted: true }
+            );
+            await assert.rejects(
+                repository.acknowledgeProvisioning(
+                    senderId, session.sessionId, linked.deviceToken, Buffer.alloc(32, 45).toString('base64')
+                ),
+                error => error.code === 'E2EE_PROVISIONING_ACK_CONFLICT'
+            );
         });
 
         await t.test('device provisioning expiry and rollback do not leave an active linked device', async () => {
