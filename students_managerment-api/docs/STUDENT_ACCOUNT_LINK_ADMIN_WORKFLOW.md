@@ -10,10 +10,10 @@ The workflow deliberately does not infer identity from matching email addresses.
 2. Run `student_schema_readonly_audit.sql` and review the output. This file contains SELECT statements only.
 3. If the `permissions` and `role_permissions` tables do not exist, review/apply `role_permissions_migration.sql` first.
 4. Review and apply `student_account_link_schema_migration.sql` if `student_account_links` does not already exist. It creates the one-to-one mapping table only.
-5. Review and apply `student_account_link_admin_workflow_migration.sql`. It adds verification metadata, an audit table and the `students.link_accounts` permission. It also changes the mapping foreign keys to `ON DELETE RESTRICT`, so deleting a linked account or student is blocked until an administrator explicitly unlinks it.
+5. Review and apply `student_account_link_admin_workflow_migration.sql`. It adds verification metadata, an audit table and the `students.link_accounts` permission. It also changes the mapping foreign keys to `ON DELETE RESTRICT`, so deleting a linked account or student is blocked until an administrator explicitly unlinks it. Audit rows are protected by database triggers against `UPDATE`, `DELETE` and `TRUNCATE`.
 6. Verify both migrations using information_schema and pg_constraint queries before deploying the API.
 
-Neither migration auto-links accounts, copies student data, or deletes existing records. The workflow migration does replace the two mapping foreign-key delete rules from `CASCADE` to `RESTRICT`; this protects verified mappings and forces deletion through the explicit unlink workflow. Do not run the base migration again if the table already exists: it intentionally stops for manual inspection.
+Neither migration auto-links accounts, copies student data, or deletes existing records. The workflow migration does replace the two mapping foreign-key delete rules from `CASCADE` to `RESTRICT`; this protects verified mappings and forces deletion through the explicit unlink workflow. It also installs append-only audit triggers. A database owner/superuser can still deliberately disable triggers or alter the schema; production audit-grade retention should additionally use restricted DB roles and independent backups/log shipping. Do not run the base migration again if the table already exists: it intentionally stops for manual inspection.
 
 ## Admin procedure
 1. Open Account management → Identity verification.
