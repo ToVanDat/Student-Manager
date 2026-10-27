@@ -20,10 +20,11 @@ Install and lock the native runtime from the API directory before model smoke te
 npm install --save-exact onnxruntime-node@1.30.0
 npm ci
 npm run face:verify-models
+npm run face:runtime-smoke
 npm run face:smoke -- C:\\face-test\\consented-test.jpg
 ```
 
-Use a consented local test image. The smoke command runs the actual server-side MediaPipe + ONNX pipeline and prints only model metadata, PAD scores, and output-contract status; it does not print or save the face embedding. A single-image smoke pass is not an accuracy or PAD certification.
+Use a consented local test image. The smoke command runs the actual server-side MediaPipe + ONNX pipeline and prints only model metadata, PAD scores, and output-contract status; it does not print or save the face embedding. `face:runtime-smoke` executes both ONNX graphs with synthetic zero tensors and validates the output contracts; it does not validate preprocessing or accuracy. `face:smoke` then exercises the actual MediaPipe + ONNX path with a consented image. Neither command calibrates thresholds or certifies PAD.
 
 Extract the supplied archive under `students_managerment-api/storage/` (or set `FACE_MODEL_DIR` to the directory containing the extracted `face-models/` folder). The resolver supports the archive's nested `recognition/` and `anti-spoofing/` layout.
 
