@@ -31,6 +31,26 @@ const bannerBackgrounds = [
 
 function AuthBanner() {
     const { t } = useLanguage();
+    const bannerRef = useRef(null);
+
+    // Pointer-driven parallax is deliberately confined to the decorative
+    // background. Text, controls and the login card remain perfectly still.
+    const handlePointerMove = (event) => {
+        const element = bannerRef.current;
+        if (!element || event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const bounds = element.getBoundingClientRect();
+        const x = ((event.clientX - bounds.left) / bounds.width - 0.5) * 28;
+        const y = ((event.clientY - bounds.top) / bounds.height - 0.5) * 28;
+        element.style.setProperty('--parallax-x', `${x.toFixed(2)}px`);
+        element.style.setProperty('--parallax-y', `${y.toFixed(2)}px`);
+    };
+
+    const resetParallax = () => {
+        const element = bannerRef.current;
+        if (!element) return;
+        element.style.setProperty('--parallax-x', '0px');
+        element.style.setProperty('--parallax-y', '0px');
+    };
     const [currentIndex, setCurrentIndex] = useState(0);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
@@ -67,14 +87,41 @@ function AuthBanner() {
 
     return (
         <div
-            className="relative min-h-[42vh] select-none overflow-hidden bg-slate-950 [touch-action:pan-y] min-[801px]:min-h-screen"
+            ref={bannerRef}
+            onPointerMove={handlePointerMove}
+            onPointerLeave={resetParallax}
+            onPointerCancel={resetParallax}
+            className="relative min-h-[42vh] select-none overflow-hidden bg-slate-950 [touch-action:pan-y] min-[801px]:min-h-screen motion-reduce:transform-none"
             onTouchStart={(event) => { touchStartX.current = event.touches[0].clientX; touchEndX.current = null; }}
             onTouchMove={(event) => { touchEndX.current = event.touches[0].clientX; }}
             onTouchEnd={handleTouchEnd}
         >
-            <div key={currentIndex} className={`absolute inset-0 z-[1] h-full w-full animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]}`} />
-            <div className="absolute inset-0 z-[2] bg-[linear-gradient(rgba(255,255,255,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:52px_52px] opacity-35" />
-            <div className="absolute inset-0 z-[2] bg-linear-to-r from-slate-950/35 via-slate-950/10 to-transparent" />
+            <div
+                key={currentIndex}
+                className={`absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]} transition-transform duration-300 ease-out motion-reduce:transform-none`}
+                style={{ transform: 'translate3d(calc(var(--parallax-x, 0px) * -0.16), calc(var(--parallax-y, 0px) * -0.16), 0) scale(1.015)' }}
+                aria-hidden="true"
+            />
+            <div
+                className="pointer-events-none absolute -inset-12 z-[2] opacity-70 transition-transform duration-500 ease-out motion-reduce:transform-none"
+                style={{
+                    transform: 'translate3d(calc(var(--parallax-x, 0px) * 0.34), calc(var(--parallax-y, 0px) * 0.34), 0)',
+                    background: 'radial-gradient(ellipse at 18% 24%, rgba(94, 234, 212, 0.18), transparent 34%), radial-gradient(ellipse at 78% 72%, rgba(96, 165, 250, 0.17), transparent 38%), radial-gradient(ellipse at 52% 48%, rgba(255,255,255,0.045), transparent 56%)'
+                }}
+                aria-hidden="true"
+            />
+            <div
+                className="pointer-events-none absolute -inset-6 z-[2] opacity-25 transition-transform duration-700 ease-out motion-reduce:transform-none"
+                style={{
+                    transform: 'translate3d(calc(var(--parallax-x, 0px) * -0.48), calc(var(--parallax-y, 0px) * -0.48), 0)',
+                    backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.22) 1px, transparent 0)',
+                    backgroundSize: '34px 34px',
+                    maskImage: 'linear-gradient(135deg, black, transparent 78%)'
+                }}
+                aria-hidden="true"
+            />
+            <div className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:64px_64px] opacity-30" />
+            <div className="pointer-events-none absolute inset-0 z-[2] bg-linear-to-r from-slate-950/35 via-slate-950/10 to-transparent" />
             <div className="absolute bottom-[15%] left-12 right-12 z-[3] max-w-[700px] text-white min-[801px]:bottom-[13%] min-[801px]:left-[8%] min-[801px]:right-[10%]">
                 <div className="mb-3 inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-[9px] font-bold tracking-[1.2px] text-white/95 backdrop-blur-md min-[601px]:mb-5 min-[601px]:px-3.5 min-[601px]:py-2 min-[601px]:text-[11px]">
                     {banner.badge}
