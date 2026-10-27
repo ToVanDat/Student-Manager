@@ -177,12 +177,16 @@ function AuthBanner() {
                     from { opacity: 1; }
                     to { opacity: 0; }
                 }
+                @keyframes authBannerAmbient {
+                    0%, 100% { opacity: .48; }
+                    50% { opacity: .76; }
+                }
                 @keyframes authBannerCopyIn {
                     from { opacity: 0; transform: translate3d(0, 9px, 0); }
                     to { opacity: 1; transform: translate3d(0, 0, 0); }
                 }
                 @media (prefers-reduced-motion: reduce) {
-                    .auth-banner-atmosphere, .auth-banner-copy { animation: none !important; }
+                    .auth-banner-atmosphere, .auth-banner-copy, .auth-banner-ambient { animation: none !important; }
                 }
             `}</style>
             {previousIndex !== null && previousIndex !== currentIndex && (
@@ -198,10 +202,11 @@ function AuthBanner() {
                 aria-hidden="true"
             />
             <div
-                className="pointer-events-none absolute -inset-12 z-[2] opacity-65 will-change-transform motion-reduce:transform-none"
+                className="auth-banner-ambient pointer-events-none absolute -inset-12 z-[2] opacity-65 will-change-transform motion-reduce:transform-none"
                 style={{
                     transform: 'translate3d(var(--parallax-glow-x, 0px), var(--parallax-glow-y, 0px), 0)',
-                    background: 'radial-gradient(ellipse at 18% 24%, rgba(94, 234, 212, 0.18), transparent 34%), radial-gradient(ellipse at 78% 72%, rgba(96, 165, 250, 0.17), transparent 38%), radial-gradient(ellipse at 52% 48%, rgba(255,255,255,0.045), transparent 56%)'
+                    background: 'radial-gradient(ellipse at 18% 24%, rgba(94, 234, 212, 0.18), transparent 34%), radial-gradient(ellipse at 78% 72%, rgba(96, 165, 250, 0.17), transparent 38%), radial-gradient(ellipse at 52% 48%, rgba(255,255,255,0.045), transparent 56%)',
+                    animation: 'authBannerAmbient 14s ease-in-out infinite'
                 }}
                 aria-hidden="true"
             />
