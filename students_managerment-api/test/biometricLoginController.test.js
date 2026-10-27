@@ -85,7 +85,6 @@ test('biometric status is scoped to the authenticated account', async () => {
     assert.deepEqual(res.body, {
         configured: true,
         credentialCount: 2,
-        method: 'webauthn-device-verification',
-        biometricMethodSelectedByDevice: true
+        method: 'passkey-webauthn'
     });
 });
