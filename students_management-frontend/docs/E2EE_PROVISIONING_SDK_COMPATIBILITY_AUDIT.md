@@ -33,3 +33,7 @@ This proof establishes possession of the ECDH-derived secret bound to the sessio
 ## Not performed
 
 No SDK dependency was changed, no fork was created, no backend schema migration was added or applied, no user data was changed, and no runtime test or CI run was performed during this audit.
+
+## Frontend dependency pinning observation
+
+The current frontend manifest declares `"@open-e2ee/signal-protocol-sdk": "^11.0.0"`, while the checked-in lockfile resolves 11.0.0. The lockfile makes the current install reproducible, but the manifest range still permits later 11.x releases when the lockfile is regenerated. When the reviewed fork is ready, use an exact immutable version or commit reference and regenerate/verify the lockfile in the same change. Do not point production builds at a moving Git branch.
