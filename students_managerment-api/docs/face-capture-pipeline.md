@@ -14,6 +14,16 @@ Required release gates:
 - `onnxruntime-node` installed and lockfile synchronized
 - Verified model files in `FACE_MODEL_DIR` with the expected SHA-256 hashes. The supplied archive layout is supported (`recognition/mobile_facenet.onnx`, `recognition/mobile_facenet.data`, `anti-spoofing/minifasnet-v2.onnx`); the extra top-level `face-models/` directory created when extracting into the model directory is also supported.
 
+Install and lock the native runtime from the API directory before model smoke testing:
+
+```bat
+npm install onnxruntime-node@1.30.0
+npm ci
+npm run face:verify-models
+```
+
+Extract the supplied archive under `students_managerment-api/storage/` (or set `FACE_MODEL_DIR` to the directory containing the extracted `face-models/` folder). The resolver supports the archive's nested `recognition/` and `anti-spoofing/` layout.
+
 No default threshold is supplied. Never copy benchmark thresholds into production without evaluation on this exact model/preprocessing/camera population.
 
 ## Capture API
