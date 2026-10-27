@@ -568,15 +568,15 @@ function Login() {
     // =================================================
 
     return (
-        <main className="min-h-screen bg-slate-50 text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-2">
-            <div className="min-h-[190px] overflow-hidden p-3 sm:p-5 lg:min-h-screen lg:p-6">
+        <main className="relative min-h-[100svh] overflow-x-hidden bg-[#f5f7fb] text-slate-900 selection:bg-blue-100 selection:text-blue-950 lg:grid lg:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)]">
+            <div className="hidden min-h-[100svh] overflow-hidden p-4 lg:block xl:p-5">
                 <AuthBanner />
             </div>
 
-            <section className="flex min-h-[calc(100vh-190px)] items-center justify-center px-4 py-8 sm:px-8 sm:py-10 lg:min-h-screen lg:px-10 xl:px-14">
-                <div className="absolute right-4 top-4 z-10 sm:right-8 sm:top-7 lg:right-10">
-                    <div className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1" role="group" aria-label={t('language')}>
-                        <Languages size={15} aria-hidden="true" className="ml-2 text-slate-500" />
+            <section className="relative flex min-h-[100svh] items-center justify-center px-4 pb-10 pt-20 sm:px-8 sm:pb-12 lg:px-10 lg:py-16 xl:px-16">
+                <div className="absolute right-4 top-4 z-20 sm:right-8 sm:top-6 lg:right-8 xl:right-12">
+                    <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 p-1 shadow-sm backdrop-blur" role="group" aria-label={t('language')}>
+                        <Languages size={14} aria-hidden="true" className="ml-2 text-slate-400" />
                         {[
                             { value: 'vi', label: 'Tiếng Việt', shortLabel: 'VI', Flag: VN },
                             { value: 'en', label: 'English', shortLabel: 'EN', Flag: GB },
@@ -597,8 +597,8 @@ function Login() {
                     </div>
                 </div>
 
-                <div className="w-full max-w-[440px] rounded-2xl border border-slate-200 bg-white px-5 py-6 shadow-sm sm:px-8 sm:py-8 lg:px-9">
-                    <div className="mb-8 flex items-center gap-3">
+                <div className="w-full max-w-[460px] rounded-[28px] border border-slate-200/80 bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 lg:px-10">
+                    <div className="mb-7 flex items-center gap-3 sm:mb-9">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold tracking-wide text-white">
                             SM
                         </div>
