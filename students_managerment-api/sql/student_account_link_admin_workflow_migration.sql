@@ -27,7 +27,7 @@ BEGIN
     END IF;
 
     EXECUTE format('ALTER TABLE %I.student_account_links ADD COLUMN IF NOT EXISTS verified_by %s', target_schema, users_id_type);
-    EXECUTE format('ALTER TABLE %I.student_account_links ADD COLUMN IF NOT EXISTS verification_method text NOT NULL DEFAULT ''admin_manual_review''', target_schema);
+    EXECUTE format('ALTER TABLE %I.student_account_links ADD COLUMN IF NOT EXISTS verification_method text NOT NULL DEFAULT ''legacy_existing''', target_schema);
     EXECUTE format('ALTER TABLE %I.student_account_links ADD COLUMN IF NOT EXISTS verification_note varchar(500)', target_schema);
 
     IF NOT EXISTS (
