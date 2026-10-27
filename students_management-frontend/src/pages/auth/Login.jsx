@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from 'react';
 import { Languages, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
-import { loginApi, beginPasskeyLoginApi, finishPasskeyLoginApi } from '@/api/authApi.js';
+import { loginApi, beginBiometricLoginApi, finishBiometricLoginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
 import AdvancedLoginMethods from '@/components/auth/AdvancedLoginMethods.jsx';
@@ -262,18 +262,18 @@ function Login() {
         setError('');
         setSuccess('');
         if (!username.trim()) {
-            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Passkey.' : 'Enter your username before using a passkey.');
+            setError(language === 'vi' ? 'Nhập username trước khi đăng nhập bằng Face Login.' : 'Enter your username before using a passkey.');
             return;
         }
         if (!window.isSecureContext || !navigator.credentials?.get) {
-            setError(language === 'vi' ? 'Đăng nhập Passkey cần HTTPS và trình duyệt hỗ trợ WebAuthn.' : 'Passkey sign-in requires HTTPS and a browser that supports WebAuthn.');
+            setError(language === 'vi' ? 'Face Login cần HTTPS và trình duyệt hỗ trợ xác thực sinh trắc học/WebAuthn.' : 'Passkey sign-in requires HTTPS and a browser that supports WebAuthn.');
             return;
         }
 
         setLoading(true);
         sessionStorage.setItem('auth:login-in-progress', 'true');
         try {
-            const { challengeId, options } = await beginPasskeyLoginApi(username.trim());
+            const { challengeId, options } = await beginBiometricLoginApi(username.trim());
             const publicKey = {
                 ...options,
                 challenge: decodeBase64Url(options.challenge),
@@ -283,7 +283,7 @@ function Login() {
                 }))
             };
             const credential = await navigator.credentials.get({ publicKey });
-            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh Passkey.' : 'Passkey verification was cancelled.');
+            if (!credential) throw new Error(language === 'vi' ? 'Bạn đã hủy xác minh sinh trắc học.' : 'Passkey verification was cancelled.');
             const response = {
                 id: credential.id,
                 rawId: encodeBase64Url(credential.rawId),
@@ -297,11 +297,11 @@ function Login() {
                 },
                 clientExtensionResults: credential.getClientExtensionResults()
             };
-            const data = await finishPasskeyLoginApi(challengeId, response);
+            const data = await finishBiometricLoginApi(challengeId, response);
             loginUser(data);
             navigate('/students?view=dashboard', { replace: true });
         } catch (error) {
-            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập Passkey thất bại.' : 'Passkey sign-in failed.'));
+            setError(error.response?.data?.message || error.message || (language === 'vi' ? 'Đăng nhập sinh trắc học thất bại.' : 'Passkey sign-in failed.'));
         } finally {
             sessionStorage.removeItem('auth:login-in-progress');
             setLoading(false);
