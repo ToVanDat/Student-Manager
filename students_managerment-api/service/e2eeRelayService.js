@@ -163,8 +163,14 @@ const assertBase64 = (value, name, max = 16384) => {
     return value;
 };
 
-const createProvisioningSession = async (userId, body = {}) =>
-    relayRepository.createProvisioningSession(userId, assertBase64(body.ephemeralPublicKey, 'ephemeralPublicKey'));
+const createProvisioningSession = async (userId, body = {}) => {
+    const proofProtocolVersion = body.proofProtocolVersion == null ? null : integer(body.proofProtocolVersion, 'proofProtocolVersion', 1, 1);
+    return relayRepository.createProvisioningSession(
+        userId,
+        assertBase64(body.ephemeralPublicKey, 'ephemeralPublicKey', 128),
+        proofProtocolVersion
+    );
+};
 
 const connectNewDevice = async (userId, sessionId, body = {}) => {
     assertSessionId(sessionId);
@@ -179,7 +185,20 @@ const sendProvisioningMessage = async (userId, sessionId, body = {}) => {
     if (typeof body.encryptedMessage !== 'string' || !body.encryptedMessage || body.encryptedMessage.length > 700_000) {
         throw fail(400, 'encryptedMessage không hợp lệ');
     }
-    return relayRepository.sendProvisioningMessage(userId, sessionId, body.encryptedMessage);
+    if (body.proofCommitment != null) {
+        try {
+            assertBase64(body.proofCommitment, 'proofCommitment', 44);
+            if (Buffer.from(body.proofCommitment, 'base64').length !== 32 ||
+                Buffer.from(body.proofCommitment, 'base64').toString('base64') !== body.proofCommitment) {
+                throw new Error('non-canonical');
+            }
+        } catch {
+            throw fail(400, 'proofCommitment phải là Base64 canonical 32 byte', 'E2EE_PROVISIONING_PROOF_INVALID');
+        }
+    }
+    return relayRepository.sendProvisioningMessage(
+        userId, sessionId, body.encryptedMessage, body.proofCommitment ?? null
+    );
 };
 
 const getProvisioningMessage = async (userId, sessionId) => {
@@ -200,12 +219,15 @@ const completeProvisioning = async (userId, sessionId, body = {}) => {
     return relayRepository.completeProvisioning(userId, sessionId, body.encryptedDeviceName || null, metadata);
 };
 
-const acknowledgeProvisioning = async (userId, sessionId, deviceToken) => {
+const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = null) => {
     assertSessionId(sessionId);
     if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
         throw fail(401, 'Cần xác thực thiết bị E2EE mới');
     }
-    const result = await relayRepository.acknowledgeProvisioning(userId, sessionId, deviceToken);
+    if (proof != null && (typeof proof !== 'string' || proof.length > 44)) {
+        throw fail(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
+    }
+    const result = await relayRepository.acknowledgeProvisioning(userId, sessionId, deviceToken, proof);
     if (result?.expiredOrUnavailable) {
         throw fail(409, 'Không thể xác nhận phiên liên kết thiết bị');
     }
