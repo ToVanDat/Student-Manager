@@ -28,7 +28,7 @@ exports.status = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.beginEnrollment = async (req, res) => {
-    try { return res.status(201).json(await faceAuth.beginEnrollment(req.user.sub)); }
+    try { return res.status(201).json(await faceAuth.beginEnrollment(req.user.sub, req.body?.verificationToken)); }
     catch (error) { return fail(res, error); }
 };
 exports.finishEnrollment = async (req, res) => {
