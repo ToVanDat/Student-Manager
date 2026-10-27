@@ -233,7 +233,7 @@ export default function AdvancedSecurityMethods() {
                 ))}
                 {passkeysLoading && <p role="status" className="text-xs text-slate-500">Đang tải danh sách passkey…</p>}
                 {!passkeysLoading && passkeysError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{passkeysError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">Thử lại</button></div>}
-                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa thiết lập Face Login. Hãy bật trên thiết bị đang sử dụng.</p>}
+                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa đăng ký Passkey. Hãy thiết lập trên thiết bị đang sử dụng để bật đăng nhập sinh trắc học nếu thiết bị hỗ trợ.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
             {googleStatusLoading && <p role="status" className="text-xs text-slate-500">Đang kiểm tra trạng thái Google…</p>}
