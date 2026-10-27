@@ -39,7 +39,9 @@ test('PAD crop is a square 80x80 crop expanded around the face box', () => {
 test('NCHW conversion applies BGR channel order and [0,1] scaling', () => {
   const rgb = Buffer.from([255, 128, 0]);
   const tensor = toNchwFloat(rgb, 1, 1, [2, 1, 0]);
-  assert.deepEqual(Array.from(tensor), [0, 128 / 255, 1]);
+  assert.equal(tensor[0], 0);
+  assert.ok(Math.abs(tensor[1] - 128 / 255) < 1e-6);
+  assert.equal(tensor[2], 1);
 });
 
 test('preprocessing scales trusted landmarks to the decoded image dimensions', () => {
