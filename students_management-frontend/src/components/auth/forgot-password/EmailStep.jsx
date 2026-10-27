@@ -3,7 +3,7 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 function EmailStep({ email, onEmailChange, onSubmit, onLogin, loading }) {
     const { t } = useLanguage();
     return (
-        <form className="flex w-full flex-col gap-[18px]" onSubmit={onSubmit}>
+        <form className="auth-form-content auth-step-transition flex w-full flex-col gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
                 <label className="text-xs font-semibold text-slate-700">Email</label>
                 <input
