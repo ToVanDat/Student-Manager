@@ -17,6 +17,12 @@ function token(bytes = 32) {
     return crypto.randomBytes(bytes).toString('base64url');
 }
 
+function validateChallengeId(id) {
+    if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{24}$/.test(id)) {
+        throw pipelineError('FACE_CHALLENGE_INVALID', 'Face challenge ID không hợp lệ.');
+    }
+}
+
 function challengeKey(kind, id) {
     return `face-auth:${kind}:${id}`;
 }
@@ -73,6 +79,7 @@ async function consumeChallenge(kind, id) {
 }
 
 async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expectedUserId = null) {
+    validateChallengeId(id);
     requirePipelineConfig();
     const key = challengeKey(kind, id);
     const rawState = await redisClient.get(key);
@@ -86,7 +93,7 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face challenge đã hết hạn');
     }
 
-    if (typeof livenessNonce !== 'string' || livenessNonce.length !== state.liveness.nonce.length ||
+    if (typeof livenessNonce !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(livenessNonce) || livenessNonce.length !== state.liveness.nonce.length ||
         !crypto.timingSafeEqual(Buffer.from(livenessNonce), Buffer.from(state.liveness.nonce))) {
         throw pipelineError('FACE_CHALLENGE_INVALID', 'Liveness nonce không hợp lệ.');
     }
@@ -245,6 +252,7 @@ async function beginEnrollment(userId, verificationToken) {
 }
 
 async function finishEnrollment(userId, challengeId) {
+    validateChallengeId(challengeId);
     const state = await consumeChallenge('enrollment', challengeId);
     if (!state || state.userId !== String(userId) || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face enrollment challenge đã hết hạn hoặc đã được sử dụng');
@@ -271,6 +279,7 @@ async function beginLogin(username) {
 }
 
 async function finishLogin(challengeId, req) {
+    validateChallengeId(challengeId);
     const state = await consumeChallenge('login', challengeId);
     if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face login challenge đã hết hạn hoặc đã được sử dụng');
@@ -289,6 +298,7 @@ async function finishLogin(challengeId, req) {
 }
 
 async function completeLoginAfterTrustedInference(challengeId, liveEmbedding, req) {
+    validateChallengeId(challengeId);
     const state = await consumeChallenge('login', challengeId);
     if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face login challenge đã hết hạn hoặc đã được sử dụng');
