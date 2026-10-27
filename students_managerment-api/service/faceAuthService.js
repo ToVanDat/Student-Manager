@@ -257,6 +257,9 @@ async function getStatus(userId) {
 }
 
 async function beginEnrollment(userId, verificationToken, currentPassword) {
+    requirePipelineConfig();
+    await ensureLandmarkServiceReady();
+    await ensureFaceInferenceReady();
     await verifySensitiveAction(userId, currentPassword, verificationToken, 'face-enroll');
     const id = token(18);
     const state = createCaptureState();
