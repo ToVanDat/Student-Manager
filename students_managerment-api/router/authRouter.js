@@ -26,6 +26,7 @@ const avatarController = require('../controller/avatarController');
 const userPreferencesController = require('../controller/userPreferencesController.js');
 const advancedAuthController = require('../controller/advancedAuthController.js');
 const faceAuthController = require('../controller/faceAuthController.js');
+const faceFrameUpload = require('../middleware/faceFrameUploadMiddleware.js');
 
 
 
@@ -33,9 +34,11 @@ const faceAuthController = require('../controller/faceAuthController.js');
 // Login and enrollment remain fail-closed until server-side model inference/PAD is deployed.
 router.get('/face/status', authMiddleware, faceAuthController.status);
 router.post('/face/enrollment/options', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
+router.post('/face/enrollment/frame', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceFrameUpload, faceAuthController.captureEnrollmentFrame);
 router.post('/face/enrollment/verify', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.finishEnrollment);
 router.delete('/face/credential', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.disable);
 router.post('/face/login/options', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.beginLogin);
+router.post('/face/login/frame', requireTrustedOrigin, faceAuthRateLimiter, faceFrameUpload, faceAuthController.captureLoginFrame);
 router.post('/face/login/verify', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.finishLogin);
 
 // Advanced account authentication. These routes reuse the existing JWT/session middleware.
