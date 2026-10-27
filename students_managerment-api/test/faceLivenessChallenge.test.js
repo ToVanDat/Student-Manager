@@ -22,7 +22,7 @@ test('creates a short-lived challenge with a random ordered action sequence', ()
     assert.equal(challenge.actions.length, 2);
     assert.deepEqual([...challenge.actions].sort(), ['blink', 'smile']);
     assert.equal(challenge.issuedAt, 1_000);
-    assert.equal(challenge.expiresAt, 21_000);
+    assert.equal(challenge.expiresAt, 31_000);
     assert.ok(challenge.nonce.length >= 40);
 });
 
@@ -55,7 +55,7 @@ test('rejects missing actions, invalid signals, stale challenges and frame gaps'
     assert.equal(verifyLivenessSequence({ ...base, frames: valid.slice(0, 5) }).reason, 'INVALID_FRAME_SEQUENCE');
     assert.equal(verifyLivenessSequence({ ...base, frames: valid, now: 5_001 }).reason, 'INVALID_FRAME_SEQUENCE');
     const gap = valid.map(item => ({ ...item }));
-    gap[3] = { ...gap[3], receivedAt: 4_000 };
+    gap[3] = { ...gap[3], receivedAt: 5_000 };
     assert.equal(verifyLivenessSequence({ ...base, frames: gap }).reason, 'INVALID_FRAME_SEQUENCE');
     const invalid = valid.map(item => ({ ...item, liveness: { ...item.liveness } }));
     invalid[0].liveness.eyeBlinkLeft = 2;
