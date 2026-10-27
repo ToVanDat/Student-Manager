@@ -32,7 +32,7 @@ exports.status = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.beginEnrollment = async (req, res) => {
-    try { return res.status(201).json(await faceAuth.beginEnrollment(req.user.sub, req.body?.verificationToken)); }
+    try { return res.status(201).json(await faceAuth.beginEnrollment(req.user.sub, req.body?.verificationToken, req.body?.currentPassword)); }
     catch (error) { return fail(res, error); }
 };
 exports.captureEnrollmentFrame = async (req, res) => {
