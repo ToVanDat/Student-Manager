@@ -58,13 +58,16 @@ async function consumeChallenge(kind, id) {
     try { return JSON.parse(raw); } catch { return null; }
 }
 
-async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer) {
+async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expectedUserId = null) {
     requirePipelineConfig();
     const key = challengeKey(kind, id);
     const rawState = await redisClient.get(key);
     if (!rawState) throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face challenge đã hết hạn hoặc đã được sử dụng');
     let state;
     try { state = JSON.parse(rawState); } catch { throw pipelineError('FACE_CHALLENGE_INVALID', 'Face challenge không hợp lệ'); }
+    if (kind === 'enrollment' && state.userId !== String(expectedUserId)) {
+        throw pipelineError('FACE_CHALLENGE_INVALID', 'Face enrollment challenge không thuộc tài khoản hiện tại.');
+    }
     if (!state.liveness || Date.now() > state.liveness.expiresAt) {
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face challenge đã hết hạn');
     }
