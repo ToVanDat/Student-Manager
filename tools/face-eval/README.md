@@ -10,7 +10,7 @@
 - Input: 112x112 face image; output: 128-D embedding.
 - Qualcomm page reports device-specific NPU performance, not browser WASM performance. Those numbers must not be projected onto a Windows PC with unknown CPU/GPU.
 - The page describes training with ArcFace loss on MS-Celeb-1M. Treat training-data provenance/rights as a separate review item.
-- The supplied local bundle pins the MobileFaceNet graph SHA-256 to `3ac0b9597efd5dc49c5397e5c21269f98cceb42e7193fcc1afbb0fa992c88e4e` and its external weights file to `5164ee5cdd52328da0b1959913e23fd1866b1696b690fc4ad0bbc5cd32ae319c`. The Node inference service rejects any artifact that does not match these hashes.
+- The supplied local bundle pins the MobileFaceNet graph SHA-256 to `3ac0b9597efd5dc49c5397e5c21269f98cceb42e7193fccafbb0fa992c88e4e` and its external weights file to `5164ee5cdd52328da0b1959913e23fd1866b1696b690fc4ad0bbc5cd32ae319c`. The Node inference service rejects any artifact that does not match these hashes.
 - The supplied ZIP uses `face-models/recognition/` for the graph and external weights, and `face-models/anti-spoofing/` for MiniFASNet. The server model resolver supports this nested layout, including extraction into the configured model directory.
 
 ### PAD: MiniFASNet-V2 ONNX candidate
