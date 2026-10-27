@@ -91,7 +91,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     }, []);
 
     return (
-        <div className="mt-4 space-y-3">
+        <div className="auth-methods-content mt-4 space-y-3">
             <div className="relative flex items-center gap-3 text-xs text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
                 <span className="whitespace-nowrap">Hoặc tiếp tục bằng</span>
