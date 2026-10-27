@@ -123,7 +123,10 @@ app = FastAPI(title="Student Manager Face Landmark Service", docs_url=None, redo
 
 
 @app.get("/health")
-async def health():
+async def health(authorization: str | None = Header(default=None)):
+    expected = "Bearer " + SERVICE_TOKEN
+    if not authorization or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return {"ok": landmarker is not None}
 
 
