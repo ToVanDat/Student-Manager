@@ -8,16 +8,18 @@ DO $migration$
 DECLARE
     target_schema text := current_schema();
     users_table regclass;
+    students_table regclass;
     links_table regclass;
     permissions_table regclass;
     role_permissions_table regclass;
     users_id_type text;
 BEGIN
     users_table := to_regclass(format('%I.%I', target_schema, 'users'));
+    students_table := to_regclass(format('%I.%I', target_schema, 'students'));
     links_table := to_regclass(format('%I.%I', target_schema, 'student_account_links'));
     permissions_table := to_regclass(format('%I.%I', target_schema, 'permissions'));
     role_permissions_table := to_regclass(format('%I.%I', target_schema, 'role_permissions'));
-    IF users_table IS NULL OR links_table IS NULL THEN
+    IF users_table IS NULL OR students_table IS NULL OR links_table IS NULL THEN
         RAISE EXCEPTION 'Apply the base student_account_link_schema_migration.sql first';
     END IF;
     IF permissions_table IS NULL OR role_permissions_table IS NULL THEN
@@ -49,6 +51,24 @@ BEGIN
             target_schema, target_schema
         );
     END IF;
+
+    -- Preserve the mapping until an administrator explicitly unlinks it.
+    -- The base migration used CASCADE, which could silently remove the mapping
+    -- when a student or account row was deleted, bypassing the audit workflow.
+    EXECUTE format('ALTER TABLE %I.student_account_links DROP CONSTRAINT IF EXISTS student_account_links_user_id_fkey', target_schema);
+    EXECUTE format('ALTER TABLE %I.student_account_links DROP CONSTRAINT IF EXISTS student_account_links_student_id_fkey', target_schema);
+    EXECUTE format(
+        'ALTER TABLE %I.student_account_links
+         ADD CONSTRAINT student_account_links_user_id_fkey
+         FOREIGN KEY (user_id) REFERENCES %I.users(id) ON DELETE RESTRICT',
+        target_schema, target_schema
+    );
+    EXECUTE format(
+        'ALTER TABLE %I.student_account_links
+         ADD CONSTRAINT student_account_links_student_id_fkey
+         FOREIGN KEY (student_id) REFERENCES %I.students(id) ON DELETE RESTRICT',
+        target_schema, target_schema
+    );
 END
 $migration$;
 
@@ -91,5 +111,5 @@ SET allowed = EXCLUDED.allowed, updated_at = CURRENT_TIMESTAMP;
 
 COMMIT;
 
--- Audit rows are append-only through the application API: there is intentionally
--- no user-facing endpoint to edit or delete them.
+-- Audit rows are retained independently of account/student rows. The application
+-- exposes no endpoint to edit or delete audit events.
