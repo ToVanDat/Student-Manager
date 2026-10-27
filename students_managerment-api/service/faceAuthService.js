@@ -231,7 +231,7 @@ async function beginEnrollment(userId, verificationToken) {
     await saveChallenge('enrollment', id, { ...state, userId: String(userId) });
     return {
         challengeId: id, challenge: state.challenge, expiresIn: CHALLENGE_TTL_SECONDS,
-        actions: state.liveness.actions, livenessExpiresAt: state.liveness.expiresAt
+        actions: state.liveness.actions, livenessNonce: state.liveness.nonce, livenessExpiresAt: state.liveness.expiresAt
     };
 }
 
@@ -312,6 +312,7 @@ module.exports = {
     getStatus,
     beginEnrollment,
     finishEnrollment,
+    appendCaptureFrame,
     beginLogin,
     finishLogin,
     completeLoginAfterTrustedInference,
