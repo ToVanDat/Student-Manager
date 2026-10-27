@@ -10,6 +10,8 @@ The supplied model bundle contains:
 - MobileFaceNet metadata: two inputs `img1`, `img2`, each `float32 [1,3,112,112]`, values [0,1]; output `embeddings float32 [2,128]`.
 - MiniFASNet-V2 ONNX: 1,744,116 bytes (SHA-256: `d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b`).
 
+MiniFASNet-V2 contract from the supplied model metadata: one `float32 [1,3,80,80]` BGR NCHW input scaled to `[0,1]`; output has three classes in the order `[live, print-attack, replay-attack]`. The existing evaluation notes use a face bounding-box crop expanded by 2.7x and do not use the MobileFaceNet landmark alignment warp. The PAD score is `1 - (p[print-attack] + p[replay-attack])`. This is a classifier score, not proof of liveness; threshold and attack resistance must be measured on representative print, screen replay, mask, lighting, camera, and genuine samples.
+
 Important: MobileFaceNet is exported as a paired/two-image verification graph. The matching Qualcomm AI Hub source (`models/mobile_facenet/model.py` and `app.py`) confirms RGB NCHW inputs in `[0,1]`, then torchvision normalization with mean `[0.485, 0.456, 0.406]` and std `[0.229, 0.224, 0.225]`. The graph independently normalizes each image, horizontally flips each normalized image, runs the four-image batch through the shared backbone, sums original+flip features per image (TTA), and returns interleaved rows `[embedding(img1), embedding(img2)]` with shape `[2,128]`. The rows are not a similarity score; L2-normalize them before cosine comparison. Qualcomm's reference app aligns 5 points in the order left eye, right eye, nose, left mouth, right mouth to a 112x112 crop using `default_square=true`, `inner_padding_factor=0.25`, and no outer padding. The reference template is derived from the original MobileFaceNet points; MediaPipe landmark-to-five-point mapping must still be validated against reference examples before production. The Qualcomm evaluator expresses its default threshold as a cosine angle in degrees (74.18° in `model.py`), while this project's `FACE_MATCH_THRESHOLD` is a cosine similarity in `[-1,1]`; do not copy the numeric value across units, and do not treat a public benchmark threshold as a calibrated authentication threshold.
 
 ## Model artifact deployment and integrity
@@ -27,6 +29,11 @@ npm run face:verify-models
 ```
 
 To use another directory, set `FACE_MODEL_DIR` to its absolute path before running the command. The verifier checks SHA-256 against the uploaded bundle. A successful integrity check proves only that the files match that bundle; it does not prove model accuracy, correct preprocessing, inference compatibility, PAD effectiveness, or readiness for authentication.
+
+
+## Reference implementation
+
+The MobileFaceNet contract was cross-checked against Qualcomm's public AI Hub implementation: [model.py](https://github.com/qualcomm/ai-hub-models/blob/main/src/qai_hub_models/models/mobile_facenet/model.py), [app.py](https://github.com/qualcomm/ai-hub-models/blob/main/src/qai_hub_models/models/mobile_facenet/app.py), and [image_processing.py](https://github.com/qualcomm/ai-hub-models/blob/main/src/qai_hub_models/utils/image_processing.py). Keep the supplied ONNX graph and external weights together; use the source only to understand the model contract, not to assume the local exported artifact is validated for authentication.
 
 ## Data protection
 
