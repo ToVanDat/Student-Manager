@@ -1,5 +1,15 @@
 -- Additive retry identity for SDK-compatible E2EE media upload reservations.
 -- Existing metadata rows remain readable; do not apply to production without backup/review.
+-- Keep all DDL atomic so a failure cannot leave only part of the retry contract installed.
+BEGIN;
+
+DO $preflight$
+BEGIN
+    IF to_regclass('e2ee_attachment_objects') IS NULL THEN
+        RAISE EXCEPTION 'Required table e2ee_attachment_objects is missing in the current search_path';
+    END IF;
+END $preflight$;
+
 ALTER TABLE e2ee_attachment_objects
     ADD COLUMN IF NOT EXISTS request_id TEXT,
     ADD COLUMN IF NOT EXISTS prepared_at BIGINT,
@@ -46,3 +56,35 @@ BEGIN
             CHECK (read_capability_digest IS NULL OR octet_length(read_capability_digest) = 32);
     END IF;
 END $$;
+
+COMMIT;
+
+-- Read-only verification of the additive retry identity contract.
+SELECT column_name, data_type, udt_name, is_nullable
+FROM information_schema.columns
+WHERE table_schema = current_schema()
+  AND table_name = 'e2ee_attachment_objects'
+  AND column_name IN (
+      'request_id', 'prepared_at', 'ciphertext_sha256',
+      'read_capability_digest'
+  )
+ORDER BY column_name;
+
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE schemaname = current_schema()
+  AND tablename = 'e2ee_attachment_objects'
+  AND indexname IN (
+      'uq_e2ee_attachment_upload_request',
+      'uq_e2ee_attachment_upload_request_global'
+  )
+ORDER BY indexname;
+
+SELECT conname, pg_get_constraintdef(oid) AS definition
+FROM pg_constraint
+WHERE conrelid = to_regclass('e2ee_attachment_objects')
+  AND conname IN (
+      'e2ee_attachment_sha256_length_check',
+      'e2ee_attachment_read_capability_digest_length_check'
+  )
+ORDER BY conname;

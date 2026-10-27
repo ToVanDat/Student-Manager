@@ -13,7 +13,15 @@ function fail(res, error) {
     const message = error?.message || 'Yêu cầu xác thực thất bại';
 
     if (/chưa được cấu hình/.test(message)) {
-        return res.status(503).json({ message });
+        return res.status(503).json({ code: 'AUTH_CONFIG_NOT_READY', message });
+    }
+
+    if (error?.code === '42P01' || error?.code === '42703') {
+        console.error('[AdvancedAuth] Required schema unavailable', { code: error.code });
+        return res.status(503).json({
+            code: 'ADVANCED_AUTH_SCHEMA_NOT_READY',
+            message: 'Cơ sở dữ liệu xác thực nâng cao chưa được cấu hình đầy đủ.'
+        });
     }
 
     // Known, expected authentication/business-rule failures can be returned to the client.

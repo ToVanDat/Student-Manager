@@ -2,7 +2,7 @@ const conversationService = require('../service/conversationService');
 const messageRepository = require('../repository/messageRepository');
 const callRepository = require('../repository/callRepository');
 const userRepository = require('../repository/userRepository');
-const { getIO } = require('../src/socket/socket');
+const { getIO, publishRealtimeEvent } = require('../src/socket/socket');
 
 const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
     try {
@@ -129,12 +129,12 @@ const getConversationChatTheme = async (req, res, next) => {
         if (!await repository.isConversationMember(conversationId, userId)) {
             return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
         }
-        return res.status(200).json({ data: { theme: await repository.getConversationChatTheme(conversationId, userId) } });
+        return res.status(200).json({ data: { theme: await repository.getConversationChatTheme(conversationId) } });
     } catch (error) {
         if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
             return res.status(503).json({
                 code: 'THEME_MIGRATION_REQUIRED',
-                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/shared_conversation_chat_theme_migration.sql trong DBeaver.'
             });
         }
         if (error?.code === '42P01' && /conversation_user_settings/i.test(error.message || '')) {
@@ -163,13 +163,20 @@ const updateConversationChatTheme = async (req, res, next) => {
         if (!await repository.isConversationMember(conversationId, userId)) {
             return res.status(403).json({ message: 'Bạn không thuộc conversation này' });
         }
-        const data = await repository.setConversationChatTheme(conversationId, userId, theme);
-        return res.status(200).json({ message: 'Đã lưu giao diện cuộc trò chuyện', data: { theme: data.chat_theme } });
+        const data = await repository.setConversationChatTheme(conversationId, theme);
+        if (!data) return res.status(404).json({ message: 'Conversation không tồn tại' });
+        await publishRealtimeEvent('conversation:theme-updated', {
+            conversationId,
+            theme: data.chat_theme,
+            updatedBy: userId,
+            updatedAt: new Date().toISOString()
+        });
+        return res.status(200).json({ message: 'Đã cập nhật chủ đề cho cả cuộc trò chuyện', data: { theme: data.chat_theme } });
     } catch (error) {
         if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
             return res.status(503).json({
                 code: 'THEME_MIGRATION_REQUIRED',
-                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/theme_preferences_migration.sql trong DBeaver.'
+                message: 'Database chưa có cột Chat Theme. Hãy chạy students_managerment-api/sql/shared_conversation_chat_theme_migration.sql trong DBeaver.'
             });
         }
         if (error?.code === '42P01' && /conversation_user_settings/i.test(error.message || '')) {

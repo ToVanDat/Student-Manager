@@ -20,6 +20,7 @@ const webPushRouter = require('../router/webPushRouter');
 const e2eeRouter = require('../router/e2eeRouter');
 const e2eeRelayRouter = require('../router/e2eeRelayRouter');
 const chatbotRouter = require('../router/chatbotRouter');
+const healthRouter = require('../router/healthRouter');
 
 const app = express();
 
@@ -73,6 +74,8 @@ app.use(cors({
     credentials: true
 }));
 app.use(cookieParser());
+
+app.use('/health', healthRouter);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Student Management API is running' });

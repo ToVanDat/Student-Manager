@@ -1,7 +1,7 @@
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import socket from '@/socket/socket.js';
-import { getE2EEDeviceCredential, saveE2EEDeviceCredential, deleteE2EEDeviceCredential } from './e2eeDeviceCredentialStore';
-import { setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
+import { getE2EEDeviceCredential, saveE2EEDeviceCredential, deleteE2EEDeviceCredential, setPendingE2EEProvisioningRollback, getPendingE2EEProvisioningRollback, saveE2EEProvisioningRecovery, getE2EEProvisioningRecoveryRecords, finalizeE2EEProvisioningRecovery, completeE2EEProvisioningRecovery, markE2EEProvisioningPhase, saveE2EEProvisioningOwnerRecovery, finalizeE2EEProvisioningOwnerRecovery } from './e2eeDeviceCredentialStore';
+import { getStoredE2EEDeviceId, setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
 
 const unwrap = response => response?.data?.data;
 const unsupported = (name) => {
@@ -34,6 +34,8 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
     let currentDeviceId = null;
     let connectionState = { state: socket.connected ? 'connected' : 'stopped', since: Date.now() };
     const connectionListeners = new Set();
+    let provisioningRollbackRetryTimer = null;
+    let provisioningRollbackRetryAttempt = 0;
     const updateConnectionState = state => {
         connectionState = { ...state, since: Date.now() };
         connectionListeners.forEach(listener => {
@@ -59,6 +61,12 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
     };
 
     const requireCredential = async (deviceId = requireDevice()) => {
+        const pendingRollback = await getPendingE2EEProvisioningRollback(userId, Number(deviceId));
+        if (pendingRollback) {
+            const error = new Error('This linked device is awaiting provisioning rollback; relay operations are blocked.');
+            error.code = 'E2EE_PROVISIONING_ROLLBACK_PENDING';
+            throw error;
+        }
         const token = await getE2EEDeviceCredential(userId, Number(deviceId));
         if (!token) {
             const error = new Error('Per-device relay credential is missing. Revoke and securely re-link this device.');
@@ -67,6 +75,64 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
         }
         return token;
     };
+
+    const finishProvisioningRollback = async (deviceId, sessionId) => {
+        const normalizedDeviceId = Number(deviceId);
+        const token = await getE2EEDeviceCredential(userId, normalizedDeviceId);
+        if (!token) {
+            const error = new Error('Cannot recover provisioning rollback without the stored device credential.');
+            error.code = 'E2EE_DEVICE_CREDENTIAL_MISSING';
+            throw error;
+        }
+        // Keep credential and journal until the server confirms finalization.
+        // An HTTP timeout is an unknown outcome, never a successful rollback.
+        const result = unwrap(await e2eeRelayApi.rollbackProvisioning(sessionId, token));
+        await finalizeE2EEProvisioningRecovery(userId, normalizedDeviceId, sessionId);
+        const storedDeviceId = await getStoredE2EEDeviceId(userId);
+        if (Number(storedDeviceId) === normalizedDeviceId) await clearStoredE2EEDeviceId(userId);
+        if (currentDeviceId === normalizedDeviceId) currentDeviceId = null;
+        return result;
+    };
+
+    const retryPendingProvisioningRollback = async () => {
+        try {
+            // Enumerate from the credential DB, not the independent device-state DB.
+            const records = await getE2EEProvisioningRecoveryRecords(userId);
+            const ownerPending = records.filter(record => record.kind === 'owner');
+            for (const ownerRecord of ownerPending) {
+                const result = unwrap(await e2eeRelayApi.abortProvisioningSession(ownerRecord.sessionId));
+                if (result?.aborted || result?.alreadyFinalized || result?.alreadyCompleted) {
+                    await finalizeE2EEProvisioningOwnerRecovery(userId, ownerRecord.sessionId);
+                } else {
+                    throw new Error('Owner provisioning abort did not reach a confirmed terminal state');
+                }
+            }
+            const pending = records.filter(record => record.kind !== 'owner' && record.phase !== 'completed');
+            for (const record of pending) {
+                const deviceId = Number(record.deviceId);
+                const sessionId = record.sessionId;
+                await setPendingE2EEProvisioningRollback(userId, deviceId, sessionId);
+                await finishProvisioningRollback(deviceId, sessionId);
+            }
+            provisioningRollbackRetryAttempt = 0;
+        } catch (error) {
+            console.warn('[E2EE] pending provisioning rollback remains queued', {
+                code: error?.code || 'PROVISIONING_ROLLBACK_FAILED'
+            });
+            if (!provisioningRollbackRetryTimer) {
+                const delay = Math.min(60_000, 2_000 * (2 ** Math.min(provisioningRollbackRetryAttempt, 5)));
+                provisioningRollbackRetryAttempt += 1;
+                provisioningRollbackRetryTimer = setTimeout(() => {
+                    provisioningRollbackRetryTimer = null;
+                    void retryPendingProvisioningRollback();
+                }, delay);
+            }
+        }
+    };
+
+    // Any provisioning without a confirmed ACK is rolled back after restart.
+    // This fail-closed rule prevents an orphan active server-side device.
+    void retryPendingProvisioningRollback();
 
     const onSocketConnect = () => updateConnectionState({ state: 'connected' });
     const onSocketDisconnect = () => updateConnectionState({ state: 'reconnecting', reason: 'closed' });
@@ -80,6 +146,10 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             socket.off('connect', onSocketConnect);
             socket.off('disconnect', onSocketDisconnect);
             socket.off('connect_error', onSocketConnectError);
+            if (provisioningRollbackRetryTimer) {
+                clearTimeout(provisioningRollbackRetryTimer);
+                provisioningRollbackRetryTimer = null;
+            }
             connectionListeners.clear();
         },
 
@@ -377,6 +447,18 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             return unwrap(await e2eeRelayApi.getProvisioningMessage(sessionId));
         },
 
+        async prepareProvisioningRecovery(sessionId) {
+            await saveE2EEProvisioningOwnerRecovery(userId, sessionId);
+        },
+
+        async abortProvisioningSession(sessionId) {
+            const result = unwrap(await e2eeRelayApi.abortProvisioningSession(sessionId));
+            if (result?.aborted || result?.alreadyFinalized || result?.alreadyCompleted) {
+                await finalizeE2EEProvisioningOwnerRecovery(userId, sessionId);
+            }
+            return result;
+        },
+
         async completeProvisioning(sessionId, deviceMetadata = {}) {
             const payload = {
                 ...deviceMetadata,
@@ -391,24 +473,33 @@ export const createE2EERelayAdapter = (authenticatedUserId) => {
             const result = unwrap(await e2eeRelayApi.completeProvisioning(sessionId, payload));
             if (result?.deviceToken && Number.isInteger(Number(result.deviceId))) {
                 currentDeviceId = Number(result.deviceId);
-                await saveE2EEDeviceCredential(userId, currentDeviceId, result.deviceToken);
+                // Persist token + journal atomically before the separate device-state write.
+                await saveE2EEProvisioningRecovery(userId, currentDeviceId, result.deviceToken, sessionId);
+                await finalizeE2EEProvisioningOwnerRecovery(userId, sessionId);
                 await setStoredE2EEDeviceId(userId, currentDeviceId);
             }
             return result;
         },
 
         async acknowledgeProvisioning(sessionId) {
-            return unwrap(await e2eeRelayApi.acknowledgeProvisioning(sessionId));
+            const deviceId = requireDevice();
+            const token = await requireCredential(deviceId);
+            const journaled = await markE2EEProvisioningPhase(userId, sessionId, 'awaiting_ack');
+            if (!journaled) {
+                const error = new Error('Provisioning recovery journal is missing; refusing to acknowledge an untracked device.');
+                error.code = 'E2EE_PROVISIONING_RECOVERY_JOURNAL_MISSING';
+                throw error;
+            }
+            const result = unwrap(await e2eeRelayApi.acknowledgeProvisioning(sessionId, token));
+            // If this local finalization fails, startup recovery safely rolls back.
+            await completeE2EEProvisioningRecovery(userId, deviceId, sessionId);
+            return result;
         },
 
         async rollbackProvisioning(sessionId) {
-            const result = unwrap(await e2eeRelayApi.rollbackProvisioning(sessionId));
-            if (currentDeviceId && currentDeviceId > 1) {
-                await deleteE2EEDeviceCredential(userId, currentDeviceId);
-                await clearStoredE2EEDeviceId(userId);
-                currentDeviceId = null;
-            }
-            return result;
+            const deviceId = requireDevice();
+            await setPendingE2EEProvisioningRollback(userId, deviceId, sessionId);
+            return finishProvisioningRollback(deviceId, sessionId);
         },
 
         async deleteProvisioningSession(sessionId, requestedUserId) {

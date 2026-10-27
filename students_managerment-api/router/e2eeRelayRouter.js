@@ -4,6 +4,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware');
 const controller = require('../controller/e2eeRelayController');
 const deviceAuth = require('../middleware/e2eeDeviceAuth');
+const preKeyBundleRateLimit = require('../middleware/e2eePreKeyBundleRateLimit');
 
 const relaySendLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -31,6 +32,7 @@ router.get('/provisioning/:sessionId/message', controller.getProvisioningMessage
 router.post('/provisioning/:sessionId/complete', keyMutationLimiter, controller.completeProvisioning);
 router.post('/provisioning/:sessionId/ack', keyMutationLimiter, controller.acknowledgeProvisioning);
 router.post('/provisioning/:sessionId/rollback', keyMutationLimiter, controller.rollbackProvisioning);
+router.post('/provisioning/:sessionId/abort', keyMutationLimiter, controller.abortProvisioningSession);
 router.delete('/provisioning/:sessionId', keyMutationLimiter, controller.deleteProvisioningSession);
 router.get('/users/:userId/devices', controller.getDevices);
 router.get('/users/:userId/identity', controller.getIdentityKey);
@@ -42,7 +44,7 @@ router.put('/devices/:deviceId/prekeys', deviceAuth, keyMutationLimiter, control
 router.get('/devices/:deviceId/prekeys/count/:type', deviceAuth, controller.getPreKeyCount);
 router.get('/devices/:deviceId/prekeys/inventory', deviceAuth, controller.getPreKeyInventory);
 router.delete('/devices/:deviceId/prekeys/kem-stale', deviceAuth, keyMutationLimiter, controller.clearStaleKemPreKeys);
-router.get('/users/:userId/devices/:deviceId/prekey-bundle', keyMutationLimiter, controller.fetchPreKeyBundle);
+router.get('/users/:userId/devices/:deviceId/prekey-bundle', keyMutationLimiter, preKeyBundleRateLimit, controller.fetchPreKeyBundle);
 
 router.post('/conversations/:conversationId/attachments/upload-ticket', relaySendLimiter, controller.createAttachmentUploadTicket);
 router.post('/attachments/uploads/resolve', relaySendLimiter, controller.resolveAttachmentUploadConversation);

@@ -29,7 +29,23 @@ const registerDevice = async (userId, input = {}) => {
     return relayRepository.registerDevice(userId, { deviceId, registrationId, deviceType, encryptedDeviceName: input.encryptedDeviceName });
 };
 
-const getDevices = (userId, targetUserId) => relayRepository.getDevices(targetUserId, userId);
+const assertDeviceInventoryAccess = async (requesterId, targetUserId) => {
+    integer(requesterId, 'requesterId');
+    integer(targetUserId, 'userId');
+    if (Number(requesterId) === Number(targetUserId)) return;
+    const conversation = await conversationRepository.findDirectConversation(requesterId, targetUserId);
+    if (!conversation) throw fail(404, 'Không tìm thấy conversation 1-1 với người dùng này');
+};
+
+const getDevices = async (requesterId, targetUserId) => {
+    await assertDeviceInventoryAccess(requesterId, targetUserId);
+    return relayRepository.getDevices(targetUserId);
+};
+
+const getActiveDevices = async (requesterId, targetUserId) => {
+    await assertDeviceInventoryAccess(requesterId, targetUserId);
+    return relayRepository.getActiveDevices(targetUserId);
+};
 const removeDevice = (userId, deviceId) => relayRepository.removeDevice(userId, integer(deviceId, 'deviceId', 1, 5));
 
 const provisionIdentity = async (userId, deviceId, body = {}) => {
@@ -89,9 +105,19 @@ const uploadPreKeys = async (userId, deviceId, body = {}) => {
 };
 
 const fetchPreKeyBundle = async (requesterId, targetUserId, targetDeviceId, identityType = 'aci') => {
+    integer(requesterId, 'requesterId');
     integer(targetUserId, 'userId');
     integer(targetDeviceId, 'deviceId', 1, 5);
     if (!['aci', 'pni'].includes(identityType)) throw fail(400, 'identityType không hợp lệ');
+
+    // Fetching a bundle claims one-time prekeys. Require an established direct
+    // conversation before allowing another account to consume this device's keys.
+    // A user's own linked devices remain discoverable for multi-device sessions.
+    if (Number(requesterId) !== Number(targetUserId)) {
+        const conversation = await conversationRepository.findDirectConversation(requesterId, targetUserId);
+        if (!conversation) throw fail(404, 'Không tìm thấy conversation 1-1 với người dùng này');
+    }
+
     return relayRepository.fetchPreKeyBundle(targetUserId, targetDeviceId, identityType);
 };
 
@@ -137,8 +163,14 @@ const assertBase64 = (value, name, max = 16384) => {
     return value;
 };
 
-const createProvisioningSession = async (userId, body = {}) =>
-    relayRepository.createProvisioningSession(userId, assertBase64(body.ephemeralPublicKey, 'ephemeralPublicKey'));
+const createProvisioningSession = async (userId, body = {}) => {
+    const proofProtocolVersion = body.proofProtocolVersion == null ? null : integer(body.proofProtocolVersion, 'proofProtocolVersion', 1, 1);
+    return relayRepository.createProvisioningSession(
+        userId,
+        assertBase64(body.ephemeralPublicKey, 'ephemeralPublicKey', 128),
+        proofProtocolVersion
+    );
+};
 
 const connectNewDevice = async (userId, sessionId, body = {}) => {
     assertSessionId(sessionId);
@@ -153,7 +185,20 @@ const sendProvisioningMessage = async (userId, sessionId, body = {}) => {
     if (typeof body.encryptedMessage !== 'string' || !body.encryptedMessage || body.encryptedMessage.length > 700_000) {
         throw fail(400, 'encryptedMessage không hợp lệ');
     }
-    return relayRepository.sendProvisioningMessage(userId, sessionId, body.encryptedMessage);
+    if (body.proofCommitment != null) {
+        try {
+            assertBase64(body.proofCommitment, 'proofCommitment', 44);
+            if (Buffer.from(body.proofCommitment, 'base64').length !== 32 ||
+                Buffer.from(body.proofCommitment, 'base64').toString('base64') !== body.proofCommitment) {
+                throw new Error('non-canonical');
+            }
+        } catch {
+            throw fail(400, 'proofCommitment phải là Base64 canonical 32 byte', 'E2EE_PROVISIONING_PROOF_INVALID');
+        }
+    }
+    return relayRepository.sendProvisioningMessage(
+        userId, sessionId, body.encryptedMessage, body.proofCommitment ?? null
+    );
 };
 
 const getProvisioningMessage = async (userId, sessionId) => {
@@ -174,14 +219,32 @@ const completeProvisioning = async (userId, sessionId, body = {}) => {
     return relayRepository.completeProvisioning(userId, sessionId, body.encryptedDeviceName || null, metadata);
 };
 
-const acknowledgeProvisioning = async (userId, sessionId) => {
+const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = null) => {
     assertSessionId(sessionId);
-    return relayRepository.acknowledgeProvisioning(userId, sessionId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw fail(401, 'Cần xác thực thiết bị E2EE mới');
+    }
+    if (proof != null && (typeof proof !== 'string' || proof.length > 44)) {
+        throw fail(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
+    }
+    const result = await relayRepository.acknowledgeProvisioning(userId, sessionId, deviceToken, proof);
+    if (result?.expiredOrUnavailable) {
+        throw fail(409, 'Không thể xác nhận phiên liên kết thiết bị');
+    }
+    return result;
 };
 
-const rollbackProvisioning = async (userId, sessionId) => {
+const rollbackProvisioning = async (userId, sessionId, deviceToken) => {
     assertSessionId(sessionId);
-    return relayRepository.rollbackProvisioning(userId, sessionId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw fail(401, 'Cần xác thực thiết bị E2EE mới');
+    }
+    return relayRepository.rollbackProvisioning(userId, sessionId, deviceToken);
+};
+
+const abortProvisioningSession = async (userId, sessionId) => {
+    assertSessionId(sessionId);
+    return relayRepository.abortProvisioningSession(userId, sessionId);
 };
 
 const deleteProvisioningSession = async (userId, sessionId) => {
@@ -237,9 +300,9 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, removeDevice, provisionIdentity, rotateIdentityKey,
+    registerDevice, getDevices, getActiveDevices, removeDevice, provisionIdentity, rotateIdentityKey,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
-    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, uploadPreKeys,
+    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, abortProvisioningSession, deleteProvisioningSession, uploadPreKeys,
     fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
     pullEnvelopes, markDelivered
 };

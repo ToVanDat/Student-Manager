@@ -79,15 +79,9 @@ module.exports = {
         }
         return require('../repository/e2eeRelayRepository').getIdentityKey(userId, identityType);
     }),
-    getActiveDevices: run(async req => {
-        const userId = Number(req.params.userId);
-        if (!Number.isSafeInteger(userId) || userId <= 0) {
-            const error = new Error('userId không hợp lệ');
-            error.statusCode = 400;
-            throw error;
-        }
-        return require('../repository/e2eeRelayRepository').getActiveDevices(userId);
-    }),
+    getActiveDevices: run(req => e2eeRelayService.getActiveDevices(
+        Number(req.user.id), Number(req.params.userId)
+    )),
     clearStaleKemPreKeys: run(req => e2eeRelayService.clearStaleKemPreKeys(
         Number(req.user.id), req.params.deviceId, req.query.identityType || 'aci'
     )),
@@ -113,8 +107,13 @@ module.exports = {
     sendProvisioningMessage: run(req => e2eeRelayService.sendProvisioningMessage(Number(req.user.id), req.params.sessionId, req.body)),
     getProvisioningMessage: run(req => e2eeRelayService.getProvisioningMessage(Number(req.user.id), req.params.sessionId)),
     completeProvisioning: run(req => e2eeRelayService.completeProvisioning(Number(req.user.id), req.params.sessionId, req.body)),
-    acknowledgeProvisioning: run(req => e2eeRelayService.acknowledgeProvisioning(Number(req.user.id), req.params.sessionId)),
-    rollbackProvisioning: run(req => e2eeRelayService.rollbackProvisioning(Number(req.user.id), req.params.sessionId)),
+    acknowledgeProvisioning: run(req => e2eeRelayService.acknowledgeProvisioning(
+        Number(req.user.id), req.params.sessionId, req.get('X-E2EE-Device-Token'), req.body?.proof ?? null
+    )),
+    rollbackProvisioning: run(req => e2eeRelayService.rollbackProvisioning(
+        Number(req.user.id), req.params.sessionId, req.get('X-E2EE-Device-Token')
+    )),
+    abortProvisioningSession: run(req => e2eeRelayService.abortProvisioningSession(Number(req.user.id), req.params.sessionId)),
     deleteProvisioningSession: run(req => e2eeRelayService.deleteProvisioningSession(Number(req.user.id), req.params.sessionId)),
     getConversationStatus: run(req => e2eeRelayService.getConversationE2EEStatus(
         Number(req.user.id), req.params.conversationId

@@ -8,10 +8,10 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "test:e2ee": "node --test test/e2eeProtocolRoundTrip.test.mjs"
+    "test:e2ee": "node --test test/e2eeProtocolRoundTrip.test.mjs test/e2eeProvisioningProofVector.test.mjs"
   },
   "dependencies": {
-    "@open-e2ee/signal-protocol-sdk": "^11.0.0",
+    "@open-e2ee/signal-protocol-sdk": "11.0.0",
     "@react-oauth/google": "^0.13.5",
     "@simplewebauthn/browser": "^14.0.0",
     "@tailwindcss/vite": "^4.3.3",

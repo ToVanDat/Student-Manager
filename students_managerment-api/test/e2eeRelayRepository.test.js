@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
 const pool = require('../src/config/database');
 const repository = require('../repository/e2eeRelayRepository');
@@ -108,7 +109,7 @@ test('notification decision is deduplicated across recipient devices and retries
     const keyFor = (senderId, clientId, recipientDevicePk) => `${senderId}:${clientId}:${recipientDevicePk}`;
     const client = {
         async query(sql, params = []) {
-            const statement = sql.replace(/\\s+/g, ' ').trim();
+            const statement = sql.replace(/\s+/g, ' ').trim();
             calls.push({ statement, params });
             if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
             if (statement.startsWith('SELECT 1 FROM conversation_members')) return { rows: [{}], rowCount: 1 };
@@ -166,4 +167,555 @@ test('notification decision is deduplicated across recipient devices and retries
     } finally {
         pool.connect = oldConnect;
     }
+});
+
+
+test('revoked device credentials cannot authenticate, pull mailbox or acknowledge envelopes', async t => {
+    const oldConnect = pool.connect;
+    const oldQuery = pool.query;
+    let revoked = false;
+    const transactionCalls = [];
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            transactionCalls.push({ statement, params });
+            if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
+                return { rows: [], rowCount: 0 };
+            }
+            if (statement.startsWith('SELECT id FROM e2ee_sdk_devices')) {
+                return { rows: revoked ? [] : [{ id: 12 }], rowCount: revoked ? 0 : 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET revoked_at')) {
+                revoked = true;
+                return { rows: [{ id: 12, device_id: 2 }], rowCount: 1 };
+            }
+            return { rows: [], rowCount: 1 };
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    pool.query = async (sql, params = []) => {
+        const statement = sql.replace(/\s+/g, ' ').trim();
+        if (statement.startsWith('SELECT id, user_id, device_id, registration_id FROM e2ee_sdk_devices')) {
+            assert.ok(statement.includes('revoked_at IS NULL AND enabled = TRUE AND registered = TRUE'));
+            return { rows: revoked ? [] : [{ id: 12, user_id: 44, device_id: 2 }], rowCount: revoked ? 0 : 1 };
+        }
+        if (statement.startsWith('SELECT * FROM e2ee_sdk_devices')) {
+            assert.ok(statement.includes('revoked_at IS NULL AND enabled = TRUE AND registered = TRUE'));
+            return { rows: revoked ? [] : [{ id: 12, user_id: 44, device_id: 2 }], rowCount: revoked ? 0 : 1 };
+        }
+        if (statement.startsWith('UPDATE e2ee_sdk_envelopes')) {
+            assert.ok(statement.includes('d.revoked_at IS NULL'));
+            return { rows: [], rowCount: 0 };
+        }
+        throw new Error('Unexpected query after revocation: ' + statement);
+    };
+    t.after(() => {
+        pool.connect = oldConnect;
+        pool.query = oldQuery;
+    });
+
+    assert.deepEqual(await repository.removeDevice(44, 2), { deviceId: 2 });
+    assert.equal(revoked, true);
+    assert.equal(await repository.authenticateDeviceCredential(44, 2, 'x'.repeat(48)), null);
+    await assert.rejects(repository.pullEnvelopes(44, 2), error => error.statusCode === 403);
+    await assert.rejects(
+        repository.markDelivered(44, 2, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'),
+        error => error.statusCode === 404
+    );
+    assert.ok(transactionCalls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET revoked_at')));
+});
+
+
+test('primary E2EE device slot remains protected from linked-device revocation API', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            return { rows: [], rowCount: 0 };
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(repository.removeDevice(44, 1), error => error.statusCode === 409);
+    assert.deepEqual(calls, ['BEGIN', 'ROLLBACK']);
+});
+
+
+test('provisioning serializes device-slot allocation by locking the owning account row', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (statement === 'BEGIN' || statement === 'COMMIT' || statement === 'ROLLBACK') {
+                return { rows: [], rowCount: 0 };
+            }
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT * FROM e2ee_sdk_provisioning_sessions')) {
+                return { rows: [{ session_id: 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d' }], rowCount: 1 };
+            }
+            if (statement === 'SELECT id FROM users WHERE id = $1 FOR UPDATE') {
+                return { rows: [{ id: 44 }], rowCount: 1 };
+            }
+            if (statement.startsWith('SELECT device_id FROM e2ee_sdk_devices')) {
+                return { rows: [{ device_id: 1 }, { device_id: 2 }], rowCount: 2 };
+            }
+            if (statement.startsWith('INSERT INTO e2ee_sdk_devices')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET assigned_device_id')) return { rows: [], rowCount: 1 };
+            throw new Error('Unexpected SQL in provisioning allocation test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    const result = await repository.completeProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', null, {});
+    assert.equal(result.deviceId, 3);
+    const deviceInsert = calls.find(call => call.statement.startsWith('INSERT INTO e2ee_sdk_devices'));
+    assert.ok(deviceInsert.statement.includes('enabled'));
+    assert.ok(deviceInsert.statement.includes("VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6,FALSE)"));
+    const accountLock = calls.findIndex(call => call.statement === 'SELECT id FROM users WHERE id = $1 FOR UPDATE');
+    const slotRead = calls.findIndex(call => call.statement.startsWith('SELECT device_id FROM e2ee_sdk_devices'));
+    assert.ok(accountLock > 0);
+    assert.ok(slotRead > accountLock);
+    assert.deepEqual(calls[accountLock].params, [44]);
+});
+
+test('provisioning rollback revokes a completed device when ACK response was lost', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ assigned_device_id: 2, completed_at: completedAt, status: 'completed' }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = FALSE')) {
+                return { rows: [{ id: 71 }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_envelopes') || statement.startsWith('DELETE FROM e2ee_sdk_prekeys')) {
+                return { rows: [], rowCount: 1 };
+            }
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [], rowCount: 1 };
+            throw new Error('Unexpected SQL in completed provisioning rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    assert.deepEqual(await repository.rollbackProvisioning(44, sessionId, token), { rolledBack: true });
+    const revoke = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = FALSE'));
+    assert.deepEqual(revoke.params, [44, 2, tokenHash, completedAt]);
+    assert.ok(revoke.statement.includes('enabled = TRUE'));
+    assert.ok(revoke.statement.includes('device_token_hash = $3'));
+    assert.ok(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_envelopes')));
+    assert.ok(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_prekeys')));
+    assert.ok(calls.some(call => call.statement === "COMMIT"));
+});
+
+
+test('provisioning rollback removes only the matching disabled pending device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ assigned_device_id: 4, completed_at: completedAt, status: 'linked_pending_ack' }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [{ id: 72 }], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [], rowCount: 1 };
+            throw new Error('Unexpected SQL in pending provisioning rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    assert.deepEqual(
+        await repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', token),
+        { rolledBack: true }
+    );
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.deepEqual(deletion.params, [44, 4, tokenHash, completedAt]);
+    assert.ok(deletion.statement.includes('enabled = FALSE'));
+    assert.ok(deletion.statement.includes("created_at < $4::timestamptz + INTERVAL '1 millisecond'"));
+    assert.ok(calls.some(call => call.statement === 'COMMIT'));
+});
+
+
+test('provisioning rollback rejects a wrong credential for a completed device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ assigned_device_id: 2, completed_at: new Date(), status: 'completed' }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = FALSE')) return { rows: [], rowCount: 0 };
+            throw new Error('Unexpected SQL in wrong credential rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(
+        repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', 'wrong-device-token-value-that-is-long-enough'),
+        error => error.statusCode === 401 && error.code === 'E2EE_DEVICE_AUTH_FAILED'
+    );
+    assert.ok(calls.includes('ROLLBACK'));
+    assert.equal(calls.some(statement => statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")), false);
+});
+
+test('provisioning rollback treats an already expired session as an idempotent cleanup', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT 1 FROM e2ee_sdk_provisioning_sessions')) return { rows: [{}], rowCount: 1 };
+            throw new Error('Unexpected SQL in expired rollback test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    assert.deepEqual(
+        await repository.rollbackProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', 'device-token-for-new-device-which-is-long-enough'),
+        { rolledBack: false, alreadyFinalized: true }
+    );
+    assert.ok(calls.includes('COMMIT'));
+    assert.equal(calls.includes('ROLLBACK'), false);
+});
+
+
+test('expired pending-ack provisioning revokes its unacknowledged device and clears ephemeral payload', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) {
+                return {
+                    rows: [{ session_id: sessionId, status: 'linked_pending_ack', assigned_device_id: 2, completed_at: completedAt }],
+                    rowCount: 1
+                };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at')) {
+                return {
+                    rows: [{ status: 'expired', encrypted_message: null, new_device_ephemeral_public_key: null, expires_at: new Date('2026-10-26T10:05:00.000Z') }],
+                    rowCount: 1
+                };
+            }
+            throw new Error('Unexpected SQL in expired provisioning test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    const state = await repository.getProvisioningMessage(44, sessionId);
+    assert.deepEqual(state, {
+        status: 'expired',
+        message: null,
+        newDeviceEphemeralPublicKey: null,
+        expiresAt: null
+    });
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.ok(deletion.statement.includes("created_at < $3::timestamptz + INTERVAL '1 millisecond'"));
+    assert.deepEqual(deletion.params, [44, 2, completedAt]);
+    const expiryUpdate = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE'));
+    assert.ok(expiryUpdate.statement.includes('encrypted_message = NULL'));
+    assert.ok(expiryUpdate.statement.includes('new_device_ephemeral_public_key = NULL'));
+    assert.deepEqual(expiryUpdate.params, [[sessionId], 44]);
+});
+
+
+test('expired completed provisioning retains completion status but scrubs encrypted and ephemeral payloads', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) {
+                return {
+                    rows: [{ session_id: sessionId, status: 'completed', assigned_device_id: 2, completed_at: new Date('2026-10-26T10:00:00.000Z') }],
+                    rowCount: 1
+                };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at')) {
+                return {
+                    rows: [{ status: 'completed', encrypted_message: null, new_device_ephemeral_public_key: null, expires_at: new Date('2026-10-26T10:05:00.000Z') }],
+                    rowCount: 1
+                };
+            }
+            throw new Error('Unexpected SQL in completed provisioning cleanup test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    const state = await repository.getProvisioningMessage(44, sessionId);
+    assert.equal(state.status, 'completed');
+    assert.equal(state.message, null);
+    assert.equal(state.newDeviceEphemeralPublicKey, null);
+    assert.equal(state.expiresAt, new Date('2026-10-26T10:05:00.000Z').getTime());
+    assert.equal(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices')), false);
+
+    const cleanup = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE'));
+    assert.ok(cleanup.statement.includes("WHEN status = 'completed' THEN 'completed'"));
+    assert.ok(cleanup.statement.includes('encrypted_message = NULL'));
+    assert.ok(cleanup.statement.includes('new_device_ephemeral_public_key = NULL'));
+    assert.ok(cleanup.statement.includes('new_device_metadata = NULL'));
+    assert.deepEqual(cleanup.params, [[sessionId], 44]);
+});
+
+
+test('provisioning acknowledgement activates only the assigned linked device with its device credential', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
+                return { rows: [{ assigned_device_id: 3, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')) {
+                return { rows: [{ device_id: 3 }], rowCount: 1 };
+            }
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")) {
+                return { rows: [{ session_id: sessionId }], rowCount: 1 };
+            }
+            throw new Error('Unexpected SQL in provisioning acknowledgement test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await repository.acknowledgeProvisioning(44, sessionId, token);
+    const activation = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE'));
+    assert.deepEqual(activation.params, [44, 3, tokenHash, completedAt]);
+    assert.ok(activation.statement.includes('device_token_hash = $3'));
+    assert.ok(activation.statement.includes("created_at < $4::timestamptz + INTERVAL '1 millisecond'"));
+    assert.ok(calls.find(call => call.statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")));
+});
+
+test('provisioning acknowledgement rejects missing device credential before activating device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            throw new Error('Unexpected SQL in missing provisioning credential test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(
+        repository.acknowledgeProvisioning(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d', null),
+        error => error.statusCode === 401 && error.code === 'E2EE_DEVICE_AUTH_REQUIRED'
+    );
+    assert.equal(calls.some(statement => statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')), false);
+});
+
+test('provisioning acknowledgement cannot reactivate an already-enabled or mismatched device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) {
+                return { rows: [{ assigned_device_id: 3, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')) {
+                assert.ok(statement.includes('enabled = FALSE'));
+                return { rows: [], rowCount: 0 };
+            }
+            throw new Error('Unexpected SQL in rejected provisioning acknowledgement test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    await assert.rejects(
+        repository.acknowledgeProvisioning(44, sessionId, token),
+        error => error.statusCode === 401 && error.code === 'E2EE_DEVICE_AUTH_FAILED'
+    );
+    assert.ok(calls.some(call => call.statement === 'ROLLBACK'));
+    assert.equal(calls.some(call => call.statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'")), false);
+    const activation = calls.find(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE'));
+    assert.ok(activation.statement.includes('enabled = FALSE'));
+});
+
+test('expired provisioning acknowledgement expires and removes the pending device without activation', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const sessionId = 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d';
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const token = 'device-token-for-new-device-which-is-long-enough';
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) {
+                return {
+                    rows: [{ session_id: sessionId, status: 'linked_pending_ack', assigned_device_id: 3, completed_at: completedAt }],
+                    rowCount: 1
+                };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE')) return { rows: [], rowCount: 1 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            throw new Error('Unexpected SQL in expired acknowledgement test: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+
+    const result = await repository.acknowledgeProvisioning(44, sessionId, token);
+    assert.deepEqual(result, { expiredOrUnavailable: true });
+    assert.ok(calls.some(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices')));
+    assert.ok(calls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_provisioning_sessions SET status = CASE')));
+    assert.equal(calls.some(call => call.statement.startsWith('UPDATE e2ee_sdk_devices SET enabled = TRUE')), false);
+    assert.ok(calls.some(call => call.statement === 'COMMIT'));
+    assert.equal(calls.some(call => call.statement === 'ROLLBACK'), false);
+});
+
+
+test('owner abort cancels ready provisioning without touching device rows', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) return { rows: [{ status: 'ready' }], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [{ session_id: 'x' }], rowCount: 1 };
+            throw new Error('Unexpected SQL: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+    assert.deepEqual(await repository.abortProvisioningSession(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'), { aborted: true });
+    assert.equal(calls.some(sql => sql.startsWith('DELETE FROM e2ee_sdk_devices')), false);
+    assert.ok(calls.includes('COMMIT'));
+});
+
+test('owner abort removes a disabled linked device after a lost complete response', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ status: 'linked_pending_ack', assigned_device_id: 3, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [{ id: 88 }], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [{ session_id: 'x' }], rowCount: 1 };
+            throw new Error('Unexpected SQL: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+    assert.deepEqual(await repository.abortProvisioningSession(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'), { aborted: true });
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.deepEqual(deletion.params, [44, 3, completedAt]);
+    assert.ok(deletion.statement.includes('enabled = FALSE'));
+    assert.ok(deletion.statement.includes("created_at < $3::timestamptz + INTERVAL '1 millisecond'"));
+    assert.ok(calls.some(call => call.statement === 'COMMIT'));
+});
+
+test('owner abort never revokes an already completed device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ status: 'completed', assigned_device_id: 3, completed_at: new Date() }], rowCount: 1 };
+            }
+            throw new Error('Unexpected SQL: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+    assert.deepEqual(await repository.abortProvisioningSession(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'), { aborted: false, alreadyCompleted: true });
+    assert.equal(calls.some(sql => sql.startsWith('DELETE FROM e2ee_sdk_devices')), false);
+    assert.equal(calls.some(sql => sql.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")), false);
+    assert.ok(calls.includes('COMMIT'));
 });

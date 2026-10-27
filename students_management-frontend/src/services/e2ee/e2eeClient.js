@@ -4,7 +4,8 @@ import { getPinProtectedE2EEVault } from './pinProtectedE2EEVault';
 import { createE2EERelayAdapter } from './e2eeRelayAdapter';
 import { e2eeRelayApi } from '@/api/e2eeRelayApi';
 import { createE2EER2ObjectStore } from './e2eeR2ObjectStore';
-import { getStoredE2EEDeviceId, setStoredE2EEDeviceId } from './e2eeDeviceStateStore';
+import { getStoredE2EEDeviceId, setStoredE2EEDeviceId, clearStoredE2EEDeviceId } from './e2eeDeviceStateStore';
+import { getE2EEProvisioningRecoveryRecords, getE2EEDeviceCredential, setPendingE2EEProvisioningRollback, finalizeE2EEProvisioningRecovery, finalizeE2EEProvisioningOwnerRecovery } from './e2eeDeviceCredentialStore';
 
 const listeners = new Set();
 let activeContext = null;
@@ -13,6 +14,62 @@ let initializingUserId = null;
 let generation = 0;
 const decryptedMessageListeners = new Set();
 let activeAttachmentConversationId = null;
+
+// Resolve every incomplete linked-device transaction before choosing a local
+// device slot. This must run before the no-device-ID path can mistake a
+// partially persisted linked device for a first-time account.
+const recoverProvisioningBeforeClientStart = async userId => {
+    const records = await getE2EEProvisioningRecoveryRecords(userId);
+
+    // Owner journals have no linked-device token or deviceId. Resolve them
+    // with the authenticated account session before processing device journals.
+    // In particular, do not feed owner records into device-token rollback.
+    for (const record of records.filter(item => item.kind === 'owner')) {
+        const result = (await e2eeRelayApi.abortProvisioningSession(record.sessionId))?.data?.data;
+        if (!result?.aborted && !result?.alreadyFinalized && !result?.alreadyCompleted) {
+            const error = new Error('Owner provisioning recovery did not reach a confirmed terminal state.');
+            error.code = 'E2EE_OWNER_PROVISIONING_RECOVERY_UNCONFIRMED';
+            throw error;
+        }
+        // alreadyCompleted is terminal but must not revoke the active device.
+        await finalizeE2EEProvisioningOwnerRecovery(userId, record.sessionId);
+    }
+
+    for (const record of records.filter(item => item.kind !== 'owner' && item.phase !== 'completed')) {
+        const deviceId = Number(record.deviceId);
+        const sessionId = record.sessionId;
+        const token = await getE2EEDeviceCredential(userId, deviceId);
+        if (!token) {
+            const error = new Error('Provisioning recovery is blocked because the linked-device credential is missing.');
+            error.code = 'E2EE_PROVISIONING_RECOVERY_CREDENTIAL_MISSING';
+            throw error;
+        }
+        await setPendingE2EEProvisioningRollback(userId, deviceId, sessionId);
+        // A lost response is an unknown outcome. Retry the same idempotent
+        // rollback while retaining the token and journal.
+        let rollbackResponse;
+        let lastError;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+            try {
+                rollbackResponse = await e2eeRelayApi.rollbackProvisioning(sessionId, token);
+                lastError = null;
+                break;
+            } catch (error) {
+                lastError = error;
+                const status = Number(error?.response?.status || 0);
+                const retryable = !status || status === 408 || status === 429 || status >= 500;
+                if (!retryable || attempt === 4) break;
+                await new Promise(resolve => setTimeout(resolve, Math.min(16_000, 1_000 * (2 ** attempt))));
+            }
+        }
+        if (lastError) throw lastError;
+        if (!rollbackResponse) throw new Error('Provisioning rollback returned no confirmation.');
+        await finalizeE2EEProvisioningRecovery(userId, deviceId, sessionId);
+        if (Number(await getStoredE2EEDeviceId(userId)) === deviceId) {
+            await clearStoredE2EEDeviceId(userId);
+        }
+    }
+};
 
 export const setE2EEAttachmentConversationId = (conversationId) => {
     const value = Number(conversationId);
@@ -129,6 +186,7 @@ export const initializeE2EEClient = async (userId) => {
                 await closeResources(previous.client, previous.storage, previous.unsubscribeRelayState, previous.relay);
             }
 
+            await recoverProvisioningBeforeClientStart(normalizedUserId);
             let deviceId = await getStoredE2EEDeviceId(normalizedUserId);
             const devicesResponse = await e2eeRelayApi.getDevices(normalizedUserId);
             const serverDevices = devicesResponse.data?.data || [];

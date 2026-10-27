@@ -47,7 +47,7 @@ const makeTicket = (config, payload) => signTicket({
 const workerUrl = (config, attachmentId) =>
     `${config.workerUrl}/v1/objects/${encodeURIComponent(attachmentId)}`;
 
-const assertConversationAccess = async (userId, conversationId) => {
+const assertConversationAccess = async (userId, conversationId, { requireActive = false } = {}) => {
     const id = Number(conversationId);
     if (!Number.isSafeInteger(id) || id < 1) throw fail(400, 'conversationId không hợp lệ');
     if (!await conversationRepository.isConversationMember(id, userId)) {
@@ -57,11 +57,16 @@ const assertConversationAccess = async (userId, conversationId) => {
     if (!status.available || !status.enabled) {
         throw fail(409, 'Chỉ conversation đã kích hoạt E2EE mới được dùng tệp đính kèm E2EE', 'E2EE_NOT_ENABLED');
     }
+    if (requireActive && status.mode !== 'active') {
+        throw fail(409, 'Conversation đang tạm dừng E2EE; không thể tạo lượt tải tệp mới', 'E2EE_PAUSED');
+    }
     return id;
 };
 
 const createUploadTicket = async (userId, conversationId, body = {}) => {
-    const id = await assertConversationAccess(userId, conversationId);
+    // Pausing E2EE must stop new attachment reservations. Existing uploaded
+    // ciphertext remains readable and already-created uploads can still complete.
+    const id = await assertConversationAccess(userId, conversationId, { requireActive: true });
     const size = body.ciphertextSize ?? body.contentLength;
     if (!Number.isSafeInteger(size) || size < 1 || size > MAX_CIPHERTEXT_BYTES) {
         throw fail(400, 'ciphertextSize phải từ 1 byte đến 500 MB');
@@ -414,5 +419,5 @@ module.exports = {
     MAX_CIPHERTEXT_BYTES, createUploadTicket, completeUpload, createDownloadTicket,
     reconcileUpload, abandonUpload, deleteObject, resolveUploadConversation,
     // Exported for deterministic unit tests; never expose this signing key to clients.
-    signTicket
+    signTicket, assertConversationAccess
 };

@@ -20,13 +20,22 @@ const REFRESH_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function rpConfig() {
     const origin = process.env.WEBAUTHN_ORIGIN || process.env.FRONTEND_URL;
-    if (!origin) throw new Error('WEBAUTHN_ORIGIN chưa được cấu hình');
-    const url = new URL(origin);
-    return {
-        expectedOrigin: url.origin,
-        rpID: process.env.WEBAUTHN_RP_ID || url.hostname,
-        rpName: process.env.WEBAUTHN_RP_NAME || 'Student Manager'
+    const configError = message => {
+        const error = new Error(message);
+        error.code = 'WEBAUTHN_CONFIG_NOT_READY';
+        throw error;
     };
+    if (!origin) configError('WebAuthn origin chưa được cấu hình');
+    let url;
+    try { url = new URL(origin); } catch { configError('WebAuthn origin không hợp lệ'); }
+    const rpID = process.env.WEBAUTHN_RP_ID || url.hostname;
+    const local = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+    const secure = url.protocol === 'https:' || (url.protocol === 'http:' && local);
+    const matches = url.hostname === rpID || url.hostname.endsWith('.' + rpID);
+    if (!secure || url.username || url.password || url.pathname !== '/' || url.search || url.hash || !matches) {
+        configError('WebAuthn origin hoặc RP ID không khớp cấu hình trình duyệt');
+    }
+    return { expectedOrigin: url.origin, rpID, rpName: process.env.WEBAUTHN_RP_NAME || 'Student Manager' };
 }
 
 function randomToken(bytes = 32) {
@@ -78,7 +87,8 @@ async function issueSession(user, req) {
         }, process.env.JWT_SECRET, {
             expiresIn: ACCESS_TTL_SECONDS,
             issuer: 'student-management-api',
-            audience: 'student-management-client'
+            audience: 'student-management-client',
+            algorithm: 'HS256'
         });
 
         const accessHash = hash(accessToken);

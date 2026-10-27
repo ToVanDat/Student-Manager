@@ -15,8 +15,22 @@ const socket = io(API_BASE_URL, {
 // =====================================================
 
 // Khi socket kết nối thành công tới Backend
+let presenceHeartbeatTimer = null;
+
 socket.on('connect', () => {
     console.log(' Socket đã kết nối thành công. Socket ID:', socket.id);
+    socket.emit('presence:heartbeat');
+    if (presenceHeartbeatTimer) clearInterval(presenceHeartbeatTimer);
+    presenceHeartbeatTimer = setInterval(() => {
+        if (socket.connected) socket.emit('presence:heartbeat');
+    }, 20_000);
+});
+
+socket.on('disconnect', () => {
+    if (presenceHeartbeatTimer) {
+        clearInterval(presenceHeartbeatTimer);
+        presenceHeartbeatTimer = null;
+    }
 });
 
 // Khi bị ngắt kết nối (mất mạng, server restart, hoặc gọi socket.disconnect())

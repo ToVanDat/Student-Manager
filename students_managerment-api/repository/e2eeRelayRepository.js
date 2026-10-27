@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const pool = require('../src/config/database');
+const { decodeCanonical32, digestProvisioningCiphertext, verifyProvisioningProof } = require('../utils/e2eeProvisioningProof');
 
 const httpError = (statusCode, message, code) => {
     const error = new Error(message);
@@ -654,58 +655,131 @@ const enableConversationE2EE = async (requesterId, conversationId) => withTransa
     )).rows[0];
     return { ...current, enabled: true };
 });
-const createProvisioningSession = async (userId, ephemeralPublicKey) => {
+const expireProvisioningSessions = async (client, userId) => {
+    const { rows } = await client.query(
+        `SELECT session_id, status, assigned_device_id, completed_at
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE owner_user_id = $1 AND expires_at <= NOW()
+           AND status NOT IN ('rolled_back', 'expired')
+         FOR UPDATE`,
+        [userId]
+    );
+    if (!rows.length) return 0;
+
+    // Expired linked-but-unacknowledged devices must not remain active.
+    // The timestamp guard prevents deleting a later device that reused the slot.
+    for (const session of rows) {
+        if (session.status === 'linked_pending_ack' && session.assigned_device_id && session.completed_at) {
+            await client.query(
+                `DELETE FROM e2ee_sdk_devices
+                 WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+                   AND revoked_at IS NULL AND created_at < $3::timestamptz + INTERVAL '1 millisecond'`,
+                [userId, session.assigned_device_id, session.completed_at]
+            );
+        }
+    }
+
+    const sessionIds = rows.map(row => row.session_id);
+    await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET status = CASE WHEN status = 'completed' THEN 'completed' ELSE 'expired' END,
+             new_device_ephemeral_public_key = NULL, new_device_metadata = NULL,
+             encrypted_message = NULL, encrypted_device_name = NULL,
+             proof_challenge = NULL, proof_commitment = NULL,
+             proof_ciphertext_digest = NULL,
+             proof_ack_digest = CASE WHEN status = 'completed' THEN proof_ack_digest ELSE NULL END
+         WHERE session_id = ANY($1::uuid[]) AND owner_user_id = $2
+           AND status NOT IN ('rolled_back', 'expired')`,
+        [sessionIds, userId]
+    );
+    return rows.length;
+};
+
+const createProvisioningSession = async (userId, ephemeralPublicKey, proofProtocolVersion = null) => {
     const primary = await getDeviceBySlot(userId, 1);
     if (!primary) throw httpError(409, 'Thiết bị chính chưa đăng ký E2EE');
+    if (proofProtocolVersion !== null && proofProtocolVersion !== 1) {
+        throw httpError(400, 'proofProtocolVersion không được hỗ trợ');
+    }
     const sessionId = crypto.randomUUID();
-    const { rows } = await pool.query(
-        `INSERT INTO e2ee_sdk_provisioning_sessions (session_id, owner_user_id, owner_ephemeral_public_key)
-         VALUES ($1,$2,$3) RETURNING session_id, expires_at`,
-        [sessionId, userId, ephemeralPublicKey]
-    );
-    return { sessionId: rows[0].session_id, expiresAt: new Date(rows[0].expires_at).getTime() };
+    return withTransaction(async client => {
+        await expireProvisioningSessions(client, userId);
+        const { rows } = await client.query(
+            `INSERT INTO e2ee_sdk_provisioning_sessions
+                (session_id, owner_user_id, owner_ephemeral_public_key, proof_protocol_version)
+             VALUES ($1,$2,$3,$4) RETURNING session_id, expires_at`,
+            [sessionId, userId, ephemeralPublicKey, proofProtocolVersion]
+        );
+        return {
+            sessionId: rows[0].session_id,
+            expiresAt: new Date(rows[0].expires_at).getTime(),
+            ...(proofProtocolVersion === 1 ? { proofProtocolVersion: 1 } : {})
+        };
+    });
 };
 
-const connectNewDevice = async (userId, sessionId, ephemeralPublicKey, metadata) => {
-    const { rows } = await pool.query(
+const connectNewDevice = async (userId, sessionId, ephemeralPublicKey, metadata) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    const challenge = crypto.randomBytes(32);
+    const { rows } = await client.query(
         `UPDATE e2ee_sdk_provisioning_sessions
-         SET new_device_ephemeral_public_key = $3, new_device_metadata = $4::jsonb, status = 'connected'
+         SET new_device_ephemeral_public_key = $3, new_device_metadata = $4::jsonb,
+             proof_challenge = CASE WHEN proof_protocol_version = 1 THEN $5::bytea ELSE NULL END,
+             status = 'connected'
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'waiting'
            AND expires_at > NOW()
-         RETURNING session_id`,
-        [sessionId, userId, ephemeralPublicKey, JSON.stringify(metadata || {})]
+         RETURNING session_id, proof_protocol_version, proof_challenge`,
+        [sessionId, userId, ephemeralPublicKey, JSON.stringify(metadata || {}), challenge]
     );
     if (!rows[0]) throw httpError(404, 'Phiên liên kết thiết bị không tồn tại hoặc đã hết hạn');
-};
+    return rows[0].proof_protocol_version === 1
+        ? { proofProtocolVersion: 1, proofChallenge: rows[0].proof_challenge.toString('base64') }
+        : undefined;
+});
 
-const sendProvisioningMessage = async (userId, sessionId, encryptedMessage) => {
-    const { rows } = await pool.query(
-        `UPDATE e2ee_sdk_provisioning_sessions SET encrypted_message = $3, status = 'ready'
+const sendProvisioningMessage = async (userId, sessionId, encryptedMessage, proofCommitment = null) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    const commitment = proofCommitment == null ? null : decodeCanonical32(proofCommitment, 'commitment');
+    const ciphertextDigest = proofCommitment == null ? null : Buffer.from(digestProvisioningCiphertext(encryptedMessage), 'base64');
+    const { rows } = await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET encrypted_message = $3, status = 'ready',
+             proof_commitment = CASE WHEN proof_protocol_version = 1 THEN $4::bytea ELSE NULL END,
+             proof_ciphertext_digest = CASE WHEN proof_protocol_version = 1 THEN $5::bytea ELSE NULL END
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'connected'
            AND expires_at > NOW() AND new_device_ephemeral_public_key IS NOT NULL
+           AND ((proof_protocol_version IS NULL AND $4::bytea IS NULL)
+             OR (proof_protocol_version = 1 AND proof_challenge IS NOT NULL AND $4::bytea IS NOT NULL AND $5::bytea IS NOT NULL))
          RETURNING session_id`,
-        [sessionId, userId, encryptedMessage]
+        [sessionId, userId, encryptedMessage, commitment, ciphertextDigest]
     );
-    if (!rows[0]) throw httpError(409, 'Phiên liên kết chưa sẵn sàng để gửi gói mã hóa');
-};
+    if (!rows[0]) throw httpError(409, 'Phiên liên kết chưa sẵn sàng hoặc thiếu commitment proof');
+});
 
-const getProvisioningMessage = async (userId, sessionId) => {
-    const { rows } = await pool.query(
-        `SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at FROM e2ee_sdk_provisioning_sessions
+const getProvisioningMessage = async (userId, sessionId) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    const { rows } = await client.query(
+        `SELECT status, encrypted_message, new_device_ephemeral_public_key, expires_at,
+                proof_protocol_version, proof_challenge
+         FROM e2ee_sdk_provisioning_sessions
          WHERE session_id = $1 AND owner_user_id = $2 LIMIT 1`,
         [sessionId, userId]
     );
     if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết thiết bị');
-    const expired = new Date(rows[0].expires_at).getTime() <= Date.now();
     return {
-        status: expired && !['completed', 'rolled_back'].includes(rows[0].status) ? 'expired' : rows[0].status,
+        status: rows[0].status,
         message: rows[0].encrypted_message || null,
         newDeviceEphemeralPublicKey: rows[0].new_device_ephemeral_public_key || null,
-        expiresAt: expired ? null : new Date(rows[0].expires_at).getTime()
+        expiresAt: rows[0].status === 'expired' ? null : new Date(rows[0].expires_at).getTime(),
+        ...(rows[0].proof_protocol_version === 1 ? {
+            proofProtocolVersion: 1,
+            proofChallenge: rows[0].proof_challenge?.toString('base64') || null
+        } : {})
     };
-};
+});
 
 const completeProvisioning = async (userId, sessionId, encryptedDeviceName, metadata = {}) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
     const sessionResult = await client.query(
         `SELECT * FROM e2ee_sdk_provisioning_sessions
          WHERE session_id = $1 AND owner_user_id = $2 AND status = 'ready' AND expires_at > NOW()
@@ -714,6 +788,12 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     );
     const session = sessionResult.rows[0];
     if (!session) throw httpError(409, 'Phiên liên kết chưa sẵn sàng hoặc đã hết hạn');
+    if (session.proof_protocol_version === 1 &&
+        (!session.proof_challenge || !session.proof_commitment || !session.proof_ciphertext_digest)) {
+        throw httpError(409, 'Phiên proof v1 chưa có challenge và commitment hợp lệ', 'E2EE_PROVISIONING_PROOF_NOT_READY');
+    }
+    // Serialize slot allocation across different provisioning sessions for the same account.
+    await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
     const slots = await client.query('SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
     const used = new Set(slots.rows.map(row => Number(row.device_id)));
     const deviceId = [2, 3, 4, 5].find(id => !used.has(id));
@@ -722,8 +802,8 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     const deviceToken = crypto.randomBytes(32).toString('base64url');
     const deviceTokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
     await client.query(
-        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash)
-         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6)`,
+        `INSERT INTO e2ee_sdk_devices (user_id, device_id, registration_id, device_type, encrypted_device_name, linked, identity_type, device_token_hash, enabled)
+         VALUES ($1,$2,$3,$4,$5,TRUE,'aci',$6,FALSE)`,
         [userId, deviceId, registrationId, metadata.deviceType || 'web', encryptedDeviceName || null, deviceTokenHash]
     );
     await client.query(
@@ -735,36 +815,238 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     return { deviceId, deviceToken };
 });
 
-const acknowledgeProvisioning = async (userId, sessionId) => {
-    const { rows } = await pool.query(
-        `UPDATE e2ee_sdk_provisioning_sessions SET status = 'completed'
-         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' AND expires_at > NOW()
+const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = null) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw httpError(401, 'Thiếu xác thực thiết bị mới', 'E2EE_DEVICE_AUTH_REQUIRED');
+    }
+    const tokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
+    const { rows } = await client.query(
+        `SELECT assigned_device_id, completed_at, status, proof_protocol_version,
+                proof_challenge, proof_commitment, proof_ciphertext_digest,
+                encrypted_message, proof_ack_digest
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('linked_pending_ack', 'completed')
+         FOR UPDATE`,
+        [sessionId, userId]
+    );
+    const session = rows[0];
+    if (!session?.assigned_device_id || !session.completed_at) {
+        return { expiredOrUnavailable: true };
+    }
+
+    let proofBytes = null;
+    try {
+        let proofAckDigest = null;
+        if (session.proof_protocol_version === 1) {
+            if (typeof proof !== 'string') {
+                throw httpError(409, 'Phiên yêu cầu provisioning proof v1', 'E2EE_PROVISIONING_PROOF_REQUIRED');
+            }
+            try {
+                proofBytes = decodeCanonical32(proof, 'proof');
+            } catch {
+                throw httpError(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
+            }
+            if (session.status === 'linked_pending_ack') {
+                if (!session.proof_challenge || !session.proof_commitment ||
+                    !session.proof_ciphertext_digest || !session.encrypted_message) {
+                    throw httpError(409, 'Phiên proof v1 thiếu dữ liệu transcript', 'E2EE_PROVISIONING_PROOF_NOT_READY');
+                }
+                const storedDigest = Buffer.from(session.proof_ciphertext_digest);
+                const currentDigest = Buffer.from(digestProvisioningCiphertext(session.encrypted_message), 'base64');
+                if (!crypto.timingSafeEqual(storedDigest, currentDigest) ||
+                    !verifyProvisioningProof({
+                        commitment: Buffer.from(session.proof_commitment).toString('base64'),
+                        proof
+                    })) {
+                    throw httpError(401, 'Provisioning proof không khớp phiên liên kết', 'E2EE_PROVISIONING_PROOF_MISMATCH');
+                }
+            }
+            proofAckDigest = crypto.createHash('sha256').update(proofBytes).digest();
+        } else if (proof != null) {
+            throw httpError(400, 'Phiên provisioning legacy không nhận proof', 'E2EE_PROVISIONING_PROOF_UNEXPECTED');
+        }
+
+        if (session.status === 'completed') {
+            const device = await client.query(
+                `SELECT device_id FROM e2ee_sdk_devices
+                 WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+                   AND revoked_at IS NULL AND enabled = TRUE AND device_token_hash = $3
+                   AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
+                 LIMIT 1`,
+                [userId, session.assigned_device_id, tokenHash, session.completed_at]
+            );
+            const sameProof = session.proof_protocol_version === 1 && session.proof_ack_digest &&
+                proofAckDigest && crypto.timingSafeEqual(Buffer.from(session.proof_ack_digest), proofAckDigest);
+            if (!device.rows[0] || (session.proof_protocol_version === 1 && !sameProof)) {
+                throw httpError(409, 'ACK provisioning đã hoàn tất với thông tin khác', 'E2EE_PROVISIONING_ACK_CONFLICT');
+            }
+            return { acknowledged: true, alreadyCompleted: true };
+        }
+
+        const activated = await client.query(
+            `UPDATE e2ee_sdk_devices SET enabled = TRUE
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
+               AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
+             RETURNING device_id`,
+            [userId, session.assigned_device_id, tokenHash, session.completed_at]
+        );
+        if (!activated.rows[0]) {
+            throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
+        }
+        const completed = await client.query(
+            `UPDATE e2ee_sdk_provisioning_sessions
+             SET status = 'completed',
+                 proof_consumed_at = CASE WHEN proof_protocol_version = 1 THEN NOW() ELSE NULL END,
+                 proof_ack_digest = $3::bytea,
+                 proof_challenge = CASE WHEN proof_protocol_version = 1 THEN NULL ELSE proof_challenge END
+             WHERE session_id = $1 AND owner_user_id = $2
+               AND status = 'linked_pending_ack' AND expires_at > NOW()
+             RETURNING session_id`,
+            [sessionId, userId, proofAckDigest]
+        );
+        if (!completed.rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
+        return { acknowledged: true };
+    } finally {
+        proofBytes?.fill(0);
+    }
+});
+
+const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    if (typeof deviceToken !== 'string' || deviceToken.length < 32 || deviceToken.length > 256) {
+        throw httpError(401, 'Thiếu xác thực thiết bị mới', 'E2EE_DEVICE_AUTH_REQUIRED');
+    }
+    const tokenHash = crypto.createHash('sha256').update(deviceToken).digest('hex');
+    const { rows } = await client.query(
+        `SELECT assigned_device_id, completed_at, status
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('linked_pending_ack', 'completed')
+         FOR UPDATE`,
+        [sessionId, userId]
+    );
+    const session = rows[0];
+    // Expiry cleanup may already have removed the pending device. A rollback
+    // retry after that cleanup is a safe no-op; the adapter can still clear its
+    // local credential and the SDK can clear partially stored local state.
+    if (!session) {
+        const existing = await client.query(
+            `SELECT 1 FROM e2ee_sdk_provisioning_sessions
+             WHERE session_id = $1 AND owner_user_id = $2
+               AND status IN ('expired', 'rolled_back') LIMIT 1`,
+            [sessionId, userId]
+        );
+        if (existing.rows[0]) return { rolledBack: false, alreadyFinalized: true };
+        throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
+    }
+    if (!session.assigned_device_id || !session.completed_at) {
+        throw httpError(409, 'Phiên liên kết thiếu thông tin thiết bị được cấp');
+    }
+    if (session.status === 'completed') {
+        const revoked = await client.query(
+            `UPDATE e2ee_sdk_devices SET enabled = FALSE, revoked_at = NOW(), device_token_hash = NULL
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND enabled = TRUE AND device_token_hash = $3
+               AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
+             RETURNING id`,
+            [userId, session.assigned_device_id, tokenHash, session.completed_at]
+        );
+        if (!revoked.rows[0]) {
+            throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
+        }
+        await client.query('DELETE FROM e2ee_sdk_envelopes WHERE recipient_device_pk = $1 AND acknowledged_at IS NULL', [revoked.rows[0].id]);
+        await client.query('DELETE FROM e2ee_sdk_prekeys WHERE device_pk = $1', [revoked.rows[0].id]);
+    } else {
+        const removed = await client.query(
+            `DELETE FROM e2ee_sdk_devices
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
+               AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
+             RETURNING id`,
+            [userId, session.assigned_device_id, tokenHash, session.completed_at]
+        );
+        if (!removed.rows[0]) {
+            throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
+        }
+    }
+    await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET status = 'rolled_back', proof_challenge = NULL,
+             proof_commitment = NULL, proof_ciphertext_digest = NULL,
+             proof_ack_digest = NULL
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('linked_pending_ack', 'completed')`,
+        [sessionId, userId]
+    );
+    return { rolledBack: true };
+});
+
+// Owner-authenticated cancellation closes the lost-complete-response gap. It
+// can remove only an unacknowledged device; a completed device is never revoked
+// through this endpoint. Locking the session serializes cancellation with ACK.
+const abortProvisioningSession = async (userId, sessionId) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    const { rows } = await client.query(
+        `SELECT assigned_device_id, completed_at, status
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2
+         FOR UPDATE`,
+        [sessionId, userId]
+    );
+    const session = rows[0];
+    if (!session) throw httpError(404, 'Không tìm thấy phiên liên kết cần hủy');
+    if (session.status === 'completed') {
+        return { aborted: false, alreadyCompleted: true };
+    }
+    if (session.status === 'expired' || session.status === 'rolled_back') {
+        return { aborted: false, alreadyFinalized: true };
+    }
+    if (session.status === 'linked_pending_ack') {
+        if (!session.assigned_device_id || !session.completed_at) {
+            throw httpError(409, 'Phiên liên kết thiếu thông tin thiết bị được cấp');
+        }
+        const removed = await client.query(
+            `DELETE FROM e2ee_sdk_devices
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND enabled = FALSE
+               AND created_at < $3::timestamptz + INTERVAL '1 millisecond'
+             RETURNING id`,
+            [userId, session.assigned_device_id, session.completed_at]
+        );
+        if (!removed.rows[0]) {
+            throw httpError(409, 'Không thể xác nhận trạng thái thiết bị đang chờ ACK');
+        }
+    } else if (!['waiting', 'connected', 'ready'].includes(session.status)) {
+        throw httpError(409, 'Trạng thái phiên không cho phép hủy');
+    }
+    const updated = await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET status = 'rolled_back', new_device_ephemeral_public_key = NULL,
+             new_device_metadata = NULL, encrypted_message = NULL,
+             encrypted_device_name = NULL, proof_challenge = NULL,
+             proof_commitment = NULL, proof_ciphertext_digest = NULL,
+             proof_ack_digest = NULL
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('waiting', 'connected', 'ready', 'linked_pending_ack')
          RETURNING session_id`,
         [sessionId, userId]
     );
-    if (!rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
-};
-
-const rollbackProvisioning = async (userId, sessionId) => withTransaction(async client => {
-    const { rows } = await client.query(
-        `SELECT assigned_device_id FROM e2ee_sdk_provisioning_sessions
-         WHERE session_id = $1 AND owner_user_id = $2 AND status = 'linked_pending_ack' FOR UPDATE`,
-        [sessionId, userId]
-    );
-    if (!rows[0]) throw httpError(404, 'Không tìm thấy phiên liên kết cần khôi phục');
-    if (rows[0].assigned_device_id) {
-        await client.query('DELETE FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND linked = TRUE', [userId, rows[0].assigned_device_id]);
-    }
-    await client.query("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back' WHERE session_id = $1", [sessionId]);
+    if (!updated.rows[0]) throw httpError(409, 'Phiên liên kết đã thay đổi trạng thái');
+    return { aborted: true };
 });
 
-const deleteProvisioningSession = async (userId, sessionId) => {
-    await pool.query(
+const deleteProvisioningSession = async (userId, sessionId) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    await client.query(
         `DELETE FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1 AND owner_user_id = $2
          AND status IN ('waiting', 'connected', 'ready', 'rolled_back', 'expired')`,
         [sessionId, userId]
     );
-};
+});
+
 const authenticateDeviceCredential = async (userId, deviceId, token) => {
     if (typeof token !== 'string' || token.length < 32 || token.length > 256) return null;
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
@@ -791,5 +1073,5 @@ module.exports = {
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
     sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, authenticateDeviceCredential,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
-    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, getDeviceBySlot
+    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, abortProvisioningSession, deleteProvisioningSession, getDeviceBySlot
 };

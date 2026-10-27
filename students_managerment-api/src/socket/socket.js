@@ -16,11 +16,34 @@ const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middlewar
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 
 let io = null;
+let presenceSubscriber = null;
 const onlineUsers = new Map(); // userId -> Set<socketId>
 const callTimers = new Map(); // callId -> timeout
 const disconnectGraceTimers = new Map(); // userId -> timeout
+const PRESENCE_SOCKET_TTL_SECONDS = 65;
+const presenceSocketKey = (id) => `presence:user:${Number(id)}:sockets`;
+const getSharedOnlineUserIds = async (ids) => {
+    if (!redisClient.isReady) throw new Error('Redis presence store is unavailable');
+    const uniqueIds = [...new Set(ids.map(Number).filter(Number.isSafeInteger))];
+    if (!uniqueIds.length) return [];
+    const pipeline = redisClient.multi();
+    uniqueIds.forEach(id => pipeline.exists(presenceSocketKey(id)));
+    const results = await pipeline.exec();
+    return uniqueIds.filter((_, index) => Number(results[index]) > 0);
+};
+const refreshSharedPresence = async (id, socketId) => {
+    if (!redisClient.isReady) throw new Error('Redis presence store is unavailable');
+    const key = presenceSocketKey(id);
+    await redisClient.sAdd(key, socketId);
+    await redisClient.expire(key, PRESENCE_SOCKET_TTL_SECONDS);
+    return Number(await redisClient.sCard(key));
+};
+const publishRealtimeEvent = async (event, payload) => {
+    if (!redisClient.isReady) throw new Error('Redis presence publisher is unavailable');
+    await redisClient.publish('presence:events', JSON.stringify({ event, payload }));
+};
 
-const initSocket = (server) => {
+const initSocket = async (server) => {
     // Keep Socket.IO's browser-origin policy aligned with Express CORS.
     // Do not use wildcard origins because credentialed browser clients are supported.
     const configuredOrigins = (process.env.FRONTEND_URLS || '')
@@ -39,6 +62,28 @@ const initSocket = (server) => {
         process.env.FRONTEND_URL,
         ...configuredOrigins
     ].filter(Boolean));
+
+    // Redis Pub/Sub relays presence transitions to Socket.IO nodes sharing this Redis.
+    presenceSubscriber = redisClient.duplicate();
+    await presenceSubscriber.connect();
+    await presenceSubscriber.subscribe('presence:events', raw => {
+        try {
+            const event = JSON.parse(raw);
+            if (['presence:online', 'presence:offline'].includes(event?.event)) {
+                const recipientIds = [...new Set((event?.payload?.recipientIds || []).map(Number).filter(id => Number.isSafeInteger(id) && id > 0))];
+                for (const recipientId of recipientIds) io?.to(`user:${recipientId}`).emit(event.event, event.payload);
+                return;
+            }
+            if (event?.event === 'conversation:theme-updated') {
+                const conversationId = Number(event?.payload?.conversationId);
+                if (Number.isSafeInteger(conversationId) && conversationId > 0) {
+                    io?.to(`conversation:${conversationId}`).emit(event.event, event.payload);
+                }
+            }
+        } catch (error) {
+            console.error('[PRESENCE][pubsub message invalid]', error.message);
+        }
+    });
 
     io = new Server(server, {
         // WebRTC SDP is capped at 64 KiB by payload validation; 256 KiB leaves
@@ -67,7 +112,8 @@ const initSocket = (server) => {
 
             const decoded = jwt.verify(accessToken, process.env.JWT_SECRET, {
                 issuer: 'student-management-api',
-                audience: 'student-management-client'
+                audience: 'student-management-client',
+                algorithms: ['HS256']
             });
 
             if (!decoded.sub || !decoded.sessionId) {
@@ -186,7 +232,8 @@ const initSocket = (server) => {
 
                 const decoded = jwt.verify(accessToken, process.env.JWT_SECRET, {
                     issuer: 'student-management-api',
-                    audience: 'student-management-client'
+                    audience: 'student-management-client',
+                    algorithms: ['HS256']
                 });
 
                 if (
@@ -283,6 +330,14 @@ const initSocket = (server) => {
         }
 
         userSockets.add(socket.id);
+        let sharedPresenceCount = 0;
+        try {
+            sharedPresenceCount = await refreshSharedPresence(userId, socket.id);
+        } catch (error) {
+            console.error('[PRESENCE][redis register failed]', { userId, message: error.message });
+            socket.disconnect(true);
+            return;
+        }
 
         // Token refresh/reconnect can briefly remove the last socket.
         const pendingDisconnectTimer = disconnectGraceTimers.get(userId);
@@ -291,12 +346,14 @@ const initSocket = (server) => {
             disconnectGraceTimers.delete(userId);
                     }
 
-        if (wasOffline) {
+        if (sharedPresenceCount === 1) {
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
-                for (const contactId of contactIds) {
-                    io.to(`user:${contactId}`).emit('presence:online', { userId });
-                }
+                await publishRealtimeEvent('presence:online', {
+                    userId,
+                    recipientIds: contactIds,
+                    emittedAt: new Date().toISOString()
+                });
             } catch (error) {
                 console.error('PRESENCE ONLINE ERROR:', error);
             }
@@ -305,7 +362,7 @@ const initSocket = (server) => {
         // Gửi snapshot presence cho client vừa kết nối.
         try {
             const contactIds = await conversationRepository.getConversationContactIds(userId);
-        const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
+        const onlineContactIds = await getSharedOnlineUserIds(contactIds);
             socket.emit('presence:snapshot', { userIds: onlineContactIds });
         } catch (error) {
             console.error('PRESENCE SNAPSHOT ERROR:', error);
@@ -365,11 +422,23 @@ const initSocket = (server) => {
         // Replay pending invitations after every authenticated reconnect.
         void syncPendingCalls();
 
+        socket.on('presence:heartbeat', async () => {
+            try {
+                await refreshSharedPresence(userId, socket.id);
+            } catch (error) {
+                console.error('[PRESENCE][heartbeat failed]', { userId, message: error.message });
+                socket.emit('socket:error', {
+                    code: 'PRESENCE_TEMPORARILY_UNAVAILABLE',
+                    message: 'Không thể cập nhật trạng thái hoạt động lúc này'
+                });
+            }
+        });
+
         socket.on('presence:sync', async () => {
             if (!await allowRealtimeEvent('presence:sync')) return;
             try {
                 const contactIds = await conversationRepository.getConversationContactIds(userId);
-                const onlineContactIds = contactIds.filter(contactId => onlineUsers.has(contactId));
+                const onlineContactIds = await getSharedOnlineUserIds(contactIds);
                 socket.emit('presence:snapshot', { userIds: onlineContactIds });
             } catch (error) {
                 console.error('PRESENCE SYNC ERROR:', error);
@@ -1356,13 +1425,24 @@ const initSocket = (server) => {
 
         socket.on('disconnect', async (reason) => {
             const userSockets = onlineUsers.get(userId);
+            let sharedSocketCount = 0;
+            let sharedPresenceAvailable = true;
+            try {
+                const key = presenceSocketKey(userId);
+                await redisClient.sRem(key, socket.id);
+                sharedSocketCount = Number(await redisClient.sCard(key));
+                if (sharedSocketCount === 0) await redisClient.del(key);
+            } catch (error) {
+                sharedPresenceAvailable = false;
+                console.error('[PRESENCE][redis unregister failed]', { userId, message: error.message });
+            }
 
             if (userSockets) {
                 userSockets.delete(socket.id);
 
                 // Chỉ khi socket cuối cùng của user biến mất mới phát OFFLINE
                 // và ghi last_seen_at.
-                if (userSockets.size === 0) {
+                if (userSockets.size === 0 && sharedPresenceAvailable && sharedSocketCount === 0) {
                     onlineUsers.delete(userId);
 
                     let lastSeenAt = null;
@@ -1376,12 +1456,12 @@ const initSocket = (server) => {
 
                     try {
                         const contactIds = await conversationRepository.getConversationContactIds(userId);
-                        for (const contactId of contactIds) {
-                            io.to(`user:${contactId}`).emit('presence:offline', {
-                                userId,
-                                lastSeenAt
-                            });
-                        }
+                        await publishRealtimeEvent('presence:offline', {
+                            userId,
+                            lastSeenAt,
+                            recipientIds: contactIds,
+                            emittedAt: new Date().toISOString()
+                        });
                     } catch (error) {
                         console.error('PRESENCE OFFLINE ERROR:', error);
                     }
@@ -1396,7 +1476,9 @@ const initSocket = (server) => {
                         disconnectGraceTimers.delete(userId);
 
                         const currentSockets = onlineUsers.get(userId);
-                        if (currentSockets && currentSockets.size > 0) {
+                        let sharedCount = 0;
+                        try { sharedCount = Number(await redisClient.sCard(presenceSocketKey(userId))); } catch { /* fail safe below */ }
+                        if ((currentSockets && currentSockets.size > 0) || sharedCount > 0) {
                                                         return;
                         }
 
@@ -1442,6 +1524,31 @@ const initSocket = (server) => {
     return io;
 };
 
+const closeSocket = async () => {
+    const socketServer = io;
+    const subscriber = presenceSubscriber;
+    io = null;
+    presenceSubscriber = null;
+
+    for (const timer of callTimers.values()) clearTimeout(timer);
+    for (const timer of disconnectGraceTimers.values()) clearTimeout(timer);
+    callTimers.clear();
+    disconnectGraceTimers.clear();
+    onlineUsers.clear();
+
+    if (socketServer) {
+        await new Promise((resolve) => socketServer.close(resolve));
+    }
+
+    if (subscriber?.isOpen) {
+        try {
+            await subscriber.quit();
+        } catch {
+            subscriber.disconnect();
+        }
+    }
+};
+
 const getIO = () => {
     if (!io) throw new Error('Socket.IO chưa được khởi tạo');
     return io;
@@ -1470,7 +1577,9 @@ const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
 
 module.exports = {
     initSocket,
+    closeSocket,
     getIO,
     emitSessionRevoked,
-    isUserOnline
+    isUserOnline,
+    publishRealtimeEvent
 };

@@ -116,6 +116,7 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
             if (stopRef.current) return;
             if (!newDeviceKey) throw new Error('Đã hết thời gian chờ thiết bị mới.');
             setStatusText('Đang mã hóa và chuyển identity sang thiết bị mới…');
+            await relay.prepareProvisioningRecovery(session.sessionId);
             await provisionDevice(
                 relay,
                 { name: user.fullName || user.full_name || user.name || user.username || 'Người dùng' },
@@ -141,6 +142,16 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
             }
             if (!stopRef.current) throw new Error('Thiết bị mới chưa xác nhận trước khi phiên hết hạn.');
         } catch (error) {
+            const pendingSession = sessionRef.current;
+            if (pendingSession?.sessionId && pendingSession?.relay?.abortProvisioningSession) {
+                try {
+                    await pendingSession.relay.abortProvisioningSession(pendingSession.sessionId);
+                } catch (abortError) {
+                    console.warn('[E2EE] owner provisioning abort deferred to durable recovery', {
+                        code: abortError?.code || 'PROVISIONING_ABORT_FAILED'
+                    });
+                }
+            }
             if (!stopRef.current) {
                 setStatusText(error?.message || 'Không thể liên kết thiết bị.');
                 toast.error(error?.message || 'Không thể liên kết thiết bị.');
@@ -223,6 +234,7 @@ export default function E2EEDeviceLinkPanel({ user, clientState, compact = false
         stopRef.current = true;
         const session = sessionRef.current;
         if (session?.sessionId && session?.relay) {
+            await session.relay.abortProvisioningSession?.(session.sessionId);
             await cancelProvisioning(session.relay, session.sessionId, String(user.id));
         }
         sessionRef.current = null;

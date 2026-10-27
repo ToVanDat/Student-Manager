@@ -97,7 +97,8 @@ const authMiddleware = async (
                         'student-management-api',
 
                     audience:
-                        'student-management-client'
+                        'student-management-client',
+                    algorithms: ['HS256']
                 }
             );
 
