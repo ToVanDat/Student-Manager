@@ -45,13 +45,20 @@ function l2Normalize(values) {
     return Array.from(values, value => Math.fround(value / norm));
 }
 
-function softmax(values) {
+function classProbabilities(values) {
     if (!values || values.length !== 3 || Array.from(values).some(value => !Number.isFinite(value))) {
-        throw configError('MiniFASNet phải trả về đúng 3 logits hữu hạn');
+        throw configError('MiniFASNet phải trả về đúng 3 giá trị hữu hạn');
     }
-    const max = Math.max(...values);
-    const exps = Array.from(values, value => Math.exp(value - max));
-    const total = exps.reduce((sum, value) => sum + value, 0);
+    const scores = Array.from(values);
+    const sum = scores.reduce((total, value) => total + value, 0);
+    // Some exports include Softmax in the graph, others expose logits.
+    // Preserve an already-normalized probability vector; otherwise apply stable Softmax.
+    if (scores.every(value => value >= 0 && value <= 1) && Math.abs(sum - 1) <= 1e-3) {
+        return scores;
+    }
+    const max = Math.max(...scores);
+    const exps = scores.map(value => Math.exp(value - max));
+    const total = exps.reduce((a, b) => a + b, 0);
     return exps.map(value => value / total);
 }
 
@@ -123,7 +130,7 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
         throw configError('MobileFaceNet output phải có đúng 2x128 giá trị');
     }
     const embedding = l2Normalize(embeddingRows.slice(0, 128));
-    const probabilities = softmax(padResult[padOutputName].data);
+    const probabilities = classProbabilities(padResult[padOutputName].data);
     return {
         embedding,
         pad: {
@@ -136,4 +143,4 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     };
 }
 
-module.exports = { inferAlignedFace, l2Normalize, softmax, assertPixels, EXPECTED_HASHES };
+module.exports = { inferAlignedFace, l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES };
