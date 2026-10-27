@@ -229,3 +229,34 @@ export const completeE2EEProvisioningRecovery = async (userId, deviceId, session
         db.close();
     }
 };
+
+
+export const saveE2EEProvisioningOwnerRecovery = async (userId, sessionId) => {
+    const normalizedSessionId = assertSessionId(sessionId);
+    const db = await openCredentialDb(userId);
+    try {
+        await db.put('provisionings', {
+            sessionId: normalizedSessionId,
+            kind: 'owner',
+            phase: 'awaiting_complete',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        });
+    } finally {
+        db.close();
+    }
+};
+
+export const finalizeE2EEProvisioningOwnerRecovery = async (userId, sessionId) => {
+    const normalizedSessionId = assertSessionId(sessionId);
+    const db = await openCredentialDb(userId);
+    try {
+        const tx = db.transaction('provisionings', 'readwrite');
+        const store = tx.objectStore('provisionings');
+        const record = await store.get(normalizedSessionId);
+        if (record?.kind === 'owner') await store.delete(normalizedSessionId);
+        await tx.done;
+    } finally {
+        db.close();
+    }
+};
