@@ -290,7 +290,8 @@ async function beginLogin(username) {
     await saveChallenge('login', id, { ...state, userId: found.rows[0] ? String(found.rows[0].id) : null });
     return {
         challengeId: id, challenge: state.challenge, expiresIn: CHALLENGE_TTL_SECONDS,
-        actions: state.liveness.actions, livenessExpiresAt: state.liveness.expiresAt
+        actions: state.liveness.actions, livenessNonce: state.liveness.nonce,
+        livenessExpiresAt: state.liveness.expiresAt
     };
 }
 
