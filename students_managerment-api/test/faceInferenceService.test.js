@@ -22,7 +22,7 @@ test('MiniFASNet logits become stable probabilities', () => {
 });
 
 test('MiniFASNet rejects invalid class count', () => {
-  assert.throws(() => classProbabilities([0, 1]), /3 logits/);
+  assert.throws(() => classProbabilities([0, 1]), /3 values/);
 });
 
 test('pixel tensors enforce exact shape and range', () => {
