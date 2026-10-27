@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { prepareFaceInferenceTensors } = require('./facePreprocessingService.js');
 
 const EXPECTED_HASHES = Object.freeze({
     'mobile_facenet.onnx': '3ac0b9597efd5dc49c5397e5c21269f98cceb42e7193fcc1afbb0fa992c88e4e',
@@ -114,6 +115,11 @@ async function getRuntime() {
 // rgb112 must be produced by a trusted server-side landmark alignment pipeline.
 // Layout: RGB NCHW [1,3,112,112], float32 [0,1]. Qualcomm's graph performs
 // torchvision normalization and horizontal-flip TTA internally.
+async function inferFaceImage(imageBuffer) {
+    const tensors = await prepareFaceInferenceTensors(imageBuffer);
+    return inferAlignedFace(tensors);
+}
+
 async function inferAlignedFace({ rgb112, bgr80 }) {
     assertPixels(rgb112, 3 * 112 * 112, 'rgb112');
     assertPixels(bgr80, 3 * 80 * 80, 'bgr80');
@@ -143,4 +149,4 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     };
 }
 
-module.exports = { inferAlignedFace, l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES };
+module.exports = { inferFaceImage, inferAlignedFace, l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES };
