@@ -145,6 +145,7 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
             replayAttackProbability: probabilities[2],
             score: 1 - probabilities[1] - probabilities[2]
         },
+        liveness: tensors.liveness,
         model: { id: 'mobilefacenet+minifasnet-v2', version: 'supplied-bundle-v1' }
     };
 }
