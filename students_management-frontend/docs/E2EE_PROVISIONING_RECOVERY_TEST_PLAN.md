@@ -37,6 +37,8 @@ terminate the browser process rather than only navigating away.
 | PR-08 | Reload while offline with rollback pending | Startup fails closed; journal and token remain. Reconnect and initialize again to retry. |
 | PR-09 | Dispose the adapter while its retry timer is pending | Journal survives disposal; a new initialization performs recovery. |
 | PR-10 | Delete only the current-device pointer while preserving credentials DB | Recovery still locates the pending session from the journal. |
+| PR-11 | On the primary browser, reload after the owner journal is saved but before the new device completes provisioning | Startup uses the authenticated owner abort endpoint, clears the owner journal only after a terminal response, and never treats the owner record as a device-token rollback. |
+| PR-12 | Race primary-side abort against new-device ACK | If abort wins, the pending device is removed and ACK cannot activate it. If ACK wins, abort returns `alreadyCompleted` and must not revoke the active device. |
 
 ## Required assertions
 
@@ -47,8 +49,12 @@ terminate the browser process rather than only navigating away.
   recovery does not depend on its `device/current` record.
 - Confirm that `requireCredential` blocks normal relay operations while a
   rollback marker is present.
-- Confirm that a successful ACK removes only the journal metadata and preserves
+- Confirm that a successful ACK removes only the device-side journal metadata and preserves
   the device token for normal use.
+- Confirm owner journals are recovered separately with the authenticated account session;
+  they do not require a device token or `deviceId`.
+- Confirm owner-side `alreadyCompleted` clears only the owner journal and never revokes
+  the linked device.
 - Confirm that a successful rollback removes the matching credential and
   journal, and clears the current-device pointer only when it references the
   rolled-back device.
