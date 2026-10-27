@@ -151,6 +151,37 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
         );
         assert.equal(remaining.rows[0].count, 0, 'revocation must remove pending envelopes for the device');
 
+
+        await t.test('owner abort reconciles a lost complete response without revoking acknowledged devices', async () => {
+            const pending = await repository.createProvisioningSession(senderId, Buffer.alloc(32, 31).toString('base64'));
+            await repository.connectNewDevice(senderId, pending.sessionId, Buffer.alloc(32, 32).toString('base64'), { deviceType: 'web' });
+            await repository.sendProvisioningMessage(senderId, pending.sessionId, Buffer.from('owner-abort-payload').toString('base64'));
+            const linked = await repository.completeProvisioning(senderId, pending.sessionId, null, { deviceType: 'web' });
+            assert.deepEqual(await repository.abortProvisioningSession(senderId, pending.sessionId), { aborted: true });
+            const removed = await pool.query(
+                'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL',
+                [senderId, linked.deviceId]
+            );
+            assert.equal(removed.rowCount, 0);
+            const rolledBack = await pool.query('SELECT status FROM e2ee_sdk_provisioning_sessions WHERE session_id = $1', [pending.sessionId]);
+            assert.equal(rolledBack.rows[0].status, 'rolled_back');
+
+            const acknowledged = await repository.createProvisioningSession(senderId, Buffer.alloc(32, 33).toString('base64'));
+            await repository.connectNewDevice(senderId, acknowledged.sessionId, Buffer.alloc(32, 34).toString('base64'), { deviceType: 'web' });
+            await repository.sendProvisioningMessage(senderId, acknowledged.sessionId, Buffer.from('acknowledged-payload').toString('base64'));
+            const active = await repository.completeProvisioning(senderId, acknowledged.sessionId, null, { deviceType: 'web' });
+            await repository.acknowledgeProvisioning(senderId, acknowledged.sessionId, active.deviceToken);
+            assert.deepEqual(
+                await repository.abortProvisioningSession(senderId, acknowledged.sessionId),
+                { aborted: false, alreadyCompleted: true }
+            );
+            const retained = await pool.query(
+                'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL AND enabled = TRUE',
+                [senderId, active.deviceId]
+            );
+            assert.equal(retained.rowCount, 1);
+        });
+
         await t.test('device provisioning expiry and rollback do not leave an active linked device', async () => {
             const session = await repository.createProvisioningSession(senderId, Buffer.alloc(32, 21).toString('base64'));
             await repository.connectNewDevice(
@@ -164,7 +195,7 @@ test('live PostgreSQL E2EE relay integration: prekey claims, mailbox, dedupe, ac
             assert.ok(linked.deviceToken);
             assert.ok(linked.deviceId >= 2 && linked.deviceId <= 5);
 
-            await repository.rollbackProvisioning(senderId, session.sessionId);
+            await repository.rollbackProvisioning(senderId, session.sessionId, linked.deviceToken);
             const rolledBackDevice = await pool.query(
                 'SELECT id FROM e2ee_sdk_devices WHERE user_id = $1 AND device_id = $2 AND revoked_at IS NULL',
                 [senderId, linked.deviceId]
