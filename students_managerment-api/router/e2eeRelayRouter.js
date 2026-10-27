@@ -32,6 +32,7 @@ router.get('/provisioning/:sessionId/message', controller.getProvisioningMessage
 router.post('/provisioning/:sessionId/complete', keyMutationLimiter, controller.completeProvisioning);
 router.post('/provisioning/:sessionId/ack', keyMutationLimiter, controller.acknowledgeProvisioning);
 router.post('/provisioning/:sessionId/rollback', keyMutationLimiter, controller.rollbackProvisioning);
+router.post('/provisioning/:sessionId/abort', keyMutationLimiter, controller.abortProvisioningSession);
 router.delete('/provisioning/:sessionId', keyMutationLimiter, controller.deleteProvisioningSession);
 router.get('/users/:userId/devices', controller.getDevices);
 router.get('/users/:userId/identity', controller.getIdentityKey);

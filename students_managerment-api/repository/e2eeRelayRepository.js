@@ -887,6 +887,58 @@ const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTrans
     return { rolledBack: true };
 });
 
+// Owner-authenticated cancellation closes the lost-complete-response gap. It
+// can remove only an unacknowledged device; a completed device is never revoked
+// through this endpoint. Locking the session serializes cancellation with ACK.
+const abortProvisioningSession = async (userId, sessionId) => withTransaction(async client => {
+    await expireProvisioningSessions(client, userId);
+    const { rows } = await client.query(
+        `SELECT assigned_device_id, completed_at, status
+         FROM e2ee_sdk_provisioning_sessions
+         WHERE session_id = $1 AND owner_user_id = $2
+         FOR UPDATE`,
+        [sessionId, userId]
+    );
+    const session = rows[0];
+    if (!session) throw httpError(404, 'Không tìm thấy phiên liên kết cần hủy');
+    if (session.status === 'completed') {
+        return { aborted: false, alreadyCompleted: true };
+    }
+    if (session.status === 'expired' || session.status === 'rolled_back') {
+        return { aborted: false, alreadyFinalized: true };
+    }
+    if (session.status === 'linked_pending_ack') {
+        if (!session.assigned_device_id || !session.completed_at) {
+            throw httpError(409, 'Phiên liên kết thiếu thông tin thiết bị được cấp');
+        }
+        const removed = await client.query(
+            `DELETE FROM e2ee_sdk_devices
+             WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+               AND revoked_at IS NULL AND enabled = FALSE
+               AND created_at <= $3
+             RETURNING id`,
+            [userId, session.assigned_device_id, session.completed_at]
+        );
+        if (!removed.rows[0]) {
+            throw httpError(409, 'Không thể xác nhận trạng thái thiết bị đang chờ ACK');
+        }
+    } else if (!['waiting', 'connected', 'ready'].includes(session.status)) {
+        throw httpError(409, 'Trạng thái phiên không cho phép hủy');
+    }
+    const updated = await client.query(
+        `UPDATE e2ee_sdk_provisioning_sessions
+         SET status = 'rolled_back', new_device_ephemeral_public_key = NULL,
+             new_device_metadata = NULL, encrypted_message = NULL,
+             encrypted_device_name = NULL
+         WHERE session_id = $1 AND owner_user_id = $2
+           AND status IN ('waiting', 'connected', 'ready', 'linked_pending_ack')
+         RETURNING session_id`,
+        [sessionId, userId]
+    );
+    if (!updated.rows[0]) throw httpError(409, 'Phiên liên kết đã thay đổi trạng thái');
+    return { aborted: true };
+});
+
 const deleteProvisioningSession = async (userId, sessionId) => withTransaction(async client => {
     await expireProvisioningSessions(client, userId);
     await client.query(
@@ -922,5 +974,5 @@ module.exports = {
     uploadPreKeys, getPreKeyCount, getPreKeyInventory, fetchPreKeyBundle,
     sendEnvelope, pullEnvelopes, markDelivered, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, authenticateDeviceCredential,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
-    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, getDeviceBySlot
+    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, abortProvisioningSession, deleteProvisioningSession, getDeviceBySlot
 };

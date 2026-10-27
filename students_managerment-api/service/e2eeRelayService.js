@@ -220,6 +220,11 @@ const rollbackProvisioning = async (userId, sessionId, deviceToken) => {
     return relayRepository.rollbackProvisioning(userId, sessionId, deviceToken);
 };
 
+const abortProvisioningSession = async (userId, sessionId) => {
+    assertSessionId(sessionId);
+    return relayRepository.abortProvisioningSession(userId, sessionId);
+};
+
 const deleteProvisioningSession = async (userId, sessionId) => {
     assertSessionId(sessionId);
     return relayRepository.deleteProvisioningSession(userId, sessionId);
@@ -275,7 +280,7 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 module.exports = {
     registerDevice, getDevices, getActiveDevices, removeDevice, provisionIdentity, rotateIdentityKey,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
-    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, deleteProvisioningSession, uploadPreKeys,
+    completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, abortProvisioningSession, deleteProvisioningSession, uploadPreKeys,
     fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,
     pullEnvelopes, markDelivered
 };
