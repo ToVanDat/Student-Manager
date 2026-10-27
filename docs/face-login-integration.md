@@ -104,6 +104,14 @@ FACE_LANDMARK_SERVICE_URL=http://127.0.0.1:3010
 FACE_LANDMARK_SERVICE_TOKEN=REPLACE_WITH_THE_SAME_RANDOM_SECRET
 ```
 
+To build the container after downloading the verified model (run from the `face-landmark-service` directory):
+
+```cmd
+docker build -t student-manager-face-landmarks .
+```
+
+Do not publish the container port to the public host. Attach it only to the backend's private container network and configure the Node API to use that internal service address.
+
 The service binds to loopback for local development and disables interactive API docs. For containers, put it on a private network with no public port mapping; only then may `FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP=true` be set for an isolated private HTTP hop. Otherwise use HTTPS. The shared token is mandatory. The `/health` endpoint is intentionally a liveness probe and does not expose model paths or secrets.
 
 ### Important limitation
