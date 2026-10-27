@@ -92,6 +92,8 @@ export default function FaceLoginSettings() {
             });
             streamRef.current = stream;
             setCameraActive(true);
+            // Wait for React to mount the conditional video element before binding the stream.
+            await new Promise(resolve => window.requestAnimationFrame(resolve));
             if (!videoRef.current) throw new Error('Không thể khởi tạo khung xem camera.');
             videoRef.current.srcObject = stream;
             await videoRef.current.play();
