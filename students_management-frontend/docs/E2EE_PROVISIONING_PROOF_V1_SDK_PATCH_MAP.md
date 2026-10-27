@@ -127,3 +127,25 @@ A future additive migration will need, at minimum, nullable versioned fields for
 - `abortProvisioningSession`: preserve the existing owner-abort behavior; it already locks the same session row and must remain serialized with proof ACK.
 
 Legacy ACK must remain unavailable to a proof-enabled session. A missing proof is not a reason to fall back to the old lifecycle-only ACK.
+
+
+## Verified upstream v11.0.0 source coordinates (2026-10-27)
+
+The upstream repository was inspected at immutable tag `v11.0.0`, not inferred from generated package declarations:
+
+| Upstream file | Git blob SHA | Required patch |
+|---|---|---|
+| `device/provisioning.ts` | `2477996e0e640a3fb2a234700107b9cf1a3aea43` | Extend send/receive flow; primary commitment; receiver proof after AEAD + payload validation; secret cleanup in `finally` |
+| `remote/relay/types.ts` | `87dccac08033805798c4f06a5363e9c3f7a2bb15` | Extend provisioning relay request/response contracts for challenge, commitment and proof |
+| `internal/crypto/index.ts` | `8cfce5c8148be72594a7fcee565a8e93654e1a28` | Reuse SDK-owned HKDF, HMAC, SHA-256, byte concatenation, Base64 and constant-time comparison |
+| `package.json` | `12b1465174991e60c6733184a06feb193817113a` | Preserve package export map and build/test scripts when publishing the patched fork |
+
+Important source-level observations:
+
+1. `provisionDevice()` currently calls `relay.sendProvisioningMessage(sessionId, JSON.stringify(encrypted), userId)`; the relay call has no commitment argument.
+2. `receiveProvisioningMessage()` currently decrypts AES-GCM, parses JSON and checks only that ACI identity exists before calling `completeProvisioning()`. The rest of the payload is not yet strictly validated.
+3. The current receiver calls `completeProvisioning()` before local identity/group state writes, then calls `acknowledgeProvisioning(sessionId)` without proof. This confirms the previously identified server activation gap.
+4. The primary currently wipes `sharedSecret` and `encryptionKey` only after a successful relay send. An exception can bypass cleanup. Move byte-array cleanup to `finally`; private key parameters are Base64 strings and cannot be reliably zeroed.
+5. The SDK's crypto barrel exports the required primitives, including `hkdf`, `hmac`, `sha256`, `stringToBytes`, `concatBytes`, `constantTimeEqual`, `base64ToBytes`, `bytesToBase64`, and `secureZeroBytes`. The fork should use these existing primitives rather than introduce application-side cryptography.
+
+No upstream source files have been copied into the application repository. These blob hashes are provenance anchors for the eventual full fork patch. Do not apply backend proof enforcement until the patched SDK has built and the two-client interoperability tests pass.
