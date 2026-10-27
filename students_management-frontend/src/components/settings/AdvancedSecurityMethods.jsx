@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Fingerprint, Link2, Trash2, Unlink, ShieldCheck } from 'lucide-react';
+import FaceLoginSettings from './FaceLoginSettings.jsx';
 import {
     beginPasskeyRegistrationApi, finishPasskeyRegistrationApi, listPasskeysApi,
     deletePasskeyApi, linkGoogleApi, getGoogleLinkApi, unlinkGoogleApi,
@@ -219,6 +220,7 @@ export default function AdvancedSecurityMethods() {
 
     return (
         <section className="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
+            <FaceLoginSettings />
             <div className="mb-3 flex items-center gap-2">
                 <Fingerprint size={19} className="text-blue-600" />
                 <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Passkey (WebAuthn) và tài khoản Google</h3>
