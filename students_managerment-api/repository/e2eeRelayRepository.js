@@ -684,7 +684,8 @@ const expireProvisioningSessions = async (client, userId) => {
         `UPDATE e2ee_sdk_provisioning_sessions
          SET status = CASE WHEN status = 'completed' THEN 'completed' ELSE 'expired' END,
              new_device_ephemeral_public_key = NULL, new_device_metadata = NULL,
-             encrypted_message = NULL, encrypted_device_name = NULL
+             encrypted_message = NULL, encrypted_device_name = NULL,
+             proof_challenge = NULL
          WHERE session_id = ANY($1::uuid[]) AND owner_user_id = $2
            AND status NOT IN ('rolled_back', 'expired')`,
         [sessionIds, userId]
@@ -785,6 +786,10 @@ const completeProvisioning = async (userId, sessionId, encryptedDeviceName, meta
     );
     const session = sessionResult.rows[0];
     if (!session) throw httpError(409, 'Phiên liên kết chưa sẵn sàng hoặc đã hết hạn');
+    if (session.proof_protocol_version === 1 &&
+        (!session.proof_challenge || !session.proof_commitment || !session.proof_ciphertext_digest)) {
+        throw httpError(409, 'Phiên proof v1 chưa có challenge và commitment hợp lệ', 'E2EE_PROVISIONING_PROOF_NOT_READY');
+    }
     // Serialize slot allocation across different provisioning sessions for the same account.
     await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
     const slots = await client.query('SELECT device_id FROM e2ee_sdk_devices WHERE user_id = $1 AND revoked_at IS NULL', [userId]);
