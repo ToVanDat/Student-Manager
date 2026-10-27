@@ -114,8 +114,7 @@ exports.getBiometricLoginStatus = async (req, res) => {
         return res.json({
             configured: credentials.length > 0,
             credentialCount: credentials.length,
-            method: 'webauthn-device-verification',
-            biometricMethodSelectedByDevice: true
+            method: 'passkey-webauthn'
         });
     } catch (error) { return fail(res, error); }
 };
