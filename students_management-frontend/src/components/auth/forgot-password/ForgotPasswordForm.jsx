@@ -9,6 +9,7 @@ function ForgotPasswordForm({ onLogin, setError, setSuccess }) {
     if (flow.step === 'email') {
         return (
             <EmailStep
+                key={flow.step}
                 email={flow.email}
                 onEmailChange={flow.setEmail}
                 onSubmit={flow.handleSendOtp}
@@ -21,6 +22,7 @@ function ForgotPasswordForm({ onLogin, setError, setSuccess }) {
     if (flow.step === 'otp') {
         return (
             <OtpStep
+                key={flow.step}
                 email={flow.email}
                 otp={flow.otp}
                 onOtpChange={flow.setOtp}
@@ -35,6 +37,7 @@ function ForgotPasswordForm({ onLogin, setError, setSuccess }) {
 
     return (
         <ResetPasswordStep
+            key={flow.step}
             newPassword={flow.newPassword}
             onNewPasswordChange={flow.setNewPassword}
             confirmPassword={flow.confirmPassword}
