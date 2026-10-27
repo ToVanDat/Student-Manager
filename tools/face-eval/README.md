@@ -1,77 +1,56 @@
-# Face model evaluation harness
+# Face model evaluation and local ONNX benchmark
 
-This directory provides a dependency-free evaluator for **precomputed scores**. It deliberately does not download models, access a webcam, store face images, or perform inference.
+## Candidate artifacts and pinned contracts
 
-## Privacy and data handling
+### Recognition: Qualcomm MobileFaceNet
 
-- Use only consented evaluation data and follow the approved retention policy.
-- Keep source photos/videos and identity mapping outside this repository.
-- CSVs must contain numeric scores and coarse labels only; never include names, student IDs, account IDs, raw embeddings, image paths, or biometric samples.
-- Keep the dataset and CSV files outside Git. Do not upload biometric samples to public issue trackers or CI artifacts.
+- Model card: https://huggingface.co/qualcomm/MobileFaceNet
+- Model card license: Apache-2.0.
+- Pre-exported assets include ONNX float and ONNX w8a16, release path currently shown as `v0.65.0`.
+- Input: 112x112 face image; output: 128-D embedding.
+- Qualcomm page reports device-specific NPU performance, not browser WASM performance. Those numbers must not be projected onto a Windows PC with unknown CPU/GPU.
+- The page describes training with ArcFace loss on MS-Celeb-1M. Treat training-data provenance/rights as a separate review item.
+- The downloadable artifact is a ZIP. Extract the ONNX file locally. The benchmark calculates its SHA-256, but no expected Qualcomm ONNX digest is pinned in this repo yet.
 
-## 1. Face verification
+### PAD: MiniFASNet-V2 ONNX candidate
 
-CSV columns:
+- Model card: https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx
+- Model card license: Apache-2.0.
+- ONNX SHA-256 published by the model card: `d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b`.
+- Size: 1,744,116 bytes.
+- Input: `[1,3,80,80]`, float32, BGR, pixel/255, NCHW.
+- Crop: 2.7x margin around detected face box; no alignment warp.
+- Output: 3-class softmax `[live, print-attack, replay-attack]`. The class order must be verified against the exact artifact before using the score.
+- Liveness score in the model card: `1 - (p[print] + p[replay])`.
+- This is a single-image classifier, not a certified PAD system. Evaluate temporal attacks and broader attack instruments independently.
 
-```csv
-label,similarity
-genuine,0.73
-genuine,0.68
-impostor,0.19
-impostor,0.34
-```
+## Run locally on Windows
 
-- `label`: `genuine` or `impostor`.
-- `similarity`: cosine similarity in [-1, 1], calculated from normalized embeddings.
-- Each pair must be counted once. Keep identities subject-disjoint across enrollment, development and test partitions.
-
-Run on Windows Command Prompt:
-
-```bat
-py tools\\face-eval\\evaluate.py --task face --csv C:\\private-face-eval\\face-pairs-test.csv
-```
-
-The evaluator sweeps thresholds and reports an approximate equal-error operating point (FAR/FRR). It does not select a production threshold.
-
-## 2. Presentation Attack Detection (PAD)
-
-CSV columns:
-
-```csv
-label,bona_fide_score
-bona_fide,0.97
-bona_fide,0.84
-attack,0.12
-attack,0.41
-```
-
-- `label`: `bona_fide` or `attack`.
-- `bona_fide_score`: model score/probability for the bona-fide class in [0, 1].
-- For multi-class models, convert the documented output to a bona-fide score using that model's own preprocessing/output contract; do not assume every model has the same class order.
-
-Run:
+1. Download/extract the model artifacts from their model cards. Keep them outside Git and do not commit them.
+2. Start a local static server from repository root, e.g.:
 
 ```bat
-py tools\\face-eval\\evaluate.py --task pad --csv C:\\private-face-eval\\pad-test.csv
+py -m http.server 8000
 ```
 
-Reports APCER, BPCER and ACER at the minimum-ACER threshold on the supplied CSV. Report APCER by attack instrument/species and BPCER by device/lighting as well; aggregate ACER can hide a dangerous weak attack category.
+3. Open `http://localhost:8000/tools/face-eval/browser-benchmark.html`.
+4. Select the model profile and local ONNX file. Run WASM first, then WebGPU only if available.
+5. Save the JSON report. It contains model file hash, tensor metadata and latency, not biometric samples.
 
-## Required evaluation protocol before model approval
+The browser page pins ONNX Runtime Web 1.22.0 via jsDelivr. Internet access is needed for this runtime script. It does not upload the selected ONNX file or tensor data.
 
-1. Pin the exact repository revision, artifact URL, file SHA-256, model card, model license and preprocessing contract.
-2. Review training-data provenance and restrictions separately from the code/model license.
-3. Split by subject, capture session, device and attack instrument. Never randomly split adjacent frames from the same recording across train/test.
-4. Keep a development split for threshold selection and a locked test split for final reporting.
-5. Face verification: report genuine/impostor pair counts, FAR, FRR, ROC, EER estimate and confidence intervals. Test across lighting, pose, camera quality and representative demographic groups with consent.
-6. PAD: report APCER by attack species, BPCER, ACER, attack instruments, print/display quality, replay, masks if in scope, lighting and camera devices. A small public sample/demo is not evidence of production security.
-7. Benchmark browser CPU/WASM and optional WebGPU on the actual low-spec target machine and common phones. Record model load time, warm/cold inference p50/p95, peak memory, bundle/model size and failure rate.
-8. Keep matching/PAD client-side prototype explicitly low assurance. Browser JavaScript and camera input can be manipulated; do not treat a browser-generated `live=true` as trusted proof.
+## What the benchmark proves / does not prove
 
-## Candidate notes (not an approval)
+It checks whether ONNX Runtime Web can load the model, whether the graph input tensor has the expected fixed shape, output metadata, and warm inference latency (5 warm-up runs plus 30/50/100 measured runs). It computes SHA-256 in-browser and checks the published MiniFASNet ONNX digest.
 
-- Qualcomm AI Hub MobileFaceNet is a reasonable recognition candidate to investigate: its model page states 112x112 input, 128-D output, approximately 4 MB FP32 and Apache-2.0 model license. It also states training with MS-Celeb-1M. Pin and inspect the exact downloadable ONNX asset and training-data rights before use; a license label alone is not a complete provenance review.
-- MiniFASNet / Silent-Face-Anti-Spoofing ONNX exports are candidates for PAD experiments only. Verify the exact upstream weight provenance, license, preprocessing, class ordering and SHA-256. Third-party forks and conversion repos are not interchangeable.
-- MediaPipe Face Landmarker can support detection/landmarks/alignment guidance; it is not an identity recognizer or a standalone PAD model.
+It does NOT prove:
+- exact pixel preprocessing, crop/align compatibility or numerical parity with upstream reference;
+- embedding quality, FAR/FRR, EER, demographic robustness;
+- PAD APCER/BPCER, replay resistance, mask resistance or ISO/IEC 30107-3 conformity;
+- production security or trustworthiness of a browser camera/client.
 
-No model weights, biometric data, runtime dependencies, API routes or database migrations are included in this evaluation scaffold.
+Synthetic tensors are deliberately used here. Do not interpret the latency report as recognition/PAD accuracy.
+
+## Next gate
+
+After successful graph compatibility, implement a separate, reviewed preprocessing parity test using consented test images kept locally. Compare browser outputs with the upstream reference implementation and evaluate on subject/session/device-disjoint development and locked test sets. Only then select a recognition threshold and assess PAD by attack species. Do not create enrollment APIs or biometric database tables until those gates pass.
