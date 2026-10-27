@@ -101,6 +101,8 @@ function AuthBanner() {
         if (parallaxFrame.current !== null) window.cancelAnimationFrame(parallaxFrame.current);
     }, []);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const previousIndexRef = useRef(null);
+    const [previousIndex, setPreviousIndex] = useState(null);
     const [isCarouselPaused, setIsCarouselPaused] = useState(false);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
@@ -110,6 +112,19 @@ function AuthBanner() {
         { id: 'community', badge: t('authBannerCommunityBadge'), title: t('authBannerCommunityTitle'), description: t('authBannerCommunityDescription') },
     ];
     const banner = localizedBanners[currentIndex];
+
+    useEffect(() => {
+        if (previousIndexRef.current === null) {
+            previousIndexRef.current = currentIndex;
+            return undefined;
+        }
+        const previous = previousIndexRef.current;
+        previousIndexRef.current = currentIndex;
+        if (previous === currentIndex) return undefined;
+        setPreviousIndex(previous);
+        const timeout = window.setTimeout(() => setPreviousIndex(null), 1250);
+        return () => window.clearTimeout(timeout);
+    }, [currentIndex]);
 
     useEffect(() => {
         if (isCarouselPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
@@ -166,10 +181,16 @@ function AuthBanner() {
                     .auth-banner-atmosphere, .auth-banner-copy { animation: none !important; }
                 }
             `}</style>
+            {previousIndex !== null && previousIndex !== currentIndex && (
+                <div
+                    className={`pointer-events-none absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[previousIndex]} transition-opacity duration-[1200ms] ease-out`}
+                    style={{ opacity: 0, transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
+                    aria-hidden="true"
+                />
+            )}
             <div
-                key={currentIndex}
-                className={`auth-banner-atmosphere absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[currentIndex]} will-change-[opacity,transform]`}
-                style={{ animation: 'authBannerAtmosphereIn 1100ms cubic-bezier(0.22, 1, 0.36, 1) both', transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
+                className={`auth-banner-atmosphere absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[currentIndex]} transition-opacity duration-[1200ms] ease-out`}
+                style={{ opacity: 1, transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                 aria-hidden="true"
             />
             <div
