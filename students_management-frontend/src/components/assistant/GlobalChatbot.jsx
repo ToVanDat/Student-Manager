@@ -548,8 +548,8 @@ export default function GlobalChatbot() {
                 </section>
             )}
             {!open && (
-                <button type="button" onClick={() => setOpen(true)} className="ml-auto flex size-14 items-center justify-center rounded-[20px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-950/25 transition hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} aria-expanded={open} aria-haspopup="dialog" title={assistantTitle}>
-                    <MessageCircle size={23} />
+                <button type="button" onClick={() => setOpen(true)} className="group flex size-14 items-center justify-center rounded-full border border-white/70 bg-blue-600 text-white shadow-[0_10px_30px_-8px_rgba(37,99,235,.65)] transition duration-200 ease-out hover:-translate-y-0.5 hover:scale-[1.04] hover:bg-blue-700 hover:shadow-[0_14px_34px_-8px_rgba(37,99,235,.7)] active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} aria-expanded={open} aria-haspopup="dialog" title={assistantTitle}>
+                    <MessageCircle size={23} className="transition-transform duration-200 group-hover:scale-105" />
                 </button>
             )}
         </div>
