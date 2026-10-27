@@ -3,7 +3,7 @@
 const faceAuth = require('../service/faceAuthService.js');
 
 function fail(res, error) {
-    if (error?.code === 'FACE_SERVER_INFERENCE_NOT_READY') {
+    if (['FACE_SERVER_INFERENCE_NOT_READY', 'FACE_AUTH_CONFIG_NOT_READY', 'FACE_AUTH_UNAVAILABLE', 'FACE_INFERENCE_NOT_READY'].includes(error?.code)) {
         return res.status(503).json({
             code: error.code,
             message: error.message
@@ -15,6 +15,10 @@ function fail(res, error) {
             code: error.code || 'FACE_AUTH_SCHEMA_NOT_READY',
             message: 'Face Login chưa được cấu hình đầy đủ trên máy chủ.'
         });
+    }
+    if (error?.code?.startsWith('FACE_') && error.code !== 'FACE_SERVER_INFERENCE_NOT_READY') {
+        const status = ['FACE_AUTH_CONFIG_NOT_READY', 'FACE_AUTH_UNAVAILABLE', 'FACE_INFERENCE_NOT_READY'].includes(error.code) ? 503 : 400;
+        return res.status(status).json({ code: error.code, message: error.message });
     }
     if (/challenge.*(hết hạn|đã được sử dụng)/i.test(error?.message || '')) {
         return res.status(400).json({ message: error.message });
@@ -31,6 +35,14 @@ exports.beginEnrollment = async (req, res) => {
     try { return res.status(201).json(await faceAuth.beginEnrollment(req.user.sub, req.body?.verificationToken)); }
     catch (error) { return fail(res, error); }
 };
+exports.captureEnrollmentFrame = async (req, res) => {
+    try { return res.status(202).json(await faceAuth.appendCaptureFrame('enrollment', req.body?.challengeId, req.file?.buffer)); }
+    catch (error) { return fail(res, error); }
+};
+exports.captureLoginFrame = async (req, res) => {
+    try { return res.status(202).json(await faceAuth.appendCaptureFrame('login', req.body?.challengeId, req.file?.buffer)); }
+    catch (error) { return fail(res, error); }
+};
 exports.finishEnrollment = async (req, res) => {
     try { return res.status(201).json(await faceAuth.finishEnrollment(req.user.sub, req.body?.challengeId)); }
     catch (error) { return fail(res, error); }
@@ -40,7 +52,7 @@ exports.beginLogin = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.finishLogin = async (req, res) => {
-    try { return res.json(await faceAuth.finishLogin(req.body?.challengeId)); }
+    try { return res.json(await faceAuth.finishLogin(req.body?.challengeId, req)); }
     catch (error) { return fail(res, error); }
 };
 exports.disable = async (req, res) => {
