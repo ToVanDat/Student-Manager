@@ -160,21 +160,37 @@ function toNchwFloat(rgb, width, height, channelOrder = [0, 1, 2]) {
 }
 
 function prepareFaceTensors(rgb, width, height, landmarks) {
-    if (!landmarks || landmarks.width !== width || landmarks.height !== height) {
-        throw invalid('Server landmark dimensions do not match decoded image');
+    if (!landmarks || !Number.isInteger(landmarks.width) || !Number.isInteger(landmarks.height) ||
+        landmarks.width < 1 || landmarks.height < 1) {
+        throw invalid('Server landmark dimensions are invalid');
+    }
+    const scaleX = width / landmarks.width;
+    const scaleY = height / landmarks.height;
+    if (!Number.isFinite(scaleX) || !Number.isFinite(scaleY) ||
+        Math.abs(scaleX - scaleY) > 0.005) {
+        throw invalid('Server landmark aspect ratio does not match decoded image');
     }
     validateFivePoints(landmarks.five);
-    if (landmarks.five.some(([x, y]) => x < 0 || y < 0 || x >= width || y >= height)) {
+    const five = landmarks.five.map(([x, y]) => [x * scaleX, y * scaleY]);
+    if (five.some(([x, y]) => x < 0 || y < 0 || x >= width || y >= height)) {
         throw invalid('Server landmarks fall outside the decoded image');
     }
-    const bbox = landmarks.bbox;
-    if (!bbox || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(bbox[key])) ||
-        bbox.x < 0 || bbox.y < 0 || bbox.width < 40 || bbox.height < 40 ||
+    const sourceBox = landmarks.bbox;
+    if (!sourceBox || !['x', 'y', 'width', 'height'].every(key => Number.isFinite(sourceBox[key]))) {
+        throw invalid('Server face bounding box is invalid');
+    }
+    const bbox = {
+        x: sourceBox.x * scaleX,
+        y: sourceBox.y * scaleY,
+        width: sourceBox.width * scaleX,
+        height: sourceBox.height * scaleY
+    };
+    if (bbox.x < 0 || bbox.y < 0 || bbox.width < 40 || bbox.height < 40 ||
         bbox.x + bbox.width > width + 1 || bbox.y + bbox.height > height + 1) {
         throw invalid('Server face bounding box is outside the decoded image');
     }
-    const aligned = alignRgbFace(rgb, width, height, landmarks.five);
-    const padCrop = cropPadRgb(rgb, width, height, landmarks.bbox, 2.7);
+    const aligned = alignRgbFace(rgb, width, height, five);
+    const padCrop = cropPadRgb(rgb, width, height, bbox, 2.7);
     return {
         rgb112: toNchwFloat(aligned, OUTPUT_SIZE, OUTPUT_SIZE),
         bgr80: toNchwFloat(padCrop, PAD_SIZE, PAD_SIZE, [2, 1, 0])
