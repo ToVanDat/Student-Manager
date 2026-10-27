@@ -109,9 +109,16 @@ async def landmarks(request: Request, authorization: str | None = Header(default
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid content length")
 
-    body = await request.body()
-    if not body or len(body) > MAX_BYTES:
-        raise HTTPException(status_code=413, detail="Image too large")
+    chunks = []
+    total_bytes = 0
+    async for chunk in request.stream():
+        total_bytes += len(chunk)
+        if total_bytes > MAX_BYTES:
+            raise HTTPException(status_code=413, detail="Image too large")
+        chunks.append(chunk)
+    body = b"".join(chunks)
+    if not body:
+        raise HTTPException(status_code=400, detail="Empty image")
 
     try:
         with Image.open(io.BytesIO(body)) as source:
