@@ -58,7 +58,7 @@ The internal inference pipeline now includes bounded image decoding, a private M
 
 ## Private MediaPipe landmark service and Node preprocessing
 
-The API now has a small internal MediaPipe Tasks service in `students_managerment-api/face-landmark-service/`. This is a deliberate runtime boundary: Google's Face Landmarker JavaScript guide targets web applications, while the documented Python Tasks API provides a server-side runtime. The Python service only returns server-computed coordinates; Node.js remains the application API, owns challenge/session state, performs crop/normalization, and runs the supplied ONNX recognition/PAD models.
+The API now has a small internal MediaPipe Tasks service in `students_managerment-api/face-landmark-service/`. This is a deliberate runtime boundary: Google's Face Landmarker JavaScript guide targets web applications, while the documented Python Tasks API provides a server-side runtime. The Python service only returns server-computed coordinates; Node.js remains the application API, owns challenge/session state, performs crop/normalization, and runs the supplied ONNX recognition/PAD models. The small Python sidecar is intentional: it avoids relying on undocumented Node execution of the browser-targeted MediaPipe Tasks Vision package.
 
 The private service:
 - loads the versioned Face Landmarker float16 task bundle;
@@ -82,7 +82,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-The downloader uses the versioned Google Storage URL and verifies SHA-256 `64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`. The checksum is pinned from independently published copies of the same versioned asset; the script deletes the downloaded file if it does not match.
+The downloader uses the versioned Google Storage URL and verifies SHA-256 `64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff`. The same checksum is checked again by the Python service at startup. The checksum is independently published for the same versioned asset in [this model mirror](https://github.com/shinshin86/mesh-avatar-studio) and [this converted-model card](https://huggingface.co/naklitechie/face-landmarks-onnx); Google does not publish a checksum on the task guide. The script deletes the downloaded file if it does not match.
 
 Set a fresh shared secret in both processes. Generate one with Node.js:
 
