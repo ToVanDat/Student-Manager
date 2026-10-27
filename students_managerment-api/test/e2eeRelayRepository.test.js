@@ -643,3 +643,79 @@ test('expired provisioning acknowledgement expires and removes the pending devic
     assert.ok(calls.some(call => call.statement === 'COMMIT'));
     assert.equal(calls.some(call => call.statement === 'ROLLBACK'), false);
 });
+
+
+test('owner abort cancels ready provisioning without touching device rows', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) return { rows: [{ status: 'ready' }], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [{ session_id: 'x' }], rowCount: 1 };
+            throw new Error('Unexpected SQL: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+    assert.deepEqual(await repository.abortProvisioningSession(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'), { aborted: true });
+    assert.equal(calls.some(sql => sql.startsWith('DELETE FROM e2ee_sdk_devices')), false);
+    assert.ok(calls.includes('COMMIT'));
+});
+
+test('owner abort removes a disabled linked device after a lost complete response', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const completedAt = new Date('2026-10-26T10:00:00.000Z');
+    const client = {
+        async query(sql, params = []) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push({ statement, params });
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ status: 'linked_pending_ack', assigned_device_id: 3, completed_at: completedAt }], rowCount: 1 };
+            }
+            if (statement.startsWith('DELETE FROM e2ee_sdk_devices')) return { rows: [{ id: 88 }], rowCount: 1 };
+            if (statement.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")) return { rows: [{ session_id: 'x' }], rowCount: 1 };
+            throw new Error('Unexpected SQL: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+    assert.deepEqual(await repository.abortProvisioningSession(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'), { aborted: true });
+    const deletion = calls.find(call => call.statement.startsWith('DELETE FROM e2ee_sdk_devices'));
+    assert.deepEqual(deletion.params, [44, 3, completedAt]);
+    assert.ok(deletion.statement.includes('enabled = FALSE'));
+    assert.ok(deletion.statement.includes('created_at <= $3'));
+    assert.ok(calls.some(call => call.statement === 'COMMIT'));
+});
+
+test('owner abort never revokes an already completed device', async t => {
+    const oldConnect = pool.connect;
+    const calls = [];
+    const client = {
+        async query(sql) {
+            const statement = sql.replace(/\s+/g, ' ').trim();
+            calls.push(statement);
+            if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT session_id, status, assigned_device_id, completed_at')) return { rows: [], rowCount: 0 };
+            if (statement.startsWith('SELECT assigned_device_id, completed_at, status')) {
+                return { rows: [{ status: 'completed', assigned_device_id: 3, completed_at: new Date() }], rowCount: 1 };
+            }
+            throw new Error('Unexpected SQL: ' + statement);
+        },
+        release() {}
+    };
+    pool.connect = async () => client;
+    t.after(() => { pool.connect = oldConnect; });
+    assert.deepEqual(await repository.abortProvisioningSession(44, 'c7b9e8a0-8b7e-4b8d-8b7e-4b8d8b7e4b8d'), { aborted: false, alreadyCompleted: true });
+    assert.equal(calls.some(sql => sql.startsWith('DELETE FROM e2ee_sdk_devices')), false);
+    assert.equal(calls.some(sql => sql.startsWith("UPDATE e2ee_sdk_provisioning_sessions SET status = 'rolled_back'")), false);
+    assert.ok(calls.includes('COMMIT'));
+});
