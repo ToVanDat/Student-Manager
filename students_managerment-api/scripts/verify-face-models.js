@@ -14,6 +14,16 @@ const expected = {
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 };
 
+function resolveArtifactPath(file) {
+    const subdirectory = file.startsWith('mobile_facenet') ? 'recognition' : 'anti-spoofing';
+    const candidates = [
+        path.join(modelDir, subdirectory, file),
+        path.join(modelDir, 'face-models', subdirectory, file),
+        path.join(modelDir, file)
+    ];
+    return candidates.find(candidate => fs.existsSync(candidate) && fs.statSync(candidate).isFile()) || candidates[0];
+}
+
 function sha256(filePath) {
     return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
 }
@@ -28,7 +38,7 @@ if (!fs.existsSync(modelDir) || !fs.statSync(modelDir).isDirectory()) {
 } else {
     let valid = true;
     for (const [file, expectedHash] of Object.entries(expected)) {
-        const filePath = path.join(modelDir, file);
+        const filePath = resolveArtifactPath(file);
         if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
             console.error(`[Face models] MISSING: ${file}`);
             valid = false;
