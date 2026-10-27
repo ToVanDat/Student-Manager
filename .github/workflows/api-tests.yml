@@ -133,7 +133,7 @@ jobs:
           INSERT INTO student_account_link_audit
             (action, user_id, student_id, actor_user_id, verification_method, note)
           VALUES ('linked', '2', '1', '1', 'admin_manual_review', 'Verified against registrar records');
-          DO $
+          DO $verify$
           BEGIN
             IF NOT EXISTS (
               SELECT 1 FROM role_permissions
@@ -149,7 +149,7 @@ jobs:
             IF (SELECT COUNT(*) FROM student_account_link_audit) <> 1 THEN
               RAISE EXCEPTION 'expected one audit event';
             END IF;
-          END $;
+          END $verify$;
           SQL
 
   test-api:
