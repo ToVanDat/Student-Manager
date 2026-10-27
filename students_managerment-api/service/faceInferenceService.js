@@ -150,4 +150,9 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     };
 }
 
-module.exports = { inferFaceImage, inferAlignedFace, l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES };
+async function ensureFaceInferenceReady() {
+    await getRuntime();
+    return true;
+}
+
+module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES };
