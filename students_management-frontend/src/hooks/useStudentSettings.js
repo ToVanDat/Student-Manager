@@ -8,44 +8,6 @@ import {
 } from '@/api/sessionApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 
-function getCurrentSessionFromToken() {
-    try {
-        const token = localStorage.getItem('accessToken');
-
-        if (!token) {
-            return null;
-        }
-
-        const parts = token.split('.');
-
-        if (parts.length !== 3) {
-            return null;
-        }
-
-        const base64 = parts[1]
-            .replace(/-/g, '+')
-            .replace(/_/g, '/')
-            .padEnd(parts[1].length + ((4 - (parts[1].length % 4)) % 4), '=');
-        const payload = JSON.parse(
-            decodeURIComponent(
-                atob(base64)
-                    .split('')
-                    .map(
-                        (character) =>
-                            '%' +
-                            ('00' + character.charCodeAt(0).toString(16)).slice(-2),
-                    )
-                    .join(''),
-            ),
-        );
-
-        return payload;
-    } catch (error) {
-        console.error('Không thể đọc access token:', error);
-        return null;
-    }
-}
-
 export function useStudentSettings(user) {
     const [settingsTab, setSettingsTab] = useState('account');
     const [sessions, setSessions] = useState([]);
@@ -87,9 +49,9 @@ export function useStudentSettings(user) {
                   : [];
 
             setSessions(sessionList);
-
-            const payload = getCurrentSessionFromToken();
-            setCurrentSessionId(payload?.sessionId || payload?.session_id || null);
+            // The backend derives this from the verified access token. AT is
+            // intentionally memory-only, so the UI must not read localStorage.
+            setCurrentSessionId(data?.currentSessionId ?? null);
         } catch (error) {
             console.error('LOAD SESSIONS ERROR:', error);
             setSessionsError(
