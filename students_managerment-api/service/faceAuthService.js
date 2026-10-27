@@ -34,6 +34,20 @@ function requirePipelineConfig() {
     const padThreshold = Number(process.env.FACE_PAD_MIN_SCORE);
     const consistencyThreshold = Number(process.env.FACE_FRAME_CONSISTENCY_THRESHOLD);
     const matchThreshold = Number(process.env.FACE_MATCH_THRESHOLD);
+    let templateKey;
+    try {
+        if (process.env.FACE_TEMPLATE_ENCRYPTION_KEYS) {
+            const keyring = JSON.parse(process.env.FACE_TEMPLATE_ENCRYPTION_KEYS);
+            templateKey = keyring?.[String(Number(process.env.FACE_TEMPLATE_KEY_VERSION || 1))];
+        } else {
+            templateKey = process.env.FACE_TEMPLATE_ENCRYPTION_KEY;
+        }
+    } catch {
+        throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'FACE_TEMPLATE_ENCRYPTION_KEYS không hợp lệ.');
+    }
+    if (typeof templateKey !== 'string' || Buffer.from(templateKey, 'base64').length !== 32) {
+        throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'Thiếu khóa AES-256-GCM hợp lệ cho face template.');
+    }
     if (![padThreshold, consistencyThreshold, matchThreshold].every(Number.isFinite) ||
         padThreshold <= 0 || padThreshold > 1 ||
         consistencyThreshold <= 0 || consistencyThreshold > 1 ||
