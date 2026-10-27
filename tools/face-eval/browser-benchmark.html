@@ -40,7 +40,7 @@ $('run').addEventListener('click',async()=>{
   const expectedPad='d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b';
   const session=await ort.InferenceSession.create(bytes,{executionProviders:[provider],graphOptimizationLevel:'all'});
   const inputName=session.inputNames[0], outputNames=session.outputNames;
-  const inputMeta=session.inputMetadata?.[inputName];
+  const inputMeta=(session.inputMetadata||[]).find(meta=>meta.name===inputName)||session.inputMetadata?.[0];
   const rawShape=inputMeta?.dimensions||inputMeta?.dims||[];
   const shape=concreteShape(rawShape);
   if(!shape.length||shape.some(x=>!x))throw new Error('Input shape is dynamic/unknown; this harness requires a fixed input shape. Model metadata: '+JSON.stringify(inputMeta));
