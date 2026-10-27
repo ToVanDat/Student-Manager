@@ -10,7 +10,7 @@ The supplied model bundle contains:
 - MobileFaceNet metadata: two inputs `img1`, `img2`, each `float32 [1,3,112,112]`, values [0,1]; output `embeddings float32 [2,128]`.
 - MiniFASNet-V2 ONNX: 1,744,116 bytes (SHA-256: `d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b`).
 
-Important: MobileFaceNet is exported as a paired/two-image graph, not a single-image embedding graph. Its metadata does not fully specify RGB/BGR ordering, face alignment, landmark template, or similarity calibration. Do not infer these values from the tensor shape. Validate the exact preprocessing and output semantics with the model reference implementation and known test vectors before enabling enrollment or login.
+Important: MobileFaceNet is exported as a paired/two-image graph, not a one-image encoder. Inspection of the ONNX graph's embedded PyTorch export trace confirms the forward path: normalize each input independently, horizontally flip each normalized input, concatenate `[img1, flip(img1), img2, flip(img2)]` as a batch, run the shared backbone, sum each image's original/flip feature pair (TTA), then return the two 128-D vectors as rows `[2,128]`. Therefore `img1` and `img2` represent two separate face crops; they are not two temporal frames and the output is not a similarity score. For single-image embedding, the same validated crop can be supplied to both inputs and one returned row selected. The ONNX trace shows `normalize_image_torchvision`, but this archive does not provide a human-readable reference preprocessing implementation or test vectors; exact channel order, mean/std constants, face alignment template, crop geometry, and output normalization still require confirmation against the matching Qualcomm model source. Do not guess those values or a match threshold.
 
 ## Data protection
 
@@ -68,7 +68,7 @@ Do not invent a match threshold. Calibrate it with genuine/impostor pairs for th
 
 ## Remaining production blockers
 
-1. The supplied MobileFaceNet graph has two image inputs (`img1`, `img2`) and a two-row embedding output. The model bundle does not establish the intended pairing contract, reference alignment template, or color normalization sufficiently to ship a correct inference pipeline.
+1. The MobileFaceNet graph's paired-input and horizontal-flip TTA behavior is now confirmed from its embedded export trace, but exact preprocessing constants/channel order, face alignment template, crop geometry, output normalization, and a validated reference test vector are still missing. These are required before calibrating similarity.
 2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision and ONNX Runtime Web have not yet been committed as frontend dependencies because the existing package-lock must be regenerated consistently when the model pipeline is added.
 3. The server does not yet have a trusted ONNX inference runtime and model deployment path. Browser inference alone is not trusted for authentication.
 4. The current public enrollment/login verify endpoints deliberately consume the one-time challenge and return `FACE_SERVER_INFERENCE_NOT_READY`. This is fail-closed behavior, not a completed login implementation.
