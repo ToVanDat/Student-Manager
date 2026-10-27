@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
 import { googleLoginApi } from '@/api/authApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
