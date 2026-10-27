@@ -93,6 +93,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             }
 
             setInstruction('Đang xác minh khuôn mặt và kiểm tra PAD…');
+            sessionStorage.setItem('auth:login-in-progress', 'true');
             const data = await finishFaceLoginApi(challenge.challengeId);
             stopCamera();
             onSuccess(data);
@@ -102,6 +103,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             }
             stopCamera();
         } finally {
+            sessionStorage.removeItem('auth:login-in-progress');
             setBusy(false);
         }
     };
