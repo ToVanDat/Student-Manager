@@ -101,6 +101,7 @@ function AuthBanner() {
         if (parallaxFrame.current !== null) window.cancelAnimationFrame(parallaxFrame.current);
     }, []);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [isCarouselPaused, setIsCarouselPaused] = useState(false);
     const touchStartX = useRef(null);
     const touchEndX = useRef(null);
     const localizedBanners = [
@@ -111,11 +112,12 @@ function AuthBanner() {
     const banner = localizedBanners[currentIndex];
 
     useEffect(() => {
-        const timer = setInterval(() => {
+        if (isCarouselPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+        const timer = window.setInterval(() => {
             setCurrentIndex((current) => (current + 1) % banners.length);
-        }, 5000);
-        return () => clearInterval(timer);
-    }, []);
+        }, 6800);
+        return () => window.clearInterval(timer);
+    }, [isCarouselPaused]);
 
     const goNext = () => setCurrentIndex((current) => (current + 1) % banners.length);
     const goPrevious = () => setCurrentIndex((current) => (current - 1 + banners.length) % banners.length);
@@ -140,14 +142,33 @@ function AuthBanner() {
             onPointerMove={handlePointerMove}
             onPointerLeave={resetParallax}
             onPointerCancel={resetParallax}
+            onMouseEnter={() => setIsCarouselPaused(true)}
+            onMouseLeave={() => setIsCarouselPaused(false)}
+            onFocusCapture={() => setIsCarouselPaused(true)}
+            onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setIsCarouselPaused(false);
+            }}
             className="relative min-h-[42vh] select-none overflow-hidden bg-slate-950 [touch-action:pan-y] min-[801px]:min-h-screen motion-reduce:transform-none"
             onTouchStart={(event) => { touchStartX.current = event.touches[0].clientX; touchEndX.current = null; }}
             onTouchMove={(event) => { touchEndX.current = event.touches[0].clientX; }}
             onTouchEnd={handleTouchEnd}
         >
+            <style>{`
+                @keyframes authBannerAtmosphereIn {
+                    from { opacity: 0.35; }
+                    to { opacity: 1; }
+                }
+                @keyframes authBannerCopyIn {
+                    from { opacity: 0; transform: translate3d(0, 9px, 0); }
+                    to { opacity: 1; transform: translate3d(0, 0, 0); }
+                }
+                @media (prefers-reduced-motion: reduce) {
+                    .auth-banner-atmosphere, .auth-banner-copy { animation: none !important; }
+                }
+            `}</style>
             <div
                 key={currentIndex}
-                className={`absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] animate-banner-fade bg-linear-to-br ${bannerBackgrounds[currentIndex]} will-change-transform motion-reduce:transform-none`}
+                className={`auth-banner-atmosphere absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[currentIndex]} will-change-[opacity,transform]`}
                 style={{ transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                 aria-hidden="true"
             />
@@ -171,7 +192,7 @@ function AuthBanner() {
             />
             <div className="pointer-events-none absolute inset-0 z-[2] bg-[linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:64px_64px] opacity-30" />
             <div className="pointer-events-none absolute inset-0 z-[2] bg-linear-to-r from-slate-950/35 via-slate-950/10 to-transparent" />
-            <div className="absolute bottom-[15%] left-12 right-12 z-[3] max-w-[700px] text-white min-[801px]:bottom-[13%] min-[801px]:left-[8%] min-[801px]:right-[10%]">
+            <div key={currentIndex} className="auth-banner-copy absolute bottom-[15%] left-12 right-12 z-[3] max-w-[700px] text-white min-[801px]:bottom-[13%] min-[801px]:left-[8%] min-[801px]:right-[10%]" style={{ animation: 'authBannerCopyIn 620ms cubic-bezier(0.22, 1, 0.36, 1) both' }}>
                 <div className="mb-3 inline-flex items-center rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-[9px] font-bold tracking-[1.2px] text-white/95 backdrop-blur-md min-[601px]:mb-5 min-[601px]:px-3.5 min-[601px]:py-2 min-[601px]:text-[11px]">
                     {banner.badge}
                 </div>
