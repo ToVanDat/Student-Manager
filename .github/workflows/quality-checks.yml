@@ -35,6 +35,8 @@ jobs:
           node-version: 22
       - name: Install backend dependencies
         run: npm install --no-audit --no-fund
+      - name: Install Linux sharp runtime omitted from the cross-platform lockfile
+        run: npm install --no-save --package-lock=false --include=optional sharp@0.34.5
       - name: Run backend test suite
         run: npm test
 
