@@ -7,6 +7,7 @@ const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require(
 const { verifySensitiveAction, issueSession } = require('./advancedAuthService.js');
 const { createLivenessChallenge, verifyLivenessSequence } = require('./faceLivenessChallenge.js');
 const { inferFaceImage } = require('./faceInferenceService.js');
+const { verifyCapturePayload } = require('./faceCaptureValidation.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
 const MAX_CAPTURE_FRAMES = 40;
@@ -108,30 +109,7 @@ async function appendCaptureFrame(kind, id, imageBuffer) {
 
 function validateCapture(state) {
     const { padThreshold, consistencyThreshold } = requirePipelineConfig();
-    const frames = state?.capture?.frames;
-    if (!Array.isArray(frames) || frames.length < MIN_CAPTURE_FRAMES || frames.length > MAX_CAPTURE_FRAMES) {
-        throw pipelineError('FACE_CAPTURE_INCOMPLETE', 'Cần gửi đủ frame để xác minh khuôn mặt.');
-    }
-    const liveness = verifyLivenessSequence({
-        actions: state.liveness.actions,
-        frames: frames.map(({ receivedAt, liveness: signals }) => ({ receivedAt, liveness: signals })),
-        issuedAt: state.liveness.issuedAt,
-        expiresAt: state.liveness.expiresAt,
-        now: Date.now()
-    });
-    if (!liveness.passed) throw pipelineError('FACE_LIVENESS_FAILED', 'Không hoàn thành thử thách xác minh khuôn mặt sống.');
-    if (frames.some(frame => !Number.isFinite(frame.padScore) || frame.padScore < padThreshold)) {
-        throw pipelineError('FACE_PAD_FAILED', 'PAD không xác nhận được khuôn mặt thật.');
-    }
-
-    const embeddings = frames.map(frame => validateEmbedding(frame.embedding));
-    const cosine = (a, b) => a.reduce((sum, value, index) => sum + value * b[index], 0);
-    const reference = embeddings[0];
-    if (embeddings.some(embedding => cosine(reference, embedding) < consistencyThreshold)) {
-        throw pipelineError('FACE_IDENTITY_INCONSISTENT', 'Khuôn mặt thay đổi giữa các frame.');
-    }
-    const averaged = reference.map((_, index) => embeddings.reduce((sum, item) => sum + item[index], 0) / embeddings.length);
-    return validateEmbedding(averaged);
+    return verifyCapturePayload(state, { padThreshold, consistencyThreshold });
 }
 
 function createCaptureState() {
