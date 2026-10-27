@@ -259,7 +259,7 @@ const getStudentPortalByUserId = async (userId) => {
 const listStudentAccountLinkAdminData = async (search = '') => {
     const term = String(search || '').trim();
     const pattern = `%${term}%`;
-    const [linkedResult, usersResult, studentsResult] = await Promise.all([
+    const [linkedResult, usersResult, studentsResult, auditResult] = await Promise.all([
         pool.query(`
             SELECT sal.user_id, sal.student_id, sal.verified_at, sal.verification_method,
                    sal.verification_note, sal.verified_by,
@@ -296,13 +296,25 @@ const listStudentAccountLinkAdminData = async (search = '') => {
               AND ($1 = '' OR st.student_code ILIKE $2 OR st.name ILIKE $2 OR st.email ILIKE $2)
             ORDER BY st.student_code ASC
             LIMIT 50
-        `, [term, pattern])
+        `, [term, pattern]),
+        pool.query(`
+            SELECT a.id, a.action, a.user_id, a.student_id, a.verification_method,
+                   a.note, a.occurred_at, actor.username AS actor_username,
+                   u.username, st.student_code, st.name AS student_name
+            FROM student_account_link_audit a
+            LEFT JOIN users actor ON actor.id::text = a.actor_user_id
+            LEFT JOIN users u ON u.id::text = a.user_id
+            LEFT JOIN students st ON st.id::text = a.student_id
+            ORDER BY a.occurred_at DESC, a.id DESC
+            LIMIT 20
+        `)
     ]);
 
     return {
         linked: linkedResult.rows,
         availableUsers: usersResult.rows,
-        availableStudents: studentsResult.rows
+        availableStudents: studentsResult.rows,
+        audit: auditResult.rows
     };
 };
 
