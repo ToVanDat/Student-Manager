@@ -99,4 +99,20 @@ The existing owner-abort route remains separate and must continue to serialize w
 - The current route-level account authentication is not a substitute for device-token authentication at ACK. Keep the token check and bind the token to the exact pending device/session.
 - A proof-enabled session must reject legacy ACKs. A legacy session must not accidentally be treated as proof-enabled based on client-supplied flags.
 
-No backend code or database schema has been changed in this audit.
+## Staged backend implementation status (2026-10-27)
+
+The application backend now contains an opt-in protocol-v1 path; it does not enable it for the current frontend:
+
+- `POST /provisioning` accepts `proofProtocolVersion: 1`; omitted version continues to create a legacy session.
+- `connect` creates a random 32-byte challenge atomically with the first `waiting -> connected` transition. The challenge is returned to the connecting device and to the authenticated account's message/status read. A repeated connect cannot rotate it.
+- `POST /message` requires a canonical 32-byte `proofCommitment` for v1 sessions and atomically stores it with the exact ciphertext SHA-256 digest. Legacy sessions reject a commitment.
+- `GET /message` exposes the protocol version and challenge but never the primary commitment.
+- `complete` refuses to reserve a pending device for a v1 session unless challenge, commitment, and ciphertext digest are present.
+- `POST /ack` accepts the proof in the JSON body while retaining the per-device credential header. In one transaction it locks the session, validates the proof against the stored commitment with constant-time comparison, checks the stored ciphertext digest, activates the device, consumes the challenge, and records the ACK digest.
+- Same-proof ACK retries are idempotent only for the same active device credential. A different proof conflicts. Owner abort still serializes on the same session row.
+- Expiry and rollback scrub challenge/commitment/ciphertext-digest material. The ACK digest is retained for completed-session retry validation.
+- The additive migration is `students_managerment-api/sql/e2ee_provisioning_proof_v1_migration.sql`. It is not applied to any persistent database.
+
+This backend gate does not independently recompute the HMAC: the server cannot derive the ECDH shared secret. It verifies that the receiver submitted the exact commitment created by the primary, while the SDK must ensure that commitment/proof are HMACs over the canonical transcript. A malicious or compromised client can lie about having completed local decryption; this protocol is not remote attestation.
+
+The frontend currently does not request protocol v1 and still uses the upstream v11 SDK. Do not enable v1 until the source fork, SDK build, deterministic vector, and two-browser interoperability tests pass.
