@@ -88,6 +88,30 @@ CREATE INDEX IF NOT EXISTS student_account_link_audit_occurred_at_idx
 CREATE INDEX IF NOT EXISTS student_account_link_audit_user_id_idx
     ON student_account_link_audit (user_id, occurred_at DESC);
 
+-- Protect audit history from accidental application-level UPDATE/DELETE/TRUNCATE.
+-- Database owners/superusers can still deliberately alter schema or disable triggers.
+CREATE OR REPLACE FUNCTION student_account_link_audit_reject_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $audit_guard$
+BEGIN
+    RAISE EXCEPTION 'student_account_link_audit is append-only'
+        USING ERRCODE = '55000';
+END;
+$audit_guard$;
+
+DROP TRIGGER IF EXISTS student_account_link_audit_no_mutation
+    ON student_account_link_audit;
+CREATE TRIGGER student_account_link_audit_no_mutation
+    BEFORE UPDATE OR DELETE ON student_account_link_audit
+    FOR EACH ROW EXECUTE FUNCTION student_account_link_audit_reject_mutation();
+
+DROP TRIGGER IF EXISTS student_account_link_audit_no_truncate
+    ON student_account_link_audit;
+CREATE TRIGGER student_account_link_audit_no_truncate
+    BEFORE TRUNCATE ON student_account_link_audit
+    FOR EACH STATEMENT EXECUTE FUNCTION student_account_link_audit_reject_mutation();
+
 INSERT INTO permissions (permission_key, module_key, label_vi, label_en, description_vi, description_en, is_sensitive)
 VALUES (
     'students.link_accounts', 'students',
