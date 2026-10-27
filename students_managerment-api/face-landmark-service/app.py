@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import io
 import os
@@ -19,6 +20,7 @@ MODEL_PATH = os.environ.get(
     os.path.join(os.path.dirname(__file__), "models", "face_landmarker.task"),
 )
 SERVICE_TOKEN = os.environ.get("FACE_LANDMARK_SERVICE_TOKEN", "")
+MODEL_SHA256 = "64184e229b263107bc2b804c6625db1341ff2bb731874b0bcc2fe6544e0bc9ff"
 landmarker: Any = None
 
 
@@ -70,6 +72,12 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("FACE_LANDMARK_SERVICE_TOKEN must be configured")
     if not os.path.isfile(MODEL_PATH):
         raise RuntimeError("Missing MediaPipe Face Landmarker task model")
+    digest = hashlib.sha256()
+    with open(MODEL_PATH, "rb") as model_file:
+        for chunk in iter(lambda: model_file.read(1024 * 1024), b""):
+            digest.update(chunk)
+    if not hmac.compare_digest(digest.hexdigest(), MODEL_SHA256):
+        raise RuntimeError("MediaPipe Face Landmarker model SHA-256 mismatch")
     options = mp.tasks.vision.FaceLandmarkerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=MODEL_PATH),
         running_mode=mp.tasks.vision.RunningMode.IMAGE,
