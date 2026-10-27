@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layers, Plus, Pencil, Trash2, Search, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/api/client.js';
@@ -18,8 +18,10 @@ export default function ClassManagement() {
     const [formOpen, setFormOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
+    const requestVersionRef = useRef(0);
 
     const loadData = useCallback(async () => {
+        const requestVersion = ++requestVersionRef.current;
         setLoading(true);
         setError('');
         try {
@@ -27,16 +29,21 @@ export default function ClassManagement() {
                 apiClient.get('/api/classes'),
                 apiClient.get('/api/departments')
             ]);
+            if (requestVersion !== requestVersionRef.current) return;
             setClasses(Array.isArray(classResult.data) ? classResult.data : []);
             setDepartments(Array.isArray(departmentResult.data) ? departmentResult.data : []);
         } catch (err) {
+            if (requestVersion !== requestVersionRef.current) return;
             setError(err?.response?.data?.message || t('classesLoadFailed'));
         } finally {
-            setLoading(false);
+            if (requestVersion === requestVersionRef.current) setLoading(false);
         }
     }, [t]);
 
-    useEffect(() => { void loadData(); }, [loadData]);
+    useEffect(() => {
+        void loadData();
+        return () => { requestVersionRef.current += 1; };
+    }, [loadData]);
 
     const visibleClasses = useMemo(() => {
         const term = query.trim().toLocaleLowerCase();
