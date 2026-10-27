@@ -73,7 +73,7 @@ async function detectFaceLandmarks(imageBuffer) {
 async function ensureLandmarkServiceReady() {
     const token = process.env.FACE_LANDMARK_SERVICE_TOKEN;
     if (!token) throw serviceError('Thiếu FACE_LANDMARK_SERVICE_TOKEN', 'FACE_AUTH_CONFIG_NOT_READY');
-    const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\\/$/, '');
+    const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\/$/, '')
     let url;
     try { url = new URL(baseUrl); }
     catch { throw serviceError('FACE_LANDMARK_SERVICE_URL không hợp lệ', 'FACE_AUTH_CONFIG_INVALID'); }
