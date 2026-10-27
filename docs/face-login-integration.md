@@ -35,6 +35,27 @@ To use another directory, set `FACE_MODEL_DIR` to its absolute path before runni
 
 The MobileFaceNet contract was cross-checked against Qualcomm's public AI Hub implementation: [model.py](https://github.com/qualcomm/ai-hub-models/blob/main/src/qai_hub_models/models/mobile_facenet/model.py), [app.py](https://github.com/qualcomm/ai-hub-models/blob/main/src/qai_hub_models/models/mobile_facenet/app.py), and [image_processing.py](https://github.com/qualcomm/ai-hub-models/blob/main/src/qai_hub_models/utils/image_processing.py). Keep the supplied ONNX graph and external weights together; use the source only to understand the model contract, not to assume the local exported artifact is validated for authentication.
 
+## Server ONNX runtime foundation
+
+The API now contains an internal inference module at `students_managerment-api/service/faceInferenceService.js`. It:
+- verifies SHA-256 for the three supplied model artifacts before loading sessions;
+- loads MobileFaceNet and MiniFASNet through ONNX Runtime Node.js with CPU execution;
+- checks the expected MobileFaceNet input/output names and single-input/single-output PAD graph;
+- validates exact NCHW tensor sizes and pixel range;
+- L2-normalizes the 128-D embedding and derives the PAD live score from the three class outputs.
+
+The inference function is deliberately internal and accepts already aligned RGB 112x112 and PAD BGR 80x80 tensors. Those tensors must be produced by a trusted server-side detector/alignment stage. Do not add an HTTP route that accepts these tensors, landmarks, embeddings, or PAD scores from the browser.
+
+Install the native runtime from the API directory using the stable package version verified against the official ONNX Runtime Node.js documentation:
+
+```cmd
+npm install --save-exact onnxruntime-node@1.30.0
+```
+
+This command must be run in the developer's actual API checkout so npm updates both `package.json` and `package-lock.json` consistently. Do not hand-edit the lockfile. ONNX Runtime Node.js requires Node 16 or newer and recommends Node 20; the published CPU binary supports Windows x64 and Linux x64. See [official Node binding docs](https://onnxruntime.ai/docs/get-started/with-javascript/node.html) and [package release](https://www.npmjs.com/package/onnxruntime-node).
+
+The model runtime is not yet called by the public enrollment/login endpoints. The trusted image decode, MediaPipe task asset/runtime, server-side landmark extraction, 5-point alignment, PAD crop generation, and dataset-calibrated PAD/match thresholds remain required. Until those pieces and end-to-end tests exist, the API continues to return `FACE_SERVER_INFERENCE_NOT_READY`.
+
 ## Data protection
 
 - `user_face_credentials` stores only an encrypted embedding envelope, never camera frames.
@@ -94,7 +115,7 @@ Do not invent a match threshold. Calibrate it with genuine/impostor pairs for th
 
 1. The matching Qualcomm source now establishes RGB preprocessing, torchvision mean/std normalization, paired-input TTA, and the 112x112 five-point alignment template. The MediaPipe-to-five-point landmark mapping and image-warp implementation still need reference-image tests and numerical parity checks before similarity calibration.
 2. The bundle does not include the MediaPipe Face Landmarker task asset. MediaPipe Tasks Vision and ONNX Runtime Web have not yet been committed as frontend dependencies because the existing package-lock must be regenerated consistently when the model pipeline is added.
-3. The model artifact deployment path and SHA-256 verifier are now documented/committed, but `onnxruntime-node` is not installed or locked in the API package yet, no server inference session is wired, and the MediaPipe Face Landmarker task asset is absent. Browser inference alone is not trusted for authentication.
+3. The model artifact deployment path, SHA-256 verifier, and internal ONNX session runner are committed. The developer must install and lock `onnxruntime-node@1.30.0` from the API checkout. The MediaPipe Face Landmarker task asset and server-side image decode/detection/alignment stage are still absent; browser inference alone is not trusted for authentication.
 4. The current public enrollment/login verify endpoints deliberately consume the one-time challenge and return `FACE_SERVER_INFERENCE_NOT_READY`. This is fail-closed behavior, not a completed login implementation.
 5. MiniFASNet-V2 must be evaluated against presentation attacks and a representative validation set. Its output is not a guarantee of liveness.
 6. No production migration or live database operation is performed by these commits.
