@@ -170,8 +170,12 @@ function AuthBanner() {
         >
             <style>{`
                 @keyframes authBannerAtmosphereIn {
-                    from { opacity: 0.35; }
+                    from { opacity: 0; }
                     to { opacity: 1; }
+                }
+                @keyframes authBannerAtmosphereOut {
+                    from { opacity: 1; }
+                    to { opacity: 0; }
                 }
                 @keyframes authBannerCopyIn {
                     from { opacity: 0; transform: translate3d(0, 9px, 0); }
@@ -184,13 +188,13 @@ function AuthBanner() {
             {previousIndex !== null && previousIndex !== currentIndex && (
                 <div
                     className={`pointer-events-none absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[previousIndex]} transition-opacity duration-[1200ms] ease-out`}
-                    style={{ opacity: 0, transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
+                    style={{ opacity: 1, animation: 'authBannerAtmosphereOut 1200ms ease-out forwards', transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                     aria-hidden="true"
                 />
             )}
             <div
                 className={`auth-banner-atmosphere absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[currentIndex]} transition-opacity duration-[1200ms] ease-out`}
-                style={{ opacity: 1, transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
+                style={{ opacity: 0, animation: 'authBannerAtmosphereIn 1200ms ease-out forwards', transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                 aria-hidden="true"
             />
             <div
