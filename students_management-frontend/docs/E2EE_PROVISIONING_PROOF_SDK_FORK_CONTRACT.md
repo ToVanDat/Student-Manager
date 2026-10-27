@@ -75,3 +75,28 @@ Use the SDK's existing internal Noble/WebCrypto primitives rather than adding a 
 7. Enable only when client and server both advertise protocol v1. No silent legacy-ACK fallback for sessions requiring proof.
 
 No fork, code change, schema migration, or runtime test is included in this contract.
+
+## Existing application relay integration audit (2026-10-27)
+
+The current backend already has an authenticated account-scoped route:
+`GET /provisioning/:sessionId/message`. Its repository response currently contains status, encrypted message, the new-device ephemeral public key, and expiry. The router applies `authMiddleware`; the controller passes the authenticated account ID to the service and repository. This is a viable place to expose the v1 challenge to both browser contexts, provided both are already authenticated as the same account under the existing application flow.
+
+The existing primary-to-relay write is:
+`POST /provisioning/:sessionId/message`, which currently stores only `encrypted_message` and moves `connected -> ready`. It must become an atomic write of ciphertext, protocol version, challenge-bound primary commitment, and transcript digest. Validate that the session has both ephemeral keys and an unexpired challenge before transitioning to ready.
+
+The existing new-device ACK is:
+`POST /provisioning/:sessionId/ack`, authenticated with `X-E2EE-Device-Token`. This is the correct place to carry the proof. The repository currently activates the linked device on ACK; that activation must be gated on proof verification in the same transaction, not in a preflight read followed by a separate update.
+
+The existing owner-abort route remains separate and must continue to serialize with proof ACK by locking the same provisioning-session row.
+
+### Integration details that must not be overlooked
+
+- The challenge must be created when the new-device ephemeral public key is accepted, not when the session is first created (the second public key is not yet known then).
+- Challenge issuance and the `waiting -> connected` transition must be atomic. A repeated connect request must not replace the challenge or the bound public key.
+- The primary needs the challenge and the new-device public key before it calls `provisionDevice()`; the current SDK relay contract has no explicit challenge method, so the fork must add one or formally extend the existing status read used by the primary.
+- The new device receives the same challenge and public keys through the same session-bound read, alongside ciphertext when ready.
+- The owner commitment must not be returned by the GET route. Only the new-device proof is submitted to ACK.
+- The current route-level account authentication is not a substitute for device-token authentication at ACK. Keep the token check and bind the token to the exact pending device/session.
+- A proof-enabled session must reject legacy ACKs. A legacy session must not accidentally be treated as proof-enabled based on client-supplied flags.
+
+No backend code or database schema has been changed in this audit.
