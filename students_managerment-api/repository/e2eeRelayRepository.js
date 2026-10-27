@@ -837,83 +837,81 @@ const acknowledgeProvisioning = async (userId, sessionId, deviceToken, proof = n
     }
 
     let proofBytes = null;
-    let proofAckDigest = null;
-    if (session.proof_protocol_version === 1) {
-        if (typeof proof !== 'string') {
-            throw httpError(409, 'Phiên yêu cầu provisioning proof v1', 'E2EE_PROVISIONING_PROOF_REQUIRED');
-        }
-        try {
-            proofBytes = decodeCanonical32(proof, 'proof');
-        } catch {
-            throw httpError(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
-        }
-        if (session.status === 'linked_pending_ack') {
-            if (!session.proof_challenge || !session.proof_commitment ||
-                !session.proof_ciphertext_digest || !session.encrypted_message) {
-                proofBytes.fill(0);
-                throw httpError(409, 'Phiên proof v1 thiếu dữ liệu transcript', 'E2EE_PROVISIONING_PROOF_NOT_READY');
+    try {
+        let proofAckDigest = null;
+        if (session.proof_protocol_version === 1) {
+            if (typeof proof !== 'string') {
+                throw httpError(409, 'Phiên yêu cầu provisioning proof v1', 'E2EE_PROVISIONING_PROOF_REQUIRED');
             }
-            const storedDigest = Buffer.from(session.proof_ciphertext_digest);
-            const currentDigest = Buffer.from(digestProvisioningCiphertext(session.encrypted_message), 'base64');
-            if (!crypto.timingSafeEqual(storedDigest, currentDigest) ||
-                !verifyProvisioningProof({
-                    commitment: Buffer.from(session.proof_commitment).toString('base64'),
-                    proof
-                })) {
-                proofBytes.fill(0);
-                throw httpError(401, 'Provisioning proof không khớp phiên liên kết', 'E2EE_PROVISIONING_PROOF_MISMATCH');
+            try {
+                proofBytes = decodeCanonical32(proof, 'proof');
+            } catch {
+                throw httpError(400, 'Provisioning proof không hợp lệ', 'E2EE_PROVISIONING_PROOF_INVALID');
             }
+            if (session.status === 'linked_pending_ack') {
+                if (!session.proof_challenge || !session.proof_commitment ||
+                    !session.proof_ciphertext_digest || !session.encrypted_message) {
+                    throw httpError(409, 'Phiên proof v1 thiếu dữ liệu transcript', 'E2EE_PROVISIONING_PROOF_NOT_READY');
+                }
+                const storedDigest = Buffer.from(session.proof_ciphertext_digest);
+                const currentDigest = Buffer.from(digestProvisioningCiphertext(session.encrypted_message), 'base64');
+                if (!crypto.timingSafeEqual(storedDigest, currentDigest) ||
+                    !verifyProvisioningProof({
+                        commitment: Buffer.from(session.proof_commitment).toString('base64'),
+                        proof
+                    })) {
+                    throw httpError(401, 'Provisioning proof không khớp phiên liên kết', 'E2EE_PROVISIONING_PROOF_MISMATCH');
+                }
+            }
+            proofAckDigest = crypto.createHash('sha256').update(proofBytes).digest();
+        } else if (proof != null) {
+            throw httpError(400, 'Phiên provisioning legacy không nhận proof', 'E2EE_PROVISIONING_PROOF_UNEXPECTED');
         }
-        proofAckDigest = crypto.createHash('sha256').update(proofBytes).digest();
-    } else if (proof != null) {
-        throw httpError(400, 'Phiên provisioning legacy không nhận proof', 'E2EE_PROVISIONING_PROOF_UNEXPECTED');
-    }
 
-    if (session.status === 'completed') {
-        const device = await client.query(
-            `SELECT device_id FROM e2ee_sdk_devices
+        if (session.status === 'completed') {
+            const device = await client.query(
+                `SELECT device_id FROM e2ee_sdk_devices
+                 WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
+                   AND revoked_at IS NULL AND enabled = TRUE AND device_token_hash = $3
+                   AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
+                 LIMIT 1`,
+                [userId, session.assigned_device_id, tokenHash, session.completed_at]
+            );
+            const sameProof = session.proof_protocol_version === 1 && session.proof_ack_digest &&
+                proofAckDigest && crypto.timingSafeEqual(Buffer.from(session.proof_ack_digest), proofAckDigest);
+            if (!device.rows[0] || (session.proof_protocol_version === 1 && !sameProof)) {
+                throw httpError(409, 'ACK provisioning đã hoàn tất với thông tin khác', 'E2EE_PROVISIONING_ACK_CONFLICT');
+            }
+            return { acknowledged: true, alreadyCompleted: true };
+        }
+
+        const activated = await client.query(
+            `UPDATE e2ee_sdk_devices SET enabled = TRUE
              WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
-               AND revoked_at IS NULL AND enabled = TRUE AND device_token_hash = $3
+               AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
                AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
-             LIMIT 1`,
+             RETURNING device_id`,
             [userId, session.assigned_device_id, tokenHash, session.completed_at]
         );
-        const sameProof = session.proof_protocol_version === 1 && session.proof_ack_digest &&
-            proofAckDigest && crypto.timingSafeEqual(Buffer.from(session.proof_ack_digest), proofAckDigest);
-        if (!device.rows[0] || (session.proof_protocol_version === 1 && !sameProof)) {
-            if (proofBytes) proofBytes.fill(0);
-            throw httpError(409, 'ACK provisioning đã hoàn tất với thông tin khác', 'E2EE_PROVISIONING_ACK_CONFLICT');
+        if (!activated.rows[0]) {
+            throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
         }
-        if (proofBytes) proofBytes.fill(0);
-        return { acknowledged: true, alreadyCompleted: true };
+        const completed = await client.query(
+            `UPDATE e2ee_sdk_provisioning_sessions
+             SET status = 'completed',
+                 proof_consumed_at = CASE WHEN proof_protocol_version = 1 THEN NOW() ELSE NULL END,
+                 proof_ack_digest = $3::bytea,
+                 proof_challenge = CASE WHEN proof_protocol_version = 1 THEN NULL ELSE proof_challenge END
+             WHERE session_id = $1 AND owner_user_id = $2
+               AND status = 'linked_pending_ack' AND expires_at > NOW()
+             RETURNING session_id`,
+            [sessionId, userId, proofAckDigest]
+        );
+        if (!completed.rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
+        return { acknowledged: true };
+    } finally {
+        proofBytes?.fill(0);
     }
-
-    const activated = await client.query(
-        `UPDATE e2ee_sdk_devices SET enabled = TRUE
-         WHERE user_id = $1 AND device_id = $2 AND linked = TRUE
-           AND revoked_at IS NULL AND enabled = FALSE AND device_token_hash = $3
-           AND created_at < $4::timestamptz + INTERVAL '1 millisecond'
-         RETURNING device_id`,
-        [userId, session.assigned_device_id, tokenHash, session.completed_at]
-    );
-    if (!activated.rows[0]) {
-        if (proofBytes) proofBytes.fill(0);
-        throw httpError(401, 'Thông tin xác thực thiết bị mới không hợp lệ', 'E2EE_DEVICE_AUTH_FAILED');
-    }
-    const completed = await client.query(
-        `UPDATE e2ee_sdk_provisioning_sessions
-         SET status = 'completed',
-             proof_consumed_at = CASE WHEN proof_protocol_version = 1 THEN NOW() ELSE NULL END,
-             proof_ack_digest = $3::bytea,
-             proof_challenge = CASE WHEN proof_protocol_version = 1 THEN NULL ELSE proof_challenge END
-         WHERE session_id = $1 AND owner_user_id = $2
-           AND status = 'linked_pending_ack' AND expires_at > NOW()
-         RETURNING session_id`,
-        [sessionId, userId, proofAckDigest]
-    );
-    if (proofBytes) proofBytes.fill(0);
-    if (!completed.rows[0]) throw httpError(409, 'Không thể xác nhận phiên liên kết thiết bị');
-    return { acknowledged: true };
 });
 
 const rollbackProvisioning = async (userId, sessionId, deviceToken) => withTransaction(async client => {
