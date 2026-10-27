@@ -206,6 +206,8 @@ jobs:
           node-version: 22
       - name: Install API dependencies
         run: npm install --no-audit --no-fund
+      - name: Install Linux sharp runtime omitted from the cross-platform lockfile
+        run: npm install --no-save --package-lock=false --include=optional sharp@0.34.5
       - name: Run API unit tests
         run: npm test
       - name: Run Cloudflare R2 Worker tests
