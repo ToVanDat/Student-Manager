@@ -68,6 +68,27 @@ def extract_five_points(face: list, width: int, height: int) -> dict:
     }
 
 
+def extract_liveness_signals(face_blendshapes: list) -> dict:
+    """Return trusted MediaPipe blendshape scores for temporal liveness checks."""
+    if not face_blendshapes:
+        raise ValueError("Face Landmarker did not return blendshape scores")
+
+    categories = face_blendshapes[0]
+    required = ("eyeBlinkLeft", "eyeBlinkRight", "mouthSmileLeft", "mouthSmileRight", "jawOpen")
+    scores = {}
+    for category in categories:
+        name = getattr(category, "category_name", None)
+        score = getattr(category, "score", None)
+        if name in required:
+            if not isinstance(score, (int, float)) or not np.isfinite(score) or score < 0 or score > 1:
+                raise ValueError("Face Landmarker returned an invalid blendshape score")
+            scores[name] = float(score)
+
+    if any(name not in scores for name in required):
+        raise ValueError("Face Landmarker returned incomplete liveness signals")
+    return scores
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global landmarker
@@ -88,7 +109,7 @@ async def lifespan(app: FastAPI):
         min_face_detection_confidence=0.65,
         min_face_presence_confidence=0.65,
         min_tracking_confidence=0.65,
-        output_face_blendshapes=False,
+        output_face_blendshapes=True,
         output_facial_transformation_matrixes=False,
     )
     landmarker = mp.tasks.vision.FaceLandmarker.create_from_options(options)
@@ -163,9 +184,10 @@ async def landmarks(request: Request, authorization: str | None = Header(default
         if len(faces) != 1:
             raise HTTPException(status_code=422, detail="Exactly one face must be visible")
         extracted = extract_five_points(faces[0], width, height)
+        liveness = extract_liveness_signals(result.face_blendshapes or [])
     except HTTPException:
         raise
     except Exception:
         raise HTTPException(status_code=422, detail="Face landmarks could not be extracted")
 
-    return {"width": width, "height": height, **extracted}
+    return {"width": width, "height": height, **extracted, "liveness": liveness}
