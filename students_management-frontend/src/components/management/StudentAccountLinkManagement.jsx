@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Link2, LoaderCircle, RefreshCw, Search, Unlink } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -18,12 +18,15 @@ export default function StudentAccountLinkManagement() {
     const [saving, setSaving] = useState(false);
     const [unlinkTarget, setUnlinkTarget] = useState(null);
     const [unlinkReason, setUnlinkReason] = useState('');
+    const requestIdRef = useRef(0);
 
     const load = useCallback(async () => {
+        const requestId = ++requestIdRef.current;
         setLoading(true);
         setError('');
         try {
             const result = await getStudentAccountLinks(search.trim());
+            if (requestId !== requestIdRef.current) return;
             setData({
                 linked: Array.isArray(result?.linked) ? result.linked : [],
                 availableUsers: Array.isArray(result?.availableUsers) ? result.availableUsers : [],
@@ -31,9 +34,10 @@ export default function StudentAccountLinkManagement() {
                 audit: Array.isArray(result?.audit) ? result.audit : [],
             });
         } catch (err) {
+            if (requestId !== requestIdRef.current) return;
             setError(err?.response?.data?.message || (en ? 'Could not load account-linking data.' : 'Không thể tải dữ liệu liên kết tài khoản.'));
         } finally {
-            setLoading(false);
+            if (requestId === requestIdRef.current) setLoading(false);
         }
     }, [search, en]);
 
