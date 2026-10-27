@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Fingerprint, Link2, Trash2, Unlink } from 'lucide-react';
+import { Fingerprint, Link2, Trash2, Unlink, ShieldCheck } from 'lucide-react';
 import {
     beginPasskeyRegistrationApi, finishPasskeyRegistrationApi, listPasskeysApi,
     deletePasskeyApi, linkGoogleApi, getGoogleLinkApi, unlinkGoogleApi,
@@ -213,10 +213,10 @@ export default function AdvancedSecurityMethods() {
         <section className="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
             <div className="mb-3 flex items-center gap-2">
                 <Fingerprint size={19} className="text-blue-600" />
-                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Passkey và tài khoản Google</h3>
+                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Face Login, Passkey và tài khoản Google</h3>
             </div>
             <p className="mb-4 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-                Passkey có thể dùng Face ID, Windows Hello, vân tay hoặc PIN tùy thiết bị. Hệ điều hành thực hiện xác minh; ứng dụng không nhận hay lưu ảnh khuôn mặt và máy chủ chỉ lưu khóa công khai. Google chỉ liên kết sau khi bạn xác thực trong phiên tài khoản hiện tại.
+                Face Login sử dụng xác thực sinh trắc học của thiết bị thông qua WebAuthn. Thiết bị có thể dùng Face ID, Windows Hello, vân tay hoặc PIN tùy khả năng hỗ trợ; ứng dụng không nhận hay lưu ảnh khuôn mặt hoặc mẫu sinh trắc học. Máy chủ chỉ lưu khóa công khai. Google chỉ liên kết sau khi bạn xác thực trong phiên tài khoản hiện tại.
             </p>
             <button type="button" disabled={busy} onClick={registerPasskey} className="mb-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
                 <Fingerprint size={16} /> Đăng ký Passkey (sinh trắc học trên thiết bị)
@@ -233,7 +233,7 @@ export default function AdvancedSecurityMethods() {
                 ))}
                 {passkeysLoading && <p role="status" className="text-xs text-slate-500">Đang tải danh sách passkey…</p>}
                 {!passkeysLoading && passkeysError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{passkeysError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">Thử lại</button></div>}
-                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa đăng ký passkey trên tài khoản này.</p>}
+                {!passkeysLoading && !passkeysError && !credentials.length && <p className="text-xs text-slate-400">Chưa thiết lập Face Login. Hãy bật trên thiết bị đang sử dụng.</p>}
             </div>
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300"><Link2 size={15} /> Liên kết Google</div>
             {googleStatusLoading && <p role="status" className="text-xs text-slate-500">Đang kiểm tra trạng thái Google…</p>}
