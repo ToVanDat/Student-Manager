@@ -102,3 +102,28 @@ Do not log plaintext, private keys, shared secrets, proof keys, proof bytes, or 
 - SDK source patch: not applied.
 - Backend proof verification/schema: not implemented.
 - Runtime tests and CI for this work: not run.
+
+
+## Backend schema baseline inspected
+
+The current repository's `students_managerment-api/sql/e2ee_foundation_migration.sql` creates `e2ee_sdk_provisioning_sessions` with:
+- `owner_ephemeral_public_key`
+- `new_device_ephemeral_public_key`
+- `encrypted_message`
+- status, owner, assigned device, expiry and completion timestamps
+
+It has no protocol-version, challenge, primary-commitment, ciphertext-digest, or proof-consumption columns. The integration test loads this foundation migration into a disposable database before running repository flows.
+
+The current repository writes only the encrypted message in `sendProvisioningMessage`; `getProvisioningMessage` returns the ciphertext and new-device ephemeral public key; `acknowledgeProvisioning` validates the per-device token, then activates the disabled device and marks the session completed. This confirms the exact persistence gap described above.
+
+A future additive migration will need, at minimum, nullable versioned fields for the challenge, primary commitment, and ciphertext digest, plus a consumed/verified marker or equivalent state. The final shape must be chosen after checking all migration entry points and production schema drift. Do not add these columns to the existing foundation migration: it is already an established migration and changing it risks breaking deployed databases. Do not apply any migration as part of this phase.
+
+## Repository-level implementation seams
+
+- `connectNewDevice`: generate and persist the challenge atomically with the first `waiting -> connected` transition; a repeated connect must not rotate it.
+- `sendProvisioningMessage`: accept and persist protocol version, primary commitment, ciphertext digest, and encrypted message atomically with `connected -> ready`.
+- `getProvisioningMessage`: return protocol version/challenge and ciphertext to the authenticated account session, but never return the primary commitment.
+- `acknowledgeProvisioning`: require proof for proof-enabled sessions, verify it using constant-time comparison, then activate the device and consume the challenge in the same transaction.
+- `abortProvisioningSession`: preserve the existing owner-abort behavior; it already locks the same session row and must remain serialized with proof ACK.
+
+Legacy ACK must remain unavailable to a proof-enabled session. A missing proof is not a reason to fall back to the old lifecycle-only ACK.
