@@ -624,5 +624,10 @@
   "studentCalls": "Cuộc gọi",
   "studentCallsDetail": "Mở không gian cuộc gọi",
   "studentAccountSettings": "Cài đặt tài khoản",
-  "studentAccountSettingsDetail": "Hồ sơ và bảo mật"
+  "studentAccountSettingsDetail": "Hồ sơ và bảo mật",
+  "authProgress": "Tiến trình xác thực",
+  "authStepOf": "Bước {{current}} / {{total}}",
+  "forgotStepEmail": "Email",
+  "forgotStepOtp": "Xác minh OTP",
+  "forgotStepPassword": "Mật khẩu mới"
 }
