@@ -112,9 +112,10 @@ exports.getBiometricLoginStatus = async (req, res) => {
     try {
         const credentials = await advancedAuth.listPasskeys(req.user.sub);
         return res.json({
-            enabled: credentials.length > 0,
+            configured: credentials.length > 0,
             credentialCount: credentials.length,
-            method: 'webauthn-device-verification'
+            method: 'webauthn-device-verification',
+            biometricMethodSelectedByDevice: true
         });
     } catch (error) { return fail(res, error); }
 };
