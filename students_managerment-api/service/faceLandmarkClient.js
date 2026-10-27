@@ -70,4 +70,28 @@ async function detectFaceLandmarks(imageBuffer) {
     return result;
 }
 
-module.exports = { detectFaceLandmarks };
+async function ensureLandmarkServiceReady() {
+    const token = process.env.FACE_LANDMARK_SERVICE_TOKEN;
+    if (!token) throw serviceError('Thiếu FACE_LANDMARK_SERVICE_TOKEN', 'FACE_AUTH_CONFIG_NOT_READY');
+    const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\\/$/, '');
+    let url;
+    try { url = new URL(baseUrl); }
+    catch { throw serviceError('FACE_LANDMARK_SERVICE_URL không hợp lệ', 'FACE_AUTH_CONFIG_INVALID'); }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
+    }
+    try {
+        const response = await fetch(url.toString() + '/health', {
+            headers: { authorization: 'Bearer ' + token },
+            signal: AbortSignal.timeout(2500)
+        });
+        if (!response.ok) throw new Error('not ready');
+        const result = await response.json();
+        if (result?.ok !== true) throw new Error('not ready');
+        return true;
+    } catch {
+        throw serviceError('Dịch vụ MediaPipe nội bộ chưa sẵn sàng', 'FACE_LANDMARK_SERVICE_UNAVAILABLE');
+    }
+}
+
+module.exports = { detectFaceLandmarks, ensureLandmarkServiceReady };
