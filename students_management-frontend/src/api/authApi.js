@@ -191,7 +191,7 @@ export const captureFaceEnrollmentFrameApi = async (challengeId, livenessNonce, 
   body.append('challengeId', challengeId);
   body.append('livenessNonce', livenessNonce);
   body.append('frame', frame, 'face-frame.jpg');
-  return (await apiClient.post('/api/auth/face/enrollment/frame', body)).data;
+  return (await apiClient.post('/api/auth/face/enrollment/frame', body, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
 };
 export const disableFaceLoginApi = async () => (await apiClient.delete('/api/auth/face/credential')).data;
 export const beginFaceLoginApi = async username => (await axios.post(`${API_BASE_URL}/api/auth/face/login/options`, { username }, { withCredentials: true })).data;
