@@ -11,6 +11,7 @@ import './styles/reference-ui.css';
 import './styles/chat-messenger-polish.css';
 import './styles/call-experience.css';
 import './styles/product-ui-refresh.css';
+import './styles/auth-motion.css';
 
 createRoot(document.getElementById('root')).render(
     // <StrictMode>
