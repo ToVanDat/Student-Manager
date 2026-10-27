@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require('./faceTemplateCrypto.js');
+const { verifySensitiveAction } = require('./advancedAuthService.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
 
@@ -137,7 +138,9 @@ async function getStatus(userId) {
     };
 }
 
-async function beginEnrollment(userId) {
+async function beginEnrollment(userId, verificationToken) {
+    // Require recent account re-authentication before creating an enrollment challenge.
+    await verifySensitiveAction(userId, null, verificationToken, 'face-enroll');
     const id = token(18);
     const challenge = token(32);
     await saveChallenge('enrollment', id, {
