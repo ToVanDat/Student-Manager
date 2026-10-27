@@ -6,7 +6,7 @@ const {
 } = require('../service/faceAlignment.js');
 
 test('five-point similarity transform maps detected landmarks to canonical coordinates', () => {
-  const source = [[100, 120], [220, 125], [160, 190], [115, 255], [210, 252]];
+  const source = REFERENCE_POINTS.map(([x, y]) => [x * 1.5 + 20, y * 1.5 - 10]);
   const transform = estimateSimilarityTransform(source);
   const mapped = source.map(([x, y]) => [
     transform.a * x - transform.b * y + transform.tx,
