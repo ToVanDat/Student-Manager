@@ -1,5 +1,7 @@
 const authRepository =
     require('../repository/authRepository.js');
+const { removeAccessTokensForSession } =
+    require('./accessTokenStore.js');
 
 
 // ======================================================
@@ -76,6 +78,14 @@ const revokeSession = async (
     await authRepository.revokeRefreshTokensBySessionId(
         sessionId
     );
+
+    // The database revoke is authoritative. Redis cleanup is best-effort:
+    // authMiddleware still rejects the session if Redis cleanup is unavailable.
+    try {
+        await removeAccessTokensForSession(sessionId);
+    } catch (error) {
+        console.warn('[SESSION] Could not clear revoked access tokens:', error.message);
+    }
 
 
     // ==============================================
@@ -164,6 +174,12 @@ const revokeOtherSessions = async (
         await authRepository.revokeRefreshTokensBySessionId(
             session.id
         );
+
+        try {
+            await removeAccessTokensForSession(session.id);
+        } catch (error) {
+            console.warn('[SESSION] Could not clear revoked access tokens:', error.message);
+        }
 
 
         // ==========================================
