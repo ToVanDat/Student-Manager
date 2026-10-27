@@ -59,3 +59,23 @@ jobs:
         run: npm run lint
       - name: Build production bundle
         run: npm run build
+
+  face-landmark-tests:
+    name: Face landmark service tests (Python)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: students_managerment-api/face-landmark-service
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: students_managerment-api/face-landmark-service/requirements.txt
+      - name: Install pinned landmark-service dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Run landmark extraction unit tests
+        run: python -m unittest -v test_landmarks.py
