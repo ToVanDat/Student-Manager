@@ -6,7 +6,7 @@ const { redisClient } = require('../src/config/redis.js');
 const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require('./faceTemplateCrypto.js');
 const { verifySensitiveAction, issueSession } = require('./advancedAuthService.js');
 const { createLivenessChallenge, verifyLivenessSequence } = require('./faceLivenessChallenge.js');
-const { inferFaceImage } = require('./faceInferenceService.js');
+const { inferFaceImage, ensureFaceInferenceReady } = require('./faceInferenceService.js');
 const { verifyCapturePayload } = require('./faceCaptureValidation.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
@@ -194,16 +194,25 @@ async function getStatus(userId) {
         [userId]
     );
     const credential = result.rows[0] || null;
-    const enabled = process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' && process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true';
+    let pipelineReady = false;
+    if (process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' && process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true') {
+        try {
+            requirePipelineConfig();
+            await ensureFaceInferenceReady();
+            pipelineReady = true;
+        } catch {
+            pipelineReady = false;
+        }
+    }
     return {
         configured: Boolean(credential && !credential.disabled_at),
         credential: credential ? {
             id: credential.id, modelId: credential.model_id, modelVersion: credential.model_version,
             enrolledAt: credential.enrolled_at, lastUsedAt: credential.last_used_at, disabledAt: credential.disabled_at
         } : null,
-        enrollmentAvailable: false,
-        loginAvailable: false,
-        reason: enabled ? 'PIPELINE_VALIDATION_REQUIRED' : 'SERVER_SIDE_INFERENCE_REQUIRED'
+        enrollmentAvailable: pipelineReady,
+        loginAvailable: pipelineReady,
+        reason: pipelineReady ? null : 'SERVER_SIDE_INFERENCE_REQUIRED'
     };
 }
 
