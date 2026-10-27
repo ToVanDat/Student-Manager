@@ -169,7 +169,7 @@ function AuthBanner() {
             <div
                 key={currentIndex}
                 className={`auth-banner-atmosphere absolute -inset-8 z-[1] h-[calc(100%+4rem)] w-[calc(100%+4rem)] bg-linear-to-br ${bannerBackgrounds[currentIndex]} will-change-[opacity,transform]`}
-                style={{ transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
+                style={{ animation: 'authBannerAtmosphereIn 1100ms cubic-bezier(0.22, 1, 0.36, 1) both', transform: 'translate3d(var(--parallax-back-x, 0px), var(--parallax-back-y, 0px), 0) scale(1.015)' }}
                 aria-hidden="true"
             />
             <div
