@@ -122,3 +122,22 @@ test('group role changes validate role and distinguish missing target from forbi
         );
     });
 });
+
+
+test('concurrent duplicate group member insert is translated to HTTP 409 conflict', async () => {
+    await withMocks([
+        [conversationRepository, 'getConversationInfo', async () => ({ id: 5, type: 'group' })],
+        [conversationRepository, 'getMemberRole', async (_conversationId, userId) => userId === 9 ? 'owner' : null],
+        [userRepository, 'findActiveUserById', async () => ({ id: 11 })],
+        [conversationRepository, 'addMember', async () => {
+            const error = new Error('duplicate key value violates unique constraint');
+            error.code = '23505';
+            throw error;
+        }]
+    ], async () => {
+        await assert.rejects(
+            conversationService.addGroupMember(5, 9, 11),
+            error => error.statusCode === 409
+        );
+    });
+});
