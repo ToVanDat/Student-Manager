@@ -110,7 +110,6 @@ export default function FaceLoginSettings() {
             challengeId = challenge.challengeId;
             if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
-            const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
             setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
             await wait(900);
 
