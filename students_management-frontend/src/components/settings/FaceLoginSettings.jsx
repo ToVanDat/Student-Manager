@@ -9,8 +9,8 @@ import {
     getFaceLoginStatusApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 12;
-const FRAME_INTERVAL_MS = 450;
+const FRAME_COUNT = 6;
+const FRAME_INTERVAL_MS = 500;
 
 function wait(ms) {
     return new Promise(resolve => window.setTimeout(resolve, ms));
