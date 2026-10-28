@@ -43,6 +43,7 @@ test('Redis protection records pair failures atomically without exposing identif
     const { recordFailure } = require('../service/passwordLoginProtection');
     const originalEval = redisClient.eval;
     const calls = [];
+    const originalSecret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
     process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
     redisClient.eval = async (script, options) => {
         calls.push({ script, options });
@@ -65,7 +66,8 @@ test('Redis protection records pair failures atomically without exposing identif
         assert.match(calls[0].script, /PSETEX/);
     } finally {
         redisClient.eval = originalEval;
-        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        if (originalSecret === undefined) delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        else process.env.AUTH_RATE_LIMIT_HASH_SECRET = originalSecret;
     }
 });
 
@@ -73,6 +75,7 @@ test('Redis protection reads cooldown using Redis PTTL and rounds retry-after up
     const { redisClient } = require('../src/config/redis');
     const { getCooldownState } = require('../service/passwordLoginProtection');
     const originalEval = redisClient.eval;
+    const originalSecret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
     process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
     redisClient.eval = async (script, options) => {
         assert.match(script, /PTTL/);
@@ -87,7 +90,8 @@ test('Redis protection reads cooldown using Redis PTTL and rounds retry-after up
         });
     } finally {
         redisClient.eval = originalEval;
-        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        if (originalSecret === undefined) delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        else process.env.AUTH_RATE_LIMIT_HASH_SECRET = originalSecret;
     }
 });
 
@@ -96,6 +100,7 @@ test('successful login reset deletes only the current account/IP pair keys', asy
     const { clearAccountIpState } = require('../service/passwordLoginProtection');
     const originalDel = redisClient.del;
     const calls = [];
+    const originalSecret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
     process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
     redisClient.del = async (keys) => {
         calls.push(keys);
@@ -111,7 +116,8 @@ test('successful login reset deletes only the current account/IP pair keys', asy
         assert.ok(calls[0].every((key) => !key.includes('203.0.113.10')));
     } finally {
         redisClient.del = originalDel;
-        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        if (originalSecret === undefined) delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        else process.env.AUTH_RATE_LIMIT_HASH_SECRET = originalSecret;
     }
 });
 
@@ -120,6 +126,7 @@ test('password reset clears account pair index and aggregate risk atomically', a
     const { resetAccountState } = require('../service/passwordLoginProtection');
     const originalEval = redisClient.eval;
     const calls = [];
+    const originalSecret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
     process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
     redisClient.eval = async (script, options) => {
         calls.push({ script, options });
@@ -138,6 +145,7 @@ test('password reset clears account pair index and aggregate risk atomically', a
         assert.match(calls[0].script, /DEL/);
     } finally {
         redisClient.eval = originalEval;
-        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        if (originalSecret === undefined) delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        else process.env.AUTH_RATE_LIMIT_HASH_SECRET = originalSecret;
     }
 });
