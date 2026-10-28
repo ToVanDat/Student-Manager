@@ -30,7 +30,7 @@ test('alignment creates a 112x112 RGB crop', () => {
   assert.equal(aligned.length, 112 * 112 * 3);
 });
 
-test('PAD crop is a square 80x80 crop expanded around the face box', () => {
+test('PAD crop follows upstream bounded 2.7x bbox expansion and produces 80x80', () => {
   const rgb = Buffer.alloc(200 * 200 * 3, 200);
   const crop = cropPadRgb(rgb, 200, 200, { x: 70, y: 60, width: 60, height: 80 });
   assert.equal(crop.length, 80 * 80 * 3);
