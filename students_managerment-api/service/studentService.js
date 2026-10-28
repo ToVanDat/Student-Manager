@@ -8,6 +8,10 @@ const getStudentPage = async (query) => {
     return studentRepository.getStudentPage(query);
 };
 
+const getStudentExportRows = async (query) => {
+    return studentRepository.getStudentExportRows(query);
+};
+
 
 const getStudentPortalByUserId = async (userId) => {
     return studentRepository.getStudentPortalByUserId(userId);
@@ -76,6 +80,7 @@ const deleteStudent = async (id) => {
 module.exports = {
     getAllStudents,
     getStudentPage,
+    getStudentExportRows,
     getStudentPortalByUserId,
     listStudentAccountLinkAdminData,
     createStudentAccountLink,

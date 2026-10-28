@@ -22,6 +22,14 @@ export const getMyStudentPortal = async () => {
   return response.data;
 };
 
+export const exportStudentsCsv = async (params = {}) => {
+  const response = await apiClient.get(`${STUDENT_API_URL}/export`, {
+    params,
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
 export const getStudents = async (params) => {
   const response = params
     ? await apiClient.get(STUDENT_API_URL, { params })

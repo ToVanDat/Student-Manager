@@ -141,6 +141,44 @@ const getStudentPage = async ({
     };
 };
 
+const STUDENT_EXPORT_MAX_ROWS = 20000;
+
+const getStudentExportRows = async ({ search = '', classId = null, gender = '' } = {}) => {
+    const { whereSql, values } = buildStudentPageFilters({
+        keyword: String(search || '').trim(),
+        classId,
+        gender
+    });
+    const limitPosition = values.length + 1;
+    const result = await pool.query(
+        `SELECT
+            s.id,
+            s.student_code,
+            s.name,
+            s.email,
+            s.date_of_birth,
+            s.gender,
+            s.class_id,
+            c.class_code,
+            c.class_name,
+            COUNT(*) OVER()::int AS total_count
+         FROM students s
+         JOIN classes c ON c.id = s.class_id
+         ${whereSql}
+         ORDER BY s.id ASC
+         LIMIT ${limitPosition}`,
+        [...values, STUDENT_EXPORT_MAX_ROWS + 1]
+    );
+
+    const totalCount = Number(result.rows[0]?.total_count) || 0;
+    if (totalCount > STUDENT_EXPORT_MAX_ROWS) {
+        return { kind: 'too_many', totalCount, maxRows: STUDENT_EXPORT_MAX_ROWS };
+    }
+
+    const rows = result.rows.map(({ total_count, ...student }) => student);
+    return { kind: 'ok', rows, totalCount };
+};
+
 const getStudentById = async (id) => {
     const result = await pool.query(`
         SELECT
@@ -403,6 +441,7 @@ const removeStudentAccountLink = async ({ userId, actorId, reason }) => {
 module.exports = {
     getAllStudents,
     getStudentPage,
+    getStudentExportRows,
     getStudentPortalByUserId,
     listStudentAccountLinkAdminData,
     createVerifiedStudentAccountLink,

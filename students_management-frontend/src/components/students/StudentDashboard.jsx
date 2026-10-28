@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, GraduationCap, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, GraduationCap, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import { exportStudentsCsv } from '@/api/studentApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import StudentForm from '@/components/students/StudentForm.jsx';
 import StudentTable from '@/components/students/StudentTable.jsx';
@@ -71,6 +73,43 @@ function StudentDashboard({
     const { t } = useLanguage();
     const [viewingStudent, setViewingStudent] = useState(null);
 
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async () => {
+        if (!isAdmin || exporting) return;
+        setExporting(true);
+        try {
+            const blob = await exportStudentsCsv({
+                search: search || undefined,
+                classId: classFilter || undefined,
+                gender: genderFilter || undefined
+            });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'students-' + new Date().toISOString().slice(0, 10) + '.csv';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast.success(t('downloadFile'));
+        } catch (error) {
+            let payload = error?.response?.data;
+            if (payload instanceof Blob) {
+                try {
+                    payload = JSON.parse(await payload.text());
+                } catch {
+                    payload = null;
+                }
+            }
+            toast.error(payload?.message || t('error'));
+        } finally {
+            setExporting(false);
+        }
+    };
+
+
+
     useEffect(() => {
         if (!isAdmin || !showForm) return undefined;
 
@@ -94,7 +133,10 @@ function StudentDashboard({
                 <div className="app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                     <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/80 px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900/70">
                         <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-50 text-blue-800 ring-1 ring-inset ring-blue-200/70 dark:from-blue-950/80 dark:to-cyan-950/50 dark:text-blue-200 dark:ring-blue-900"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
-                        {isAdmin && <button className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>}
+                        {isAdmin && <div className="flex flex-wrap items-center gap-2">
+                            <button type="button" onClick={handleExport} disabled={exporting} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"><Download size={16} />{exporting ? t('loading') : 'CSV'} {t('downloadFile')}</button>
+                            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>
+                        </div>}
                     </div>
                     <div className="px-4 pt-4 sm:px-6">
                         <StudentSearch value={search} onChange={onSearchChange} />

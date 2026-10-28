@@ -23,6 +23,9 @@ router.get('/account-links', authMiddleware, requireRole('admin'), requirePermis
 router.post('/account-links', authMiddleware, requireRole('admin'), requirePermission('students.link_accounts'), studentController.createStudentAccountLink);
 router.delete('/account-links/:userId', authMiddleware, requireRole('admin'), requirePermission('students.link_accounts'), studentController.deleteStudentAccountLink);
 
+// Admin-only export; uses the same view permission as the roster.
+router.get('/export', authMiddleware, requireRole('admin'), requirePermission('students.view'), studentController.exportStudentsCsv);
+
 // Admin only: list responses include personal student data.
 router.get(
     '/',
