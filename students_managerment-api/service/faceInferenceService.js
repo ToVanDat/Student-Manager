@@ -175,6 +175,9 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
 
 async function ensureFaceInferenceReady() {
     await getRuntime();
+    if (!PAD_MODEL_CONTRACT.output.verified) {
+        throw configError('MiniFASNet output contract chưa được xác minh; Face Login không được phép nhận challenge.');
+    }
     return true;
 }
 
