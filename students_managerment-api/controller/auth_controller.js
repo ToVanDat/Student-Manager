@@ -611,7 +611,7 @@ const login = async (req, res) => {
 
         if (error.code === 'AUTH_INVALID_CREDENTIALS') {
             try {
-                await recordFailure(username, req.ip || ipAddress);
+                await recordFailure(username, req.ip);
             } catch (protectionError) {
                 console.error('[AUTH] Could not record failed password attempt:', protectionError.code || protectionError.message);
             }
