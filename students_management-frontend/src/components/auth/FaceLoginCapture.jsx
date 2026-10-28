@@ -35,6 +35,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
     const cancelledRef = useRef(false);
     const [cameraActive, setCameraActive] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [isFinalizing, setIsFinalizing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [instruction, setInstruction] = useState('Camera chỉ bật sau khi bạn chọn bắt đầu.');
     const [error, setError] = useState('');
@@ -95,6 +96,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             }
 
             setInstruction('Đang xác minh khuôn mặt và kiểm tra PAD…');
+            setIsFinalizing(true);
             sessionStorage.setItem('auth:login-in-progress', 'true');
             const data = await finishFaceLoginApi(challenge.challengeId);
             stopCamera();
@@ -106,6 +108,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             stopCamera();
         } finally {
             sessionStorage.removeItem('auth:login-in-progress');
+            setIsFinalizing(false);
             setBusy(false);
         }
     };
@@ -143,8 +146,9 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
                             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <Camera size={16} />}
                             {error ? 'Thử lại' : 'Bắt đầu xác minh'}
                         </button>}
-                        {cameraActive && <button type="button" onClick={stopCamera} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
-                            <CameraOff size={16} /> Dừng camera
+                        {cameraActive && <button type="button" onClick={stopCamera} disabled={isFinalizing} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
+                            {isFinalizing ? <LoaderCircle size={16} className="animate-spin" /> : <CameraOff size={16} />}
+                            {isFinalizing ? 'Đang xác minh…' : 'Dừng camera'}
                         </button>}
                         <button type="button" onClick={onClose} disabled={busy} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300">Hủy</button>
                     </div>
