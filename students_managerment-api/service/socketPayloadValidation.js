@@ -3,6 +3,12 @@ const normalizeSocketPayload = (payload) =>
         ? payload
         : {};
 
+const normalizeSocketEventArgs = (...eventArgs) => {
+    if (typeof eventArgs[0] === 'function') return [{}, ...eventArgs];
+    const [payload, ...remainingArgs] = eventArgs;
+    return [normalizeSocketPayload(payload), ...remainingArgs];
+};
+
 const MAX_SESSION_DESCRIPTION_BYTES = 64 * 1024;
 const MAX_ICE_CANDIDATE_BYTES = 4 * 1024;
 const MAX_SDP_MID_LENGTH = 256;
@@ -63,6 +69,7 @@ const isValidIceCandidate = (candidate) => {
 
 module.exports = {
     normalizeSocketPayload,
+    normalizeSocketEventArgs,
     MAX_SESSION_DESCRIPTION_BYTES,
     MAX_ICE_CANDIDATE_BYTES,
     isValidSessionDescription,
