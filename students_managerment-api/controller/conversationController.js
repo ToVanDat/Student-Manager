@@ -386,14 +386,17 @@ const removeGroupMember = async (req, res, next) => {
             !Number.isInteger(targetUserId) || targetUserId <= 0) {
             return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
         }
-        const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
-        const targetName = await getUsername(targetUserId);
-        const actorName = await getUsername(Number(req.user.id));
+        // Authorize and perform the membership change before reading group metadata.
+        // This prevents non-members from probing member IDs or usernames.
         const data = await conversationService.removeGroupMember(
             conversationId,
             Number(req.user.id),
             targetUserId
         );
+        const repository = require('../repository/conversationRepository');
+        const memberIdsAfter = await repository.getConversationMemberIds(conversationId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
         const io = getIO();
         const removedUserId = Number(data.user_id);
 
@@ -409,8 +412,7 @@ const removeGroupMember = async (req, res, next) => {
         // a group they no longer belong to.
         io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
 
-        for (const memberId of memberIdsBefore) {
-            if (Number(memberId) === removedUserId) continue;
+        for (const memberId of memberIdsAfter) {
             io.to(`user:${memberId}`).emit('conversation:updated', {
                 conversationId,
                 action: 'member-removed',
@@ -436,16 +438,16 @@ const leaveGroup = async (req, res, next) => {
         if (!Number.isInteger(conversationId) || conversationId <= 0) {
             return res.status(400).json({ message: 'conversationId không hợp lệ' });
         }
-        const leavingName = await getUsername(Number(req.user.id));
-        const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.leaveGroup(
             conversationId,
             Number(req.user.id)
         );
+        const memberIdsAfter = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        const leavingName = await getUsername(Number(req.user.id));
         const io = getIO();
         const leavingUserId = Number(data.user_id);
 
-        for (const memberId of memberIdsBefore) {
+        for (const memberId of memberIdsAfter) {
             io.to(`user:${memberId}`).emit('conversation:updated', {
                 conversationId,
                 action: 'member-left',
@@ -483,15 +485,17 @@ const updateGroupMemberRole = async (req, res, next) => {
             !Number.isInteger(targetUserId) || targetUserId <= 0) {
             return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
         }
-        const targetName = await getUsername(targetUserId);
-        const actorName = await getUsername(Number(req.user.id));
-        const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        // Perform authorization before reading member IDs or account names.
         const data = await conversationService.updateGroupMemberRole(
             conversationId,
             Number(req.user.id),
             targetUserId,
             req.body.role
         );
+        const repository = require('../repository/conversationRepository');
+        const memberIds = await repository.getConversationMemberIds(conversationId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
 
         const io = getIO();
 
