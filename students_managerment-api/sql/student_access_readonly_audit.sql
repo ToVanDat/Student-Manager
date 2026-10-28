@@ -92,8 +92,8 @@ ORDER BY trigger_name, event_manipulation;
 -- 5) RBAC coverage. Missing role_permissions rows are effectively denied by middleware.
 SELECT p.permission_key,
        p.is_sensitive,
-       COALESCE(MAX(rp.allowed) FILTER (WHERE rp.role = 'admin'), FALSE) AS admin_allowed,
-       COALESCE(MAX(rp.allowed) FILTER (WHERE rp.role = 'user'), FALSE) AS user_allowed,
+       COALESCE(BOOL_OR(rp.allowed) FILTER (WHERE rp.role = 'admin'), FALSE) AS admin_allowed,
+       COALESCE(BOOL_OR(rp.allowed) FILTER (WHERE rp.role = 'user'), FALSE) AS user_allowed,
        COUNT(rp.permission_key) FILTER (WHERE rp.role = 'admin') AS admin_row_count,
        COUNT(rp.permission_key) FILTER (WHERE rp.role = 'user') AS user_row_count
 FROM permissions p
@@ -108,14 +108,15 @@ FROM role_permissions
 GROUP BY role
 ORDER BY role;
 
-SELECT COUNT(*)::bigint AS active_admins,
-       COUNT(*) FILTER (WHERE u.is_active)::bigint AS active_admins_with_permission
-FROM users u
-LEFT JOIN role_permissions rp
-  ON rp.role = u.role
- AND rp.permission_key = 'permissions.manage'
- AND rp.allowed = TRUE
-WHERE u.role = 'admin';
+SELECT
+  (SELECT COUNT(*)::bigint FROM users WHERE role = 'admin' AND is_active = TRUE) AS active_admins,
+  (SELECT COUNT(DISTINCT u.id)::bigint
+   FROM users u
+   JOIN role_permissions rp
+     ON rp.role = u.role
+    AND rp.permission_key = 'permissions.manage'
+    AND rp.allowed = TRUE
+   WHERE u.role = 'admin' AND u.is_active = TRUE) AS active_admins_with_permission;
 
 -- 6) Row-level security and effective table grants for sensitive academic tables.
 SELECT c.relname AS table_name, c.relrowsecurity AS rls_enabled,
