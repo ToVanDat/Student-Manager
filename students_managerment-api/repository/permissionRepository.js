@@ -1,4 +1,5 @@
 const pool = require('../src/config/database');
+const { findIncompletePermissionKeys } = require('../service/permissionPayload');
 
 const listPermissionsForRole = async (role) => {
     const { rows } = await pool.query(
@@ -44,10 +45,7 @@ const replaceRolePermissions = async (role, permissions, actorId) => {
         // This endpoint is a full replacement, not a partial patch. Reject an
         // incomplete payload rather than silently retaining stale grants that
         // the administrator believes have been removed.
-        const submitted = new Set(permissions.map(item => item.permission_key));
-        const missingPermissionKeys = catalog.rows
-            .map(row => row.permission_key)
-            .filter(permissionKey => !submitted.has(permissionKey));
+        const missingPermissionKeys = findIncompletePermissionKeys(catalog.rows, permissions);
         if (missingPermissionKeys.length > 0) {
             await client.query('ROLLBACK');
             return { kind: 'incomplete_permissions', missingPermissionKeys };
