@@ -36,12 +36,16 @@ test('PAD crop follows upstream bounded 2.7x bbox expansion and produces 80x80',
   assert.equal(crop.length, 80 * 80 * 3);
 });
 
-test('NCHW conversion applies BGR channel order and [0,1] scaling', () => {
+test('MobileFaceNet NCHW conversion applies RGB/BGR order and [0,1] scaling', () => {
   const rgb = Buffer.from([255, 128, 0]);
   const tensor = toNchwFloat(rgb, 1, 1, [2, 1, 0]);
   assert.equal(tensor[0], 0);
   assert.ok(Math.abs(tensor[1] - 128 / 255) < 1e-6);
   assert.equal(tensor[2], 1);
+  const rawBgr = toNchwFloat(rgb, 1, 1, [2, 1, 0], 1);
+  assert.equal(rawBgr[0], 0);
+  assert.equal(rawBgr[1], 128);
+  assert.equal(rawBgr[2], 255);
 });
 
 test('preprocessing scales trusted landmarks to the decoded image dimensions', () => {
@@ -56,4 +60,6 @@ test('preprocessing scales trusted landmarks to the decoded image dimensions', (
   const tensors = prepareFaceTensors(rgb, width, height, scaled);
   assert.equal(tensors.rgb112.length, 3 * 112 * 112);
   assert.equal(tensors.bgr80.length, 3 * 80 * 80);
+  assert.equal(tensors.bgr80[0], 100);
+  assert.equal(tensors.rgb112[0], 100 / 255);
 });
