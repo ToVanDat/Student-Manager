@@ -21,6 +21,8 @@ const PAD_MODEL_CONTRACT = Object.freeze({
         verified: false,
         classCount: 3,
         semantics: null,
+        bonaFideIndex: null,
+        attackIndices: null,
         classOrder: null,
         reason: 'The published ONNX model card and upstream MiniVision inference code disagree on class index semantics; direct ONNX/PyTorch parity is required.'
     }),
@@ -75,15 +77,55 @@ function l2Normalize(values) {
     return Array.from(values, value => Math.fround(value / norm));
 }
 
-function classProbabilities(output) {
-    if (!output || output.length !== PAD_MODEL_CONTRACT.output.classCount ||
+function classProbabilities(output, contract = PAD_MODEL_CONTRACT.output) {
+    if (!output || output.length !== contract.classCount ||
         Array.from(output).some(value => !Number.isFinite(value))) {
         throw configError('MiniFASNet phải trả về đúng 3 giá trị hữu hạn');
     }
-    if (!PAD_MODEL_CONTRACT.output.verified) {
+    if (!contract.verified) {
         throw configError('MiniFASNet class mapping/output semantics chưa được xác minh bằng ONNX-PyTorch parity; PAD inference bị khóa.');
     }
-    throw configError('PAD output contract chưa được triển khai cho metadata đã xác minh.');
+
+    const scores = Array.from(output);
+    if (contract.semantics === 'logits') {
+        const max = Math.max(...scores);
+        const exps = scores.map(value => Math.exp(value - max));
+        const total = exps.reduce((sum, value) => sum + value, 0);
+        return exps.map(value => value / total);
+    }
+    if (contract.semantics === 'probabilities') {
+        if (scores.some(value => value < 0 || value > 1)) {
+            throw configError('MiniFASNet probability output phải nằm trong [0,1]');
+        }
+        const total = scores.reduce((sum, value) => sum + value, 0);
+        if (Math.abs(total - 1) > 1e-3) {
+            throw configError('MiniFASNet probability output không có tổng bằng 1');
+        }
+        return scores;
+    }
+    throw configError('MiniFASNet output semantics phải được xác minh là logits hoặc probabilities');
+}
+
+function decodePadOutput(output, contract = PAD_MODEL_CONTRACT.output) {
+    const probabilities = classProbabilities(output, contract);
+    const bonaIndex = contract.bonaFideIndex;
+    const attackIndices = contract.attackIndices;
+    if (!Number.isInteger(bonaIndex) || bonaIndex < 0 || bonaIndex >= contract.classCount ||
+        !Array.isArray(attackIndices) || attackIndices.length !== contract.classCount - 1 ||
+        attackIndices.some(index => !Number.isInteger(index) || index < 0 ||
+            index >= contract.classCount || index === bonaIndex) ||
+        new Set(attackIndices).size !== attackIndices.length ||
+        new Set([bonaIndex, ...attackIndices]).size !== contract.classCount) {
+        throw configError('MiniFASNet bona-fide/attack indices chưa được khai báo thành một phân hoạch hợp lệ');
+    }
+    const bonaFideProbability = probabilities[bonaIndex];
+    const attackProbability = attackIndices.reduce((sum, index) => sum + probabilities[index], 0);
+    return {
+        probabilities,
+        bonaFideProbability,
+        attackProbability,
+        score: bonaFideProbability
+    };
 }
 
 function assertPixels(buffer, expectedLength, label, maxValue = 1) {
@@ -164,10 +206,10 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     const embedding = l2Normalize(embeddingRows.slice(0, 128));
     // Deliberately fail closed until the exact ONNX output semantics and class
     // order are proven against the original PyTorch model on identical tensors.
-    classProbabilities(padResult[padOutputName].data);
+    const pad = decodePadOutput(padResult[padOutputName].data);
     return {
         embedding,
-        pad: null,
+        pad,
         liveness: tensors.liveness,
         model: { id: 'mobilefacenet+minifasnet-v2', version: 'supplied-bundle-v1' }
     };
@@ -181,4 +223,4 @@ async function ensureFaceInferenceReady() {
     return true;
 }
 
-module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, getRuntime, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES, PAD_MODEL_CONTRACT };
+module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, getRuntime, l2Normalize, classProbabilities, decodePadOutput, assertPixels, resolveArtifactPath, EXPECTED_HASHES, PAD_MODEL_CONTRACT };
