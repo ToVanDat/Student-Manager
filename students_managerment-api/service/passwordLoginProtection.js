@@ -46,8 +46,10 @@ function getCooldownMs(failedAttempts) {
 }
 
 function hashIdentifier(value) {
-    const secret = process.env.AUTH_RATE_LIMIT_HASH_SECRET || process.env.JWT_SECRET;
-    if (!secret) throw new Error('AUTH_RATE_LIMIT_HASH_SECRET or JWT_SECRET is required');
+    const secret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+    if (!secret || secret.length < 32) {
+        throw new Error('AUTH_RATE_LIMIT_HASH_SECRET must be configured with at least 32 characters');
+    }
     return crypto.createHmac('sha256', secret).update(String(value)).digest('hex');
 }
 
