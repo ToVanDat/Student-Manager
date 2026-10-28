@@ -1,7 +1,7 @@
 name: API tests
 
 permissions:
-  contents: write
+  contents: read
 
 on:
   push:
@@ -209,10 +209,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install API dependencies
-        run: npm install --no-audit --no-fund
-      - name: Install and lock Face Login ONNX Runtime
-        run: npm install --save-exact onnxruntime-node@1.30.0 --no-audit --no-fund
+      - name: Install API dependencies from committed lockfile
+        run: npm ci --no-audit --no-fund
       - name: Install Linux sharp runtime omitted from the cross-platform lockfile
         run: npm install --no-save --package-lock=false --include=optional sharp@0.34.5
       - name: Verify Face Login ONNX Runtime native module loads
@@ -223,18 +221,6 @@ jobs:
         run: python -m unittest discover -s tools/face-eval -p 'test_*.py'
       - name: Run Cloudflare R2 Worker tests
         run: node --test cloudflare/e2ee-r2-worker/test/worker.test.js
-      - name: Commit npm-generated Face Login dependency lock
-        run: |
-          git -C .. config user.name "github-actions[bot]"
-          git -C .. config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C .. add students_managerment-api/package.json students_managerment-api/package-lock.json
-          if git -C .. diff --cached --quiet; then
-            echo "No dependency lock changes to commit."
-          else
-            git -C .. commit -m "deps(face-auth): commit npm-generated ONNX Runtime lock [skip ci]"
-            git -C .. push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
-
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
