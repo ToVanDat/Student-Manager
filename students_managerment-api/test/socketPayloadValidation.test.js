@@ -45,3 +45,14 @@ test('rejects malformed and oversized ICE candidate fields', () => {
     assert.equal(isValidIceCandidate({ candidate: 'x', sdpMLineIndex: 1.5 }), false);
     assert.equal(isValidIceCandidate({ candidate: 'x', usernameFragment: 42 }), false);
 });
+
+test('normalizes malformed Socket.IO event payloads to an empty object', () => {
+    const { normalizeSocketPayload } = require('../service/socketPayloadValidation');
+    assert.deepEqual(normalizeSocketPayload(null), {});
+    assert.deepEqual(normalizeSocketPayload(undefined), {});
+    assert.deepEqual(normalizeSocketPayload('unexpected'), {});
+    assert.deepEqual(normalizeSocketPayload(42), {});
+    assert.deepEqual(normalizeSocketPayload([]), {});
+    const payload = { conversationId: 12 };
+    assert.equal(normalizeSocketPayload(payload), payload);
+});
