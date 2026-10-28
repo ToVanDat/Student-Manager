@@ -161,7 +161,16 @@ const initSocket = async (server) => {
         const registerClientEvent = socket.on.bind(socket);
         socket.on = (eventName, listener) => registerClientEvent(
             eventName,
-            (payload, ...args) => listener(normalizeSocketPayload(payload), ...args)
+            (...eventArgs) => {
+                // Socket.IO acknowledgements may be the only argument when a
+                // client omits its payload. Preserve them instead of treating
+                // the callback as malformed payload data.
+                if (typeof eventArgs[0] === 'function') {
+                    return listener({}, ...eventArgs);
+                }
+                const [payload, ...remainingArgs] = eventArgs;
+                return listener(normalizeSocketPayload(payload), ...remainingArgs);
+            }
         );
 
         const userId = Number(socket.user.id);
