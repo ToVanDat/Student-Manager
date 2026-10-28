@@ -116,22 +116,41 @@ def calibrate_recognition(rows):
     return best["threshold"], {**best, "EER_estimate": (best["FAR"] + best["FRR"]) / 2}
 
 
+def wilson_interval(errors, total, z=1.959963984540054):
+    """Two-sided 95% Wilson score interval for a binomial error rate."""
+    if total <= 0:
+        raise ValueError("Confidence interval requires at least one sample")
+    rate = errors / total
+    denominator = 1 + z * z / total
+    center = (rate + z * z / (2 * total)) / denominator
+    margin = z * math.sqrt((rate * (1 - rate) / total) +
+                           (z * z / (4 * total * total))) / denominator
+    return [max(0.0, center - margin), min(1.0, center + margin)]
+
+
 def pad_metrics(rows, threshold):
     bona = [r for r in rows if r["bona_fide"]]
     attacks = [r for r in rows if not r["bona_fide"]]
     if not bona or not attacks:
         raise ValueError("PAD requires bona_fide and attack samples")
-    bpcer = sum(r["score"] < threshold for r in bona) / len(bona)
+    bpcer_errors = sum(r["score"] < threshold for r in bona)
+    bpcer = bpcer_errors / len(bona)
     by_type = {}
     for attack in sorted({r["attack_type"] for r in attacks}):
         group = [r for r in attacks if r["attack_type"] == attack]
-        by_type[attack] = {"samples": len(group),
-                           "APCER": sum(r["score"] >= threshold for r in group) / len(group)}
+        errors = sum(r["score"] >= threshold for r in group)
+        by_type[attack] = {
+            "samples": len(group),
+            "APCER": errors / len(group),
+            "APCER_CI95": wilson_interval(errors, len(group))
+        }
     mean_apcer = sum(v["APCER"] for v in by_type.values()) / len(by_type)
     return {"threshold": threshold, "bona_fide_samples": len(bona),
             "attack_samples": len(attacks), "BPCER": bpcer,
+            "BPCER_CI95": wilson_interval(bpcer_errors, len(bona)),
             "APCER_by_attack": by_type, "mean_APCER": mean_apcer,
-            "ACER": (mean_apcer + bpcer) / 2}
+            "ACER": (mean_apcer + bpcer) / 2,
+            "note": "Wilson 95% intervals are per-rate pointwise intervals; ACER interval is not estimated."}
 
 
 def calibrate_pad(rows):
@@ -161,6 +180,15 @@ def main():
     pt = [r for r in pad if r["split"] == "test"]
     if not all((rc, rt, pc, pt)):
         raise ValueError("Both CSVs need non-empty calibration and test partitions")
+    required_pad_attacks = ATTACKS - {"bona_fide"}
+    for split_name, split_rows in (("calibration", pc), ("test", pt)):
+        observed = {row["attack_type"] for row in split_rows if not row["bona_fide"]}
+        missing = required_pad_attacks - observed
+        if missing:
+            raise ValueError(
+                f"PAD {split_name} partition is missing attack categories: "
+                f"{', '.join(sorted(missing))}"
+            )
 
     rec_t, rec_cal = calibrate_recognition(rc)
     pad_t, pad_cal = calibrate_pad(pc)
