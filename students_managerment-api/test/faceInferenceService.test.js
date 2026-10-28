@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES, PAD_MODEL_CONTRACT } = require('../service/faceInferenceService.js');
+const { l2Normalize, classProbabilities, decodePadOutput, assertPixels, EXPECTED_HASHES, PAD_MODEL_CONTRACT } = require('../service/faceInferenceService.js');
 
 test('MobileFaceNet embedding is L2-normalized', () => {
   const embedding = l2Normalize(Float32Array.from({ length: 128 }, (_, i) => i + 1));
@@ -24,6 +24,45 @@ test('MiniFASNet class mapping remains fail-closed while published sources confl
 test('MiniFASNet rejects non-finite output and wrong class count before mapping', () => {
   assert.throws(() => classProbabilities([0, Number.NaN, 1]), /3 giá trị hữu hạn/);
   assert.throws(() => classProbabilities([0, 1]), /3 giá trị hữu hạn/);
+});
+
+test('verified MiniFASNet logits are softmaxed only under an explicit class contract', () => {
+  const contract = {
+    verified: true,
+    classCount: 3,
+    semantics: 'logits',
+    bonaFideIndex: 1,
+    attackIndices: [0, 2]
+  };
+  const decoded = decodePadOutput([0, 8, 0], contract);
+  assert.ok(decoded.bonaFideProbability > 0.99);
+  assert.ok(decoded.attackProbability < 0.01);
+  assert.ok(Math.abs(decoded.bonaFideProbability + decoded.attackProbability - 1) < 1e-12);
+});
+
+test('verified MiniFASNet probabilities are not softmaxed a second time', () => {
+  const contract = {
+    verified: true,
+    classCount: 3,
+    semantics: 'probabilities',
+    bonaFideIndex: 1,
+    attackIndices: [0, 2]
+  };
+  const decoded = decodePadOutput([0.1, 0.8, 0.1], contract);
+  assert.equal(decoded.bonaFideProbability, 0.8);
+  assert.equal(decoded.attackProbability, 0.2);
+});
+
+test('PAD decoder rejects incomplete or overlapping semantic class maps', () => {
+  const incomplete = {
+    verified: true, classCount: 3, semantics: 'logits',
+    bonaFideIndex: 1, attackIndices: [0]
+  };
+  assert.throws(() => decodePadOutput([0, 1, 0], incomplete), /phân hoạch hợp lệ/);
+  const overlapping = {
+    ...incomplete, attackIndices: [1, 2]
+  };
+  assert.throws(() => decodePadOutput([0, 1, 0], overlapping), /phân hoạch hợp lệ/);
 });
 
 test('MiniFASNet rejects invalid class count', () => {
