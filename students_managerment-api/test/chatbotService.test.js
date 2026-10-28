@@ -332,3 +332,41 @@ test('rateAnswer rejects stale answer hashes and unsupported ratings', async () 
     await assert.rejects(rateAnswer({ userId: '42', sessionId: 's1', answerHash: 'a'.repeat(64), rating: 'helpful', redis }), error => error.status === 409);
     await assert.rejects(rateAnswer({ userId: '42', sessionId: 's1', answerHash: 'b'.repeat(64), rating: 'neutral', redis }), error => error.status === 400);
 });
+
+
+test('chatbot history and conversation index are isolated across different users even when session IDs match', async () => {
+    const store = new Map();
+    const redis = {
+        isReady: true,
+        get: async key => store.get(key) ?? null,
+        set: async (key, value) => { store.set(key, value); },
+        exists: async key => store.has(key),
+        del: async key => { store.delete(key); }
+    };
+
+    await redis.set('assistant:history:7:shared-session', JSON.stringify([
+        { role: 'user', content: 'private question' },
+        { role: 'assistant', content: 'private answer' }
+    ]));
+    await redis.set('assistant:history:8:shared-session', JSON.stringify([
+        { role: 'user', content: 'another user question' },
+        { role: 'assistant', content: 'another user answer' }
+    ]));
+
+    const userSeven = await getHistory({ userId: '7', sessionId: 'shared-session', redis });
+    const userEight = await getHistory({ userId: '8', sessionId: 'shared-session', redis });
+    assert.equal(userSeven[1].content, 'private answer');
+    assert.equal(userEight[1].content, 'another user answer');
+
+    const sevenConversation = await createConversation({
+        userId: '7', sessionId: 'shared-session', title: 'User seven', redis
+    });
+    assert.equal((await listConversations({ userId: '7', sessionId: 'shared-session', redis })).length, 1);
+    assert.equal((await listConversations({ userId: '8', sessionId: 'shared-session', redis })).length, 0);
+    await deleteConversation({
+        userId: '8', sessionId: 'shared-session', conversationId: sevenConversation.id, redis
+    }).then(
+        () => assert.fail('another user must not delete this conversation'),
+        error => assert.equal(error.status, 404)
+    );
+});
