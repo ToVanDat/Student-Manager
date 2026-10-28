@@ -64,7 +64,7 @@ Enrollment stores only the aggregate embedding, encrypted with AES-256-GCM. Logi
 
 - The liveness blendshapes are behavioral signals, not a standalone anti-spoof guarantee.
 - MiniFASNet's score is not proof of liveness; evaluate print, replay, mask, lighting, camera, and demographic variation.
-- The hash-matched MiniFASNet ONNX model card describes class order `[live, print, replay]`, but upstream MiniVision's `AntiSpoofPredict.predict()` applies softmax to raw model output and `test.py` identifies class index 1 as real. The exact ONNX graph has not yet been parity-tested against the original PyTorch checkpoint in this environment. The inference service therefore fails closed and does not derive `live_score` until class order and output semantics are resolved.
+- The hash-matched MiniFASNet ONNX model card describes class order `[live, print, replay]`, but upstream MiniVision's `AntiSpoofPredict.predict()` applies softmax to raw model output and `test.py` identifies class index 1 as real. The published ONNX conversion script exports `model.forward` without an output-class permutation. The exact ONNX graph has not yet been parity-tested against the original PyTorch checkpoint in this environment. The inference service therefore fails closed and does not derive `live_score` until class order and logits/probability semantics are resolved.
 - Redis is required. Losing the challenge state invalidates the capture.
 - The API rate-limits challenge creation separately from frame uploads.
 - The status endpoint reports availability only when both release flags are explicitly set, thresholds and AES key are valid, the authenticated MediaPipe sidecar health probe succeeds, and ONNX Runtime can load the hash-verified models.
