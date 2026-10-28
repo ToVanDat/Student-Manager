@@ -278,7 +278,16 @@ const addGroupMember = async (conversationId, actorId, targetUserId) => {
         throw createConversationError('Người dùng đã là thành viên của group', 409);
     }
 
-    return conversationRepository.addMember(conversationId, targetUserId, 'member');
+    try {
+        return await conversationRepository.addMember(conversationId, targetUserId, 'member');
+    } catch (error) {
+        // A concurrent add may pass the membership pre-check in another request.
+        // Translate the membership uniqueness race into a stable conflict response.
+        if (error?.code === '23505') {
+            throw createConversationError('Người dùng đã là thành viên của group', 409);
+        }
+        throw error;
+    }
 };
 
 const removeGroupMember = async (conversationId, actorId, targetUserId) => {
