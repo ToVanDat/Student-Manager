@@ -53,6 +53,10 @@ exports.finishEnrollment = async (req, res) => {
     try { return res.status(201).json(await faceAuth.finishEnrollment(req.user.sub, req.body?.challengeId)); }
     catch (error) { return fail(res, error); }
 };
+exports.cancelEnrollment = async (req, res) => {
+    try { return res.json(await faceAuth.cancelEnrollment(req.user.sub, req.body?.challengeId)); }
+    catch (error) { return fail(res, error); }
+};
 exports.beginLogin = async (req, res) => {
     try { return res.json(await faceAuth.beginLogin(req.body?.username)); }
     catch (error) { return fail(res, error); }
