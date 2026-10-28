@@ -93,4 +93,4 @@ function verifyLivenessSequence({ actions, frames, issuedAt, expiresAt, now = Da
     return { passed: true, reason: 'CHALLENGE_COMPLETED' };
 }
 
-module.exports = { createLivenessChallenge, verifyLivenessSequence };
+module.exports = { createLivenessChallenge, verifyLivenessSequence, MAX_FRAME_GAP_MS };
