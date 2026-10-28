@@ -150,10 +150,12 @@ export default function FaceLoginSettings() {
 
     const disable = async () => {
         if (!window.confirm('Vô hiệu hóa Face Login trên tài khoản này?')) return;
+        const currentPassword = window.prompt('Nhập mật khẩu Student Manager để xác nhận vô hiệu hóa Face Login:');
+        if (!currentPassword) return;
         setBusy(true);
         setError('');
         try {
-            await disableFaceLoginApi();
+            await disableFaceLoginApi(currentPassword);
             await refresh();
         } catch (requestError) {
             setError(requestError.response?.data?.message || 'Không thể vô hiệu hóa Face Login.');
