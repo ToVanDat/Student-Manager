@@ -56,3 +56,12 @@ test('normalizes malformed Socket.IO event payloads to an empty object', () => {
     const payload = { conversationId: 12 };
     assert.equal(normalizeSocketPayload(payload), payload);
 });
+
+test('preserves Socket.IO acknowledgements when a client omits its payload', () => {
+    const { normalizeSocketEventArgs } = require('../service/socketPayloadValidation');
+    const acknowledge = () => {};
+    assert.deepEqual(normalizeSocketEventArgs(acknowledge), [{}, acknowledge]);
+    const payload = { messageId: 9 };
+    assert.deepEqual(normalizeSocketEventArgs(payload, acknowledge), [payload, acknowledge]);
+    assert.deepEqual(normalizeSocketEventArgs(null, acknowledge), [{}, acknowledge]);
+});
