@@ -258,7 +258,7 @@ const reportConversation = async (req, res, next) => {
     }
 };
 
-const createGroup = async (req, res) => {
+const createGroup = async (req, res, next) => {
     try {
         const data = await conversationService.createGroupConversation(
             Number(req.user.id),
@@ -280,12 +280,12 @@ const createGroup = async (req, res) => {
 
         return res.status(201).json({ message: 'Tạo group thành công', data });
     } catch (error) {
-        const status = /ít nhất|không hợp lệ/.test(error.message) ? 400 : 404;
-        return res.status(status).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const updateGroup = async (req, res) => {
+const updateGroup = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         if (!Number.isInteger(conversationId) || conversationId <= 0) {
@@ -321,12 +321,12 @@ const updateGroup = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã cập nhật thông tin nhóm', data });
     } catch (error) {
-        const status = /quyền|group|không hợp lệ/.test(error.message) ? 403 : 400;
-        return res.status(status).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const addGroupMember = async (req, res) => {
+const addGroupMember = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.body.userId);
@@ -376,12 +376,12 @@ const addGroupMember = async (req, res) => {
 
         return res.status(201).json({ message: 'Đã thêm thành viên', data });
     } catch (error) {
-        const status = /quyền|role|group|không tồn tại/.test(error.message) ? 403 : 400;
-        return res.status(status).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const removeGroupMember = async (req, res) => {
+const removeGroupMember = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
@@ -428,11 +428,12 @@ const removeGroupMember = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã xoá thành viên', data });
     } catch (error) {
-        return res.status(403).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const leaveGroup = async (req, res) => {
+const leaveGroup = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         if (!Number.isInteger(conversationId) || conversationId <= 0) {
@@ -472,11 +473,12 @@ const leaveGroup = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã rời nhóm', data });
     } catch (error) {
-        return res.status(400).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const updateGroupMemberRole = async (req, res) => {
+const updateGroupMemberRole = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
@@ -529,7 +531,8 @@ const updateGroupMemberRole = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã cập nhật role', data });
     } catch (error) {
-        return res.status(403).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
