@@ -184,9 +184,10 @@ function cropPadRgb(rgb, width, height, bbox, expansion = 2.7) {
     }
     return output;
 }
-function toNchwFloat(rgb, width, height, channelOrder = [0, 1, 2]) {
+function toNchwFloat(rgb, width, height, channelOrder = [0, 1, 2], divisor = 255) {
     if (!Buffer.isBuffer(rgb) || rgb.length !== width * height * 3 ||
-        channelOrder.length !== 3 || channelOrder.some(index => ![0, 1, 2].includes(index))) {
+        channelOrder.length !== 3 || channelOrder.some(index => ![0, 1, 2].includes(index)) ||
+        !Number.isFinite(divisor) || divisor <= 0) {
         throw invalid('RGB crop cannot be converted to NCHW');
     }
     const output = new Float32Array(3 * width * height);
@@ -194,7 +195,7 @@ function toNchwFloat(rgb, width, height, channelOrder = [0, 1, 2]) {
         const sourceChannel = channelOrder[channel];
         const channelOffset = channel * width * height;
         for (let pixel = 0; pixel < width * height; pixel += 1) {
-            output[channelOffset + pixel] = rgb[pixel * 3 + sourceChannel] / 255;
+            output[channelOffset + pixel] = rgb[pixel * 3 + sourceChannel] / divisor;
         }
     }
     return output;
@@ -234,7 +235,7 @@ function prepareFaceTensors(rgb, width, height, landmarks) {
     const padCrop = cropPadRgb(rgb, width, height, bbox, 2.7);
     return {
         rgb112: toNchwFloat(aligned, OUTPUT_SIZE, OUTPUT_SIZE),
-        bgr80: toNchwFloat(padCrop, PAD_SIZE, PAD_SIZE, [2, 1, 0])
+        bgr80: toNchwFloat(padCrop, PAD_SIZE, PAD_SIZE, [2, 1, 0], 1)
     };
 }
 
