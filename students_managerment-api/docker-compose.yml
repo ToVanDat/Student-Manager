@@ -8,6 +8,8 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       PORT: 3000
+      # Set TRUST_PROXY_HOPS=1 only when this API is reachable exclusively through one trusted reverse proxy.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
