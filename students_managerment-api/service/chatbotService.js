@@ -384,6 +384,9 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         if (storedHistory) {
             try { history = normalizeHistory(JSON.parse(storedHistory)); } catch { history = []; }
         }
+        // Stop before catalog/RAG work when the browser has already left.
+        // This avoids spending database and embedding capacity on abandoned turns.
+        if (signal?.aborted) throw signal.reason || new Error('Chat request cancelled');
         if (replaceLastTurn) history = removeLastTurn(history);
 
         const config = getOllamaConfig();
