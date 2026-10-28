@@ -33,7 +33,7 @@ From the API directory (requires Python packages `torch`, `onnxruntime`, and `nu
 
     python tools/face-eval/verify_minifasnet_parity.py --upstream-root C:\face-test\Silent-Face-Anti-Spoofing --checkpoint C:\face-test\Silent-Face-Anti-Spoofing\resources\anti_spoof_models\2.7_80x80_MiniFASNetV2.pth --onnx storage\face-models\anti-spoofing\minifasnet-v2.onnx --output C:\face-test\minifasnet-parity.json
 
-A successful synthetic parity report is necessary but not sufficient: it does not measure PAD performance, validate the production crop pixel-for-pixel, or prove resistance to attacks. Classes 0 and 2 are both treated as attacks by the upstream reference; do not call them print/replay individually without separate evidence. The API remains fail-closed until the parity report is reviewed and the verified contract is explicitly promoted in code.
+A successful synthetic parity report is necessary but not sufficient: it does not measure PAD performance, validate the production crop pixel-for-pixel, or prove resistance to attacks. The upstream `test.py` labels index 1 as Real Face, while the ONNX model card describes `[live, print, replay]`; the model card and executable upstream preprocessing also disagree on input scale. Numerical parity can resolve graph output transformation, but cannot resolve semantic class labels. Do not assign a bona-fide index or create `live_score` values until the semantic conflict is independently resolved. The API remains fail-closed.
 
 ## Metrics
 
