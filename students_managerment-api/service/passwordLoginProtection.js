@@ -52,7 +52,7 @@ function hashIdentifier(value) {
 }
 
 function normalizeAccountIdentifier(username) {
-    return String(username || '').normalize('NFKC').trim().toLowerCase();
+    return String(username || '').normalize('NFKC').trim();
 }
 
 function getAccountHash(username) {
