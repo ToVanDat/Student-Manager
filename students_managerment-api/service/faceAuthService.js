@@ -5,7 +5,7 @@ const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require('./faceTemplateCrypto.js');
 const { verifySensitiveAction, issueSession } = require('./advancedAuthService.js');
-const { createLivenessChallenge, verifyLivenessSequence } = require('./faceLivenessChallenge.js');
+const { createLivenessChallenge, verifyLivenessSequence, MAX_FRAME_GAP_MS } = require('./faceLivenessChallenge.js');
 const { inferFaceImage, ensureFaceInferenceReady } = require('./faceInferenceService.js');
 const { verifyCapturePayload } = require('./faceCaptureValidation.js');
 const { ensureLandmarkServiceReady } = require('./faceLandmarkClient.js');
@@ -215,7 +215,7 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
             keys: [key],
             arguments: [
                 JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES),
-                '3000', String(CHALLENGE_TTL_SECONDS), livenessNonce,
+                String(MAX_FRAME_GAP_MS), String(CHALLENGE_TTL_SECONDS), livenessNonce,
                 expectedUserId == null ? '' : String(expectedUserId)
             ]
         });
