@@ -1,6 +1,7 @@
 const e2eeRepository = require('../repository/e2eeRepository');
 const conversationRepository = require('../repository/conversationRepository');
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const isBoundedString = (value, max = 4096) =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 
@@ -11,8 +12,7 @@ const registerDevice = async (userId, input) => {
         throw error;
     }
     const device = input || {};
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidPattern.test(device.deviceId || '')) {
+    if (!UUID_PATTERN.test(device.deviceId || '')) {
         const error = new Error('deviceId phải là UUID hợp lệ');
         error.statusCode = 400;
         throw error;
@@ -71,7 +71,7 @@ const listDevices = async (requesterId, targetUserId) => {
 };
 
 const revokeDevice = async (userId, deviceId) => {
-    if (typeof deviceId !== 'string' || !/^[0-9a-f-]{36}$/i.test(deviceId)) {
+    if (typeof deviceId !== 'string' || !UUID_PATTERN.test(deviceId)) {
         const error = new Error('deviceId không hợp lệ');
         error.statusCode = 400;
         throw error;
