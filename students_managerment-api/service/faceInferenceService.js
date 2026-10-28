@@ -16,7 +16,7 @@ const EXPECTED_HASHES = Object.freeze({
 // an output index to bona fide/attack until direct ONNX-vs-PyTorch parity passes.
 const PAD_MODEL_CONTRACT = Object.freeze({
     artifactSha256: 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b',
-    input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 1]) }),
+    input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 255]), source: 'MiniVision AntiSpoofPredict -> custom ToTensor -> functional.to_tensor (raw float conversion, no /255)' }),
     output: Object.freeze({
         verified: false,
         classCount: 3,
@@ -86,13 +86,13 @@ function classProbabilities(output) {
     throw configError('PAD output contract chưa được triển khai cho metadata đã xác minh.');
 }
 
-function assertPixels(buffer, expectedLength, label) {
+function assertPixels(buffer, expectedLength, label, maxValue = 1) {
     if (!(buffer instanceof Float32Array) || buffer.length !== expectedLength) {
         throw new TypeError(label + ' phải là Float32Array có ' + expectedLength + ' phần tử');
     }
     for (const value of buffer) {
-        if (!Number.isFinite(value) || value < 0 || value > 1) {
-            throw new TypeError(label + ' phải chứa pixel hữu hạn trong [0,1]');
+        if (!Number.isFinite(value) || value < 0 || value > maxValue) {
+            throw new TypeError(label + ' phải chứa pixel hữu hạn trong [0,' + maxValue + ']');
         }
     }
 }
@@ -148,7 +148,7 @@ async function inferFaceImage(imageBuffer) {
 
 async function inferAlignedFace({ rgb112, bgr80 }) {
     assertPixels(rgb112, 3 * 112 * 112, 'rgb112');
-    assertPixels(bgr80, 3 * 80 * 80, 'bgr80');
+    assertPixels(bgr80, 3 * 80 * 80, 'bgr80', 255);
     const runtime = await getRuntime();
     const { ort, mobile, pad, padInputName, padOutputName } = runtime;
     const mobileTensor = new ort.Tensor('float32', rgb112, [1, 3, 112, 112]);
