@@ -1,8 +1,9 @@
 const rateLimit = require('express-rate-limit');
 const RedisRateLimitStore = require('./redisRateLimitStore');
 
-// IP-level safety net: count failed password-login attempts only.
-// Account/IP progressive cooldown is enforced separately by passwordLoginProtection.
+// IP-level safety net: count non-successful password-login requests.
+// express-rate-limit decrements successful responses; account/IP progressive
+// cooldown is enforced separately by passwordLoginProtection.
 const loginRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 30,
