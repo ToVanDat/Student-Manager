@@ -70,8 +70,21 @@ const replaceRolePermissions = async (role, permissions, actorId) => {
                 [role, item.permission_key, item.allowed, actorId]
             );
         }
+        // Read the committed shape from the same transaction before COMMIT.
+        // A post-COMMIT read through the pool could fail after the mutation has
+        // already succeeded and incorrectly make the API report a failed save.
+        const { rows: updatedPermissions } = await client.query(
+            `SELECT p.permission_key, p.module_key, p.label_vi, p.label_en,
+                    p.description_vi, p.description_en, p.is_sensitive,
+                    COALESCE(rp.allowed, FALSE) AS allowed
+             FROM permissions p
+             LEFT JOIN role_permissions rp
+               ON rp.permission_key = p.permission_key AND rp.role = $1
+             ORDER BY p.module_key, p.permission_key`,
+            [role]
+        );
         await client.query('COMMIT');
-        return { kind: 'ok', permissions: await listPermissionsForRole(role) };
+        return { kind: 'ok', permissions: updatedPermissions };
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;
