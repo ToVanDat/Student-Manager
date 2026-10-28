@@ -65,7 +65,7 @@ function publicUser(user) {
     return { id: user.id, username: user.username, email: user.email, role: user.role, avatar_url: user.avatar_url || null };
 }
 
-async function issueSession(user, req) {
+async function issueSession(user, req, options = {}) {
     if (!user || !user.is_active) throw new Error('Tài khoản đã bị khóa hoặc không tồn tại');
 
     // sessions.device_name is VARCHAR(100), while user_agent is TEXT.
@@ -77,7 +77,10 @@ async function issueSession(user, req) {
     let accessToken = null;
 
     try {
-        session = await authRepository.createSessionForActiveUser(
+        const createSession = options.requireFaceCredential
+            ? authRepository.createSessionForActiveFaceUser
+            : authRepository.createSessionForActiveUser;
+        session = await createSession(
             user.id,
             deviceName,
             userAgent,
