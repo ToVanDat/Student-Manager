@@ -398,11 +398,13 @@ async function cancelEnrollment(userId, challengeId) {
         const result = await redisClient.eval(
             `if redis.call('GET', KEYS[2]) ~= ARGV[1] then return 0 end
              local raw = redis.call('GET', KEYS[1])
-             if raw then
-                 local state = cjson.decode(raw)
-                 if tostring(state.userId) ~= ARGV[2] then return 0 end
-                 redis.call('DEL', KEYS[1])
-             end
+             -- A missing challenge may already have been consumed by finishEnrollment.
+             -- In that state the enrollment lock protects the in-flight credential write;
+             -- cancellation must not release it.
+             if not raw then return 0 end
+             local state = cjson.decode(raw)
+             if tostring(state.userId) ~= ARGV[2] then return 0 end
+             redis.call('DEL', KEYS[1])
              redis.call('DEL', KEYS[2])
              return 1`,
             {
