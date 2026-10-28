@@ -380,10 +380,13 @@ jobs:
           python -m pip install opencv-python-headless==4.10.0.84 --no-deps
           python -m pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
       - name: Checkout upstream MiniVision reference
-        run: git clone --depth 1 https://github.com/minivision-ai/Silent-Face-Anti-Spoofing.git /tmp/Silent-Face-Anti-Spoofing
+        run: git init /tmp/Silent-Face-Anti-Spoofing
+          git -C /tmp/Silent-Face-Anti-Spoofing remote add origin https://github.com/minivision-ai/Silent-Face-Anti-Spoofing.git
+          git -C /tmp/Silent-Face-Anti-Spoofing fetch --depth 1 origin b6d5f04ad78778917853b25c778acef6d5626d15
+          git -C /tmp/Silent-Face-Anti-Spoofing checkout --detach FETCH_HEAD
       - name: Download hash-pinned model artifacts
         run: |
-          curl --fail --location --retry 3 --output /tmp/2.7_80x80_MiniFASNetV2.pth https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/raw/refs/heads/master/resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth
+          curl --fail --location --retry 3 --output /tmp/2.7_80x80_MiniFASNetV2.pth https://raw.githubusercontent.com/minivision-ai/Silent-Face-Anti-Spoofing/b6d5f04ad78778917853b25c778acef6d5626d15/resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth
           curl --fail --location --retry 3 --output /tmp/minifasnet-v2.onnx https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/resolve/d29c87568ca9b5662da803b10f217c4db20b142b/minifasnet_v2.onnx
       - name: Verify production PAD crop against MiniVision OpenCV
         working-directory: students_managerment-api
