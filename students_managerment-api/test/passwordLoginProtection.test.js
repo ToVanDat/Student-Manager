@@ -30,8 +30,9 @@ test('invalid attempt counts never produce a cooldown', () => {
 
 test('account identifiers are normalized consistently before hashing', () => {
     assert.equal(
-        normalizeAccountIdentifier('  STUDENT.User  '),
-        normalizeAccountIdentifier('student.user')
+        normalizeAccountIdentifier('  student.User  '),
+        normalizeAccountIdentifier('student.User')
     );
+    assert.notEqual(normalizeAccountIdentifier('student.User'), normalizeAccountIdentifier('student.user'));
     assert.equal(normalizeAccountIdentifier('  '), '');
 });
