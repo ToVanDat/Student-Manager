@@ -159,6 +159,17 @@ def calibrate_pad(rows):
     return best["threshold"], best
 
 
+def validate_attack_coverage(rows, split_name):
+    required = ATTACKS - {"bona_fide"}
+    observed = {row["attack_type"] for row in rows if not row["bona_fide"]}
+    missing = required - observed
+    if missing:
+        raise ValueError(
+            f"PAD {split_name} partition is missing attack categories: "
+            f"{', '.join(sorted(missing))}"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recognition", required=True, type=Path)
@@ -180,15 +191,8 @@ def main():
     pt = [r for r in pad if r["split"] == "test"]
     if not all((rc, rt, pc, pt)):
         raise ValueError("Both CSVs need non-empty calibration and test partitions")
-    required_pad_attacks = ATTACKS - {"bona_fide"}
     for split_name, split_rows in (("calibration", pc), ("test", pt)):
-        observed = {row["attack_type"] for row in split_rows if not row["bona_fide"]}
-        missing = required_pad_attacks - observed
-        if missing:
-            raise ValueError(
-                f"PAD {split_name} partition is missing attack categories: "
-                f"{', '.join(sorted(missing))}"
-            )
+        validate_attack_coverage(split_rows, split_name)
 
     rec_t, rec_cal = calibrate_recognition(rc)
     pad_t, pad_cal = calibrate_pad(pc)
