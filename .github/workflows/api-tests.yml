@@ -426,3 +426,15 @@ jobs:
           name: minifasnet-reference-parity
           path: /tmp/minifasnet-parity.json
           if-no-files-found: ignore
+
+
+  docker-build-smoke:
+    name: API Docker image and native runtime smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build API image from committed lockfile
+        run: docker build -t student-manager-api-smoke -f students_managerment-api/Dockerfile students_managerment-api
+      - name: Verify ONNX Runtime native module inside production image
+        run: docker run --rm --entrypoint node student-manager-api-smoke -e "require('onnxruntime-node'); console.log('ONNX Runtime native module loaded in API image')"
