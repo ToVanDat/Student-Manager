@@ -190,12 +190,21 @@ const updateConversationChatTheme = async (req, res, next) => {
         }
         const data = await repository.setConversationChatTheme(conversationId, theme);
         if (!data) return res.status(404).json({ message: 'Conversation không tồn tại' });
-        await publishRealtimeEvent('conversation:theme-updated', {
-            conversationId,
-            theme: data.chat_theme,
-            updatedBy: userId,
-            updatedAt: new Date().toISOString()
-        });
+        try {
+            await publishRealtimeEvent('conversation:theme-updated', {
+                conversationId,
+                theme: data.chat_theme,
+                updatedBy: userId,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (notificationError) {
+            // The theme has already been persisted. Realtime fan-out is
+            // best-effort; clients can reconcile through the theme GET route.
+            console.error('[CHAT][theme realtime notification failed]', {
+                conversationId,
+                message: notificationError?.message
+            });
+        }
         return res.status(200).json({ message: 'Đã cập nhật chủ đề cho cả cuộc trò chuyện', data: { theme: data.chat_theme } });
     } catch (error) {
         if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
