@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES } = require('../service/faceInferenceService.js');
+const { l2Normalize, classProbabilities, assertPixels, EXPECTED_HASHES, PAD_MODEL_CONTRACT } = require('../service/faceInferenceService.js');
 
 test('MobileFaceNet embedding is L2-normalized', () => {
   const embedding = l2Normalize(Float32Array.from({ length: 128 }, (_, i) => i + 1));
@@ -15,10 +15,22 @@ test('MobileFaceNet rejects wrong dimensions and non-finite outputs', () => {
   assert.throws(() => l2Normalize(invalid), /hữu hạn/);
 });
 
-test('MiniFASNet logits become stable probabilities', () => {
+test('MiniFASNet logits always pass through stable softmax', () => {
   const probabilities = classProbabilities([1000, 999, -1000]);
   assert.ok(Math.abs(probabilities.reduce((a, b) => a + b, 0) - 1) < 1e-12);
   assert.ok(probabilities[0] > probabilities[1]);
+});
+
+test('MiniFASNet output class order is pinned to upstream bona-fide index 1', () => {
+  assert.deepEqual(PAD_MODEL_CONTRACT.output.classOrder,
+    ['attack_class_0', 'bona_fide', 'attack_class_2']);
+  assert.equal(PAD_MODEL_CONTRACT.output.bonaFideIndex, 1);
+  const probabilities = classProbabilities([0, 8, 0]);
+  assert.ok(probabilities[1] > 0.99);
+});
+
+test('MiniFASNet rejects non-finite logits and wrong class count', () => {
+  assert.throws(() => classProbabilities([0, Number.NaN, 1]), /3 logits hữu hạn/);
 });
 
 test('MiniFASNet rejects invalid class count', () => {
