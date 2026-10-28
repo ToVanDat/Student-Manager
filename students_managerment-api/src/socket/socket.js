@@ -10,7 +10,7 @@ const notificationDeliveryService = require('../../service/notificationDeliveryS
 const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
-const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
+const { isValidCallId, isValidCallType, normalizeCallFailureReason } = require('../../service/callValidation.js');
 const { isValidSessionDescription, isValidIceCandidate, wrapSocketEventListener } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
@@ -1345,12 +1345,14 @@ const initSocket = async (server) => {
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || currentCall.status !== 'connecting' || currentCall.ended_at) return;
 
+            // Never persist or relay arbitrary client-controlled failure text.
+            const safeReason = normalizeCallFailureReason(reason);
             clearCallTimer(callId);
             const failed = await callRepository.updateCallStatusIfCurrent(
                 callId,
                 'failed',
                 'connecting',
-                reason
+                safeReason
             );
             if (!failed) return;
             emitCallActivityUpdated(failed);
@@ -1359,7 +1361,7 @@ const initSocket = async (server) => {
                 callId,
                 fromUserId: userId,
                 toUserId: targetId,
-                reason: 'connection-timeout',
+                reason: safeReason,
                 status: 'failed'
             };
             io.to(`user:${userId}`).emit('call:ended', payload);
