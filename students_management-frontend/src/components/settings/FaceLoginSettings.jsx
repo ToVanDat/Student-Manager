@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, ShieldCheck, ShieldAlert, Trash2, Video, VideoOff } from 'lucide-react';
 import {
     beginFaceEnrollmentApi,
+    cancelFaceEnrollmentApi,
     captureFaceEnrollmentFrameApi,
     disableFaceLoginApi,
     finishFaceEnrollmentApi,
@@ -85,6 +86,8 @@ export default function FaceLoginSettings() {
         setProgress(0);
         setInstruction('');
         let stream;
+        let challengeId = null;
+        let enrollmentCompleted = false;
         try {
             if (!navigator.mediaDevices?.getUserMedia) {
                 throw new Error('Trình duyệt không hỗ trợ camera hoặc trang hiện tại chưa chạy trên HTTPS/localhost.');
@@ -104,6 +107,7 @@ export default function FaceLoginSettings() {
             if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
 
             const challenge = await beginFaceEnrollmentApi(null, currentPassword);
+            challengeId = challenge.challengeId;
             if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
             const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
@@ -125,11 +129,17 @@ export default function FaceLoginSettings() {
 
             if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             await finishFaceEnrollmentApi(challenge.challengeId);
+            enrollmentCompleted = true;
+            challengeId = null;
             setInstruction('Đăng ký khuôn mặt đã hoàn tất.');
             await refresh();
         } catch (requestError) {
             setError(requestError.response?.data?.message || requestError.message || 'Không thể đăng ký khuôn mặt.');
         } finally {
+            if (challengeId && !enrollmentCompleted) {
+                try { await cancelFaceEnrollmentApi(challengeId); }
+                catch (cancelError) { console.warn('[FaceLogin] Could not cancel enrollment challenge:', cancelError.message); }
+            }
             stream?.getTracks().forEach(track => track.stop());
             if (streamRef.current === stream) streamRef.current = null;
             if (videoRef.current) videoRef.current.srcObject = null;
