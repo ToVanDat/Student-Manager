@@ -22,7 +22,7 @@ test('creates a short-lived challenge with a random ordered action sequence', ()
     assert.equal(challenge.actions.length, 2);
     assert.deepEqual([...challenge.actions].sort(), ['blink', 'smile']);
     assert.equal(challenge.issuedAt, 1_000);
-    assert.equal(challenge.expiresAt, 31_000);
+    assert.equal(challenge.expiresAt, 61_000);
     assert.ok(challenge.nonce.length >= 40);
 });
 
@@ -71,4 +71,40 @@ test('rejects a sequence where actions occur in the wrong order', () => {
     assert.equal(verifyLivenessSequence({
         actions: ['blink', 'smile'], frames, issuedAt: 1_000, expiresAt: 5_000, now: 2_200
     }).reason, 'ACTION_NOT_COMPLETED');
+});
+
+
+test('allows bounded server-side inference latency without accepting stale or excessively long sequences', () => {
+    const frames = [
+        frame(1_100), frame(9_100), frame(17_100, 0.9),
+        frame(25_100), frame(33_100), frame(41_100, 0.05, 0.8)
+    ];
+    const result = verifyLivenessSequence({
+        actions: ['blink', 'smile'],
+        frames,
+        issuedAt: 1_000,
+        expiresAt: 61_000,
+        now: 42_000
+    });
+    assert.deepEqual(result, { passed: true, reason: 'CHALLENGE_COMPLETED' });
+
+    const tooSlow = frames.map((item, index) => ({
+        ...item,
+        receivedAt: 1_100 + index * 11_000
+    }));
+    assert.equal(verifyLivenessSequence({
+        actions: ['blink', 'smile'],
+        frames: tooSlow,
+        issuedAt: 1_000,
+        expiresAt: 61_000,
+        now: 57_000
+    }).reason, 'INVALID_FRAME_SEQUENCE');
+
+    assert.equal(verifyLivenessSequence({
+        actions: ['blink', 'smile'],
+        frames,
+        issuedAt: 1_000,
+        expiresAt: 61_000,
+        now: 61_001
+    }).reason, 'INVALID_FRAME_SEQUENCE');
 });
