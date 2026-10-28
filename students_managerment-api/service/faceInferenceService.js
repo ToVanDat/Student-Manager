@@ -16,14 +16,18 @@ const EXPECTED_HASHES = Object.freeze({
 // The ONNX export is hash-pinned above. Do not relabel attack subclasses as
 // print/replay without an independently verified class mapping.
 const PAD_MODEL_CONTRACT = Object.freeze({
+    artifactSha256: 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b',
     input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 1]) }),
     output: Object.freeze({
-        semantics: 'logits',
-        classOrder: Object.freeze(['attack_class_0', 'bona_fide', 'attack_class_2']),
-        bonaFideIndex: 1
+        verified: false,
+        classCount: 3,
+        semantics: null,
+        classOrder: null,
+        reason: 'The published ONNX model card and upstream MiniVision inference code disagree on class index semantics; direct ONNX/PyTorch parity is required.'
     }),
-    upstream: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
-    onnxExport: 'https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/commit/d29c87568ca9b5662da803b10f217c4db20b142b'
+    upstreamInference: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
+    upstreamConversion: 'https://github.com/QingHeYang/Silent-Face-Anti-Spoofing-onnx/blob/main/convert_minifasnet_to_onnx.py',
+    matchingArtifactCard: 'https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/commit/d29c87568ca9b5662da803b10f217c4db20b142b'
 });
 
 const MODEL_DIR = path.resolve(
@@ -72,18 +76,15 @@ function l2Normalize(values) {
     return Array.from(values, value => Math.fround(value / norm));
 }
 
-function classProbabilities(logits) {
-    if (!logits || logits.length !== 3 || Array.from(logits).some(value => !Number.isFinite(value))) {
-        throw configError('MiniFASNet phải trả về đúng 3 logits hữu hạn');
+function classProbabilities(output) {
+    if (!output || output.length !== PAD_MODEL_CONTRACT.output.classCount ||
+        Array.from(output).some(value => !Number.isFinite(value))) {
+        throw configError('MiniFASNet phải trả về đúng 3 giá trị hữu hạn');
     }
-    // The pinned upstream PyTorch inference applies F.softmax(model.forward(...))
-    // outside the model. The ONNX export preserves model.forward logits, so always
-    // apply stable softmax; never infer output semantics from the numeric values.
-    const scores = Array.from(logits);
-    const max = Math.max(...scores);
-    const exps = scores.map(value => Math.exp(value - max));
-    const total = exps.reduce((a, b) => a + b, 0);
-    return exps.map(value => value / total);
+    if (!PAD_MODEL_CONTRACT.output.verified) {
+        throw configError('MiniFASNet class mapping/output semantics chưa được xác minh bằng ONNX-PyTorch parity; PAD inference bị khóa.');
+    }
+    throw configError('PAD output contract chưa được triển khai cho metadata đã xác minh.');
 }
 
 function assertPixels(buffer, expectedLength, label) {
@@ -162,20 +163,12 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
         throw configError('MobileFaceNet output phải có đúng 2x128 giá trị');
     }
     const embedding = l2Normalize(embeddingRows.slice(0, 128));
-    const probabilities = classProbabilities(padResult[padOutputName].data);
-    const bonaFideProbability = probabilities[PAD_MODEL_CONTRACT.output.bonaFideIndex];
+    // Deliberately fail closed until the exact ONNX output semantics and class
+    // order are proven against the original PyTorch model on identical tensors.
+    classProbabilities(padResult[padOutputName].data);
     return {
         embedding,
-        pad: {
-            bonaFideProbability,
-            attackProbability: probabilities[0] + probabilities[2],
-            classProbabilities: {
-                attackClass0: probabilities[0],
-                bonaFide: bonaFideProbability,
-                attackClass2: probabilities[2]
-            },
-            score: bonaFideProbability
-        },
+        pad: null,
         liveness: tensors.liveness,
         model: { id: 'mobilefacenet+minifasnet-v2', version: 'supplied-bundle-v1' }
     };
