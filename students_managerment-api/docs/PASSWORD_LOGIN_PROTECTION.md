@@ -24,6 +24,9 @@ The account/IP failure counter has a fixed 24-hour TTL beginning with the first 
 
 While a cooldown is active, the login middleware returns HTTP 429 and a `Retry-After` header. Once it expires, another failed attempt increments the same 24-hour counter and applies the tier for the new count. A successful password login clears only that account/IP pair's failure and cooldown keys; it does not erase aggregate account risk telemetry.
 
+
+The route checks the account/IP cooldown before consuming the IP-level limiter. Therefore repeated requests rejected by an already-active account/IP cooldown do not consume the shared IP quota; actual non-successful requests that pass the cooldown check still count toward the IP safety limit.
+
 The account identifier and IP address are HMAC-SHA256 hashed before being used in Redis keys. The HMAC key is a dedicated secret and must not be reused from JWT or other application secrets.
 
 ## IP-level limiter
