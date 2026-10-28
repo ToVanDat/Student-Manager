@@ -17,7 +17,9 @@ function fail(res, error) {
         });
     }
     if (error?.code?.startsWith('FACE_') && error.code !== 'FACE_SERVER_INFERENCE_NOT_READY') {
-        const status = ['FACE_AUTH_CONFIG_NOT_READY', 'FACE_AUTH_UNAVAILABLE', 'FACE_INFERENCE_NOT_READY', 'FACE_LANDMARK_SERVICE_UNAVAILABLE', 'FACE_LANDMARK_SERVICE_AUTH_FAILED', 'FACE_LIVENESS_SIGNALS_INVALID'].includes(error.code) ? 503 : 400;
+        const status = error.code === 'FACE_ENROLLMENT_IN_PROGRESS' ? 409
+            : error.code === 'FACE_ACCOUNT_INACTIVE' ? 403
+                : ['FACE_AUTH_CONFIG_NOT_READY', 'FACE_AUTH_UNAVAILABLE', 'FACE_INFERENCE_NOT_READY', 'FACE_LANDMARK_SERVICE_UNAVAILABLE', 'FACE_LANDMARK_SERVICE_AUTH_FAILED', 'FACE_LIVENESS_SIGNALS_INVALID'].includes(error.code) ? 503 : 400;
         return res.status(status).json({ code: error.code, message: error.message });
     }
     if (/challenge.*(hết hạn|đã được sử dụng)/i.test(error?.message || '')) {
