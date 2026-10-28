@@ -31,15 +31,21 @@ Before PAD scores can be evaluated, the JavaScript production crop is compared b
 
     python tools/face-eval/verify_pad_crop_parity.py --upstream-root C:\\face-test\\Silent-Face-Anti-Spoofing
 
-This checks the crop geometry and resize implementation, not the accuracy of the detector's bounding box on camera frames.
+This checks the crop geometry and resize bytes, not the accuracy of the detector's bounding box on camera frames.
 
 Before generating PAD CSV values, compare the exact ONNX file with the original MiniVision PyTorch checkpoint. The verifier checks both SHA-256 hashes, runs deterministic BGR NCHW float32 tensors in the upstream reference range [0,255] through PyTorch and ONNX Runtime, and determines whether the ONNX graph returns raw logits or softmax probabilities by numerical parity. It only accepts a unique match.
 
-From the API directory (requires Python packages `torch`, `onnxruntime`, and `numpy`, plus a local upstream checkout and the exact checkpoint):
+From the API directory, first install the pinned verifier dependencies and check out the exact upstream revision (the script rejects a different checkout):
+
+    py -m pip install numpy==1.26.4 opencv-python==4.10.0.84 onnxruntime==1.17.3 torch==2.2.2
+    git clone https://github.com/minivision-ai/Silent-Face-Anti-Spoofing.git C:\\face-test\\Silent-Face-Anti-Spoofing
+    git -C C:\\face-test\\Silent-Face-Anti-Spoofing checkout --detach b6d5f04ad78778917853b25c778acef6d5626d15
+
+Then run:
 
     python tools/face-eval/verify_minifasnet_parity.py --upstream-root C:\face-test\Silent-Face-Anti-Spoofing --checkpoint C:\face-test\Silent-Face-Anti-Spoofing\resources\anti_spoof_models\2.7_80x80_MiniFASNetV2.pth --onnx storage\face-models\anti-spoofing\minifasnet-v2.onnx --output C:\face-test\minifasnet-parity.json
 
-A successful synthetic parity report is necessary but not sufficient: it does not measure PAD performance, validate the production crop pixel-for-pixel, or prove resistance to attacks. The upstream `test.py` labels argmax index 1 as Real Face; `AntiSpoofPredict` applies softmax without reordering, and the referenced ONNX converter exports `model.forward()` without reordering. The parity verifier reports `index_1=bona_fide` and `index_0/index_2=attack` only if the exact hash-pinned ONNX matches the exact hash-pinned PyTorch checkpoint on every deterministic input. It also reports logits-versus-probabilities. The model card's `[live, print, replay]` ordering is retained as a documented discrepancy, not treated as the runtime contract. Until the parity report passes and is reviewed, do not assign `bonaFideIndex` in the API or create `live_score` values; the API remains fail-closed.
+A successful crop and synthetic model parity report are necessary but not sufficient: they do not measure PAD performance on real captures or prove resistance to attacks. The upstream `test.py` labels argmax index 1 as Real Face; `AntiSpoofPredict` applies softmax without reordering, and the referenced ONNX converter exports `model.forward()` without reordering. The parity verifier reports `index_1=bona_fide` and `index_0/index_2=attack` only if the exact hash-pinned ONNX matches the exact hash-pinned PyTorch checkpoint on every deterministic input. It also reports logits-versus-probabilities. The model card's `[live, print, replay]` ordering is retained as a documented discrepancy, not treated as the runtime contract. Until the parity report passes and is reviewed, do not assign `bonaFideIndex` in the API or create `live_score` values; the API remains fail-closed.
 
 ## Metrics
 
