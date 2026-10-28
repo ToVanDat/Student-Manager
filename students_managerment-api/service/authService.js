@@ -1008,10 +1008,16 @@ const refresh = async (
                     console.warn('[AUTH] Could not clear replayed session access tokens:', cleanupError.message);
                 }
 
-                emitSessionRevoked(
-                    revokedSession.id,
-                    'REFRESH_TOKEN_REUSE'
-                );
+                try {
+                    emitSessionRevoked(
+                        revokedSession.id,
+                        'REFRESH_TOKEN_REUSE'
+                    );
+                } catch (socketError) {
+                    // The refresh-token family is already revoked in PostgreSQL.
+                    // Socket delivery is only an acceleration of client cleanup.
+                    console.warn('[AUTH] Could not notify refresh-token replay revocation:', socketError.message);
+                }
             }
         }
 
