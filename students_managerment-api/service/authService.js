@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const authRepository = require('../repository/authRepository');
 const emailService = require('./emailService.js');
 const { resetAccountState } = require('./passwordLoginProtection.js');
+const { retryRedisCleanup } = require('./redisCleanupRetry.js');
 
 // =====================================================
 // CONFIG
@@ -341,12 +342,12 @@ const changePassword = async (
         throw new Error('Không thể cập nhật mật khẩu');
     }
 
-    // A successful credential change clears all cooldown state for this account.
-    try {
-        await resetAccountState(user.username);
-    } catch (error) {
-        console.warn('[AUTH] Could not reset password cooldown after password change:', error.code || error.message);
-    }
+    // PostgreSQL is already committed. Retry Redis cleanup briefly without
+    // turning a successful password change into a failed HTTP response.
+    await retryRedisCleanup(
+        () => resetAccountState(user.username),
+        { operation: 'password-change cooldown cleanup' }
+    );
 
     // Database revocation is already committed atomically. Socket notification
     // is best-effort and must not turn a successful credential change into 500.
@@ -1478,12 +1479,18 @@ const resetPassword = async (
         throw new Error('Reset token không hợp lệ, đã được sử dụng hoặc tài khoản không hoạt động');
     }
 
-    // A completed password reset clears all account-specific cooldown state.
+    // PostgreSQL is already committed. Resolve the account and retry Redis
+    // cleanup briefly; Redis failure must not undo the completed password reset.
     try {
         const resetUser = await authRepository.findUserById(resetRequest.user_id);
-        if (resetUser?.username) await resetAccountState(resetUser.username);
+        if (resetUser?.username) {
+            await retryRedisCleanup(
+                () => resetAccountState(resetUser.username),
+                { operation: 'password-reset cooldown cleanup' }
+            );
+        }
     } catch (error) {
-        console.warn('[AUTH] Could not reset password cooldown after password reset:', error.code || error.message);
+        console.warn('[AUTH] Could not resolve account for password-reset cooldown cleanup:', error.code || error.message);
     }
 
     // Session revocation is already committed. Socket delivery is best-effort.
