@@ -11,7 +11,7 @@ const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
-const { isValidSessionDescription, isValidIceCandidate, normalizeSocketPayload } = require('../../service/socketPayloadValidation.js');
+const { isValidSessionDescription, isValidIceCandidate, normalizeSocketEventArgs } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 
@@ -161,16 +161,7 @@ const initSocket = async (server) => {
         const registerClientEvent = socket.on.bind(socket);
         socket.on = (eventName, listener) => registerClientEvent(
             eventName,
-            (...eventArgs) => {
-                // Socket.IO acknowledgements may be the only argument when a
-                // client omits its payload. Preserve them instead of treating
-                // the callback as malformed payload data.
-                if (typeof eventArgs[0] === 'function') {
-                    return listener({}, ...eventArgs);
-                }
-                const [payload, ...remainingArgs] = eventArgs;
-                return listener(normalizeSocketPayload(payload), ...remainingArgs);
-            }
+            (...eventArgs) => listener(...normalizeSocketEventArgs(...eventArgs))
         );
 
         const userId = Number(socket.user.id);
