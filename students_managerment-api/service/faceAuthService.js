@@ -453,7 +453,7 @@ async function finishLogin(challengeId, req) {
     const comparison = await compareVerifiedTemplate(state.userId, embedding);
     if (!comparison.matched) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
     try {
-        return await issueSession(user, req);
+        return await issueSession(user, req, { requireFaceCredential: true });
     } catch (error) {
         if (error?.code === 'ACCOUNT_INACTIVE') {
             throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
@@ -464,12 +464,22 @@ async function finishLogin(challengeId, req) {
 
 
 async function disable(userId) {
+    // Serialize with enrollment and Face Login session creation using the
+    // same lock order: account row first, then face credential row.
     const result = await pool.query(
-        `UPDATE user_face_credentials
-         SET disabled_at = COALESCE(disabled_at, CURRENT_TIMESTAMP),
+        `WITH account AS (
+             SELECT id
+             FROM users
+             WHERE id = $1
+             FOR UPDATE
+         )
+         UPDATE user_face_credentials AS credential
+         SET disabled_at = COALESCE(credential.disabled_at, CURRENT_TIMESTAMP),
              updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = $1 AND disabled_at IS NULL
-         RETURNING id`,
+         FROM account
+         WHERE credential.user_id = account.id
+           AND credential.disabled_at IS NULL
+         RETURNING credential.id`,
         [userId]
     );
     return { disabled: result.rowCount > 0 };
