@@ -27,6 +27,12 @@ Keep CSV files outside Git. Do not put raw face images or embedding vectors in t
 
 ## Model parity gate
 
+Before PAD scores can be evaluated, the JavaScript production crop is compared byte-for-byte with MiniVision's `_get_new_box` and OpenCV `INTER_LINEAR` resize on deterministic synthetic images:
+
+    python tools/face-eval/verify_pad_crop_parity.py --upstream-root C:\\face-test\\Silent-Face-Anti-Spoofing
+
+This checks the crop geometry and resize implementation, not the accuracy of the detector's bounding box on camera frames.
+
 Before generating PAD CSV values, compare the exact ONNX file with the original MiniVision PyTorch checkpoint. The verifier checks both SHA-256 hashes, runs deterministic BGR NCHW float32 tensors in the upstream reference range [0,255] through PyTorch and ONNX Runtime, and determines whether the ONNX graph returns raw logits or softmax probabilities by numerical parity. It only accepts a unique match.
 
 From the API directory (requires Python packages `torch`, `onnxruntime`, and `numpy`, plus a local upstream checkout and the exact checkpoint):
