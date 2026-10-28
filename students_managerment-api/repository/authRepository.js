@@ -496,6 +496,32 @@ const createSession = async (
     return result.rows[0];
 };
 
+// Login-session creation must re-check account state in the same SQL statement
+// that inserts the session. A stale user object from an earlier credential
+// verification must not create a session after the account has been disabled.
+const createSessionForActiveUser = async (
+    userId,
+    deviceName = null,
+    userAgent = null,
+    ipAddress = null
+) => {
+    const sessionId = crypto.randomUUID();
+    const result = await pool.query(
+        `
+        INSERT INTO sessions (
+            id, user_id, device_name, user_agent, ip_address
+        )
+        SELECT $1, id, $3, $4, $5
+        FROM users
+        WHERE id = $2
+          AND is_active = TRUE
+        RETURNING *
+        `,
+        [sessionId, userId, deviceName, userAgent, ipAddress]
+    );
+    return result.rows[0] || null;
+};
+
 
 // ======================================================
 // FIND ALL SESSIONS BY USER ID
@@ -1228,6 +1254,7 @@ module.exports = {
     // ==================================================
 
     createSession,
+    createSessionForActiveUser,
 
     findSessionsByUserId,
 
