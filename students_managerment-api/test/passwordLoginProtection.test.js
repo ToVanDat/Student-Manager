@@ -36,3 +36,108 @@ test('account identifiers are normalized consistently before hashing', () => {
     assert.notEqual(normalizeAccountIdentifier('student.User'), normalizeAccountIdentifier('student.user'));
     assert.equal(normalizeAccountIdentifier('  '), '');
 });
+
+
+test('Redis protection records pair failures atomically without exposing identifiers in keys', async () => {
+    const { redisClient } = require('../src/config/redis');
+    const { recordFailure } = require('../service/passwordLoginProtection');
+    const originalEval = redisClient.eval;
+    const calls = [];
+    process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
+    redisClient.eval = async (script, options) => {
+        calls.push({ script, options });
+        return [4, 4, 30000];
+    };
+
+    try {
+        const result = await recordFailure('student@example.test', '203.0.113.10');
+        assert.deepEqual(result, {
+            failedAttempts: 4,
+            accountRiskSignals: 4,
+            cooldownMs: 30000
+        });
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].options.keys.length, 4);
+        assert.ok(calls[0].options.keys.every((key) => !key.includes('student@example.test')));
+        assert.ok(calls[0].options.keys.every((key) => !key.includes('203.0.113.10')));
+        assert.deepEqual(calls[0].options.arguments, ['86400', calls[0].options.keys[0].split(':')[3]]);
+        assert.match(calls[0].script, /INCR/);
+        assert.match(calls[0].script, /PSETEX/);
+    } finally {
+        redisClient.eval = originalEval;
+        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+    }
+});
+
+test('Redis protection reads cooldown using Redis PTTL and rounds retry-after upward', async () => {
+    const { redisClient } = require('../src/config/redis');
+    const { getCooldownState } = require('../service/passwordLoginProtection');
+    const originalEval = redisClient.eval;
+    process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
+    redisClient.eval = async (script, options) => {
+        assert.match(script, /PTTL/);
+        assert.equal(options.keys.length, 1);
+        return 1001;
+    };
+
+    try {
+        assert.deepEqual(await getCooldownState('student@example.test', '203.0.113.10'), {
+            active: true,
+            retryAfterSeconds: 2
+        });
+    } finally {
+        redisClient.eval = originalEval;
+        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+    }
+});
+
+test('successful login reset deletes only the current account/IP pair keys', async () => {
+    const { redisClient } = require('../src/config/redis');
+    const { clearAccountIpState } = require('../service/passwordLoginProtection');
+    const originalDel = redisClient.del;
+    const calls = [];
+    process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
+    redisClient.del = async (keys) => {
+        calls.push(keys);
+        return 2;
+    };
+
+    try {
+        await clearAccountIpState('student@example.test', '203.0.113.10');
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].length, 2);
+        assert.ok(calls[0].every((key) => key.startsWith('auth:password:')));
+        assert.ok(calls[0].every((key) => !key.includes('student@example.test')));
+        assert.ok(calls[0].every((key) => !key.includes('203.0.113.10')));
+    } finally {
+        redisClient.del = originalDel;
+        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+    }
+});
+
+test('password reset clears account pair index and aggregate risk atomically', async () => {
+    const { redisClient } = require('../src/config/redis');
+    const { resetAccountState } = require('../service/passwordLoginProtection');
+    const originalEval = redisClient.eval;
+    const calls = [];
+    process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
+    redisClient.eval = async (script, options) => {
+        calls.push({ script, options });
+        return 2;
+    };
+
+    try {
+        assert.equal(await resetAccountState('student@example.test'), 2);
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0].options.keys.length, 2);
+        assert.deepEqual(calls[0].options.arguments, [
+            'auth:password:',
+            calls[0].options.keys[0].replace('auth:password:ip-index:', '')
+        ]);
+        assert.match(calls[0].script, /SMEMBERS/);
+        assert.match(calls[0].script, /DEL/);
+    } finally {
+        redisClient.eval = originalEval;
+        delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+    }
+});
