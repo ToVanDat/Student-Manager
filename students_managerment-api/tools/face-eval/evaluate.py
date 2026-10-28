@@ -148,14 +148,12 @@ def main():
 
     rec = load_recognition(args.recognition)
     pad = load_pad(args.pad)
-    validate_disjoint_splits(rec, (
-        "participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b"
-    ), "Recognition")
-    validate_disjoint_splits(pad, ("participant_id", "session_id", "device_id"), "PAD")
     for row in rec:
         row["participant_a"] = (row["participant_a"], row["participant_b"])
         row["session_a"] = (row["session_a"], row["session_b"])
         row["device_a"] = (row["device_a"], row["device_b"])
+    validate_disjoint_splits(rec, ("participant_a", "session_a", "device_a"), "Recognition")
+    validate_disjoint_splits(pad, ("participant_id", "session_id", "device_id"), "PAD")
     rc = [r for r in rec if r["split"] == "calibration"]
     rt = [r for r in rec if r["split"] == "test"]
     pc = [r for r in pad if r["split"] == "calibration"]
