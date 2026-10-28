@@ -527,6 +527,46 @@ const createSessionForActiveUser = async (
     return result.rows[0] || null;
 };
 
+// Face Login session issuance additionally locks and re-checks the active face
+// credential. Lock order is users -> user_face_credentials, matching enrollment
+// and disable operations so concurrent changes serialize consistently.
+const createSessionForActiveFaceUser = async (
+    userId,
+    deviceName = null,
+    userAgent = null,
+    ipAddress = null
+) => {
+    const sessionId = crypto.randomUUID();
+    const result = await pool.query(
+        `
+        WITH active_user AS (
+            SELECT id
+            FROM users
+            WHERE id = $2
+              AND is_active = TRUE
+            FOR UPDATE
+        ),
+        active_face_credential AS (
+            SELECT credential.user_id
+            FROM user_face_credentials AS credential
+            INNER JOIN active_user AS account ON account.id = credential.user_id
+            WHERE credential.disabled_at IS NULL
+            FOR UPDATE OF credential
+        )
+        INSERT INTO sessions (
+            id, user_id, device_name, user_agent, ip_address
+        )
+        SELECT $1, account.id, $3, $4, $5
+        FROM active_user AS account
+        INNER JOIN active_face_credential AS face ON face.user_id = account.id
+        RETURNING *
+        `,
+        [sessionId, userId, deviceName, userAgent, ipAddress]
+    );
+    return result.rows[0] || null;
+};
+
+
 
 // ======================================================
 // FIND ALL SESSIONS BY USER ID
@@ -1260,6 +1300,7 @@ module.exports = {
 
     createSession,
     createSessionForActiveUser,
+    createSessionForActiveFaceUser,
 
     findSessionsByUserId,
 
