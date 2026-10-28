@@ -1,3 +1,8 @@
+const normalizeSocketPayload = (payload) =>
+    payload !== null && typeof payload === 'object' && !Array.isArray(payload)
+        ? payload
+        : {};
+
 const MAX_SESSION_DESCRIPTION_BYTES = 64 * 1024;
 const MAX_ICE_CANDIDATE_BYTES = 4 * 1024;
 const MAX_SDP_MID_LENGTH = 256;
@@ -57,6 +62,7 @@ const isValidIceCandidate = (candidate) => {
 };
 
 module.exports = {
+    normalizeSocketPayload,
     MAX_SESSION_DESCRIPTION_BYTES,
     MAX_ICE_CANDIDATE_BYTES,
     isValidSessionDescription,
