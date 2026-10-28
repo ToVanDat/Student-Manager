@@ -397,7 +397,7 @@ jobs:
       - name: Download hash-pinned model artifacts
         run: |
           curl --fail --location --retry 3 --output /tmp/2.7_80x80_MiniFASNetV2.pth https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/raw/refs/heads/master/resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth
-          curl --fail --location --retry 3 --output /tmp/minifasnet-v2.onnx https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/resolve/d29c87568ca9b5662da803b10f217c4db20b142b/minifasnet-v2.onnx
+          curl --fail --location --retry 3 --output /tmp/minifasnet-v2.onnx https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/resolve/d29c87568ca9b5662da803b10f217c4db20b142b/minifasnet_v2.onnx
       - name: Verify checkpoint and ONNX parity
         working-directory: students_managerment-api
         run: |
