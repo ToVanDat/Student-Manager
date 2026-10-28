@@ -16,6 +16,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
+      AUTH_RATE_LIMIT_HASH_SECRET: ${AUTH_RATE_LIMIT_HASH_SECRET:-${JWT_SECRET}}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       FRONTEND_URLS: ${FRONTEND_URLS:-http://localhost:5173,http://127.0.0.1:5173,https://student-manager.local}
