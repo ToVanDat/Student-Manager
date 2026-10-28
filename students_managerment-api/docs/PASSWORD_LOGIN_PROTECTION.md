@@ -28,7 +28,7 @@ The account identifier and IP address are HMAC-SHA256 hashed before being used i
 
 ## IP-level limiter
 
-Password login also has a 30-failed-request limit per 15-minute IP window. Successful requests are decremented by `express-rate-limit`'s `skipSuccessfulRequests` behavior. This is a secondary network safety net, not the progressive per-account policy. NAT users share an egress IP, so the limit should be monitored and tuned from observed traffic rather than reduced aggressively.
+Password login also has a 30 non-successful password-login request limit per 15-minute IP window. Successful requests are decremented by `express-rate-limit`'s `skipSuccessfulRequests` behavior. This is a secondary network safety net, not the progressive per-account policy. NAT users share an egress IP, so the limit should be monitored and tuned from observed traffic rather than reduced aggressively.
 
 The Express IP address is only trustworthy behind a proxy when `TRUST_PROXY_HOPS` matches the actual trusted proxy chain. Do not set it to `true` or `*`. When using the provided single Nginx proxy, set `TRUST_PROXY_HOPS=1` only if clients cannot bypass Nginx. Docker Compose forwards this setting into the backend container.
 
