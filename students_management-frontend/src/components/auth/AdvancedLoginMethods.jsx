@@ -38,12 +38,16 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                     callbacksRef.current.onLoading(true);
                     callbacksRef.current.onError('');
 
+                    // Keep stale-session socket events from clearing the new
+                    // Google session while the server replaces the old one.
+                    sessionStorage.setItem('auth:login-in-progress', 'true');
                     try {
                         const data = await googleLoginApi(result.credential);
                         callbacksRef.current.onLogin(data);
                     } catch (error) {
                         callbacksRef.current.onError(error.response?.data?.message || t('googleLoginFailed'));
                     } finally {
+                        sessionStorage.removeItem('auth:login-in-progress');
                         setBusy(false);
                         callbacksRef.current.onLoading(false);
                     }
