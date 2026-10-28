@@ -30,6 +30,24 @@ export const exportStudentsCsv = async (params = {}) => {
   return response.data;
 };
 
+export const previewStudentCsvImport = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post(`${STUDENT_API_URL}/import/preview`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
+export const confirmStudentCsvImport = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post(`${STUDENT_API_URL}/import`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};
+
 export const getStudents = async (params) => {
   const response = params
     ? await apiClient.get(STUDENT_API_URL, { params })

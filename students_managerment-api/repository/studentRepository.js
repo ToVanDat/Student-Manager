@@ -179,6 +179,116 @@ const getStudentExportRows = async ({ search = '', classId = null, gender = '' }
     return { kind: 'ok', rows, totalCount };
 };
 
+
+const getStudentImportReferenceData = async ({ studentCodes = [], emails = [], classCodes = [] } = {}) => {
+    const normalizedCodes = [...new Set(studentCodes.map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+    const normalizedEmails = [...new Set(emails.map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+    const normalizedClasses = [...new Set(classCodes.map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+
+    const [classesResult, codesResult, emailsResult] = await Promise.all([
+        pool.query(
+            `SELECT id, class_code
+             FROM classes
+             WHERE LOWER(BTRIM(class_code)) = ANY($1::text[])`,
+            [normalizedClasses]
+        ),
+        pool.query(
+            `SELECT LOWER(BTRIM(student_code)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(student_code)) = ANY($1::text[])`,
+            [normalizedCodes]
+        ),
+        pool.query(
+            `SELECT LOWER(BTRIM(email)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(email)) = ANY($1::text[])`,
+            [normalizedEmails]
+        )
+    ]);
+
+    return {
+        classes: classesResult.rows,
+        existingStudentCodes: codesResult.rows.map(row => row.value),
+        existingEmails: emailsResult.rows.map(row => row.value)
+    };
+};
+
+const createStudentsFromImport = async (rows = []) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+
+        const classCodes = [...new Set(rows.map(row => row.class_code.toLowerCase()))];
+        const classResult = await client.query(
+            `SELECT id, class_code
+             FROM classes
+             WHERE LOWER(BTRIM(class_code)) = ANY($1::text[])
+             FOR SHARE`,
+            [classCodes]
+        );
+        const classIds = new Map(classResult.rows.map(row => [row.class_code.trim().toLowerCase(), row.id]));
+        const missingClasses = classCodes.filter(code => !classIds.has(code));
+        if (missingClasses.length) {
+            const error = new Error('Một hoặc nhiều mã lớp không còn tồn tại. Hãy xem trước tệp lại.');
+            error.code = 'STUDENT_IMPORT_CONFLICT';
+            throw error;
+        }
+
+        const studentCodes = rows.map(row => row.student_code.trim().toLowerCase());
+        const emails = rows.map(row => row.email.trim().toLowerCase());
+        const [codesResult, emailsResult] = await Promise.all([
+            client.query(
+                `SELECT LOWER(BTRIM(student_code)) AS value
+                 FROM students
+                 WHERE LOWER(BTRIM(student_code)) = ANY($1::text[])
+                 FOR SHARE`,
+                [studentCodes]
+            ),
+            client.query(
+                `SELECT LOWER(BTRIM(email)) AS value
+                 FROM students
+                 WHERE LOWER(BTRIM(email)) = ANY($1::text[])
+                 FOR SHARE`,
+                [emails]
+            )
+        ]);
+        if (codesResult.rowCount || emailsResult.rowCount) {
+            const error = new Error('Mã sinh viên hoặc email đã được sử dụng. Không có bản ghi nào được nhập.');
+            error.code = 'STUDENT_IMPORT_CONFLICT';
+            throw error;
+        }
+
+        for (const row of rows) {
+            await client.query(
+                `INSERT INTO students (
+                    student_code, name, email, date_of_birth, gender, class_id
+                 ) VALUES ($1, $2, $3, $4, $5, $6)`,
+                [
+                    row.student_code,
+                    row.name,
+                    row.email,
+                    row.date_of_birth,
+                    row.gender,
+                    classIds.get(row.class_code.toLowerCase())
+                ]
+            );
+        }
+
+        await client.query('COMMIT');
+        return { importedCount: rows.length };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        if (error?.code === '40001' || error?.code === '23505' || error?.code === '23503') {
+            const conflict = new Error('Dữ liệu đã thay đổi hoặc bị trùng trong lúc nhập. Không có bản ghi nào được nhập; hãy xem trước và thử lại.');
+            conflict.code = 'STUDENT_IMPORT_CONFLICT';
+            throw conflict;
+        }
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const getStudentById = async (id) => {
     const result = await pool.query(`
         SELECT
@@ -442,6 +552,8 @@ module.exports = {
     getAllStudents,
     getStudentPage,
     getStudentExportRows,
+    getStudentImportReferenceData,
+    createStudentsFromImport,
     getStudentPortalByUserId,
     listStudentAccountLinkAdminData,
     createVerifiedStudentAccountLink,

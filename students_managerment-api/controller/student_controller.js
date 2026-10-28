@@ -119,6 +119,59 @@ const exportStudentsCsv = async (req, res) => {
     }
 };
 
+
+const previewStudentCsvImport = async (req, res) => {
+    try {
+        if (!req.file?.buffer) {
+            return res.status(400).json({ message: 'Vui lòng chọn tệp CSV.' });
+        }
+        const preview = await studentService.previewStudentCsvImport(req.file.buffer);
+        return res.status(200).json(preview);
+    } catch (error) {
+        if (error?.statusCode) {
+            return res.status(error.statusCode).json({
+                code: error.code,
+                message: error.message
+            });
+        }
+        return handleStudentError(res, error, 'Không thể kiểm tra tệp CSV.');
+    }
+};
+
+const importStudentsCsv = async (req, res) => {
+    try {
+        if (!req.file?.buffer) {
+            return res.status(400).json({ message: 'Vui lòng chọn lại tệp CSV.' });
+        }
+        const result = await studentService.confirmStudentCsvImport(req.file.buffer);
+        return res.status(201).json({
+            message: 'Nhập danh sách sinh viên thành công.',
+            importedCount: result.importedCount
+        });
+    } catch (error) {
+        if (error?.code === 'STUDENT_IMPORT_VALIDATION_FAILED') {
+            return res.status(422).json({
+                code: error.code,
+                message: error.message,
+                preview: error.details
+            });
+        }
+        if (error?.code === 'STUDENT_IMPORT_CONFLICT') {
+            return res.status(409).json({
+                code: error.code,
+                message: error.message
+            });
+        }
+        if (error?.statusCode) {
+            return res.status(error.statusCode).json({
+                code: error.code,
+                message: error.message
+            });
+        }
+        return handleStudentError(res, error, 'Không thể nhập danh sách sinh viên.');
+    }
+};
+
 const getMyStudentPortal = async (req, res) => {
     try {
         const portal = await studentService.getStudentPortalByUserId(req.user.id);
@@ -280,6 +333,8 @@ const deleteStudent = async (req, res) => {
 module.exports = {
     getAllStudents,
     exportStudentsCsv,
+    previewStudentCsvImport,
+    importStudentsCsv,
     getMyStudentPortal,
     getStudentAccountLinks,
     createStudentAccountLink,

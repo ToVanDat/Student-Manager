@@ -13,6 +13,7 @@ const requireRole =
 const requirePermission = require('../middleware/permissionMiddleware.js');
 
 const validateStudent = require('../middleware/studentValidation.js');
+const uploadStudentCsv = require('../middleware/studentCsvUpload.js');
 
 
 // Standard users can only read their own verified student link and academic records.
@@ -25,6 +26,10 @@ router.delete('/account-links/:userId', authMiddleware, requireRole('admin'), re
 
 // Admin-only export; uses the same view permission as the roster.
 router.get('/export', authMiddleware, requireRole('admin'), requirePermission('students.view'), studentController.exportStudentsCsv);
+
+// CSV import is an explicit two-step admin workflow: preview first, then confirm.
+router.post('/import/preview', authMiddleware, requireRole('admin'), requirePermission('students.manage'), uploadStudentCsv, studentController.previewStudentCsvImport);
+router.post('/import', authMiddleware, requireRole('admin'), requirePermission('students.manage'), uploadStudentCsv, studentController.importStudentsCsv);
 
 // Admin only: list responses include personal student data.
 router.get(
