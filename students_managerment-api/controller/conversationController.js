@@ -22,8 +22,33 @@ const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
 };
 
 const getUsername = async (userId) => {
-    const user = await userRepository.findActiveUserById(Number(userId));
-    return user?.username || 'Người dùng';
+    try {
+        const user = await userRepository.findActiveUserById(Number(userId));
+        return user?.username || 'Người dùng';
+    } catch (error) {
+        // A committed group mutation must not be reported as failed only
+        // because an optional display-name lookup is temporarily unavailable.
+        console.error('[CHAT][group notification username lookup failed]', {
+            userId: Number(userId),
+            message: error?.message
+        });
+        return 'Người dùng';
+    }
+};
+
+const getMemberIdsForNotification = async (conversationId) => {
+    try {
+        return await require('../repository/conversationRepository')
+            .getConversationMemberIds(conversationId);
+    } catch (error) {
+        // Realtime notifications are best-effort; clients can reconcile from
+        // the authenticated conversation list after reconnect/refetch.
+        console.error('[CHAT][group notification member lookup failed]', {
+            conversationId: Number(conversationId),
+            message: error?.message
+        });
+        return [];
+    }
 };
 
 const createDirectConversation = async (req, res) => {
@@ -299,8 +324,7 @@ const updateGroup = async (req, res, next) => {
             req.body.avatarUrl || null
         );
 
-        const memberIds = await require('../repository/conversationRepository')
-            .getConversationMemberIds(conversationId);
+        const memberIds = await getMemberIdsForNotification(conversationId);
 
         for (const memberId of memberIds) {
             getIO().to(`user:${memberId}`).emit('conversation:updated', {
@@ -340,7 +364,7 @@ const addGroupMember = async (req, res, next) => {
         const actorId = Number(req.user.id);
         const addedName = await getUsername(Number(data.user_id));
         const actorName = await getUsername(actorId);
-        const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        const memberIds = await getMemberIdsForNotification(conversationId);
         const io = getIO();
 
         for (const memberId of memberIds) {
@@ -393,24 +417,22 @@ const removeGroupMember = async (req, res, next) => {
             Number(req.user.id),
             targetUserId
         );
-        const repository = require('../repository/conversationRepository');
-        const memberIdsAfter = await repository.getConversationMemberIds(conversationId);
-        const targetName = await getUsername(targetUserId);
-        const actorName = await getUsername(Number(req.user.id));
         const io = getIO();
         const removedUserId = Number(data.user_id);
+
+        // Enforce room eviction immediately after the committed membership
+        // change, before optional notification metadata lookups.
+        io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
+
+        const memberIdsAfter = await getMemberIdsForNotification(conversationId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
 
         io.to(`user:${removedUserId}`).emit('member:removed', {
             conversationId,
             member: data,
             message: 'Bạn đã bị xóa khỏi nhóm'
         });
-
-        // A removed member may have multiple tabs/devices still joined to this
-        // Socket.IO room. Remove every socket for that user immediately so they
-        // cannot keep receiving messages, reactions, typing, or call events from
-        // a group they no longer belong to.
-        io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
 
         for (const memberId of memberIdsAfter) {
             io.to(`user:${memberId}`).emit('conversation:updated', {
@@ -442,10 +464,14 @@ const leaveGroup = async (req, res, next) => {
             conversationId,
             Number(req.user.id)
         );
-        const memberIdsAfter = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
-        const leavingName = await getUsername(Number(req.user.id));
         const io = getIO();
         const leavingUserId = Number(data.user_id);
+
+        // Evict all tabs immediately after the membership mutation commits.
+        io.in(`user:${leavingUserId}`).socketsLeave(`conversation:${conversationId}`);
+
+        const memberIdsAfter = await getMemberIdsForNotification(conversationId);
+        const leavingName = await getUsername(Number(req.user.id));
 
         for (const memberId of memberIdsAfter) {
             io.to(`user:${memberId}`).emit('conversation:updated', {
@@ -460,9 +486,6 @@ const leaveGroup = async (req, res, next) => {
             member: data,
             message: 'Bạn đã rời nhóm'
         });
-
-        // Leave all tabs/devices out of the conversation room immediately.
-        io.in(`user:${leavingUserId}`).socketsLeave(`conversation:${conversationId}`);
 
         await createAndEmitSystemMessage(
             conversationId,
