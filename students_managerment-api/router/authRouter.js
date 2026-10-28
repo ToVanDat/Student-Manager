@@ -75,7 +75,7 @@ router.post('/qr-login/poll', requireTrustedOrigin, authRateLimiter, advancedAut
 router.post('/register', authRateLimiter, authController.register);
 
 // LOGIN
-router.post('/login', requireTrustedOrigin, loginRateLimiter, passwordLoginProtection, authController.login);
+router.post('/login', requireTrustedOrigin, passwordLoginProtection, loginRateLimiter, authController.login);
 
 // REFRESH
 router.post('/refresh', requireTrustedOrigin, authRateLimiter, authController.refresh);
