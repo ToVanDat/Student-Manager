@@ -4,6 +4,7 @@ const crypto = require('crypto');
 
 const authRepository = require('../repository/authRepository');
 const emailService = require('./emailService.js');
+const { resetAccountState } = require('./passwordLoginProtection.js');
 
 // =====================================================
 // CONFIG
@@ -340,6 +341,13 @@ const changePassword = async (
         throw new Error('Không thể cập nhật mật khẩu');
     }
 
+    // A successful credential change clears all cooldown state for this account.
+    try {
+        await resetAccountState(user.username);
+    } catch (error) {
+        console.warn('[AUTH] Could not reset password cooldown after password change:', error.code || error.message);
+    }
+
     // Database revocation is already committed atomically. Socket notification
     // is best-effort and must not turn a successful credential change into 500.
     for (const sessionId of result.revokedSessionIds || []) {
@@ -603,10 +611,9 @@ const login = async (
             );
 
     if (!user) {
-
-        throw new Error(
-            'Username hoặc password không đúng'
-        );
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
     }
 
 
@@ -615,10 +622,9 @@ const login = async (
     // =================================================
 
     if (!user.is_active) {
-
-        throw new Error(
-            'Tài khoản đã bị khóa'
-        );
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
     }
 
 
@@ -632,11 +638,10 @@ const login = async (
             user.password_hash
         );
 
-    if (!isPasswordCorrect) {
-
-        throw new Error(
-            'Username hoặc password không đúng'
-        );
+    if (!user) {
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
     }
 
 
@@ -1471,6 +1476,14 @@ const resetPassword = async (
 
     if (!result) {
         throw new Error('Reset token không hợp lệ, đã được sử dụng hoặc tài khoản không hoạt động');
+    }
+
+    // A completed password reset clears all account-specific cooldown state.
+    try {
+        const resetUser = await authRepository.findUserById(resetRequest.user_id);
+        if (resetUser?.username) await resetAccountState(resetUser.username);
+    } catch (error) {
+        console.warn('[AUTH] Could not reset password cooldown after password reset:', error.code || error.message);
     }
 
     // Session revocation is already committed. Socket delivery is best-effort.
