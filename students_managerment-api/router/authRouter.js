@@ -37,6 +37,7 @@ router.get('/face/status', authMiddleware, faceAuthController.status);
 router.post('/face/enrollment/options', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
 router.post('/face/enrollment/frame', requireTrustedOrigin, authMiddleware, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureEnrollmentFrame);
 router.post('/face/enrollment/verify', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.finishEnrollment);
+router.delete('/face/enrollment/challenge', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.cancelEnrollment);
 router.delete('/face/credential', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.disable);
 router.post('/face/login/options', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.beginLogin);
 router.post('/face/login/frame', requireTrustedOrigin, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureLoginFrame);
