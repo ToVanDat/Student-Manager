@@ -27,7 +27,7 @@ Keep CSV files outside Git. Do not put raw face images or embedding vectors in t
 
 ## Model parity gate
 
-Before generating PAD CSV values, compare the exact ONNX file with the original MiniVision PyTorch checkpoint. The verifier checks both SHA-256 hashes, runs deterministic BGR tensors through PyTorch and ONNX Runtime, and determines whether the ONNX graph returns raw logits or softmax probabilities by numerical parity. It only accepts a unique match.
+Before generating PAD CSV values, compare the exact ONNX file with the original MiniVision PyTorch checkpoint. The verifier checks both SHA-256 hashes, runs deterministic BGR NCHW float32 tensors in the upstream reference range [0,255] through PyTorch and ONNX Runtime, and determines whether the ONNX graph returns raw logits or softmax probabilities by numerical parity. It only accepts a unique match.
 
 From the API directory (requires Python packages `torch`, `onnxruntime`, and `numpy`, plus a local upstream checkout and the exact checkpoint):
 
