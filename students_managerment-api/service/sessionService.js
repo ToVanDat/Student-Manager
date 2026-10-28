@@ -1,7 +1,6 @@
 const authRepository =
     require('../repository/authRepository.js');
-const { removeAccessTokensForSession } =
-    require('./accessTokenStore.js');
+const accessTokenStore = require('./accessTokenStore.js');
 
 
 // ======================================================
@@ -38,7 +37,7 @@ const revokeSession = async (sessionId, userId) => {
     }
 
     try {
-        await removeAccessTokensForSession(sessionId);
+        await accessTokenStore.removeAccessTokensForSession(sessionId);
     } catch (error) {
         console.warn('[SESSION] Could not clear revoked access tokens:', error.message);
     }
@@ -66,7 +65,7 @@ const revokeOtherSessions = async (userId, currentSessionId) => {
     // Database revocation is atomic; Redis and Socket.IO are follow-up operations.
     for (const session of revokedSessions) {
         try {
-            await removeAccessTokensForSession(session.id);
+            await accessTokenStore.removeAccessTokensForSession(session.id);
         } catch (error) {
             console.warn('[SESSION] Could not clear revoked access tokens:', error.message);
         }
