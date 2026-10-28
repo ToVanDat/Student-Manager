@@ -25,7 +25,7 @@ The account/IP failure counter has a fixed 24-hour TTL beginning with the first 
 While a cooldown is active, the login middleware returns HTTP 429 and a `Retry-After` header. Once it expires, another failed attempt increments the same 24-hour counter and applies the tier for the new count. A successful password login clears only that account/IP pair's failure and cooldown keys; it does not erase aggregate account risk telemetry.
 
 
-The route checks the account/IP cooldown before consuming the IP-level limiter. Therefore repeated requests rejected by an already-active account/IP cooldown do not consume the shared IP quota; actual non-successful requests that pass the cooldown check still count toward the IP safety limit.
+The IP-level limiter runs before the account/IP cooldown check. Consequently, requests rejected with `LOGIN_COOLDOWN` also count toward the shared IP quota. This closes the bypass where repeated requests to an already-cooling-down account avoided the network-level limiter. Because users behind the same NAT share the quota, monitor 429 rates and tune the 30-request threshold using real traffic; do not treat the IP limit as an account lockout.
 
 The account identifier and IP address are HMAC-SHA256 hashed before being used in Redis keys. The HMAC key is a dedicated secret and must not be reused from JWT or other application secrets.
 
@@ -59,7 +59,7 @@ Compose reads `.env`, not `.env.example`. The backend container receives `AUTH_R
 
 The cooldown check fails closed with HTTP 503 when Redis protection state cannot be read. The IP rate-limit store also propagates Redis errors rather than silently disabling its limit. The API server currently requires Redis during startup for its broader session/socket functionality.
 
-Password change and password reset attempt to clear all known account cooldown keys and the aggregate risk key after the database credential/session transaction commits. This cleanup is best-effort: if Redis is unavailable at that moment, the operation is not rolled back and stale cooldown keys may remain until their TTL expires. This is a known operational limitation to monitor; do not claim immediate cooldown cleanup if Redis cleanup failed.
+Password change and password reset attempt to clear all known account cooldown keys and the aggregate risk key after the database credential/session transaction commits. The application retries this Redis cleanup up to three times in the same request with short exponential delays. A successful PostgreSQL credential/session transaction is never rolled back because Redis is unavailable. If all retries fail, stale cooldown keys may remain until their TTL expires. These retries are bounded and in-process only; they are not a durable outbox and do not survive process termination. A durable cross-system reconciliation mechanism would require a persistent queue/outbox and a separately reviewed schema/design change.
 
 ## Operational notes
 
@@ -72,4 +72,4 @@ Password change and password reset attempt to clear all known account cooldown k
 
 ## Verification sequence
 
-After implementation review is complete, run the six planned groups: cooldown tier/unit tests; Redis/Lua integration; login integration; password change/reset cleanup; IP/proxy/NAT rate-limit behavior; and auth regression (access/refresh tokens, sessions, logout, Google, Passkeys, Face Login). The existing CI workflows run the API test suite on pushes to this feature branch, but a successful CI run is not a substitute for environment-specific Redis, proxy, and auth regression verification.
+Run the planned groups: cooldown tier/unit tests; cooldown middleware behavior; Redis cleanup retry tests; Redis/Lua integration; HTTP login integration; password change/reset cleanup; IP/proxy/NAT rate-limit behavior; and auth regression (access/refresh tokens, sessions, logout, Google, Passkeys, Face Login). The existing CI workflows run the API test suite on pushes to this feature branch, but a successful CI run is not a substitute for environment-specific Redis, proxy, and auth regression verification.
