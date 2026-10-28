@@ -9,8 +9,8 @@ import {
     getFaceLoginStatusApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 6;
-const FRAME_INTERVAL_MS = 350;
+const FRAME_COUNT = 12;
+const FRAME_INTERVAL_MS = 450;
 
 function wait(ms) {
     return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -110,8 +110,8 @@ export default function FaceLoginSettings() {
             challengeId = challenge.challengeId;
             if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
-            setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
-            await wait(900);
+            setInstruction(`Bước 1/2: ${actions[0] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+            await wait(1200);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
                 if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
@@ -123,6 +123,9 @@ export default function FaceLoginSettings() {
                 );
                 if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
                 setProgress(Math.min(FRAME_COUNT, result.frameCount || index + 1));
+                if (index === Math.floor(FRAME_COUNT / 2) - 1) {
+                    setInstruction(`Bước 2/2: ${actions[1] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+                }
                 if (index < FRAME_COUNT - 1) await wait(FRAME_INTERVAL_MS);
             }
 
