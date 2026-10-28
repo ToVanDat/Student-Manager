@@ -177,7 +177,7 @@ async function verifySensitiveAction(userId, currentPassword, verificationToken,
 }
 
 async function beginSensitiveReauth(userId, purpose) {
-    if (!['google-link', 'google-unlink', 'face-enroll'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
+    if (!['google-link', 'google-unlink', 'face-enroll', 'face-disable'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
     const userResult = await pool.query('SELECT id, is_active FROM users WHERE id = $1', [userId]);
     if (!userResult.rows[0]?.is_active) throw new Error('Tài khoản không hoạt động');
     const rows = await pool.query('SELECT credential_id, transports FROM user_webauthn_credentials WHERE user_id = $1', [userId]);
