@@ -31,7 +31,7 @@ Before generating PAD CSV values, compare the exact ONNX file with the original 
 
 From the API directory (requires Python packages `torch`, `onnxruntime`, and `numpy`, plus a local upstream checkout and the exact checkpoint):
 
-    python tools/face-eval/verify_minifasnet_parity.py --upstream-root C:\face-test\Silent-Face-Anti-Spoofing --checkpoint C:\face-test\2.7_80x80_MiniFASNetV2.pth --onnx storage\face-models\anti-spoofing\minifasnet-v2.onnx --output C:\face-test\minifasnet-parity.json
+    python tools/face-eval/verify_minifasnet_parity.py --upstream-root C:\face-test\Silent-Face-Anti-Spoofing --checkpoint C:\face-test\Silent-Face-Anti-Spoofing\resources\anti_spoof_models\2.7_80x80_MiniFASNetV2.pth --onnx storage\face-models\anti-spoofing\minifasnet-v2.onnx --output C:\face-test\minifasnet-parity.json
 
 A successful synthetic parity report is necessary but not sufficient: it does not measure PAD performance, validate the production crop pixel-for-pixel, or prove resistance to attacks. Classes 0 and 2 are both treated as attacks by the upstream reference; do not call them print/replay individually without separate evidence. The API remains fail-closed until the parity report is reviewed and the verified contract is explicitly promoted in code.
 
