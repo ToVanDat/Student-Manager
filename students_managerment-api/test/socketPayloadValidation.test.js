@@ -65,3 +65,18 @@ test('preserves Socket.IO acknowledgements when a client omits its payload', () 
     assert.deepEqual(normalizeSocketEventArgs(payload, acknowledge), [payload, acknowledge]);
     assert.deepEqual(normalizeSocketEventArgs(null, acknowledge), [{}, acknowledge]);
 });
+
+
+test('wrapped Socket.IO listeners preserve their receiver and acknowledgement arguments', () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const receiver = { marker: 'socket' };
+    let received;
+    const listener = function (payload, acknowledge) {
+        received = { receiver: this, payload, acknowledge };
+    };
+    const acknowledge = () => {};
+    wrapSocketEventListener(listener).call(receiver, null, acknowledge);
+    assert.equal(received.receiver, receiver);
+    assert.deepEqual(received.payload, {});
+    assert.equal(received.acknowledge, acknowledge);
+});
