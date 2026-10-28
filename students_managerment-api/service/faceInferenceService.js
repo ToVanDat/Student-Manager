@@ -24,7 +24,7 @@ const PAD_MODEL_CONTRACT = Object.freeze({
         bonaFideIndex: null,
         attackIndices: null,
         classOrder: null,
-        reason: 'The published ONNX model card and upstream MiniVision inference code disagree on class index semantics; direct ONNX/PyTorch parity is required.'
+        reason: 'The published ONNX model card and upstream MiniVision inference code disagree on class index semantics. The model card also says input pixels are [0,1], while the executable upstream ToTensor implementation returns raw float pixels [0,255].'
     }),
     upstreamInference: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
     upstreamConversion: 'https://github.com/QingHeYang/Silent-Face-Anti-Spoofing-onnx/blob/main/convert_minifasnet_to_onnx.py',
