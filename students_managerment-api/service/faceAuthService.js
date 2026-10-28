@@ -123,6 +123,11 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
         if not raw then return -1 end
         local state = cjson.decode(raw)
         if not state.liveness or tonumber(ARGV[2]) > tonumber(state.liveness.expiresAt) then return -2 end
+        -- Re-check the challenge binding inside the same atomic operation that appends.
+        -- This prevents a frame inferred against a stale pre-inference read from being
+        -- appended if the challenge state has changed while inference was running.
+        if type(state.liveness.nonce) ~= 'string' or state.liveness.nonce ~= ARGV[6] then return -5 end
+        if ARGV[7] ~= '' and tostring(state.userId) ~= ARGV[7] then return -6 end
         state.capture = state.capture or { frames = {} }
         local frames = state.capture.frames
         if #frames >= tonumber(ARGV[3]) then return -3 end
@@ -139,13 +144,24 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
     try {
         appended = await redisClient.eval(script, {
             keys: [key],
-            arguments: [JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES), '3000', String(CHALLENGE_TTL_SECONDS)]
+            arguments: [
+                JSON.stringify(frame), String(receivedAt), String(MAX_CAPTURE_FRAMES),
+                '3000', String(CHALLENGE_TTL_SECONDS), livenessNonce,
+                expectedUserId == null ? '' : String(expectedUserId)
+            ]
         });
     } catch {
         throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Không thể cập nhật capture challenge trong Redis.');
     }
     if (appended < 1) {
-        const codes = { '-1': 'FACE_CHALLENGE_EXPIRED', '-2': 'FACE_CHALLENGE_EXPIRED', '-3': 'FACE_CAPTURE_LIMIT', '-4': 'FACE_FRAME_SEQUENCE_INVALID' };
+        const codes = {
+            '-1': 'FACE_CHALLENGE_EXPIRED',
+            '-2': 'FACE_CHALLENGE_EXPIRED',
+            '-3': 'FACE_CAPTURE_LIMIT',
+            '-4': 'FACE_FRAME_SEQUENCE_INVALID',
+            '-5': 'FACE_CHALLENGE_INVALID',
+            '-6': 'FACE_CHALLENGE_INVALID'
+        };
         throw pipelineError(codes[String(appended)] || 'FACE_CAPTURE_FAILED', 'Không thể tiếp nhận frame Face Login.');
     }
     return { accepted: true, frameCount: appended, remainingFrames: Math.max(0, MAX_CAPTURE_FRAMES - appended) };
