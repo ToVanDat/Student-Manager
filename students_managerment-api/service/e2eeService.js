@@ -5,12 +5,16 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3
 const isBoundedString = (value, max = 4096) =>
     typeof value === 'string' && value.trim().length > 0 && value.length <= max;
 
-const registerDevice = async (userId, input) => {
+const assertAuthenticatedUserId = (userId) => {
     if (!Number.isSafeInteger(userId) || userId <= 0) {
         const error = new Error('User hiện tại không hợp lệ');
         error.statusCode = 401;
         throw error;
     }
+};
+
+const registerDevice = async (userId, input) => {
+    assertAuthenticatedUserId(userId);
     const device = input || {};
     if (!UUID_PATTERN.test(device.deviceId || '')) {
         const error = new Error('deviceId phải là UUID hợp lệ');
@@ -57,6 +61,7 @@ const registerDevice = async (userId, input) => {
 };
 
 const listDevices = async (requesterId, targetUserId) => {
+    assertAuthenticatedUserId(requesterId);
     if (!Number.isSafeInteger(targetUserId) || targetUserId <= 0) {
         const error = new Error('userId không hợp lệ');
         error.statusCode = 400;
@@ -71,6 +76,7 @@ const listDevices = async (requesterId, targetUserId) => {
 };
 
 const revokeDevice = async (userId, deviceId) => {
+    assertAuthenticatedUserId(userId);
     if (typeof deviceId !== 'string' || !UUID_PATTERN.test(deviceId)) {
         const error = new Error('deviceId không hợp lệ');
         error.statusCode = 400;
@@ -86,6 +92,7 @@ const revokeDevice = async (userId, deviceId) => {
 };
 
 const getConversationDeviceBundles = async (requesterId, conversationId) => {
+    assertAuthenticatedUserId(requesterId);
     if (!Number.isSafeInteger(conversationId) || conversationId <= 0) {
         const error = new Error('conversationId không hợp lệ');
         error.statusCode = 400;
@@ -100,6 +107,7 @@ const getConversationDeviceBundles = async (requesterId, conversationId) => {
 };
 
 const claimConversationDevicePrekey = async (requesterId, conversationId, targetUserId, targetDeviceId) => {
+    assertAuthenticatedUserId(requesterId);
     if (!Number.isSafeInteger(conversationId) || conversationId <= 0) {
         const error = new Error('conversationId không hợp lệ');
         error.statusCode = 400;
