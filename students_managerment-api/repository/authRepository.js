@@ -508,13 +508,18 @@ const createSessionForActiveUser = async (
     const sessionId = crypto.randomUUID();
     const result = await pool.query(
         `
+        WITH active_user AS (
+            SELECT id
+            FROM users
+            WHERE id = $2
+              AND is_active = TRUE
+            FOR UPDATE
+        )
         INSERT INTO sessions (
             id, user_id, device_name, user_agent, ip_address
         )
         SELECT $1, id, $3, $4, $5
-        FROM users
-        WHERE id = $2
-          AND is_active = TRUE
+        FROM active_user
         RETURNING *
         `,
         [sessionId, userId, deviceName, userAgent, ipAddress]
