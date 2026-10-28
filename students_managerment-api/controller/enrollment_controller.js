@@ -15,11 +15,10 @@ const getEnrollments = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
+        console.error('[ENROLLMENTS] Database operation failed:', { code: error?.code, name: error?.name });
 
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
+        return res.status(500).json({
+            message: 'Không thể tải danh sách đăng ký môn học'
         });
     }
 };
@@ -45,11 +44,10 @@ const getEnrollmentById = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
+        console.error('[ENROLLMENTS] Database operation failed:', { code: error?.code, name: error?.name });
 
-        res.status(500).json({
-            message: 'Database error',
-            error: error.message
+        return res.status(500).json({
+            message: 'Không thể tải danh sách đăng ký môn học'
         });
     }
 };
@@ -71,7 +69,7 @@ const createEnrollment = async (req, res) => {
 
         if (error.code === '23505') return res.status(409).json({ message: 'Đăng ký môn học này đã tồn tại' });
         if (error.code === '23503') return res.status(400).json({ message: 'Sinh viên, môn học hoặc học kỳ không tồn tại' });
-        console.error('LỖI DATABASE:', error);
+        console.error('[ENROLLMENTS] Database operation failed:', { code: error?.code, name: error?.name });
         return res.status(500).json({ message: 'Không thể thêm đăng ký môn học' });
     }
 };
@@ -103,7 +101,7 @@ const updateEnrollment = async (req, res) => {
 
         if (error.code === '23505') return res.status(409).json({ message: 'Đăng ký môn học này đã tồn tại' });
         if (error.code === '23503') return res.status(400).json({ message: 'Sinh viên, môn học hoặc học kỳ không tồn tại' });
-        console.error('LỖI DATABASE:', error);
+        console.error('[ENROLLMENTS] Database operation failed:', { code: error?.code, name: error?.name });
         return res.status(500).json({ message: 'Không thể cập nhật đăng ký môn học' });
     }
 };
@@ -132,11 +130,10 @@ const deleteEnrollment = async (req, res) => {
 
     } catch (error) {
 
-        console.error('LỖI DATABASE:', error);
+        console.error('[ENROLLMENTS] Database operation failed:', { code: error?.code, name: error?.name });
 
-        res.status(500).json({
-            message: 'Không thể xóa đăng ký môn học',
-            error: error.message
+        return res.status(500).json({
+            message: 'Không thể xóa đăng ký môn học'
         });
     }
 };
