@@ -1227,7 +1227,7 @@ const initSocket = async (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' } = {}) => {
+        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
             if (!await allowRealtimeEvent('call:reject')) return;
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
@@ -1246,7 +1246,7 @@ const initSocket = async (server) => {
 
             emitCallActivityUpdated(updated);
             io.to(`user:${targetId}`).emit('call:rejected', {
-                callId, fromUserId: userId, toUserId: targetId, reason
+                callId, fromUserId: userId, toUserId: targetId, reason: 'rejected'
             });
             await emitCallNotification(
                 targetId,
