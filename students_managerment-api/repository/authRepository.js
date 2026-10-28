@@ -702,6 +702,45 @@ const revokeAllSessions = async (userId) => {
 // REVOKE ALL REFRESH TOKENS OF SESSION
 // ======================================================
 
+
+const revokeOtherSessionsAndRefreshTokens = async (userId, currentSessionId) => {
+    const result = await pool.query(
+        `WITH revoked_sessions AS (
+             UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL
+             RETURNING id
+         ),
+         revoked_tokens AS (
+             UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
+             WHERE session_id IN (SELECT id FROM revoked_sessions)
+               AND revoked_at IS NULL
+             RETURNING session_id
+         )
+         SELECT id FROM revoked_sessions`,
+        [userId, currentSessionId]
+    );
+    return result.rows;
+};
+
+const revokeSessionForUserAndRefreshTokens = async (sessionId, userId) => {
+    const result = await pool.query(
+        `WITH revoked_session AS (
+             UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP
+             WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+             RETURNING id, user_id, revoked_at
+         ),
+         revoked_tokens AS (
+             UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
+             WHERE session_id IN (SELECT id FROM revoked_session)
+               AND revoked_at IS NULL
+             RETURNING session_id
+         )
+         SELECT id, user_id, revoked_at FROM revoked_session`,
+        [sessionId, userId]
+    );
+    return result.rows[0] || null;
+};
+
 const revokeRefreshTokensBySessionId = async (
     sessionId
 ) => {
@@ -1309,6 +1348,8 @@ module.exports = {
     updateSessionLastUsed,
 
     revokeSession,
+    revokeSessionForUserAndRefreshTokens,
+    revokeOtherSessionsAndRefreshTokens,
 
     revokeRefreshTokensBySessionId,
 
