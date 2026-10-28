@@ -24,7 +24,7 @@ npm run face:runtime-smoke
 npm run face:smoke -- C:\\face-test\\consented-test.jpg
 ```
 
-Use a consented local test image. The smoke command runs the actual server-side MediaPipe + ONNX pipeline and prints only model metadata, PAD scores, and output-contract status; it does not print or save the face embedding. `face:runtime-smoke` executes both ONNX graphs with synthetic zero tensors and validates the output contracts; it does not validate preprocessing or accuracy. `face:smoke` then exercises the actual MediaPipe + ONNX path with a consented image. Neither command calibrates thresholds or certifies PAD.
+Use a consented local test image. The smoke command runs the actual server-side MediaPipe + ONNX pipeline and prints only model metadata, PAD scores, and output-contract status; it does not print or save the face embedding. `face:runtime-smoke` executes both ONNX graphs with synthetic zero tensors and validates the output contracts; it does not validate preprocessing or accuracy. `face:smoke` then exercises the actual MediaPipe + ONNX path with a consented image. Neither command calibrates thresholds or certifies PAD. `face:runtime-smoke` validates graph output shapes without interpreting PAD class scores; `face:smoke` remains blocked while the PAD output contract is unresolved.
 
 Extract the supplied archive under `students_managerment-api/storage/` (or set `FACE_MODEL_DIR` to the directory containing the extracted `face-models/` folder). The resolver supports the archive's nested `recognition/` and `anti-spoofing/` layout.
 
@@ -64,6 +64,7 @@ Enrollment stores only the aggregate embedding, encrypted with AES-256-GCM. Logi
 
 - The liveness blendshapes are behavioral signals, not a standalone anti-spoof guarantee.
 - MiniFASNet's score is not proof of liveness; evaluate print, replay, mask, lighting, camera, and demographic variation.
+- The hash-matched MiniFASNet ONNX model card describes class order `[live, print, replay]`, but upstream MiniVision's `AntiSpoofPredict.predict()` applies softmax to raw model output and `test.py` identifies class index 1 as real. The exact ONNX graph has not yet been parity-tested against the original PyTorch checkpoint in this environment. The inference service therefore fails closed and does not derive `live_score` until class order and output semantics are resolved.
 - Redis is required. Losing the challenge state invalidates the capture.
 - The API rate-limits challenge creation separately from frame uploads.
 - The status endpoint reports availability only when both release flags are explicitly set, thresholds and AES key are valid, the authenticated MediaPipe sidecar health probe succeeds, and ONNX Runtime can load the hash-verified models.
