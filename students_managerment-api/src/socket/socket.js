@@ -445,7 +445,8 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('conversation:join', async ({ conversationId }) => {
+        socket.on('conversation:join', async (payload = {}) => {
+            const { conversationId } = payload && typeof payload === 'object' ? payload : {};
             if (!await allowRealtimeEvent('conversation:join')) return;
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
@@ -478,12 +479,14 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('conversation:leave', ({ conversationId }) => {
+        socket.on('conversation:leave', (payload = {}) => {
+            const { conversationId } = payload && typeof payload === 'object' ? payload : {};
             const id = Number(conversationId);
             if (Number.isInteger(id) && id > 0) socket.leave(`conversation:${id}`);
         });
 
-        socket.on('message:send', async ({ conversationId, content, replyToMessageId = null }) => {
+        socket.on('message:send', async (payload = {}) => {
+            const { conversationId, content, replyToMessageId = null } = payload && typeof payload === 'object' ? payload : {};
             if (!await allowRealtimeEvent('message:send')) return;
             const id = Number(conversationId);
             const text = typeof content === 'string' ? content.trim() : '';
