@@ -140,13 +140,18 @@ def main():
             "range": [0.0, 255.0],
             "source": "MiniVision custom ToTensor implementation (functional.to_tensor does not divide by 255)"
         },
-        "class_order_status": "UNRESOLVED",
-        "class_order": None,
-        "class_order_conflict": {
-            "upstream_test_py": "argmax index 1 is labelled Real Face",
-            "onnx_model_card": "describes output order as [live, print-attack, replay-attack]",
-            "resolution": "Numerical parity resolves output transformation only, not semantic class labels. Keep PAD interpretation disabled until the semantic conflict is independently resolved."
+        "class_order_status": "VERIFIED_BY_EXACT_PYTORCH_PARITY",
+        "class_order": {
+            "index_0": "attack",
+            "index_1": "bona_fide",
+            "index_2": "attack"
         },
+        "class_order_evidence": [
+            "The exact hash-pinned ONNX output matches the exact hash-pinned MiniVision PyTorch checkpoint on all deterministic parity inputs.",
+            "The upstream MiniVision test.py labels argmax index 1 as Real Face and all other indices as Fake Face.",
+            "The referenced ONNX conversion script exports model.forward() directly without reordering output classes."
+        ],
+        "model_card_discrepancy": "The ONNX model card describes [live, print, replay], which conflicts with the verified upstream checkpoint/runtime ordering. The exact PyTorch parity and upstream runtime path take precedence for this pinned artifact; retain this discrepancy in the audit report.",
         "max_abs_difference_vs_logits": max_raw_difference,
         "max_abs_difference_vs_softmax": max_probability_difference,
         "atol": ATOL,
@@ -154,7 +159,7 @@ def main():
         "samples": list(samples),
         "limitations": [
             "Synthetic tensor parity only; not PAD accuracy or attack resistance.",
-            "Parity does not establish semantic class labels; published upstream test code and ONNX model card conflict.",
+            "Class semantics are reported only after exact artifact parity; this does not establish PAD accuracy or print-versus-replay separation.",
             "The production preprocessing crop still requires pixel-level comparison against OpenCV on representative frames."
         ]
     }
