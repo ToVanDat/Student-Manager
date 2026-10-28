@@ -17,7 +17,7 @@ const faceAuthRateLimiter =
 const loginRateLimiter =
     require('../middleware/loginRateLimiter.js');
 const passwordLoginProtection =
-    require('../middleware/passwordLoginProtection.js').passwordLoginProtection;
+    require('../middleware/passwordLoginProtection.js');
 
 const requireTrustedOrigin =
     require('../middleware/requireTrustedOrigin.js');
