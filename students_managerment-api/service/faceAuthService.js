@@ -85,6 +85,75 @@ async function consumeChallenge(kind, id) {
     try { return JSON.parse(raw); } catch { return null; }
 }
 
+function enrollmentLockKey(userId) {
+    return `face-auth:enrollment-lock:${String(userId)}`;
+}
+
+async function acquireEnrollmentLock(userId, challengeId) {
+    if (!redisClient.isReady) throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Redis Face Login chưa sẵn sàng');
+    try {
+        const acquired = await redisClient.set(
+            enrollmentLockKey(userId),
+            challengeId,
+            { NX: true, EX: CHALLENGE_TTL_SECONDS }
+        );
+        if (acquired !== 'OK') {
+            throw pipelineError('FACE_ENROLLMENT_IN_PROGRESS', 'Đang có một phiên đăng ký khuôn mặt khác. Vui lòng hoàn tất hoặc thử lại sau.');
+        }
+    } catch (error) {
+        if (error.code === 'FACE_ENROLLMENT_IN_PROGRESS') throw error;
+        throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Không thể khóa phiên đăng ký Face Login trong Redis.');
+    }
+}
+
+async function releaseEnrollmentLock(userId, challengeId) {
+    if (!redisClient.isReady) return false;
+    try {
+        const result = await redisClient.eval(
+            "if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end; return 0",
+            { keys: [enrollmentLockKey(userId)], arguments: [challengeId] }
+        );
+        return Number(result) === 1;
+    } catch (error) {
+        console.error('[FACE AUTH] Could not release enrollment lock:', error.message);
+        return false;
+    }
+}
+
+async function consumeEnrollmentChallenge(userId, challengeId) {
+    if (!redisClient.isReady) throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Redis Face Login chưa sẵn sàng');
+    let raw;
+    try {
+        raw = await redisClient.eval(
+            `local lock = redis.call('GET', KEYS[2])
+             if lock ~= ARGV[1] then return -1 end
+             local value = redis.call('GET', KEYS[1])
+             if not value then return -2 end
+             local state = cjson.decode(value)
+             if tostring(state.userId) ~= ARGV[2] then return -3 end
+             redis.call('DEL', KEYS[1])
+             return value`,
+            {
+                keys: [challengeKey('enrollment', challengeId), enrollmentLockKey(userId)],
+                arguments: [challengeId, String(userId)]
+            }
+        );
+    } catch {
+        throw pipelineError('FACE_AUTH_UNAVAILABLE', 'Không thể tiêu thụ enrollment challenge trong Redis.');
+    }
+    if (raw === -1 || raw === '-1') {
+        throw pipelineError('FACE_CHALLENGE_INVALID', 'Enrollment challenge không còn thuộc phiên đăng ký hiện tại.');
+    }
+    if (raw === -2 || raw === '-2') {
+        throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face enrollment challenge đã hết hạn hoặc đã được sử dụng.');
+    }
+    if (raw === -3 || raw === '-3') {
+        throw pipelineError('FACE_CHALLENGE_INVALID', 'Face enrollment challenge không thuộc tài khoản hiện tại.');
+    }
+    try { return JSON.parse(raw); }
+    catch { throw pipelineError('FACE_CHALLENGE_INVALID', 'Face enrollment challenge không hợp lệ.'); }
+}
+
 async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expectedUserId = null) {
     validateChallengeId(id);
     requirePipelineConfig();
@@ -278,23 +347,35 @@ async function beginEnrollment(userId, verificationToken, currentPassword) {
     await ensureFaceInferenceReady();
     await verifySensitiveAction(userId, currentPassword, verificationToken, 'face-enroll');
     const id = token(18);
-    const state = createCaptureState();
-    await saveChallenge('enrollment', id, { ...state, userId: String(userId) });
-    return {
-        challengeId: id, challenge: state.challenge, expiresIn: CHALLENGE_TTL_SECONDS,
-        actions: state.liveness.actions, livenessNonce: state.liveness.nonce, livenessExpiresAt: state.liveness.expiresAt
-    };
+    await acquireEnrollmentLock(userId, id);
+    try {
+        const state = createCaptureState();
+        await saveChallenge('enrollment', id, { ...state, userId: String(userId) });
+        return {
+            challengeId: id, challenge: state.challenge, expiresIn: CHALLENGE_TTL_SECONDS,
+            actions: state.liveness.actions, livenessNonce: state.liveness.nonce, livenessExpiresAt: state.liveness.expiresAt
+        };
+    } catch (error) {
+        await releaseEnrollmentLock(userId, id);
+        throw error;
+    }
 }
 
 async function finishEnrollment(userId, challengeId) {
     validateChallengeId(challengeId);
-    const state = await consumeChallenge('enrollment', challengeId);
-    if (!state || state.userId !== String(userId) || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
-        throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face enrollment challenge đã hết hạn hoặc đã được sử dụng');
+    try {
+        const state = await consumeEnrollmentChallenge(userId, challengeId);
+        if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
+            throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face enrollment challenge đã hết hạn hoặc đã được sử dụng');
+        }
+        const embedding = validateCapture(state);
+        const stored = await storeVerifiedTemplate(userId, embedding, 'mobilefacenet+minifasnet-v2', 'supplied-bundle-v1');
+        return { enrolled: true, credentialId: stored.id, enrolledAt: stored.enrolled_at };
+    } finally {
+        // Keep the per-user lock until the credential write finishes. The
+        // compare-and-delete prevents an expired/replaced lock being removed.
+        await releaseEnrollmentLock(userId, challengeId);
     }
-    const embedding = validateCapture(state);
-    const stored = await storeVerifiedTemplate(userId, embedding, 'mobilefacenet+minifasnet-v2', 'supplied-bundle-v1');
-    return { enrolled: true, credentialId: stored.id, enrolledAt: stored.enrolled_at };
 }
 
 async function beginLogin(username) {
