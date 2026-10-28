@@ -68,6 +68,6 @@ exports.finishLogin = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.disable = async (req, res) => {
-    try { return res.json(await faceAuth.disable(req.user.sub)); }
+    try { return res.json(await faceAuth.disable(req.user.sub, req.body?.currentPassword, req.body?.verificationToken)); }
     catch (error) { return fail(res, error); }
 };
