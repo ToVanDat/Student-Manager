@@ -126,8 +126,8 @@ This is a repository/static audit of tracked source, SQL migrations, tests, Dock
 
 ### Risks and gaps
 - Nginx example is not installed automatically; no live TLS certificate, firewall, proxy chain or WebSocket verification is available.
-- Dockerfile comment says no API package lock is tracked, but `students_managerment-api/package-lock.json` exists. Dockerfile currently uses `npm install --omit=dev`, not deterministic `npm ci`; this is a confirmed documentation/build reproducibility discrepancy.
-- Dockerfile uses `node:22-alpine` with native ONNX Runtime dependency; verify native module compatibility in the actual container image before production. CI currently tests on Ubuntu, not this Alpine image.
+- The Dockerfile previously claimed no API lockfile existed even though `students_managerment-api/package-lock.json` is tracked. This was corrected on the working branch to use `npm ci --omit=dev`; the image build has not yet been verified.
+- Dockerfile uses `node:22-alpine` with native ONNX Runtime dependency; verify native module compatibility in the actual container image before production. A Docker image build + ONNX native-module smoke job was added to CI, but is still queued.
 - No verified backup artifact, isolated restore drill, RPO/RTO, monitoring/alerting evidence, deployment rehearsal or rollback exercise was found.
 - Redis/PostgreSQL/Ollama/R2 dependency outage behavior must be tested at runtime, including startup readiness and recovery.
 
