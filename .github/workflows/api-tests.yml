@@ -219,6 +219,8 @@ jobs:
         run: node -e "require('onnxruntime-node'); console.log('[Face Login] ONNX Runtime native module loaded')"
       - name: Run API unit tests
         run: npm test
+      - name: Test Face evaluation split isolation
+        run: python -m unittest discover -s tools/face-eval -p 'test_*.py'
       - name: Run Cloudflare R2 Worker tests
         run: node --test cloudflare/e2ee-r2-worker/test/worker.test.js
       - name: Commit npm-generated Face Login dependency lock
