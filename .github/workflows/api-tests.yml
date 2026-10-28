@@ -16,6 +16,7 @@ on:
       - feature/face-login-hardening
       - feature/student-roster-csv-export
       - feature/progressive-password-cooldown
+      - fix/password-cooldown-ip-guard
   pull_request:
     branches:
       - main
