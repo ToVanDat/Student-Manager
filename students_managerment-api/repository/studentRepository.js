@@ -226,32 +226,37 @@ const createStudentsFromImport = async (rows = []) => {
              FOR SHARE`,
             [classCodes]
         );
-        const classIds = new Map(classResult.rows.map(row => [row.class_code.trim().toLowerCase(), row.id]));
-        const missingClasses = classCodes.filter(code => !classIds.has(code));
-        if (missingClasses.length) {
-            const error = new Error('Một hoặc nhiều mã lớp không còn tồn tại. Hãy xem trước tệp lại.');
+        const classMatches = new Map();
+        for (const row of classResult.rows) {
+            const key = row.class_code.trim().toLowerCase();
+            const matches = classMatches.get(key) || [];
+            matches.push(row.id);
+            classMatches.set(key, matches);
+        }
+        const invalidClasses = classCodes.filter(code => (classMatches.get(code) || []).length !== 1);
+        if (invalidClasses.length) {
+            const error = new Error('Một hoặc nhiều mã lớp không tồn tại hoặc không duy nhất. Hãy xem trước tệp lại.');
             error.code = 'STUDENT_IMPORT_CONFLICT';
             throw error;
         }
+        const classIds = new Map([...classMatches.entries()].map(([code, ids]) => [code, ids[0]]));
 
         const studentCodes = rows.map(row => row.student_code.trim().toLowerCase());
         const emails = rows.map(row => row.email.trim().toLowerCase());
-        const [codesResult, emailsResult] = await Promise.all([
-            client.query(
-                `SELECT LOWER(BTRIM(student_code)) AS value
-                 FROM students
-                 WHERE LOWER(BTRIM(student_code)) = ANY($1::text[])
-                 FOR SHARE`,
-                [studentCodes]
-            ),
-            client.query(
-                `SELECT LOWER(BTRIM(email)) AS value
-                 FROM students
-                 WHERE LOWER(BTRIM(email)) = ANY($1::text[])
-                 FOR SHARE`,
-                [emails]
-            )
-        ]);
+        const codesResult = await client.query(
+            `SELECT LOWER(BTRIM(student_code)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(student_code)) = ANY($1::text[])
+             FOR SHARE`,
+            [studentCodes]
+        );
+        const emailsResult = await client.query(
+            `SELECT LOWER(BTRIM(email)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(email)) = ANY($1::text[])
+             FOR SHARE`,
+            [emails]
+        );
         if (codesResult.rowCount || emailsResult.rowCount) {
             const error = new Error('Mã sinh viên hoặc email đã được sử dụng. Không có bản ghi nào được nhập.');
             error.code = 'STUDENT_IMPORT_CONFLICT';

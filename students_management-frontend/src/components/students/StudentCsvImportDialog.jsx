@@ -71,7 +71,7 @@ function StudentCsvImportDialog({ onClose, onImported }) {
                             <Upload size={22} className="text-slate-500" />
                             <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{file?.name || t('studentImportSelectFile')}</span>
                             <span className="text-xs text-slate-500 dark:text-slate-400">{t('studentImportFileLimit')}</span>
-                            <input type="file" accept=".csv,text/csv" className="sr-only" disabled={previewing || importing} onChange={(event) => selectFile(event.target.files?.[0])} />
+                            <input type="file" accept=".csv,text/csv" className="sr-only" disabled={previewing || importing} onChange={(event) => { selectFile(event.target.files?.[0]); event.currentTarget.value = ''; }} />
                         </label>
                         <p className="mb-0 mt-3 text-[11px] leading-5 text-slate-500 dark:text-slate-400">{t('studentImportTemplateHint')}</p>
                     </div>

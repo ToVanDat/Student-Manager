@@ -24,10 +24,13 @@ const prepareStudentCsvImport = async (buffer) => {
         classCodes: candidateRows.map(row => row.class_code)
     });
 
-    const classMap = new Map(reference.classes.map(row => [
-        row.class_code.trim().toLowerCase(),
-        { id: row.id, classCode: row.class_code }
-    ]));
+    const classMap = new Map();
+    for (const row of reference.classes) {
+        const key = row.class_code.trim().toLowerCase();
+        const matches = classMap.get(key) || [];
+        matches.push(row);
+        classMap.set(key, matches);
+    }
     const existingCodes = new Set(reference.existingStudentCodes);
     const existingEmails = new Set(reference.existingEmails);
 
@@ -35,10 +38,11 @@ const prepareStudentCsvImport = async (buffer) => {
         if (row.errors.length) continue;
         const normalizedCode = row.student_code.toLowerCase();
         const normalizedEmail = row.email.toLowerCase();
-        const classInfo = classMap.get(row.class_code.toLowerCase());
+        const classMatches = classMap.get(row.class_code.toLowerCase()) || [];
 
-        if (!classInfo) row.errors.push('Mã lớp không tồn tại.');
-        else row.class_id = classInfo.id;
+        if (classMatches.length === 0) row.errors.push('Mã lớp không tồn tại.');
+        else if (classMatches.length > 1) row.errors.push('Mã lớp không duy nhất trong hệ thống.');
+        else row.class_id = classMatches[0].id;
         if (existingCodes.has(normalizedCode)) row.errors.push('Mã sinh viên đã tồn tại trong hệ thống.');
         if (existingEmails.has(normalizedEmail)) row.errors.push('Email đã tồn tại trong hệ thống.');
     }
