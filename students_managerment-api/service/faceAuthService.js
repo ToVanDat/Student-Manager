@@ -463,7 +463,8 @@ async function finishLogin(challengeId, req) {
 }
 
 
-async function disable(userId) {
+async function disable(userId, currentPassword, verificationToken) {
+    await verifySensitiveAction(userId, currentPassword, verificationToken, 'face-disable');
     // Serialize with enrollment and Face Login session creation using the
     // same lock order: account row first, then face credential row.
     const result = await pool.query(
