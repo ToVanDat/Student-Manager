@@ -67,8 +67,8 @@ const getConversationMembers = async (req, res, next) => {
             )
         });
     } catch (error) {
-        if (error.message === 'Bạn không thuộc conversation này') {
-            return res.status(403).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) {
+            return res.status(error.statusCode).json({ message: error.message });
         }
         next(error);
     }
