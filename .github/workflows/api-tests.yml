@@ -376,3 +376,37 @@ jobs:
         run: node --test test/faceSessionGuard.integration.test.js
       - name: Run Face Login Redis enrollment-lock integration test
         run: node --test test/faceEnrollmentLock.integration.test.js
+
+  face-minifasnet-reference-parity:
+    name: MiniFASNet ONNX versus upstream PyTorch parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout application repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - name: Install pinned CPU parity dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.4 onnxruntime==1.17.3
+          python -m pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+      - name: Checkout upstream MiniVision reference
+        run: git clone --depth 1 https://github.com/minivision-ai/Silent-Face-Anti-Spoofing.git /tmp/Silent-Face-Anti-Spoofing
+      - name: Download hash-pinned model artifacts
+        run: |
+          curl --fail --location --retry 3 --output /tmp/2.7_80x80_MiniFASNetV2.pth https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/raw/refs/heads/master/resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth
+          curl --fail --location --retry 3 --output /tmp/minifasnet-v2.onnx https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/resolve/d29c87568ca9b5662da803b10f217c4db20b142b/minifasnet-v2.onnx
+      - name: Verify checkpoint and ONNX parity
+        working-directory: students_managerment-api
+        run: |
+          python tools/face-eval/verify_minifasnet_parity.py --upstream-root /tmp/Silent-Face-Anti-Spoofing --checkpoint /tmp/2.7_80x80_MiniFASNetV2.pth --onnx /tmp/minifasnet-v2.onnx --output /tmp/minifasnet-parity.json
+      - name: Upload parity report
+        if: always() && hashFiles('/tmp/minifasnet-parity.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: minifasnet-reference-parity
+          path: /tmp/minifasnet-parity.json
+          if-no-files-found: ignore
