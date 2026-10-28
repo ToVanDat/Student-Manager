@@ -166,7 +166,7 @@ const getStudentExportRows = async ({ search = '', classId = null, gender = '' }
          JOIN classes c ON c.id = s.class_id
          ${whereSql}
          ORDER BY s.id ASC
-         LIMIT ${limitPosition}`,
+         LIMIT $${limitPosition}`,
         [...values, STUDENT_EXPORT_MAX_ROWS + 1]
     );
 
