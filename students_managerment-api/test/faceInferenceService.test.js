@@ -15,22 +15,15 @@ test('MobileFaceNet rejects wrong dimensions and non-finite outputs', () => {
   assert.throws(() => l2Normalize(invalid), /hữu hạn/);
 });
 
-test('MiniFASNet logits always pass through stable softmax', () => {
-  const probabilities = classProbabilities([1000, 999, -1000]);
-  assert.ok(Math.abs(probabilities.reduce((a, b) => a + b, 0) - 1) < 1e-12);
-  assert.ok(probabilities[0] > probabilities[1]);
+test('MiniFASNet class mapping remains fail-closed while published sources conflict', () => {
+  assert.equal(PAD_MODEL_CONTRACT.output.verified, false);
+  assert.equal(PAD_MODEL_CONTRACT.output.classOrder, null);
+  assert.throws(() => classProbabilities([0.1, 0.8, 0.1]), /class mapping\/output semantics chưa được xác minh/);
 });
 
-test('MiniFASNet output class order is pinned to upstream bona-fide index 1', () => {
-  assert.deepEqual(PAD_MODEL_CONTRACT.output.classOrder,
-    ['attack_class_0', 'bona_fide', 'attack_class_2']);
-  assert.equal(PAD_MODEL_CONTRACT.output.bonaFideIndex, 1);
-  const probabilities = classProbabilities([0, 8, 0]);
-  assert.ok(probabilities[1] > 0.99);
-});
-
-test('MiniFASNet rejects non-finite logits and wrong class count', () => {
-  assert.throws(() => classProbabilities([0, Number.NaN, 1]), /3 logits hữu hạn/);
+test('MiniFASNet rejects non-finite output and wrong class count before mapping', () => {
+  assert.throws(() => classProbabilities([0, Number.NaN, 1]), /3 giá trị hữu hạn/);
+  assert.throws(() => classProbabilities([0, 1]), /3 giá trị hữu hạn/);
 });
 
 test('MiniFASNet rejects invalid class count', () => {
