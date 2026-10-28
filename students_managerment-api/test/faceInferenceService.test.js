@@ -32,8 +32,10 @@ test('MiniFASNet rejects invalid class count', () => {
 
 test('pixel tensors enforce exact shape and range', () => {
   assert.doesNotThrow(() => assertPixels(new Float32Array(3 * 112 * 112), 3 * 112 * 112, 'rgb112'));
-  const invalid = new Float32Array(3 * 80 * 80); invalid[0] = 1.1;
-  assert.throws(() => assertPixels(invalid, invalid.length, 'bgr80'));
+  const padRaw = new Float32Array(3 * 80 * 80); padRaw[0] = 255;
+  assert.doesNotThrow(() => assertPixels(padRaw, padRaw.length, 'bgr80', 255));
+  padRaw[1] = 255.1;
+  assert.throws(() => assertPixels(padRaw, padRaw.length, 'bgr80', 255));
 });
 
 test('manifest pins the exact supplied MobileFaceNet and MiniFASNet artifacts', () => {
