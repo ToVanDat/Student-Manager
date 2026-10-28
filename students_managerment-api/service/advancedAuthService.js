@@ -77,12 +77,17 @@ async function issueSession(user, req) {
     let accessToken = null;
 
     try {
-        session = await authRepository.createSession(
+        session = await authRepository.createSessionForActiveUser(
             user.id,
             deviceName,
             userAgent,
             req.ip || null
         );
+        if (!session) {
+            const inactiveError = new Error('Tài khoản đã bị khóa hoặc không tồn tại');
+            inactiveError.code = 'ACCOUNT_INACTIVE';
+            throw inactiveError;
+        }
         accessToken = jwt.sign({
             sub: user.id, username: user.username, role: user.role, sessionId: session.id
         }, process.env.JWT_SECRET, {
