@@ -105,7 +105,7 @@ async function clearAccountIpState(username, ipAddress) {
     const accountHash = getAccountHash(username);
     const ipHash = getIpHash(ipAddress);
     const keys = buildKeys(accountHash, ipHash);
-    await redisClient.del(keys.failures, keys.cooldown);
+    await redisClient.del([keys.failures, keys.cooldown]);
 }
 
 async function resetAccountState(username) {
