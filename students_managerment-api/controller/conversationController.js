@@ -51,20 +51,26 @@ const getMemberIdsForNotification = async (conversationId) => {
     }
 };
 
-const createDirectConversation = async (req, res) => {
+const createDirectConversation = async (req, res, next) => {
     try {
+        const targetUserId = Number(req.body?.userId);
+        if (!Number.isSafeInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'userId không hợp lệ' });
+        }
         const conversation = await conversationService.getOrCreateDirectConversation(
             Number(req.user.id),
-            Number(req.body.userId)
+            targetUserId
         );
         return res.status(200).json({ message: 'Conversation đã sẵn sàng', data: conversation });
     } catch (error) {
         const map = {
-            'Không thể tạo conversation với chính mình': 400,
-            'Người dùng không tồn tại hoặc đã bị khóa': 404,
-            'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn': 403
+            'Không thể tạo conversation với chính mình': [400, 'Không thể tạo conversation với chính mình'],
+            'Người dùng không tồn tại hoặc đã bị khóa': [404, 'Người dùng không tồn tại hoặc đã bị khóa'],
+            'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn': [403, 'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn']
         };
-        return res.status(map[error.message] || 500).json({ message: error.message || 'Không thể tạo conversation' });
+        const knownError = map[error.message];
+        if (knownError) return res.status(knownError[0]).json({ message: knownError[1] });
+        return next(error);
     }
 };
 
