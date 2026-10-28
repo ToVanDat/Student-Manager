@@ -44,6 +44,24 @@ class SplitIsolationTests(unittest.TestCase):
         self.assertEqual(lower, 0.0)
         self.assertGreater(upper, 0.0)
 
+    def test_pad_attack_coverage_rejects_missing_attack_type(self):
+        rows = [
+            {"bona_fide": True, "attack_type": "bona_fide"},
+            {"bona_fide": False, "attack_type": "print"},
+            {"bona_fide": False, "attack_type": "replay"},
+        ]
+        with self.assertRaisesRegex(ValueError, "video"):
+            EVALUATOR.validate_attack_coverage(rows, "test")
+
+    def test_pad_attack_coverage_accepts_all_attack_types(self):
+        rows = [
+            {"bona_fide": True, "attack_type": "bona_fide"},
+            {"bona_fide": False, "attack_type": "print"},
+            {"bona_fide": False, "attack_type": "replay"},
+            {"bona_fide": False, "attack_type": "video"},
+        ]
+        EVALUATOR.validate_attack_coverage(rows, "calibration")
+
 
 if __name__ == "__main__":
     unittest.main()
