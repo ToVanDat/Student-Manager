@@ -89,3 +89,45 @@ test('revoking other sessions delegates one atomic bulk operation and reports th
         assert.deepEqual(cleanupCalls, []);
     });
 });
+
+
+test('successful single-session revocation clears the access-token cache after the database commit', async () => {
+    const cleanupCalls = [];
+    await withOverrides({
+        repository: {
+            findSessionByIdAndUserId: async () => ({ id: 's-2', revoked_at: null }),
+            revokeSessionForUserAndRefreshTokens: async () => ({
+                id: 's-2',
+                user_id: 7,
+                revoked_at: new Date()
+            })
+        },
+        accessTokenStore: {
+            removeAccessTokensForSession: async id => cleanupCalls.push(id)
+        }
+    }, async () => {
+        const result = await sessionService.revokeSession('s-2', 7);
+        assert.equal(result.alreadyRevoked, false);
+        assert.equal(result.session.id, 's-2');
+        assert.deepEqual(cleanupCalls, ['s-2']);
+    });
+});
+
+test('successful bulk revocation attempts access-token cleanup for every revoked session', async () => {
+    const cleanupCalls = [];
+    await withOverrides({
+        repository: {
+            revokeOtherSessionsAndRefreshTokens: async () => [
+                { id: 's-old-1' },
+                { id: 's-old-2' }
+            ]
+        },
+        accessTokenStore: {
+            removeAccessTokensForSession: async id => cleanupCalls.push(id)
+        }
+    }, async () => {
+        const result = await sessionService.revokeOtherSessions(7, 'current');
+        assert.deepEqual(result, { revokedCount: 2 });
+        assert.deepEqual(cleanupCalls, ['s-old-1', 's-old-2']);
+    });
+});
