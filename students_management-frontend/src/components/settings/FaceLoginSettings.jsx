@@ -8,7 +8,7 @@ import {
     getFaceLoginStatusApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 8;
+const FRAME_COUNT = 6;
 const FRAME_INTERVAL_MS = 350;
 
 function wait(ms) {
@@ -44,8 +44,10 @@ export default function FaceLoginSettings() {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const mountedRef = useRef(true);
+    const cancelledRef = useRef(false);
 
     const stopCamera = useCallback(() => {
+        cancelledRef.current = true;
         streamRef.current?.getTracks().forEach(track => track.stop());
         streamRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
@@ -77,6 +79,7 @@ export default function FaceLoginSettings() {
     const enroll = async () => {
         const currentPassword = window.prompt('Nhập mật khẩu Student Manager để xác nhận đăng ký khuôn mặt:');
         if (!currentPassword) return;
+        cancelledRef.current = false;
         setBusy(true);
         setError('');
         setProgress(0);
@@ -90,6 +93,7 @@ export default function FaceLoginSettings() {
                 audio: false,
                 video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
             });
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             streamRef.current = stream;
             setCameraActive(true);
             // Wait for React to mount the conditional video element before binding the stream.
@@ -97,24 +101,29 @@ export default function FaceLoginSettings() {
             if (!videoRef.current) throw new Error('Không thể khởi tạo khung xem camera.');
             videoRef.current.srcObject = stream;
             await videoRef.current.play();
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
 
             const challenge = await beginFaceEnrollmentApi(null, currentPassword);
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
             const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
             setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
             await wait(900);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
+                if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
                 const frame = await captureJpeg(videoRef.current);
                 const result = await captureFaceEnrollmentFrameApi(
                     challenge.challengeId,
                     challenge.livenessNonce,
                     frame,
                 );
+                if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
                 setProgress(Math.min(FRAME_COUNT, result.frameCount || index + 1));
                 if (index < FRAME_COUNT - 1) await wait(FRAME_INTERVAL_MS);
             }
 
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             await finishFaceEnrollmentApi(challenge.challengeId);
             setInstruction('Đăng ký khuôn mặt đã hoàn tất.');
             await refresh();
