@@ -8,11 +8,7 @@ test('Face enrollment cancellation cannot release a lock after finish has consum
     const pool = require('../src/config/database.js');
     const faceAuth = require('../service/faceAuthService.js');
 
-    await redisClient.connect();
-    t.after(async () => {
-        await redisClient.quit();
-        await pool.end();
-    });
+    if (!redisClient.isOpen) await redisClient.connect();
 
     const challengeId = 'c'.repeat(24);
     const userId = '987654321';
@@ -20,7 +16,9 @@ test('Face enrollment cancellation cannot release a lock after finish has consum
     const lockKey = `face-auth:enrollment-lock:${userId}`;
 
     t.after(async () => {
-        await redisClient.del(challengeKey, lockKey);
+        await redisClient.del([challengeKey, lockKey]);
+        await redisClient.quit();
+        await pool.end();
     });
 
     await t.test('cancels an unconsumed challenge owned by the caller', async () => {
