@@ -59,7 +59,13 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     useEffect(() => {
         if (mode !== 'login' || !request) return undefined;
         let active = true;
+        let polling = false;
         const poll = async () => {
+            // Prevent overlapping polls and keep the session-replacement guard
+            // active for the request that may consume the QR and issue a session.
+            if (!active || polling) return;
+            polling = true;
+            sessionStorage.setItem('auth:login-in-progress', 'true');
             try {
                 const result = await pollQrLoginApi(request.requestId, request.secret);
                 if (!active) return;
@@ -75,6 +81,9 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                 }
             } catch (error) {
                 if (active && error.response?.status >= 400) setStatus(error.response?.data?.message || 'Không thể kiểm tra trạng thái QR.');
+            } finally {
+                sessionStorage.removeItem('auth:login-in-progress');
+                polling = false;
             }
         };
         const timer = window.setInterval(poll, 2000);
