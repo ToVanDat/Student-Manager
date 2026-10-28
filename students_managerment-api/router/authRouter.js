@@ -75,7 +75,9 @@ router.post('/qr-login/poll', requireTrustedOrigin, authRateLimiter, advancedAut
 router.post('/register', authRateLimiter, authController.register);
 
 // LOGIN
-router.post('/login', requireTrustedOrigin, passwordLoginProtection, loginRateLimiter, authController.login);
+// Count cooldown rejections against the IP safety quota as well, so repeatedly
+// probing a cooling-down account cannot bypass the network-level limiter.
+router.post('/login', requireTrustedOrigin, loginRateLimiter, passwordLoginProtection, authController.login);
 
 // REFRESH
 router.post('/refresh', requireTrustedOrigin, authRateLimiter, authController.refresh);
