@@ -1,0 +1,72 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+function loadRepositoryWithPool(pool) {
+    const databasePath = require.resolve('../src/config/database.js');
+    const repositoryPath = require.resolve('../repository/authRepository.js');
+    const previousDatabase = require.cache[databasePath];
+    const previousRepository = require.cache[repositoryPath];
+
+    require.cache[databasePath] = {
+        id: databasePath,
+        filename: databasePath,
+        loaded: true,
+        exports: pool
+    };
+    delete require.cache[repositoryPath];
+
+    const repository = require('../repository/authRepository.js');
+
+    return {
+        repository,
+        restore() {
+            delete require.cache[repositoryPath];
+            if (previousRepository) require.cache[repositoryPath] = previousRepository;
+            if (previousDatabase) require.cache[databasePath] = previousDatabase;
+            else delete require.cache[databasePath];
+        }
+    };
+}
+
+test('createSessionForActiveUser inserts only when the account is active', async () => {
+    let captured;
+    const fakePool = {
+        query: async (sql, values) => {
+            captured = { sql, values };
+            return { rows: [{ id: 'session-1', user_id: '42' }] };
+        }
+    };
+    const loaded = loadRepositoryWithPool(fakePool);
+
+    try {
+        const session = await loaded.repository.createSessionForActiveUser(
+            '42', 'Browser', 'Example UA', '127.0.0.1'
+        );
+
+        assert.equal(session.id, 'session-1');
+        assert.match(captured.sql, /INSERT\s+INTO\s+sessions/i);
+        assert.match(captured.sql, /FROM\s+users/i);
+        assert.match(captured.sql, /is_active\s*=\s*TRUE/i);
+        assert.deepEqual(captured.values.slice(1), ['42', 'Browser', 'Example UA', '127.0.0.1']);
+    } finally {
+        loaded.restore();
+    }
+});
+
+test('createSessionForActiveUser returns null when no active account row is inserted', async () => {
+    const fakePool = {
+        query: async () => ({ rows: [] })
+    };
+    const loaded = loadRepositoryWithPool(fakePool);
+
+    try {
+        const session = await loaded.repository.createSessionForActiveUser(
+            '42', 'Browser', 'Example UA', '127.0.0.1'
+        );
+        assert.equal(session, null);
+    } finally {
+        loaded.restore();
+    }
+});
