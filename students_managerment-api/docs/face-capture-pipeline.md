@@ -30,6 +30,13 @@ Extract the supplied archive under `students_managerment-api/storage/` (or set `
 
 No default threshold is supplied. Never copy benchmark thresholds into production without evaluation on this exact model/preprocessing/camera population.
 
+## Preprocessing verification state
+
+- **MiniFASNet:** reference input is BGR, NCHW, 80x80, float32 in [0,1], with a 2.7x expanded face box and no landmark alignment warp. The JS cropper now follows upstream bounded-box geometry (aspect-ratio preservation, scale cap, edge shifting, integer inclusive crop) and half-pixel bilinear resize. It has not yet passed pixel-for-pixel comparison against OpenCV; treat that as an outstanding parity check.
+- **MiniFASNet outputs:** the API does not map any output index to bona fide or attack until `tools/face-eval/verify_minifasnet_parity.py` proves the hash-pinned ONNX output matches the original PyTorch checkpoint and resolves logits-versus-probabilities. Upstream marks index 1 as real and treats indices 0 and 2 as fake; it does not establish separate print/replay meanings.
+- **MobileFaceNet:** the Qualcomm reference specifies RGB NCHW 112x112 in [0,1], applies ImageNet normalization inside the model, and performs horizontal-flip test-time augmentation. The current five-point alignment implementation and image decode/resize path have not yet passed pixel-level parity against Qualcomm's `warp_and_crop_face` reference. Do not calibrate a recognition threshold until that parity is measured on identical inputs.
+- **Artifact availability:** the model binaries and `recognition/metadata.json` are gitignored local artifacts. A repository hash pin is not proof that the user's local files exist or match; `npm run face:verify-models` must pass on the actual Windows machine.
+
 ## Capture API
 
 1. Start enrollment or login:
