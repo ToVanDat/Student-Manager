@@ -40,6 +40,18 @@ const replaceRolePermissions = async (role, permissions, actorId) => {
             await client.query('ROLLBACK');
             return { kind: 'unknown_permission' };
         }
+
+        // This endpoint is a full replacement, not a partial patch. Reject an
+        // incomplete payload rather than silently retaining stale grants that
+        // the administrator believes have been removed.
+        const submitted = new Set(permissions.map(item => item.permission_key));
+        const missingPermissionKeys = catalog.rows
+            .map(row => row.permission_key)
+            .filter(permissionKey => !submitted.has(permissionKey));
+        if (missingPermissionKeys.length > 0) {
+            await client.query('ROLLBACK');
+            return { kind: 'incomplete_permissions', missingPermissionKeys };
+        }
         // Require a permission manager to remain available for at least one admin.
         if (role === 'admin' && !permissions.some(item => item.permission_key === 'permissions.manage' && item.allowed)) {
             const admins = await client.query("SELECT COUNT(*)::int AS count FROM users WHERE role = 'admin' AND is_active = TRUE");
