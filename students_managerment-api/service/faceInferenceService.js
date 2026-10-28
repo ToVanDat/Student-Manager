@@ -12,8 +12,8 @@ const EXPECTED_HASHES = Object.freeze({
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 });
 // The ONNX artifact is hash-pinned, but class semantics remain deliberately
-// unresolved: its model card and upstream inference code disagree. Never map
-// an output index to bona fide/attack until direct ONNX-vs-PyTorch parity passes.
+// unresolved until direct ONNX-vs-PyTorch parity passes. The parity verifier
+// uses upstream test.py semantics only after exact output equivalence is proven.
 const PAD_MODEL_CONTRACT = Object.freeze({
     artifactSha256: 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b',
     input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 255]), source: 'MiniVision AntiSpoofPredict -> custom ToTensor -> functional.to_tensor (raw float conversion, no /255)' }),
@@ -24,7 +24,7 @@ const PAD_MODEL_CONTRACT = Object.freeze({
         bonaFideIndex: null,
         attackIndices: null,
         classOrder: null,
-        reason: 'The published ONNX model card and upstream MiniVision inference code disagree on class index semantics. The model card also says input pixels are [0,1], while the executable upstream ToTensor implementation returns raw float pixels [0,255].'
+        reason: 'The published ONNX model card conflicts with upstream runtime class order and input scale. The exact ONNX/PyTorch parity verifier must pass before the API contract is promoted.'
     }),
     upstreamInference: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
     upstreamConversion: 'https://github.com/QingHeYang/Silent-Face-Anti-Spoofing-onnx/blob/main/convert_minifasnet_to_onnx.py',
