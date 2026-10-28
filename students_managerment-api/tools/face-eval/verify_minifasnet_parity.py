@@ -9,10 +9,13 @@ import argparse
 import hashlib
 import json
 import sys
+import subprocess
 from pathlib import Path
 
 EXPECTED_ONNX_SHA256 = "d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b"
 EXPECTED_CHECKPOINT_SHA256 = "a5eb02e1843f19b5386b953cc4c9f011c3f985d0ee2bb9819eea9a142099bec0"
+UPSTREAM_COMMIT = "b6d5f04ad78778917853b25c778acef6d5626d15"
+CONVERTER_COMMIT = "584d4421d7ac42c59e640796f46e886b0095367a"
 ATOL = 1e-5
 RTOL = 1e-4
 
@@ -47,6 +50,15 @@ def main():
                         ("checkpoint", args.checkpoint), ("ONNX", args.onnx)):
         if not path.exists():
             raise SystemExit(f"[parity] missing {label}: {path}")
+
+    upstream_head = subprocess.run(
+        ["git", "-C", str(args.upstream_root), "rev-parse", "HEAD"],
+        check=True, capture_output=True, text=True
+    ).stdout.strip()
+    if upstream_head != UPSTREAM_COMMIT:
+        raise SystemExit(
+            f"[parity] upstream checkout must be pinned to {UPSTREAM_COMMIT}, got {upstream_head}"
+        )
 
     onnx_hash = sha256(args.onnx)
     checkpoint_hash = sha256(args.checkpoint)
@@ -133,6 +145,8 @@ def main():
         "status": "PARITY_OK",
         "onnx_sha256": onnx_hash,
         "checkpoint_sha256": checkpoint_hash,
+        "upstream_source_commit": UPSTREAM_COMMIT,
+        "converter_source_commit": CONVERTER_COMMIT,
         "output_semantics": output_semantics,
         "input_contract": {
             "layout": "BGR-NCHW",
