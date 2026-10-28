@@ -13,7 +13,7 @@ const {
 
 const enabled = process.env.REDIS_INTEGRATION === '1';
 
-test('progressive cooldown Redis integration: atomic counters, pair isolation, TTL and account reset', {
+test('progressive cooldown Redis integration: atomic counters, account/IP isolation, TTL and account reset', {
     skip: !enabled
 }, async () => {
     const secret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
@@ -22,6 +22,7 @@ test('progressive cooldown Redis integration: atomic counters, pair isolation, T
     if (!redisClient.isOpen) await redisClient.connect();
 
     const username = `redis-integration-${crypto.randomUUID()}`;
+    const otherUsername = `redis-integration-other-${crypto.randomUUID()}`;
     const ipA = '192.0.2.10';
     const ipB = '192.0.2.11';
     const accountHash = crypto.createHmac('sha256', secret)
@@ -44,20 +45,30 @@ test('progressive cooldown Redis integration: atomic counters, pair isolation, T
         assert.equal(await redisClient.ttl(failureKeyA) <= 86400, true);
         assert.equal((await getCooldownState(username, ipA)).active, true);
 
+        // The same account from another IP has an independent cooldown pair.
         for (let attempt = 0; attempt < 4; attempt += 1) {
             await recordFailure(username, ipB);
         }
         assert.equal((await getCooldownState(username, ipB)).active, true);
 
+        // A different account behind the same public IP must remain isolated.
+        for (let attempt = 0; attempt < 4; attempt += 1) {
+            await recordFailure(otherUsername, ipA);
+        }
+        assert.equal((await getCooldownState(otherUsername, ipA)).active, true);
+
         await clearAccountIpState(username, ipA);
         assert.equal((await getCooldownState(username, ipA)).active, false);
         assert.equal((await getCooldownState(username, ipB)).active, true);
+        assert.equal((await getCooldownState(otherUsername, ipA)).active, true);
 
         const clearedPairs = await resetAccountState(username);
         assert.equal(clearedPairs, 2);
         assert.equal((await getCooldownState(username, ipB)).active, false);
+        assert.equal((await getCooldownState(otherUsername, ipA)).active, true);
     } finally {
         await resetAccountState(username);
+        await resetAccountState(otherUsername);
         if (redisClient.isOpen) await redisClient.quit();
     }
 });
