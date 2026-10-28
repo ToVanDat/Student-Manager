@@ -292,9 +292,6 @@ const updateGroup = async (req, res, next) => {
             return res.status(400).json({ message: 'conversationId không hợp lệ' });
         }
 
-        const oldConversation = await require('../repository/conversationRepository')
-            .getConversationInfo(conversationId);
-
         const data = await conversationService.updateGroupConversation(
             conversationId,
             Number(req.user.id),
