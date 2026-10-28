@@ -11,7 +11,7 @@ const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
-const { isValidSessionDescription, isValidIceCandidate, normalizeSocketEventArgs } = require('../../service/socketPayloadValidation.js');
+const { isValidSessionDescription, isValidIceCandidate, wrapSocketEventListener } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 
@@ -155,13 +155,25 @@ const initSocket = async (server) => {
     });
 
     io.on('connection', async (socket) => {
-        // Socket.IO passes arbitrary client values as the first event argument.
-        // Normalize it centrally so every object-destructuring handler is safe
-        // against null, arrays, primitives, and malformed payload shapes.
+        // Normalize client event payloads centrally. Do not wrap Socket.IO's
+        // reserved lifecycle events: their first argument is often a string
+        // (for example, the disconnect reason), not an application payload.
+        // Preserve the listener receiver and all trailing arguments/ACKs.
         const registerClientEvent = socket.on.bind(socket);
+        const reservedSocketEvents = new Set([
+            'connect',
+            'connect_error',
+            'disconnect',
+            'disconnecting',
+            'error',
+            'newListener',
+            'removeListener'
+        ]);
         socket.on = (eventName, listener) => registerClientEvent(
             eventName,
-            (...eventArgs) => listener(...normalizeSocketEventArgs(...eventArgs))
+            reservedSocketEvents.has(eventName)
+                ? listener
+                : wrapSocketEventListener(listener)
         );
 
         const userId = Number(socket.user.id);
