@@ -192,12 +192,12 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     assertPixels(rgb112, 3 * 112 * 112, 'rgb112');
     assertPixels(bgr80, 3 * 80 * 80, 'bgr80', 255);
     const runtime = await getRuntime();
-    const { ort, mobile, pad, padInputName, padOutputName } = runtime;
+    const { ort, mobile, pad: padSession, padInputName, padOutputName } = runtime;
     const mobileTensor = new ort.Tensor('float32', rgb112, [1, 3, 112, 112]);
     const padTensor = new ort.Tensor('float32', bgr80, [1, 3, 80, 80]);
     const [mobileResult, padResult] = await Promise.all([
         mobile.run({ img1: mobileTensor, img2: mobileTensor }),
-        pad.run({ [padInputName]: padTensor })
+        padSession.run({ [padInputName]: padTensor })
     ]);
     const embeddingRows = mobileResult.embeddings.data;
     if (!embeddingRows || embeddingRows.length !== 256) {
@@ -206,10 +206,10 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     const embedding = l2Normalize(embeddingRows.slice(0, 128));
     // Deliberately fail closed until the exact ONNX output semantics and class
     // order are proven against the original PyTorch model on identical tensors.
-    const pad = decodePadOutput(padResult[padOutputName].data);
+    const padResultDecoded = decodePadOutput(padResult[padOutputName].data);
     return {
         embedding,
-        pad,
+        pad: padResultDecoded,
         liveness: tensors.liveness,
         model: { id: 'mobilefacenet+minifasnet-v2', version: 'supplied-bundle-v1' }
     };
