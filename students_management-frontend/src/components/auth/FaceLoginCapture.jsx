@@ -6,8 +6,8 @@ import {
     finishFaceLoginApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 6;
-const FRAME_INTERVAL_MS = 350;
+const FRAME_COUNT = 12;
+const FRAME_INTERVAL_MS = 450;
 
 function captureJpeg(video) {
     if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) {
@@ -75,8 +75,8 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
 
             const challenge = await beginFaceLoginApi(username);
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
-            setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
-            await wait(900);
+            setInstruction(`Bước 1/2: ${actions[0] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+            await wait(1200);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
                 if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình xác minh.');
@@ -87,6 +87,9 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
                     frame,
                 );
                 setProgress(Math.min(FRAME_COUNT, result.frameCount || index + 1));
+                if (index === Math.floor(FRAME_COUNT / 2) - 1) {
+                    setInstruction(`Bước 2/2: ${actions[1] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+                }
                 if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình xác minh.');
                 if (index < FRAME_COUNT - 1) await wait(FRAME_INTERVAL_MS);
             }
