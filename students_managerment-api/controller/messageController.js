@@ -68,28 +68,32 @@ const createMessage = async (req, res) => {
             senderId
         );
 
-        // REST fallback cũng đồng bộ realtime cho các client đang trong conversation.
-        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
-
-        const memberIds = await conversationRepository.getConversationMemberIds(conversationId);
-        for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
-                conversationId,
-                lastMessage: message,
-                senderId,
-                updatedAt: message.created_at
-            });
-        }
-
-        // Notification delivery is best-effort: message persistence succeeds even if a push provider fails.
-        const sender = await userRepository.findActiveUserById(senderId);
+        // Persistence has completed. Realtime fan-out and push delivery are
+        // best-effort and must not turn a committed message into an HTTP failure.
         try {
+            const io = getIO();
+            io.to(`conversation:${conversationId}`).emit('message:new', message);
+
+            const memberIds = await conversationRepository.getConversationMemberIds(conversationId);
+            for (const memberId of memberIds) {
+                io.to(`user:${memberId}`).emit('conversation:updated', {
+                    conversationId,
+                    lastMessage: message,
+                    senderId,
+                    updatedAt: message.created_at
+                });
+            }
+
+            const sender = await userRepository.findActiveUserById(senderId);
             await notificationDeliveryService.notifyMessageRecipients({
-                io: getIO(), conversationId, senderId,
+                io, conversationId, senderId,
                 senderName: sender?.username || 'Tin nhắn mới', message
             });
         } catch (notificationError) {
-            console.error('[NOTIFICATION] REST delivery failed:', notificationError.message);
+            console.error('[MESSAGE] Post-commit delivery failed:', {
+                conversationId,
+                message: notificationError?.message
+            });
         }
 
         return res.status(201).json({
@@ -126,9 +130,7 @@ const createMessage = async (req, res) => {
         }
 
         return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể gửi message'
+            message: 'Không thể gửi message'
         });
     }
 };
