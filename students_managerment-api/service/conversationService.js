@@ -189,7 +189,9 @@ const reportConversation = async (conversationId, userId, targetUserId, reason, 
 
 const getConversationMembers = async (conversationId, userId) => {
     if (!await conversationRepository.isConversationMember(conversationId, userId)) {
-        throw new Error('Bạn không thuộc conversation này');
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
     }
     return conversationRepository.getConversationMembers(conversationId);
 };
