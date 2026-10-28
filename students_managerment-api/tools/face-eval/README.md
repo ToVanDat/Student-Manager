@@ -28,10 +28,10 @@ Keep CSV files outside Git. Do not put raw face images or embedding vectors in t
 ## Metrics
 
 - Recognition threshold is selected on calibration data by minimizing the difference between FAR and FRR (empirical EER operating point). FAR/FRR are then reported on held-out test data.
-- PAD threshold is selected on calibration data by minimizing ACER. Held-out test reports BPCER and APCER separately by attack type, plus mean APCER and ACER.
+- PAD threshold is selected on calibration data by minimizing ACER. Held-out test reports BPCER and APCER separately for print, replay, and video attacks, plus mean APCER and ACER. Per-rate 95% Wilson intervals are included; ACER interval is not estimated.
 - The evaluator enforces disjoint participant, session, and device identifiers between calibration and test, including cross-role participant leakage in verification pairs. Split by participant/session/device, not by random frame or pair.
-- This script reports point estimates only, not confidence intervals. Include sample counts and confidence intervals in the study report.
-- Confirm MiniFASNet output class order against the original pinned metadata before deriving live_score. Never assume index 0 is bona fide.
+- This script reports point estimates and pointwise Wilson 95% intervals for BPCER/APCER. It does not estimate a confidence interval for ACER or adjust for multiple comparisons.
+- Current MiniFASNet sources conflict: the hash-matched ONNX model card describes `[live, print, replay]`, while upstream MiniVision inference treats class index 1 as real. The API therefore refuses to interpret the three outputs until direct ONNX-vs-PyTorch parity resolves both class order and logits/probability semantics. Never infer a mapping from a variable name or a single score vector.
 - Current inference property names do not independently prove the output class mapping.
 
 Example scores in any tutorial are format examples, not measurements. This script does not select production thresholds or certify PAD.
