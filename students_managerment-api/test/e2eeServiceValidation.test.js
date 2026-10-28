@@ -157,3 +157,40 @@ test('one-time prekey claim forwards the exact conversation and target device af
         e2eeRepository.claimConversationDevicePrekey = originalClaim;
     }
 });
+
+
+test('E2EE operations reject invalid authenticated user IDs before repository access', async () => {
+    const conversationRepository = require('../repository/conversationRepository');
+    const originalRevoke = e2eeRepository.revokeDevice;
+    const originalBundles = e2eeRepository.getConversationDeviceBundles;
+    const originalClaim = e2eeRepository.claimConversationDevicePrekey;
+    const originalMembership = conversationRepository.isConversationMember;
+    let repositoryCalls = 0;
+    e2eeRepository.revokeDevice = async () => { repositoryCalls += 1; return null; };
+    e2eeRepository.getConversationDeviceBundles = async () => { repositoryCalls += 1; return []; };
+    e2eeRepository.claimConversationDevicePrekey = async () => { repositoryCalls += 1; return null; };
+    conversationRepository.isConversationMember = async () => { repositoryCalls += 1; return true; };
+
+    try {
+        await assert.rejects(
+            e2eeService.revokeDevice(0, '550e8400-e29b-41d4-a716-446655440000'),
+            error => error.statusCode === 401
+        );
+        await assert.rejects(
+            e2eeService.getConversationDeviceBundles(Number.NaN, 12),
+            error => error.statusCode === 401
+        );
+        await assert.rejects(
+            e2eeService.claimConversationDevicePrekey(
+                -1, 12, 8, '550e8400-e29b-41d4-a716-446655440000'
+            ),
+            error => error.statusCode === 401
+        );
+        assert.equal(repositoryCalls, 0);
+    } finally {
+        e2eeRepository.revokeDevice = originalRevoke;
+        e2eeRepository.getConversationDeviceBundles = originalBundles;
+        e2eeRepository.claimConversationDevicePrekey = originalClaim;
+        conversationRepository.isConversationMember = originalMembership;
+    }
+});
