@@ -387,7 +387,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: pip
       - name: Install pinned CPU parity dependencies
         run: |
           python -m pip install --upgrade pip
@@ -404,7 +403,7 @@ jobs:
         run: |
           python tools/face-eval/verify_minifasnet_parity.py --upstream-root /tmp/Silent-Face-Anti-Spoofing --checkpoint /tmp/2.7_80x80_MiniFASNetV2.pth --onnx /tmp/minifasnet-v2.onnx --output /tmp/minifasnet-parity.json
       - name: Upload parity report
-        if: always() && hashFiles('/tmp/minifasnet-parity.json') != ''
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: minifasnet-reference-parity
