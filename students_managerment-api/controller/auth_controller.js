@@ -624,8 +624,11 @@ const login = async (req, res) => {
 
         console.error('[AUTH][login failed]', error.code || error.message);
 
-        return res.status(401).json({
-            message: 'Không thể đăng nhập lúc này. Vui lòng thử lại.'
+        // Only credential mismatches are 401. Database, Redis, JWT and other
+        // operational failures must not be misreported as invalid credentials.
+        return res.status(500).json({
+            code: 'AUTH_LOGIN_UNAVAILABLE',
+            message: 'Dịch vụ đăng nhập tạm thời không khả dụng. Vui lòng thử lại sau.'
         });
 
     }
