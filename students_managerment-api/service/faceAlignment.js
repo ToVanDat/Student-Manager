@@ -82,6 +82,15 @@ function sampleBilinear(rgb, width, height, x, y, channel) {
         (p01 * (1 - dx) + p11 * dx) * dy;
 }
 
+function sampleBilinearClamped(rgb, width, height, x, y, channel) {
+    return sampleBilinear(
+        rgb, width, height,
+        Math.min(width - 1, Math.max(0, x)),
+        Math.min(height - 1, Math.max(0, y)),
+        channel
+    );
+}
+
 function validateImage(rgb, width, height) {
     if (!Buffer.isBuffer(rgb) || !Number.isInteger(width) || !Number.isInteger(height) ||
         width < 1 || height < 1 || rgb.length !== width * height * 3) {
@@ -168,7 +177,7 @@ function cropPadRgb(rgb, width, height, bbox, expansion = 2.7) {
             const offset = (y * PAD_SIZE + x) * 3;
             for (let channel = 0; channel < 3; channel += 1) {
                 output[offset + channel] = Math.round(
-                    sampleBilinear(crop, cropWidth, cropHeight, sourceX, sourceY, channel)
+                    sampleBilinearClamped(crop, cropWidth, cropHeight, sourceX, sourceY, channel)
                 );
             }
         }
