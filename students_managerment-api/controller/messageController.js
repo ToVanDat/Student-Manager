@@ -107,8 +107,11 @@ const createMessage = async (req, res) => {
             error
         );
 
-        if (error.statusCode === 409 || error.statusCode === 403) {
-            return res.status(error.statusCode).json({ message: error.message, code: error.statusCode === 409 ? 'E2EE_REQUIRED' : undefined });
+        if ([400, 403, 404, 409].includes(error.statusCode)) {
+            return res.status(error.statusCode).json({
+                message: error.message,
+                ...(error.statusCode === 409 ? { code: 'E2EE_REQUIRED' } : {})
+            });
         }
 
         if (
