@@ -54,3 +54,106 @@ test('device revocation returns not-found when the device is not active or not o
         e2eeRepository.revokeDevice = original;
     }
 });
+
+
+test('conversation device bundles reject non-members before querying device bundles', async () => {
+    const originalMembership = require('../repository/conversationRepository').isConversationMember;
+    const originalBundles = e2eeRepository.getConversationDeviceBundles;
+    let bundleCalls = 0;
+    require('../repository/conversationRepository').isConversationMember = async () => false;
+    e2eeRepository.getConversationDeviceBundles = async () => {
+        bundleCalls += 1;
+        return [];
+    };
+
+    try {
+        await assert.rejects(
+            e2eeService.getConversationDeviceBundles(7, 12),
+            error => error.statusCode === 403
+        );
+        assert.equal(bundleCalls, 0);
+    } finally {
+        require('../repository/conversationRepository').isConversationMember = originalMembership;
+        e2eeRepository.getConversationDeviceBundles = originalBundles;
+    }
+});
+
+test('one-time prekey claims validate identifiers before repository access', async () => {
+    const originalMembership = require('../repository/conversationRepository').isConversationMember;
+    const originalClaim = e2eeRepository.claimConversationDevicePrekey;
+    let claimCalls = 0;
+    e2eeRepository.claimConversationDevicePrekey = async () => {
+        claimCalls += 1;
+        return null;
+    };
+
+    try {
+        await assert.rejects(
+            e2eeService.claimConversationDevicePrekey(7, 0, 8, '550e8400-e29b-41d4-a716-446655440000'),
+            error => error.statusCode === 400
+        );
+        await assert.rejects(
+            e2eeService.claimConversationDevicePrekey(7, 12, 0, '550e8400-e29b-41d4-a716-446655440000'),
+            error => error.statusCode === 400
+        );
+        await assert.rejects(
+            e2eeService.claimConversationDevicePrekey(7, 12, 8, 'not-a-uuid'),
+            error => error.statusCode === 400
+        );
+        assert.equal(claimCalls, 0);
+    } finally {
+        require('../repository/conversationRepository').isConversationMember = originalMembership;
+        e2eeRepository.claimConversationDevicePrekey = originalClaim;
+    }
+});
+
+test('one-time prekey claim checks requester membership before consuming a prekey', async () => {
+    const conversationRepository = require('../repository/conversationRepository');
+    const originalMembership = conversationRepository.isConversationMember;
+    const originalClaim = e2eeRepository.claimConversationDevicePrekey;
+    let claimCalls = 0;
+    conversationRepository.isConversationMember = async (conversationId, userId) => {
+        assert.equal(conversationId, 12);
+        assert.equal(userId, 7);
+        return false;
+    };
+    e2eeRepository.claimConversationDevicePrekey = async () => {
+        claimCalls += 1;
+        return { id: 1, publicKey: 'key' };
+    };
+
+    try {
+        await assert.rejects(
+            e2eeService.claimConversationDevicePrekey(7, 12, 8, '550e8400-e29b-41d4-a716-446655440000'),
+            error => error.statusCode === 403
+        );
+        assert.equal(claimCalls, 0);
+    } finally {
+        conversationRepository.isConversationMember = originalMembership;
+        e2eeRepository.claimConversationDevicePrekey = originalClaim;
+    }
+});
+
+test('one-time prekey claim forwards the exact conversation and target device after membership check', async () => {
+    const conversationRepository = require('../repository/conversationRepository');
+    const originalMembership = conversationRepository.isConversationMember;
+    const originalClaim = e2eeRepository.claimConversationDevicePrekey;
+    const expected = { id: 3, publicKey: 'public-prekey' };
+    let received;
+    conversationRepository.isConversationMember = async () => true;
+    e2eeRepository.claimConversationDevicePrekey = async (...args) => {
+        received = args;
+        return expected;
+    };
+
+    try {
+        const result = await e2eeService.claimConversationDevicePrekey(
+            7, 12, 8, '550e8400-e29b-41d4-a716-446655440000'
+        );
+        assert.deepEqual(received, [12, 7, 8, '550e8400-e29b-41d4-a716-446655440000']);
+        assert.equal(result, expected);
+    } finally {
+        conversationRepository.isConversationMember = originalMembership;
+        e2eeRepository.claimConversationDevicePrekey = originalClaim;
+    }
+});
