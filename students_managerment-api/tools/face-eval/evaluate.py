@@ -52,7 +52,7 @@ def load_recognition(path):
             raise ValueError(f"{path}:{line}: participant_a and participant_b must differ")
         if not -1 <= score <= 1:
             raise ValueError(f"{path}:{line}: cosine similarity must be in [-1,1]")
-        result.append({"split": split, "genuine": label == "genuine", "score": score})
+        result.append({"split": split, "genuine": label == "genuine", "score": score, **{key: row[key].strip() for key in ("participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b")}})
     return result
 
 
@@ -69,7 +69,8 @@ def load_pad(path):
         if not 0 <= score <= 1:
             raise ValueError(f"{path}:{line}: live_score must be in [0,1]")
         result.append({"split": split, "bona_fide": attack == "bona_fide",
-                       "attack_type": attack, "score": score})
+                       "attack_type": attack, "score": score,
+                       **{key: row[key].strip() for key in ("participant_id", "session_id", "device_id")}})
     return result
 
 
