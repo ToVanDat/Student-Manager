@@ -117,32 +117,64 @@ function alignRgbFace(rgb, width, height, fivePoints) {
 function cropPadRgb(rgb, width, height, bbox, expansion = 2.7) {
     validateImage(rgb, width, height);
     if (!bbox || !['x', 'y', 'width', 'height'].every(key =>
-        Number.isFinite(bbox[key])) || bbox.width <= 0 || bbox.height <= 0 ||
+        Number.isFinite(bbox[key])) || bbox.x < 0 || bbox.y < 0 ||
+        bbox.width <= 0 || bbox.height <= 0 ||
+        bbox.x + bbox.width > width + 1 || bbox.y + bbox.height > height + 1 ||
         !Number.isFinite(expansion) || expansion < 1 || expansion > 4) {
         throw invalid('Face bounding box for PAD is invalid');
     }
-    const side = Math.max(bbox.width, bbox.height) * expansion;
+
+    // Match Minivision CropImage._get_new_box: preserve the bbox aspect ratio,
+    // cap scale to image bounds, shift the expanded rectangle back inside the
+    // image, truncate coordinates, and include the right/bottom pixel.
+    const scale = Math.min((height - 1) / bbox.height, (width - 1) / bbox.width, expansion);
+    const expandedWidth = bbox.width * scale;
+    const expandedHeight = bbox.height * scale;
     const centerX = bbox.x + bbox.width / 2;
     const centerY = bbox.y + bbox.height / 2;
-    const left = centerX - side / 2;
-    const top = centerY - side / 2;
-    const output = Buffer.alloc(PAD_SIZE * PAD_SIZE * 3);
+    let left = centerX - expandedWidth / 2;
+    let top = centerY - expandedHeight / 2;
+    let right = centerX + expandedWidth / 2;
+    let bottom = centerY + expandedHeight / 2;
 
+    if (left < 0) { right -= left; left = 0; }
+    if (top < 0) { bottom -= top; top = 0; }
+    if (right > width - 1) { left -= right - width + 1; right = width - 1; }
+    if (bottom > height - 1) { top -= bottom - height + 1; bottom = height - 1; }
+
+    const x1 = Math.trunc(left);
+    const y1 = Math.trunc(top);
+    const x2 = Math.trunc(right);
+    const y2 = Math.trunc(bottom);
+    const cropWidth = x2 - x1 + 1;
+    const cropHeight = y2 - y1 + 1;
+    if (cropWidth < 1 || cropHeight < 1) throw invalid('PAD crop is empty');
+
+    const crop = Buffer.alloc(cropWidth * cropHeight * 3);
+    for (let y = 0; y < cropHeight; y += 1) {
+        for (let x = 0; x < cropWidth; x += 1) {
+            const sourceOffset = ((y1 + y) * width + x1 + x) * 3;
+            const targetOffset = (y * cropWidth + x) * 3;
+            rgb.copy(crop, targetOffset, sourceOffset, sourceOffset + 3);
+        }
+    }
+
+    // OpenCV INTER_LINEAR resize uses half-pixel sampling coordinates.
+    const output = Buffer.alloc(PAD_SIZE * PAD_SIZE * 3);
     for (let y = 0; y < PAD_SIZE; y += 1) {
+        const sourceY = (y + 0.5) * cropHeight / PAD_SIZE - 0.5;
         for (let x = 0; x < PAD_SIZE; x += 1) {
-            const sourceX = left + (x + 0.5) * side / PAD_SIZE - 0.5;
-            const sourceY = top + (y + 0.5) * side / PAD_SIZE - 0.5;
+            const sourceX = (x + 0.5) * cropWidth / PAD_SIZE - 0.5;
             const offset = (y * PAD_SIZE + x) * 3;
             for (let channel = 0; channel < 3; channel += 1) {
                 output[offset + channel] = Math.round(
-                    sampleBilinear(rgb, width, height, sourceX, sourceY, channel)
+                    sampleBilinear(crop, cropWidth, cropHeight, sourceX, sourceY, channel)
                 );
             }
         }
     }
     return output;
 }
-
 function toNchwFloat(rgb, width, height, channelOrder = [0, 1, 2]) {
     if (!Buffer.isBuffer(rgb) || rgb.length !== width * height * 3 ||
         channelOrder.length !== 3 || channelOrder.some(index => ![0, 1, 2].includes(index))) {
