@@ -1,10 +1,13 @@
+// Exercise the real application bootstrap so TRUST_PROXY_HOPS and middleware
+// registration are covered, rather than mounting authRouter in a test-only app.
+process.env.TRUST_PROXY_HOPS = process.env.TRUST_PROXY_HOPS || '1';
+
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const express = require('express');
 
+const app = require('../src/app');
 const { redisClient } = require('../src/config/redis');
-const authRouter = require('../router/authRouter');
 const {
     recordFailure,
     resetAccountState
@@ -23,10 +26,6 @@ test('HTTP login pipeline counts cooldown rejections against the IP limiter', {
     const username = `login-pipeline-${crypto.randomUUID()}`;
     const ip = '203.0.113.77';
     const ipRateLimitKey = `rate-limit:password-login:${ip}`;
-    const app = express();
-    app.set('trust proxy', 1);
-    app.use(express.json());
-    app.use('/api/auth', authRouter);
 
     const server = app.listen(0);
     await new Promise((resolve, reject) => {
@@ -41,6 +40,7 @@ test('HTTP login pipeline counts cooldown rejections against the IP limiter', {
         await redisClient.del(ipRateLimitKey);
         await resetAccountState(username);
 
+        // Four failures establish the first 30-second account/IP cooldown.
         for (let i = 0; i < 4; i += 1) {
             await recordFailure(username, ip);
         }
@@ -53,7 +53,7 @@ test('HTTP login pipeline counts cooldown rejections against the IP limiter', {
                     origin: 'http://localhost:5173',
                     'x-forwarded-for': ip
                 },
-                body: JSON.stringify({ username, password: 'not-used-because-cooldown-is-active' })
+                body: JSON.stringify({ username, password: 'cooldown-probe' })
             });
             assert.equal(response.status, 429, `request ${i + 1} should be rejected by account/IP cooldown`);
             const body = await response.json();
@@ -67,7 +67,7 @@ test('HTTP login pipeline counts cooldown rejections against the IP limiter', {
                 origin: 'http://localhost:5173',
                 'x-forwarded-for': ip
             },
-            body: JSON.stringify({ username, password: 'not-used' })
+            body: JSON.stringify({ username, password: 'cooldown-probe' })
         });
 
         assert.equal(overLimitResponse.status, 429);
