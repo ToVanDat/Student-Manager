@@ -11,10 +11,9 @@ const EXPECTED_HASHES = Object.freeze({
     'metadata.json': '2639a8261232328665a2a6204abc8e41805730f323feda1a1c147006685fe92e',
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 });
-// MiniFASNet V2 class order is pinned to the upstream Silent-Face-Anti-Spoofing
-// inference contract: index 1 is bona fide; indices 0 and 2 are attack classes.
-// The ONNX export is hash-pinned above. Do not relabel attack subclasses as
-// print/replay without an independently verified class mapping.
+// The ONNX artifact is hash-pinned, but class semantics remain deliberately
+// unresolved: its model card and upstream inference code disagree. Never map
+// an output index to bona fide/attack until direct ONNX-vs-PyTorch parity passes.
 const PAD_MODEL_CONTRACT = Object.freeze({
     artifactSha256: 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b',
     input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 1]) }),
