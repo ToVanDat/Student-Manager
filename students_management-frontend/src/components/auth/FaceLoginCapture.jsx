@@ -6,7 +6,7 @@ import {
     finishFaceLoginApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 8;
+const FRAME_COUNT = 6;
 const FRAME_INTERVAL_MS = 350;
 
 function captureJpeg(video) {
