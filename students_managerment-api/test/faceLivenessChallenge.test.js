@@ -2,7 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createLivenessChallenge, verifyLivenessSequence } = require('../service/faceLivenessChallenge.js');
+const { createLivenessChallenge, verifyLivenessSequence, MAX_FRAME_GAP_MS } = require('../service/faceLivenessChallenge.js');
 
 function frame(receivedAt, blink = 0.05, smile = 0.05) {
     return {
@@ -16,6 +16,10 @@ function frame(receivedAt, blink = 0.05, smile = 0.05) {
         }
     };
 }
+
+test('shares the same bounded frame-gap policy with Redis capture ingestion', () => {
+    assert.equal(MAX_FRAME_GAP_MS, 10_000);
+});
 
 test('creates a short-lived challenge with a random ordered action sequence', () => {
     const challenge = createLivenessChallenge(1_000);
