@@ -9,6 +9,10 @@ const normalizeSocketEventArgs = (...eventArgs) => {
     return [normalizeSocketPayload(payload), ...remainingArgs];
 };
 
+const wrapSocketEventListener = (listener) => function (...eventArgs) {
+    return listener.apply(this, normalizeSocketEventArgs(...eventArgs));
+};
+
 const MAX_SESSION_DESCRIPTION_BYTES = 64 * 1024;
 const MAX_ICE_CANDIDATE_BYTES = 4 * 1024;
 const MAX_SDP_MID_LENGTH = 256;
@@ -70,6 +74,7 @@ const isValidIceCandidate = (candidate) => {
 module.exports = {
     normalizeSocketPayload,
     normalizeSocketEventArgs,
+    wrapSocketEventListener,
     MAX_SESSION_DESCRIPTION_BYTES,
     MAX_ICE_CANDIDATE_BYTES,
     isValidSessionDescription,
