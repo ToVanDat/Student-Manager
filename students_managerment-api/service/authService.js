@@ -638,7 +638,7 @@ const login = async (
             user.password_hash
         );
 
-    if (!user) {
+    if (!isPasswordCorrect) {
         const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
         error.code = 'AUTH_INVALID_CREDENTIALS';
         throw error;
