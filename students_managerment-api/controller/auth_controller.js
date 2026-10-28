@@ -1,5 +1,6 @@
 const authService =
     require('../service/authService.js');
+const { recordFailure, clearAccountIpState } = require('../service/passwordLoginProtection.js');
 
 const { getDeviceInfo } =
     require('../src/utils/device.js');
@@ -553,6 +554,13 @@ const login = async (req, res) => {
                 ipAddress
             );
 
+        // A valid password clears only this account/IP pair; other IP risk
+        // signals remain isolated and expire naturally.
+        try {
+            await clearAccountIpState(username, ipAddress);
+        } catch (protectionError) {
+            console.warn('[AUTH] Could not clear successful-login cooldown:', protectionError.code || protectionError.message);
+        }
 
         // ==============================================
         // SET REFRESH TOKEN COOKIE
@@ -601,18 +609,23 @@ const login = async (req, res) => {
 
     } catch (error) {
 
-        console.error(
-            'LOGIN ERROR:',
-            error
-        );
+        if (error.code === 'AUTH_INVALID_CREDENTIALS') {
+            try {
+                await recordFailure(username, req.ip || ipAddress);
+            } catch (protectionError) {
+                console.error('[AUTH] Could not record failed password attempt:', protectionError.code || protectionError.message);
+            }
 
+            return res.status(401).json({
+                code: 'INVALID_CREDENTIALS',
+                message: 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.'
+            });
+        }
+
+        console.error('[AUTH][login failed]', error.code || error.message);
 
         return res.status(401).json({
-
-            message:
-                error.message ||
-                'Đăng nhập thất bại'
-
+            message: 'Không thể đăng nhập lúc này. Vui lòng thử lại.'
         });
 
     }
