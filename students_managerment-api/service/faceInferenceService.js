@@ -11,6 +11,21 @@ const EXPECTED_HASHES = Object.freeze({
     'metadata.json': '2639a8261232328665a2a6204abc8e41805730f323feda1a1c147006685fe92e',
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 });
+// MiniFASNet V2 class order is pinned to the upstream Silent-Face-Anti-Spoofing
+// inference contract: index 1 is bona fide; indices 0 and 2 are attack classes.
+// The ONNX export is hash-pinned above. Do not relabel attack subclasses as
+// print/replay without an independently verified class mapping.
+const PAD_MODEL_CONTRACT = Object.freeze({
+    input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 1]) }),
+    output: Object.freeze({
+        semantics: 'logits',
+        classOrder: Object.freeze(['attack_class_0', 'bona_fide', 'attack_class_2']),
+        bonaFideIndex: 1
+    }),
+    upstream: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
+    onnxExport: 'https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/commit/d29c87568ca9b5662da803b10f217c4db20b142b'
+});
+
 const MODEL_DIR = path.resolve(
     process.env.FACE_MODEL_DIR || path.join(__dirname, '..', 'storage', 'face-models')
 );
@@ -57,17 +72,14 @@ function l2Normalize(values) {
     return Array.from(values, value => Math.fround(value / norm));
 }
 
-function classProbabilities(values) {
-    if (!values || values.length !== 3 || Array.from(values).some(value => !Number.isFinite(value))) {
-        throw configError('MiniFASNet phải trả về đúng 3 giá trị hữu hạn');
+function classProbabilities(logits) {
+    if (!logits || logits.length !== 3 || Array.from(logits).some(value => !Number.isFinite(value))) {
+        throw configError('MiniFASNet phải trả về đúng 3 logits hữu hạn');
     }
-    const scores = Array.from(values);
-    const sum = scores.reduce((total, value) => total + value, 0);
-    // Some exports include Softmax in the graph, others expose logits.
-    // Preserve an already-normalized probability vector; otherwise apply stable Softmax.
-    if (scores.every(value => value >= 0 && value <= 1) && Math.abs(sum - 1) <= 1e-3) {
-        return scores;
-    }
+    // The pinned upstream PyTorch inference applies F.softmax(model.forward(...))
+    // outside the model. The ONNX export preserves model.forward logits, so always
+    // apply stable softmax; never infer output semantics from the numeric values.
+    const scores = Array.from(logits);
     const max = Math.max(...scores);
     const exps = scores.map(value => Math.exp(value - max));
     const total = exps.reduce((a, b) => a + b, 0);
@@ -151,13 +163,18 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
     }
     const embedding = l2Normalize(embeddingRows.slice(0, 128));
     const probabilities = classProbabilities(padResult[padOutputName].data);
+    const bonaFideProbability = probabilities[PAD_MODEL_CONTRACT.output.bonaFideIndex];
     return {
         embedding,
         pad: {
-            liveProbability: probabilities[0],
-            printAttackProbability: probabilities[1],
-            replayAttackProbability: probabilities[2],
-            score: 1 - probabilities[1] - probabilities[2]
+            bonaFideProbability,
+            attackProbability: probabilities[0] + probabilities[2],
+            classProbabilities: {
+                attackClass0: probabilities[0],
+                bonaFide: bonaFideProbability,
+                attackClass2: probabilities[2]
+            },
+            score: bonaFideProbability
         },
         liveness: tensors.liveness,
         model: { id: 'mobilefacenet+minifasnet-v2', version: 'supplied-bundle-v1' }
@@ -169,4 +186,4 @@ async function ensureFaceInferenceReady() {
     return true;
 }
 
-module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES };
+module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES, PAD_MODEL_CONTRACT };
