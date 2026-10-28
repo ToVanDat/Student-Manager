@@ -515,8 +515,7 @@ const updateGroupMemberRole = async (req, res, next) => {
             targetUserId,
             req.body.role
         );
-        const repository = require('../repository/conversationRepository');
-        const memberIds = await repository.getConversationMemberIds(conversationId);
+        const memberIds = await getMemberIdsForNotification(conversationId);
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
 
