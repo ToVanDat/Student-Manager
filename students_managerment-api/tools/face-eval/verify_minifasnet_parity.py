@@ -81,15 +81,18 @@ def main():
     if input_meta.type != "tensor(float)":
         raise SystemExit(f"[parity] unexpected ONNX input type: {input_meta.type}")
 
-    # Include varied deterministic inputs so a single degenerate tensor cannot
-    # make logits and softmax appear equivalent.
+    # MiniVision's actual inference path uses its custom ToTensor implementation.
+    # Despite the transform docstring saying [0,1], functional.to_tensor returns
+    # float() without dividing by 255 for NumPy/PIL uint8 input. test.py passes
+    # the OpenCV uint8 crop directly, so the reference tensor range is [0,255].
+    # Use varied deterministic tensors across the full reference input range.
     rng = np.random.default_rng(20261028)
     samples = {
         "zeros": np.zeros((1, 3, 80, 80), dtype=np.float32),
-        "ones": np.ones((1, 3, 80, 80), dtype=np.float32),
-        "uniform": rng.random((1, 3, 80, 80), dtype=np.float32),
-        "gradient": np.broadcast_to(
-            np.linspace(0.0, 1.0, 80, dtype=np.float32)[None, None, None, :],
+        "full_scale": np.full((1, 3, 80, 80), 255.0, dtype=np.float32),
+        "uniform_0_255": (rng.random((1, 3, 80, 80), dtype=np.float32) * 255.0),
+        "gradient_0_255": np.broadcast_to(
+            np.linspace(0.0, 255.0, 80, dtype=np.float32)[None, None, None, :],
             (1, 3, 80, 80)
         ).copy()
     }
@@ -131,12 +134,19 @@ def main():
         "onnx_sha256": onnx_hash,
         "checkpoint_sha256": checkpoint_hash,
         "output_semantics": output_semantics,
-        "class_order": {
-            "index_0": "attack",
-            "index_1": "bona_fide",
-            "index_2": "attack"
+        "input_contract": {
+            "layout": "BGR-NCHW",
+            "dtype": "float32",
+            "range": [0.0, 255.0],
+            "source": "MiniVision custom ToTensor implementation (functional.to_tensor does not divide by 255)"
         },
-        "class_order_source": "minivision-ai/Silent-Face-Anti-Spoofing test.py: label == 1 is Real Face",
+        "class_order_status": "UNRESOLVED",
+        "class_order": None,
+        "class_order_conflict": {
+            "upstream_test_py": "argmax index 1 is labelled Real Face",
+            "onnx_model_card": "describes output order as [live, print-attack, replay-attack]",
+            "resolution": "Numerical parity resolves output transformation only, not semantic class labels. Keep PAD interpretation disabled until the semantic conflict is independently resolved."
+        },
         "max_abs_difference_vs_logits": max_raw_difference,
         "max_abs_difference_vs_softmax": max_probability_difference,
         "atol": ATOL,
@@ -144,7 +154,7 @@ def main():
         "samples": list(samples),
         "limitations": [
             "Synthetic tensor parity only; not PAD accuracy or attack resistance.",
-            "Upstream labels classes 0 and 2 as fake but does not establish print-versus-replay semantics.",
+            "Parity does not establish semantic class labels; published upstream test code and ONNX model card conflict.",
             "The production preprocessing crop still requires pixel-level comparison against OpenCV on representative frames."
         ]
     }
