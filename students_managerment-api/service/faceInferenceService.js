@@ -179,4 +179,4 @@ async function ensureFaceInferenceReady() {
     return true;
 }
 
-module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES, PAD_MODEL_CONTRACT };
+module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, getRuntime, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES, PAD_MODEL_CONTRACT };
