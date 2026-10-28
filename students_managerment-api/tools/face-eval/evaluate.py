@@ -40,11 +40,16 @@ def number(value, context):
 
 def load_recognition(path):
     result = []
-    for line, row in enumerate(read_rows(path, {"split", "label", "similarity"}), 2):
+    for line, row in enumerate(read_rows(path, {"split", "label", "similarity", "participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b"}), 2):
         split, label = row["split"].strip().lower(), row["label"].strip().lower()
         score = number(row["similarity"], f"{path}:{line}:similarity")
         if split not in SPLITS or label not in {"genuine", "impostor"}:
             raise ValueError(f"{path}:{line}: invalid split or label")
+        for key in ("participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b"):
+            if not row[key].strip():
+                raise ValueError(f"{path}:{line}: {key} must be a pseudonymous non-empty identifier")
+        if row["participant_a"].strip() == row["participant_b"].strip():
+            raise ValueError(f"{path}:{line}: participant_a and participant_b must differ")
         if not -1 <= score <= 1:
             raise ValueError(f"{path}:{line}: cosine similarity must be in [-1,1]")
         result.append({"split": split, "genuine": label == "genuine", "score": score})
@@ -53,16 +58,36 @@ def load_recognition(path):
 
 def load_pad(path):
     result = []
-    for line, row in enumerate(read_rows(path, {"split", "attack_type", "live_score"}), 2):
+    for line, row in enumerate(read_rows(path, {"split", "attack_type", "live_score", "participant_id", "session_id", "device_id"}), 2):
         split, attack = row["split"].strip().lower(), row["attack_type"].strip().lower()
         score = number(row["live_score"], f"{path}:{line}:live_score")
         if split not in SPLITS or attack not in ATTACKS:
             raise ValueError(f"{path}:{line}: invalid split or attack_type")
+        for key in ("participant_id", "session_id", "device_id"):
+            if not row[key].strip():
+                raise ValueError(f"{path}:{line}: {key} must be a pseudonymous non-empty identifier")
         if not 0 <= score <= 1:
             raise ValueError(f"{path}:{line}: live_score must be in [0,1]")
         result.append({"split": split, "bona_fide": attack == "bona_fide",
                        "attack_type": attack, "score": score})
     return result
+
+
+def validate_disjoint_splits(rows, identity_fields, label):
+    """Reject participant/session/device overlap between calibration and test."""
+    for field in identity_fields:
+        calibration = set()
+        test = set()
+        for row in rows:
+            values = row[field] if isinstance(row[field], tuple) else (row[field],)
+            target = calibration if row["split"] == "calibration" else test
+            target.update(value.strip() for value in values)
+        overlap = calibration & test
+        if overlap:
+            raise ValueError(
+                f"{label}: {field} leakage between calibration and test "
+                f"({len(overlap)} overlapping identifiers)"
+            )
 
 
 def thresholds(rows):
@@ -123,6 +148,14 @@ def main():
 
     rec = load_recognition(args.recognition)
     pad = load_pad(args.pad)
+    validate_disjoint_splits(rec, (
+        "participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b"
+    ), "Recognition")
+    validate_disjoint_splits(pad, ("participant_id", "session_id", "device_id"), "PAD")
+    for row in rec:
+        row["participant_a"] = (row["participant_a"], row["participant_b"])
+        row["session_a"] = (row["session_a"], row["session_b"])
+        row["device_a"] = (row["device_a"], row["device_b"])
     rc = [r for r in rec if r["split"] == "calibration"]
     rt = [r for r in rec if r["split"] == "test"]
     pc = [r for r in pad if r["split"] == "calibration"]
