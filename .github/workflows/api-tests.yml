@@ -311,6 +311,15 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     defaults:
       run:
         working-directory: students_managerment-api
@@ -320,6 +329,7 @@ jobs:
       DB_NAME: face_auth_integration
       DB_USER: postgres
       DB_PASSWORD: postgres
+      REDIS_URL: redis://localhost:6379
       FACE_AUTH_DB_INTEGRATION: "1"
     steps:
       - name: Checkout repository
@@ -360,3 +370,5 @@ jobs:
           SQL
       - name: Run Face Login PostgreSQL integration test
         run: node --test test/faceSessionGuard.integration.test.js
+      - name: Run Face Login Redis enrollment-lock integration test
+        run: node --test test/faceEnrollmentLock.integration.test.js
