@@ -270,7 +270,12 @@ async function storeVerifiedTemplate(userId, embedding, modelId, modelVersion) {
             user_id, ciphertext, nonce, auth_tag, key_version,
             model_id, model_version, template_format, enrolled_at,
             last_used_at, disabled_at, updated_at
-         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, NULL, NULL, CURRENT_TIMESTAMP)
+         )
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8,
+                CURRENT_TIMESTAMP, NULL, NULL, CURRENT_TIMESTAMP
+         FROM users
+         WHERE id = $1
+           AND is_active = TRUE
          ON CONFLICT (user_id) DO UPDATE SET
             ciphertext = EXCLUDED.ciphertext, nonce = EXCLUDED.nonce,
             auth_tag = EXCLUDED.auth_tag, key_version = EXCLUDED.key_version,
@@ -281,6 +286,9 @@ async function storeVerifiedTemplate(userId, embedding, modelId, modelVersion) {
         [userId, envelope.ciphertext, envelope.nonce, envelope.authTag,
             envelope.keyVersion, envelope.modelId, envelope.modelVersion, envelope.templateFormat]
     );
+    if (!result.rows[0]) {
+        throw pipelineError('FACE_ACCOUNT_INACTIVE', 'Tài khoản không hoạt động hoặc không tồn tại.');
+    }
     return result.rows[0];
 }
 
@@ -439,7 +447,14 @@ async function finishLogin(challengeId, req) {
     if (!user?.is_active) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
     const comparison = await compareVerifiedTemplate(state.userId, embedding);
     if (!comparison.matched) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
-    return issueSession(user, req);
+    try {
+        return await issueSession(user, req);
+    } catch (error) {
+        if (error?.code === 'ACCOUNT_INACTIVE') {
+            throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
+        }
+        throw error;
+    }
 }
 
 
