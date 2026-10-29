@@ -652,5 +652,7 @@
   "studentImportMoreRows": "{{count}} more rows are not shown.",
   "studentImportFixErrors": "Fix the errors in your CSV and select the file again. Import cannot proceed while errors remain.",
   "studentImportSuccess": "Successfully imported {{count}} students.",
-  "studentImportFailed": "Could not import the CSV. Check the file and try again."
+  "studentImportFailed": "Could not import the CSV. Check the file and try again.",
+  "chatComposerPlaceholder": "Type a message...",
+  "chatComposerLabel": "Message composer"
 }
