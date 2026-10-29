@@ -94,7 +94,8 @@ test('createSessionForActiveFaceUser requires an active account and enabled face
         assert.match(captured.sql, /disabled_at\s+IS\s+NULL/i);
         assert.match(captured.sql, /FOR\s+UPDATE/i);
         assert.match(captured.sql, /INSERT\s+INTO\s+sessions/i);
-        assert.deepEqual(captured.values.slice(1), ['42', 'Browser', 'Example UA', '127.0.0.1']);
+        assert.deepEqual(captured.values.slice(1, 5), ['42', 'Browser', 'Example UA', '127.0.0.1']);
+        assert.equal(captured.values[5], 'face-credential-1');
     } finally {
         loaded.restore();
     }
