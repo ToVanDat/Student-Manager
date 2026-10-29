@@ -2,51 +2,44 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
-test('Face enrollment cancellation cannot release a lock after finish has consumed its challenge', async t => {
+test('Face enrollment cancellation preserves a lock after challenge consumption and rejects foreign ownership', async () => {
     const { redisClient } = require('../src/config/redis.js');
-    const pool = require('../src/config/database.js');
     const faceAuth = require('../service/faceAuthService.js');
 
     if (!redisClient.isOpen) await redisClient.connect();
 
-    const challengeId = 'c'.repeat(24);
+    const challengeId = crypto.randomBytes(12).toString('hex');
     const userId = '987654321';
     const challengeKey = `face-auth:enrollment:${challengeId}`;
     const lockKey = `face-auth:enrollment-lock:${userId}`;
 
-    t.after(async () => {
+    try {
         await redisClient.del([challengeKey, lockKey]);
-        await redisClient.quit();
-        await pool.end();
-    });
 
-    await t.test('cancels an unconsumed challenge owned by the caller', async () => {
+        // A challenge still owned by this account can be cancelled.
         await redisClient.set(challengeKey, JSON.stringify({ userId }), { EX: 180 });
         await redisClient.set(lockKey, challengeId, { EX: 180 });
-
-        const result = await faceAuth.cancelEnrollment(userId, challengeId);
-        assert.deepEqual(result, { cancelled: true });
+        const cancelled = await faceAuth.cancelEnrollment(userId, challengeId);
+        assert.deepEqual(cancelled, { cancelled: true });
         assert.equal(await redisClient.get(challengeKey), null);
         assert.equal(await redisClient.get(lockKey), null);
-    });
 
-    await t.test('does not release the lock after the challenge has been consumed', async () => {
-        await redisClient.del(challengeKey);
+        // A consumed challenge must not release the lock held by finishEnrollment.
         await redisClient.set(lockKey, challengeId, { EX: 180 });
-
-        const result = await faceAuth.cancelEnrollment(userId, challengeId);
-        assert.deepEqual(result, { cancelled: false });
+        const consumed = await faceAuth.cancelEnrollment(userId, challengeId);
+        assert.deepEqual(consumed, { cancelled: false });
         assert.equal(await redisClient.get(lockKey), challengeId);
-    });
 
-    await t.test('does not cancel another account challenge', async () => {
+        // A challenge belonging to another account cannot be cancelled.
         await redisClient.set(challengeKey, JSON.stringify({ userId: 'different-user' }), { EX: 180 });
-        await redisClient.set(lockKey, challengeId, { EX: 180 });
-
-        const result = await faceAuth.cancelEnrollment(userId, challengeId);
-        assert.deepEqual(result, { cancelled: false });
+        const foreign = await faceAuth.cancelEnrollment(userId, challengeId);
+        assert.deepEqual(foreign, { cancelled: false });
         assert.notEqual(await redisClient.get(challengeKey), null);
         assert.equal(await redisClient.get(lockKey), challengeId);
-    });
+    } finally {
+        await redisClient.del([challengeKey, lockKey]);
+        if (redisClient.isOpen) await redisClient.quit();
+    }
 });
