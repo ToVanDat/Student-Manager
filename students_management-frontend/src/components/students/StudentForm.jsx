@@ -106,7 +106,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
             const emailRegex =
                 /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            if (!emailRegex.test(formData.email)) {
+            if (!emailRegex.test(formData.email.trim())) {
                 newErrors.email = t('invalidEmail');
             } else if (formData.email.length >50) {
                 newErrors.email =
@@ -116,10 +116,11 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
         // Ngày sinh
         if (formData.date_of_birth) {
-            const birthDate = new Date(formData.date_of_birth);
             const today = new Date();
+            const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-            if (birthDate > today) {
+            // Compare calendar dates, not UTC timestamps, to avoid timezone shifts.
+            if (formData.date_of_birth > todayIso) {
                 newErrors.date_of_birth =
                     t('birthDateFuture');
             }
@@ -178,19 +179,22 @@ function StudentForm({ student, onSubmit, onCancel }) {
             <form className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2" onSubmit={handleSubmit}>
                 {/* Mã sinh viên */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('studentCode')}</label>
+                    <label htmlFor="student-code" className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('studentCode')}</label>
 
                     <input
                         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
+                        id="student-code"
                         type="text"
                         name="student_code"
+                        aria-invalid={Boolean(errors.student_code)}
+                        aria-describedby={errors.student_code ? "student-code-error" : undefined}
                         value={formData.student_code}
                         onChange={handleChange}
                         required
                     />
 
                     {errors.student_code && (
-                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <p id="student-code-error" role="alert" className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
                             {errors.student_code}
                         </p>
                     )}
@@ -198,19 +202,22 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Họ tên */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('fullName')}</label>
+                    <label htmlFor="student-name" className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('fullName')}</label>
 
                     <input
                         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
+                        id="student-name"
                         type="text"
                         name="name"
+                        aria-invalid={Boolean(errors.name)}
+                        aria-describedby={errors.name ? "student-name-error" : undefined}
                         value={formData.name}
                         onChange={handleChange}
                         required
                     />
 
                     {errors.name && (
-                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <p id="student-name-error" role="alert" className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
                             {errors.name}
                         </p>
                     )}
@@ -218,19 +225,22 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Email */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">Email</label>
+                    <label htmlFor="student-email" className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">Email</label>
 
                     <input
                         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
+                        id="student-email"
                         type="email"
                         name="email"
+                        aria-invalid={Boolean(errors.email)}
+                        aria-describedby={errors.email ? "student-email-error" : undefined}
                         value={formData.email}
                         onChange={handleChange}
                         required
                     />
 
                     {errors.email && (
-                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <p id="student-email-error" role="alert" className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
                             {errors.email}
                         </p>
                     )}
@@ -238,18 +248,21 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Ngày sinh */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('dateOfBirth')}</label>
+                    <label htmlFor="student-date-of-birth" className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('dateOfBirth')}</label>
 
                     <input
                         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
+                        id="student-date-of-birth"
                         type="date"
                         name="date_of_birth"
+                        aria-invalid={Boolean(errors.date_of_birth)}
+                        aria-describedby={errors.date_of_birth ? "student-date-of-birth-error" : undefined}
                         value={formData.date_of_birth}
                         onChange={handleChange}
                     />
 
                     {errors.date_of_birth && (
-                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <p id="student-date-of-birth-error" role="alert" className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
                             {errors.date_of_birth}
                         </p>
                     )}
@@ -257,12 +270,15 @@ function StudentForm({ student, onSubmit, onCancel }) {
 
                 {/* Giới tính */}
                 <div className="flex flex-col gap-2">
-                    <label className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('gender')}</label>
+                    <label htmlFor="student-gender" className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('gender')}</label>
 
                     <select
                         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
+                        id="student-gender"
                         name="gender"
                         value={formData.gender}
+                        aria-invalid={Boolean(errors.gender)}
+                        aria-describedby={errors.gender ? "student-gender-error" : undefined}
                         onChange={handleChange}
                     >
                         <option value="">
@@ -279,7 +295,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                     </select>
 
                     {errors.gender && (
-                        <p className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <p id="student-gender-error" role="alert" className="m-0 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">
                             {errors.gender}
                         </p>
                     )}
