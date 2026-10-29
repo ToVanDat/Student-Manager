@@ -321,7 +321,19 @@ async function compareVerifiedTemplate(userId, liveEmbedding) {
             [stored.id, userId]
         );
     }
-    return { matched, similarity, credentialId: matched ? String(stored.id) : null };
+    return {
+        matched,
+        similarity,
+        credential: matched ? {
+            id: String(stored.id),
+            ciphertext: stored.ciphertext,
+            nonce: stored.nonce,
+            authTag: stored.auth_tag,
+            keyVersion: stored.key_version,
+            modelId: stored.model_id,
+            modelVersion: stored.model_version
+        } : null
+    };
 }
 
 async function getStatus(userId) {
@@ -457,7 +469,7 @@ async function finishLogin(challengeId, req) {
     try {
         return await issueSession(user, req, {
             requireFaceCredential: true,
-            faceCredentialId: comparison.credentialId
+            faceCredential: comparison.credential
         });
     } catch (error) {
         if (error?.code === 'ACCOUNT_INACTIVE') {
