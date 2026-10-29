@@ -62,7 +62,14 @@ async function consumeChallenge(kind, id) {
     try { return JSON.parse(raw); } catch { return null; }
 }
 function publicUser(user) {
-    return { id: user.id, username: user.username, email: user.email, role: user.role, avatar_url: user.avatar_url || null };
+    return {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name || '',
+        email: user.email,
+        role: user.role,
+        avatar_url: user.avatar_url || null
+    };
 }
 
 async function issueSession(user, req, options = {}) {
