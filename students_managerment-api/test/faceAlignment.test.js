@@ -61,5 +61,6 @@ test('preprocessing scales trusted landmarks to the decoded image dimensions', (
   assert.equal(tensors.rgb112.length, 3 * 112 * 112);
   assert.equal(tensors.bgr80.length, 3 * 80 * 80);
   assert.equal(tensors.bgr80[0], 100);
-  assert.equal(tensors.rgb112[0], 100 / 255);
+  const centerPixelOffset = (56 * 112 + 56) * 3;
+  assert.ok(Math.abs(tensors.rgb112[centerPixelOffset] - 100 / 255) < 1e-6);
 });
