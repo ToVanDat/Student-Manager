@@ -247,11 +247,52 @@ const initSocket = async (server) => {
 
         scheduleTokenExpiry(socket.handshake.auth?.accessToken);
 
+        // Redis Pub/Sub provides immediate cross-node revocation. This DB
+        // guard is the fail-closed backstop when Pub/Sub is unavailable or a
+        // node misses a transient notification.
+        let sessionGuardRunning = false;
+        const sessionGuardTimer = setInterval(async () => {
+            if (sessionGuardRunning || !socket.connected) return;
+            sessionGuardRunning = true;
+            try {
+                const currentSession = await authRepository.findSessionByIdAndUserId(
+                    sessionId,
+                    userId
+                );
+                const currentUser = await authRepository.findUserById(userId);
+                if (
+                    !currentSession ||
+                    currentSession.revoked_at !== null ||
+                    !currentUser ||
+                    !currentUser.is_active
+                ) {
+                    socket.emit('session:revoked', {
+                        sessionId,
+                        reason: 'SESSION_REVOKED'
+                    });
+                    socket.disconnect(true);
+                }
+            } catch (error) {
+                // Authorization cannot be safely maintained without checking
+                // the authoritative session/account state.
+                console.error('[SOCKET][session guard failed closed]', {
+                    userId,
+                    sessionId,
+                    code: error.code || 'SESSION_GUARD_UNAVAILABLE'
+                });
+                socket.disconnect(true);
+            } finally {
+                sessionGuardRunning = false;
+            }
+        }, 10_000);
+        sessionGuardTimer.unref?.();
+
         socket.once('disconnect', () => {
             if (tokenExpiryTimer) {
                 clearTimeout(tokenExpiryTimer);
                 tokenExpiryTimer = null;
             }
+            clearInterval(sessionGuardTimer);
         });
 
         // Refresh the authenticated token in-place so an access-token expiry
