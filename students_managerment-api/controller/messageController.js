@@ -149,7 +149,7 @@ const createMessage = async (req, res) => {
         if ([400, 403, 404, 409].includes(error.statusCode)) {
             return res.status(error.statusCode).json({
                 message: error.message,
-                ...(error.statusCode === 409 ? { code: 'E2EE_REQUIRED' } : {})
+                ...(error.code === 'E2EE_REQUIRED' ? { code: error.code } : {})
             });
         }
 
