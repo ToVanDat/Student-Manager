@@ -299,7 +299,7 @@ async function storeVerifiedTemplate(userId, embedding, modelId, modelVersion) {
 
 async function compareVerifiedTemplate(userId, liveEmbedding) {
     const result = await pool.query(
-        `SELECT ciphertext, nonce, auth_tag, key_version, model_id, model_version
+        `SELECT id, ciphertext, nonce, auth_tag, key_version, model_id, model_version
          FROM user_face_credentials WHERE user_id = $1 AND disabled_at IS NULL LIMIT 1`,
         [userId]
     );
@@ -317,11 +317,11 @@ async function compareVerifiedTemplate(userId, liveEmbedding) {
     const matched = similarity >= threshold;
     if (matched) {
         await pool.query(
-            'UPDATE user_face_credentials SET last_used_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND disabled_at IS NULL',
-            [userId]
+            'UPDATE user_face_credentials SET last_used_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND user_id = $2 AND disabled_at IS NULL',
+            [stored.id, userId]
         );
     }
-    return { matched, similarity };
+    return { matched, similarity, credentialId: matched ? String(stored.id) : null };
 }
 
 async function getStatus(userId) {
@@ -455,7 +455,10 @@ async function finishLogin(challengeId, req) {
     const comparison = await compareVerifiedTemplate(state.userId, embedding);
     if (!comparison.matched) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
     try {
-        return await issueSession(user, req, { requireFaceCredential: true });
+        return await issueSession(user, req, {
+            requireFaceCredential: true,
+            faceCredentialId: comparison.credentialId
+        });
     } catch (error) {
         if (error?.code === 'ACCOUNT_INACTIVE') {
             throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
