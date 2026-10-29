@@ -42,12 +42,31 @@ async function joinConversationRoom(socket, conversationRepository, userId, conv
     }
 
     await socket.join(roomName);
-    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
-        await socket.leave(roomName);
-        return false;
+    try {
+        if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+            await socket.leave(roomName);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        // A failed second authorization check must never leave a socket in a
+        // private room. If adapter cleanup itself fails, disconnect this
+        // socket as the fail-closed fallback.
+        try {
+            await socket.leave(roomName);
+        } catch (leaveError) {
+            try {
+                socket.disconnect(true);
+            } catch (disconnectError) {
+                const revocationError = new Error('Không thể thu hồi quyền realtime của conversation');
+                revocationError.code = 'ROOM_ACCESS_REVOCATION_FAILED';
+                revocationError.cause = disconnectError;
+                throw revocationError;
+            }
+            error.roomLeaveError = leaveError;
+        }
+        throw error;
     }
-
-    return true;
 }
 
 module.exports = { evictUserFromConversation, joinConversationRoom };
