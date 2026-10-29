@@ -1,0 +1,118 @@
+name: RAG migration smoke
+
+on:
+  push:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+      - fix/password-cooldown-ip-guard
+  pull_request:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rag-migration-smoke:
+    name: RAG schema and lifecycle migration smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rag_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Create isolated prerequisite schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION vector;
+          CREATE TABLE users (id BIGSERIAL PRIMARY KEY);
+          INSERT INTO users DEFAULT VALUES;
+          SQL
+      - name: Apply RAG schema migration
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_schema_migration.sql
+      - name: Apply RAG lifecycle migration twice
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_lifecycle_migration.sql
+          psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_lifecycle_migration.sql
+      - name: Verify constraints, archive, restore, and retention
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          DECLARE
+            doc_id uuid := '123e4567-e89b-42d3-a456-426614174000';
+            rejected boolean := false;
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema = 'public' AND table_name = 'assistant_documents'
+                AND column_name = 'archived_at'
+            ) THEN RAISE EXCEPTION 'archived_at column was not installed'; END IF;
+
+            INSERT INTO assistant_documents
+              (id, title, source_name, source_sha256, mime_type, visibility, status, created_by)
+            VALUES
+              (doc_id, 'CI handbook', 'handbook.txt', repeat('a', 64),
+               'text/plain', 'student', 'ready', 1);
+
+            INSERT INTO assistant_document_chunks
+              (document_id, chunk_index, content, embedding)
+            VALUES
+              (doc_id, 0, 'CI-only test chunk', array_fill(0.1::real, ARRAY[768])::vector);
+
+            UPDATE assistant_documents
+               SET status = 'archived', archived_at = CURRENT_TIMESTAMP
+             WHERE id = doc_id;
+            IF NOT EXISTS (SELECT 1 FROM assistant_documents WHERE id = doc_id AND status = 'archived' AND archived_at IS NOT NULL) THEN
+              RAISE EXCEPTION 'document archive transition failed';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM assistant_document_chunks WHERE document_id = doc_id) THEN
+              RAISE EXCEPTION 'archiving unexpectedly removed chunks';
+            END IF;
+
+            UPDATE assistant_documents
+               SET status = 'ready', archived_at = NULL
+             WHERE id = doc_id;
+            IF NOT EXISTS (SELECT 1 FROM assistant_documents WHERE id = doc_id AND status = 'ready' AND archived_at IS NULL) THEN
+              RAISE EXCEPTION 'document restore transition failed';
+            END IF;
+
+            BEGIN
+              INSERT INTO assistant_documents
+                (title, source_name, source_sha256, mime_type, visibility, status, created_by)
+              VALUES ('Invalid scope', 'invalid.txt', repeat('b', 64),
+                      'text/plain', 'private', 'ready', 1);
+            EXCEPTION WHEN check_violation THEN
+              rejected := true;
+            END;
+            IF NOT rejected THEN RAISE EXCEPTION 'invalid visibility scope was accepted'; END IF;
+
+            IF (SELECT count(*) FROM assistant_document_chunks WHERE document_id = doc_id) <> 1 THEN
+              RAISE EXCEPTION 'chunk retention invariant failed';
+            END IF;
+          END
+          $verify$;
+          SQL
