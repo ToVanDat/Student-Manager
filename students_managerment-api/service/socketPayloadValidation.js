@@ -9,8 +9,21 @@ const normalizeSocketEventArgs = (...eventArgs) => {
     return [normalizeSocketPayload(payload), ...remainingArgs];
 };
 
-const wrapSocketEventListener = (listener) => function (...eventArgs) {
-    return listener.apply(this, normalizeSocketEventArgs(...eventArgs));
+const wrapSocketEventListener = (listener, onError) => function (...eventArgs) {
+    try {
+        const result = listener.apply(this, normalizeSocketEventArgs(...eventArgs));
+        if (result && typeof result.then === 'function') {
+            return result.catch((error) => {
+                if (typeof onError !== 'function') throw error;
+                onError(error, this);
+            });
+        }
+        return result;
+    } catch (error) {
+        if (typeof onError !== 'function') throw error;
+        onError(error, this);
+        return undefined;
+    }
 };
 
 const MAX_SESSION_DESCRIPTION_BYTES = 64 * 1024;
