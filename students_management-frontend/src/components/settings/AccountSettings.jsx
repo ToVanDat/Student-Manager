@@ -136,12 +136,15 @@ function AccountSettings({
                             className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
                             type="text"
                             value={form.username}
-                            onChange={(event) =>
-                                onChange({ ...form, username: event.target.value })
-                            }
+                            readOnly
+                            aria-describedby="account-username-help"
+                            className="min-w-0 flex-1 cursor-not-allowed border-0 bg-transparent text-sm text-slate-500 outline-none dark:text-slate-400"
                             required
                         />
                     </div>
+                    <p id="account-username-help" className="m-0 text-xs text-slate-500 dark:text-slate-400">
+                        Username là định danh đăng nhập và không thể đổi tại mục thông tin cá nhân.
+                    </p>
                 </div>
 
                 <div className="grid gap-2">
