@@ -46,6 +46,13 @@ jobs:
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_schema_migration.sql
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_lifecycle_migration.sql
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_lifecycle_migration.sql
+      - name: Execute consolidated read-only database integration audit
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/database_integration_readonly_audit.sql
+          psql -h localhost -U postgres -d rag_migration_test -At -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name IN ('assistant_documents', 'assistant_document_chunks')" | grep -qx '2'
+          psql -h localhost -U postgres -d rag_migration_test -At -v ON_ERROR_STOP=1 -c "SELECT COUNT(*) FROM pg_extension WHERE extname = 'vector'" | grep -qx '1'
       - name: Verify constraints, lifecycle, retrieval scope, and vector distance
         env:
           PGPASSWORD: postgres
