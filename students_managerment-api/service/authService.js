@@ -662,15 +662,20 @@ const login = async (
     let accessToken = null;
 
     try {
-    session =
-        await authRepository
-            .createSession(
-                user.id,
-                deviceName,
-                userAgent,
-                ipAddress
-            );
+    session = await authRepository.createSessionForActiveUser(
+        user.id,
+        deviceName,
+        userAgent,
+        ipAddress
+    );
 
+    // The account may have been disabled after password verification.
+    // Re-check under a row lock before issuing any session credentials.
+    if (!session) {
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
+    }
 
     // =================================================
     // GENERATE ACCESS TOKEN
@@ -779,12 +784,7 @@ const login = async (
 
         if (session?.id) {
             try {
-                await authRepository.revokeRefreshTokensBySessionId(session.id);
-            } catch (cleanupError) {
-                console.error('Login refresh-token cleanup failed:', cleanupError.code || cleanupError.message);
-            }
-            try {
-                await authRepository.revokeSession(session.id);
+                await authRepository.revokeSessionForUserAndRefreshTokens(session.id, user.id);
             } catch (cleanupError) {
                 console.error('Login session cleanup failed:', cleanupError.code || cleanupError.message);
             }
