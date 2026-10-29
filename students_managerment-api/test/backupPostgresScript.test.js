@@ -16,7 +16,8 @@ async function fixture(t, overrides = {}) {
     const stubs = {
         psql: '#!/usr/bin/env bash\nprintf "%s" "\${IDENTITY_RESULT:-t}"\n',
         pg_dump: '#!/usr/bin/env bash\nfor arg in "$@"; do case "$arg" in --file=*) output="\${arg#--file=}";; esac; done\n[[ "\${PG_DUMP_FAIL:-0}" != 1 ]] || exit 31\nprintf "test-archive" > "$output"\n',
-        pg_restore: '#!/usr/bin/env bash\n[[ "\${RESTORE_FAIL:-0}" != 1 ]] || exit 32\n[[ -s "$2" ]]\n'
+        pg_restore: '#!/usr/bin/env bash\n[[ "\${RESTORE_FAIL:-0}" != 1 ]] || exit 32\n[[ -s "$2" ]]\n',
+        sha256sum: '#!/usr/bin/env bash\n[[ "\${SHA_FAIL:-0}" != 1 ]] || exit 33\nprintf "test-checksum  %s\\n" "$1"'
     };
     for (const [name, body] of Object.entries(stubs)) {
         const file = path.join(bin, name);
@@ -73,6 +74,13 @@ test('backup script removes partial archive when pg_dump fails', { skip: !bashAv
 
 test('backup script removes partial archive when archive validation fails', { skip: !bashAvailable }, async t => {
     const f = await fixture(t, { RESTORE_FAIL: '1' });
+    const result = run(f.env);
+    assert.notEqual(result.status, 0);
+    assert.deepEqual(await readdir(f.backupDir), []);
+});
+
+test('backup script removes archive when checksum generation fails', { skip: !bashAvailable }, async t => {
+    const f = await fixture(t, { SHA_FAIL: '1' });
     const result = run(f.env);
     assert.notEqual(result.status, 0);
     assert.deepEqual(await readdir(f.backupDir), []);
