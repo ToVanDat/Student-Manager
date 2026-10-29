@@ -134,11 +134,11 @@ function StudentSidebar({
                         <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-9 shrink-0 rounded-full object-cover" />
                     ) : (
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-                            {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                            {(user?.full_name || user?.username)?.charAt(0)?.toUpperCase() || 'U'}
                         </div>
                     )}
                     <div className={collapsed ? 'min-[801px]:hidden flex min-w-0 flex-col' : 'flex min-w-0 flex-col'}>
-                        <strong className="truncate text-xs">{user?.username || 'User'}</strong>
+                        <strong className="truncate text-xs">{user?.full_name || user?.username || 'User'}</strong>
                         <span className="mt-0.5 text-[10px] text-[#8190a7] dark:text-slate-400">
                             {user?.role === 'admin' ? t('administrator') : t('user')}
                         </span>
