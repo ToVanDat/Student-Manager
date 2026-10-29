@@ -22,7 +22,6 @@ const withMockQuery = async (handler, run) => {
 test('password login session creation locks and rechecks the active account in the insert statement', async () => {
     await withMockQuery(async (sql, params) => {
         assert.match(params[0], /^[0-9a-f-]{36}$/i);
-        assert.match(params[0], /^[0-9a-f-]{36}$/i);
         assert.deepEqual(params.slice(1), [17, 'Chrome', 'test-agent', '127.0.0.1']);
         assert.match(sql, /WITH active_user AS/);
         assert.match(sql, /WHERE id = \$2 AND is_active = TRUE FOR UPDATE/);
@@ -44,6 +43,7 @@ test('password login session creation locks and rechecks the active account in t
 test('password login session creation returns null when the account is disabled', async () => {
     await withMockQuery(async (sql, params) => {
         assert.match(sql, /is_active = TRUE/);
+        assert.match(params[0], /^[0-9a-f-]{36}$/i);
         assert.deepEqual(params.slice(1), [17, 'Chrome', 'test-agent', '127.0.0.1']);
         return { rows: [], rowCount: 0 };
     }, async () => {
