@@ -79,7 +79,7 @@ const updateProfile = async (req, res) => {
         // ==============================================
 
         const {
-            username,
+            full_name,
             email
         } = req.body;
 
@@ -89,14 +89,16 @@ const updateProfile = async (req, res) => {
         // ==============================================
 
         if (
-            !username ||
-            !email
+            !full_name ||
+            !String(full_name).trim() ||
+            !email ||
+            !String(email).trim()
         ) {
 
             return res.status(400).json({
 
                 message:
-                    'Username và email là bắt buộc'
+                    'Tên hiển thị và email là bắt buộc'
 
             });
 
@@ -110,7 +112,7 @@ const updateProfile = async (req, res) => {
         const user =
             await authService.updateProfile(
                 userId,
-                username,
+                full_name,
                 email
             );
 
