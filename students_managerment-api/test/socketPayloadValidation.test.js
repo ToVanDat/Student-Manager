@@ -80,3 +80,42 @@ test('wrapped Socket.IO listeners preserve their receiver and acknowledgement ar
     assert.deepEqual(received.payload, {});
     assert.equal(received.acknowledge, acknowledge);
 });
+
+
+test('wrapped async Socket.IO listener failures are reported without unhandled rejections', async () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const receiver = { marker: 'socket' };
+    const reported = [];
+    const listener = async function (payload, acknowledge) {
+        assert.equal(this, receiver);
+        assert.deepEqual(payload, {});
+        assert.equal(typeof acknowledge, 'function');
+        throw Object.assign(new Error('private database detail'), { code: 'DB_UNAVAILABLE' });
+    };
+    const wrapped = wrapSocketEventListener(listener, (error, socket) => {
+        reported.push({ code: error.code, socket });
+    });
+
+    await assert.doesNotReject(wrapped.call(receiver, null, () => {}));
+    assert.deepEqual(reported, [{ code: 'DB_UNAVAILABLE', socket: receiver }]);
+});
+
+test('wrapped synchronous Socket.IO listener failures use the same error callback', () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const receiver = { marker: 'socket' };
+    let reported;
+    const wrapped = wrapSocketEventListener(() => {
+        throw new Error('internal detail');
+    }, (error, socket) => {
+        reported = { message: error.message, socket };
+    });
+
+    assert.doesNotThrow(() => wrapped.call(receiver, {}));
+    assert.deepEqual(reported, { message: 'internal detail', socket: receiver });
+});
+
+test('wrapped Socket.IO listeners preserve normal return values without an error callback', () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const wrapped = wrapSocketEventListener(payload => payload.value);
+    assert.equal(wrapped({ value: 42 }), 42);
+});
