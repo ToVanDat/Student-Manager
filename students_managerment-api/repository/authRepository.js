@@ -527,6 +527,43 @@ const createSessionForActiveUser = async (
     return result.rows[0] || null;
 };
 
+// Password login must re-check the exact password hash that was verified
+// before issuing a session. If a password change wins the race, the stale
+// password verification cannot create a fresh session afterward.
+const createSessionForVerifiedPassword = async (
+    userId,
+    expectedPasswordHash,
+    deviceName = null,
+    userAgent = null,
+    ipAddress = null
+) => {
+    if (typeof expectedPasswordHash !== 'string' || !expectedPasswordHash) {
+        return null;
+    }
+
+    const sessionId = crypto.randomUUID();
+    const result = await pool.query(
+        `
+        WITH active_user AS (
+            SELECT id
+            FROM users
+            WHERE id = $2
+              AND is_active = TRUE
+              AND password_hash = $6
+            FOR UPDATE
+        )
+        INSERT INTO sessions (
+            id, user_id, device_name, user_agent, ip_address
+        )
+        SELECT $1, id, $3, $4, $5
+        FROM active_user
+        RETURNING *
+        `,
+        [sessionId, userId, deviceName, userAgent, ipAddress, expectedPasswordHash]
+    );
+    return result.rows[0] || null;
+};
+
 // Face Login session issuance additionally locks and re-checks the active face
 // credential. Lock order is users -> user_face_credentials, matching enrollment
 // and disable operations so concurrent changes serialize consistently.
@@ -1339,6 +1376,7 @@ module.exports = {
 
     createSession,
     createSessionForActiveUser,
+    createSessionForVerifiedPassword,
     createSessionForActiveFaceUser,
 
     findSessionsByUserId,
