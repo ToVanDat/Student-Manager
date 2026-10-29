@@ -7,7 +7,7 @@ import {
     revokeSessionApi,
 } from '@/api/sessionApi.js';
 
-export function useStudentSettings(user) {
+export function useStudentSettings(user, updateUser) {
     const [settingsTab, setSettingsTab] = useState('account');
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -15,6 +15,7 @@ export function useStudentSettings(user) {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [accountForm, setAccountForm] = useState({
         username: user?.username || '',
+        full_name: user?.full_name || '',
         email: user?.email || '',
     });
     const [accountSaving, setAccountSaving] = useState(false);
@@ -31,6 +32,7 @@ export function useStudentSettings(user) {
     useEffect(() => {
         setAccountForm({
             username: user?.username || '',
+            full_name: user?.full_name || '',
             email: user?.email || '',
         });
     }, [user]);
@@ -99,14 +101,22 @@ export function useStudentSettings(user) {
         setAccountMessage('');
 
         try {
-            await apiClient.patch(
+            const response = await apiClient.patch(
                 '/api/auth/me',
                 {
-                    username: accountForm.username,
+                    full_name: accountForm.full_name,
                     email: accountForm.email,
                 },
             );
 
+            if (response.data?.user) {
+                updateUser?.(response.data.user);
+                setAccountForm({
+                    username: response.data.user.username || user?.username || '',
+                    full_name: response.data.user.full_name || '',
+                    email: response.data.user.email || '',
+                });
+            }
             setAccountMessage('Cập nhật thông tin tài khoản thành công.');
         } catch (error) {
             console.error('UPDATE ACCOUNT ERROR:', error);
