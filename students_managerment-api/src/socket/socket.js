@@ -1523,10 +1523,25 @@ const initSocket = async (server) => {
                         disconnectGraceTimers.delete(userId);
 
                         const currentSockets = onlineUsers.get(userId);
-                        let sharedCount = 0;
-                        try { sharedCount = Number(await redisClient.sCard(presenceSocketKey(userId))); } catch { /* fail safe below */ }
+                        let sharedCount;
+                        try {
+                            sharedCount = Number(await redisClient.sCard(presenceSocketKey(userId)));
+                            if (!Number.isSafeInteger(sharedCount) || sharedCount < 0) {
+                                throw new Error('Invalid shared presence socket count');
+                            }
+                        } catch (presenceError) {
+                            // Never infer that a user is offline when shared
+                            // presence cannot be read. Another Socket.IO node
+                            // may still own an active socket for this account.
+                            console.error('[CALL][disconnect cleanup deferred]', {
+                                userId,
+                                code: presenceError.code || 'PRESENCE_CHECK_FAILED'
+                            });
+                            return;
+                        }
+
                         if ((currentSockets && currentSockets.size > 0) || sharedCount > 0) {
-                                                        return;
+                            return;
                         }
 
                         try {
@@ -1547,7 +1562,7 @@ const initSocket = async (server) => {
                                 if (ended) {
                                     emitCallActivityUpdated(ended);
                                     clearCallTimer(activeCall.call_id);
-                                    io.to(`user:${targetId}`).emit('call:ended', {
+                                    emitCallEventBestEffort(`user:${targetId}`, 'call:ended', {
                                         callId: activeCall.call_id,
                                         fromUserId: userId,
                                         toUserId: targetId,
