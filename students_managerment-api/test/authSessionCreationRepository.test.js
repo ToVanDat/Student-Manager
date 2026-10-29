@@ -53,3 +53,35 @@ test('password login session creation returns null when the account is disabled'
         assert.equal(session, null);
     });
 });
+
+
+test('password session issuance compares the exact hash verified before the database lock', async () => {
+    await withMockQuery(async (sql, params) => {
+        assert.match(params[0], /^[0-9a-f-]{36}$/i);
+        assert.deepEqual(params.slice(1), [
+            17, 'Chrome', 'test-agent', '127.0.0.1', '$2b$12$verified-hash'
+        ]);
+        assert.match(sql, /is_active = TRUE/);
+        assert.match(sql, /password_hash = \$6/);
+        assert.match(sql, /FOR UPDATE/);
+        return { rows: [{ id: params[0], user_id: 17 }], rowCount: 1 };
+    }, async () => {
+        const session = await authRepository.createSessionForVerifiedPassword(
+            17, '$2b$12$verified-hash', 'Chrome', 'test-agent', '127.0.0.1'
+        );
+        assert.ok(session);
+        assert.match(session.id, /^[0-9a-f-]{36}$/i);
+    });
+});
+
+test('password session issuance refuses a missing verified password hash without touching the database', async () => {
+    await withMockQuery(async () => {
+        throw new Error('Database must not be queried without a verified password hash');
+    }, async calls => {
+        const session = await authRepository.createSessionForVerifiedPassword(
+            17, null, 'Chrome', 'test-agent', '127.0.0.1'
+        );
+        assert.equal(session, null);
+        assert.equal(calls.length, 0);
+    });
+});
