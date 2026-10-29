@@ -74,7 +74,7 @@ function chunkDocumentText(value, {
 }
 
 function getEmbeddingConfig() {
-    const rawUrl = aiConfig.ollama.baseUrl;
+    const rawUrl = process.env.OLLAMA_BASE_URL || aiConfig.ollama.baseUrl;
     let url;
     try { url = new URL(rawUrl); }
     catch {
@@ -82,10 +82,13 @@ function getEmbeddingConfig() {
         error.status = 503;
         throw error;
     }
+    const isLoopbackHost = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname);
+    const isOptedInDockerHost = process.env.OLLAMA_ALLOW_DOCKER_HOST === 'true'
+        && url.hostname === 'host.docker.internal';
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password
         || url.search || url.hash
-        || (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname))) {
-        const error = new Error('OLLAMA_BASE_URL phải là loopback HTTP hoặc HTTPS hợp lệ');
+        || (url.protocol === 'http:' && !isLoopbackHost && !isOptedInDockerHost)) {
+        const error = new Error('OLLAMA_BASE_URL phải là loopback/HTTPS; host.docker.internal cần OLLAMA_ALLOW_DOCKER_HOST=true');
         error.status = 503;
         throw error;
     }
