@@ -56,6 +56,7 @@ function StudentSidebar({
                 <nav aria-label={t('mainNavigation')} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <div className={`px-2 pb-2 text-[10px] font-bold tracking-[.12em] text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('overviewGroup')}</div>
                     <button
+                        type="button"
                         title={t("home")}
                         className={`relative flex min-h-10 items-center gap-3 rounded-xl px-3 text-left text-[13px] font-medium transition-all duration-150 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'dashboard' ? 'bg-blue-50 text-blue-800 font-semibold shadow-sm ring-1 ring-inset ring-blue-100 before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-blue-600 dark:bg-blue-950/60 dark:text-blue-200 dark:ring-blue-900 dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:translate-x-0.5 hover:bg-blue-50 hover:text-blue-800 dark:hover:bg-slate-800/90 dark:hover:text-blue-200'}`}
                         aria-current={activePage === 'dashboard' ? 'page' : undefined}
@@ -101,7 +102,7 @@ function StudentSidebar({
                                 { key: 'permissions', label: t('security'), icon: ShieldCheck },
                             ].map(({ key, label, icon: Icon }) => (
                                 <button key={key} type="button" title={label} aria-label={label}
-                                    onClick={() => onNavigate(key)}
+                                    onClick={() => { onNavigate(key); onClose?.(); }}
                                     className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === key ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}>
                                     <Icon size={19} /><span className={collapsed ? 'min-[801px]:hidden' : ''}>{label}</span>
                                 </button>
@@ -112,6 +113,7 @@ function StudentSidebar({
                     {/* THÊM MỤC LIÊN LẠC / TIN NHẮN */}
                     <div className={`mt-5 px-2 pb-2 text-[10px] font-bold tracking-wider text-[#7b8ba5] dark:text-slate-400 ${collapsed ? 'min-[801px]:hidden' : ''}`}>{t('chat')}</div>
                     <button
+                        type="button"
                         title={t("chat")}
                         className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'chat' ? 'bg-[#e8f1fb] dark:bg-slate-800 text-[#174a7e] dark:text-blue-200 font-semibold before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-r before:bg-[#174a7e] dark:before:bg-blue-400' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                         aria-current={activePage === 'chat' ? 'page' : undefined}
