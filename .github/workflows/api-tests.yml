@@ -349,8 +349,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install API dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install API dependencies from committed lockfile
+        run: npm ci --no-audit --no-fund
       - name: Install Linux sharp runtime omitted from the cross-platform lockfile
         run: npm install --no-save --package-lock=false --include=optional sharp@0.34.5
       - name: Create isolated Face Login integration schema
