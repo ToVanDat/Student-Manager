@@ -333,7 +333,7 @@ export default function GlobalChatbot() {
                     aria-modal="true"
                     aria-labelledby="global-assistant-title"
                     onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}
-                    className="fixed inset-x-0 bottom-0 flex h-[min(88dvh,820px)] flex-col overflow-hidden rounded-t-[26px] border border-slate-200/90 bg-[#fbfcff] shadow-[0_24px_90px_-28px_rgba(15,23,42,.48)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-[76px] sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(440px,calc(100vw-32px))] sm:rounded-[24px]"
+                    className="student-assistant-dialog fixed inset-x-0 bottom-0 flex h-[min(88dvh,820px)] flex-col overflow-hidden rounded-t-[26px] border border-slate-200/90 bg-[#fbfcff] shadow-[0_24px_90px_-28px_rgba(15,23,42,.48)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-[76px] sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(440px,calc(100vw-32px))] sm:rounded-[24px]"
                     aria-label={vi ? 'Trợ lý Student Manager' : 'Student Manager assistant'}
                     aria-live="off"
                 >
@@ -506,9 +506,9 @@ export default function GlobalChatbot() {
                                 )}
                             </div>
 
-                            <div className="shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
+                            <div className="student-assistant-composer shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
                                 {editingLatestQuestion && <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><span>{vi ? 'Đang chỉnh sửa câu hỏi gần nhất' : 'Editing the latest question'}</span><button type="button" onClick={() => { setEditingLatestQuestion(false); setReplaceLastTurnOnSubmit(false); setInput(''); }} className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900" aria-label={vi ? 'Hủy chỉnh sửa' : 'Cancel edit'}><X size={13} /></button></div>}
-                                <form onSubmit={send} className="relative flex min-h-[68px] items-center rounded-[18px] border border-slate-200 bg-white px-4 py-2 shadow-[0_2px_8px_rgba(15,23,42,.045)] transition duration-200 focus-within:border-slate-300 focus-within:shadow-[0_4px_14px_rgba(15,23,42,.08)] dark:border-slate-700 dark:bg-slate-900">
+                                <form onSubmit={send} className="student-assistant-composer-form relative flex min-h-[68px] items-center rounded-[18px] border border-slate-200 bg-white px-4 py-2 shadow-[0_2px_8px_rgba(15,23,42,.045)] transition duration-200 focus-within:border-slate-300 focus-within:shadow-[0_4px_14px_rgba(15,23,42,.08)] dark:border-slate-700 dark:bg-slate-900">
                                     <textarea
                                         ref={textareaRef}
                                         value={input}
