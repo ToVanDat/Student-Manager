@@ -393,8 +393,6 @@ const addGroupMember = async (req, res, next) => {
         const addedName = await getUsername(Number(data.user_id));
         const actorName = await getUsername(actorId);
         const memberIds = await getMemberIdsForNotification(conversationId);
-        const io = getIO();
-
         for (const memberId of memberIds) {
             emitUserEventBestEffort(memberId, 'member:added', {
                 conversationId,
@@ -546,8 +544,6 @@ const updateGroupMemberRole = async (req, res, next) => {
         const memberIds = await getMemberIdsForNotification(conversationId);
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
-
-        const io = getIO();
 
         if (req.body.role === 'owner') {
             // Ownership transfer is atomic in the repository. Only emit after COMMIT.
