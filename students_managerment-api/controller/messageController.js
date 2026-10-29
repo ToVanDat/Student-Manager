@@ -6,6 +6,36 @@ const webPushService = require('../service/webPushService');
 const notificationDeliveryService = require('../service/notificationDeliveryService');
 const userRepository = require('../repository/userRepository');
 const e2eeRepository = require('../repository/e2eeRepository');
+const { toSafeHttpError } = require('../service/toSafeHttpError');
+
+const emitMessageRealtimeBestEffort = (room, event, payload) => {
+    try {
+        getIO().to(room).emit(event, payload);
+    } catch (error) {
+        console.warn('[MESSAGE] Realtime delivery failed:', {
+            event,
+            code: error?.code || 'REALTIME_DELIVERY_FAILED'
+        });
+    }
+};
+
+const publishReactionUpdateBestEffort = async (messageId, action, reaction, userId, emoji) => {
+    try {
+        const target = await messageRepository.getMessageById(messageId);
+        if (!target?.conversation_id) return;
+        emitMessageRealtimeBestEffort('conversation:' + target.conversation_id, 'message:reaction:updated', {
+            messageId,
+            conversationId: target.conversation_id,
+            action,
+            reaction: reaction || { message_id: messageId, user_id: userId, emoji }
+        });
+    } catch (error) {
+        console.warn('[MESSAGE] Reaction realtime lookup failed:', {
+            messageId,
+            code: error?.code || 'REACTION_REALTIME_FAILED'
+        });
+    }
+};
 
 /**
  * Gửi message
