@@ -44,6 +44,7 @@ const findUserById = async (userId) => {
         SELECT
             id,
             username,
+            full_name,
             email,
             role,
             avatar_url,
@@ -222,12 +223,12 @@ const createUser = async (
 
 // ======================================================
 // UPDATE USER PROFILE
-// username + email
+// display name + email
 // ======================================================
 
 const updateUserProfile = async (
     userId,
-    username,
+    fullName,
     email
 ) => {
 
@@ -235,13 +236,14 @@ const updateUserProfile = async (
         `
         UPDATE users
         SET
-            username = $1,
+            full_name = $1,
             email = $2,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $3
         RETURNING
             id,
             username,
+            full_name,
             email,
             role,
             avatar_url,
@@ -250,7 +252,7 @@ const updateUserProfile = async (
             updated_at
         `,
         [
-            username,
+            fullName,
             email,
             userId
         ]
