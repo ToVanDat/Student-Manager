@@ -42,7 +42,14 @@ safe_db_name="$(printf '%s' "$DB_NAME" | tr -c 'A-Za-z0-9_.-' '_')"
 final_file="$BACKUP_DIR/${safe_db_name}_${timestamp}.dump"
 temporary_file="$final_file.partial"
 
-cleanup() { rm -f "$temporary_file"; }
+checksum_file="$final_file.sha256"
+backup_complete=false
+cleanup() {
+  rm -f "$temporary_file"
+  if [[ "$backup_complete" != true ]]; then
+    rm -f "$final_file" "$checksum_file"
+  fi
+}
 trap cleanup EXIT
 
 if [[ -e "$final_file" || -e "$temporary_file" ]]; then
@@ -64,6 +71,7 @@ else
   exit 1
 fi
 
-chmod 600 "$final_file" "$final_file.sha256"
-echo "Backup archive verified. SHA-256 manifest: $final_file.sha256"
+chmod 600 "$final_file" "$checksum_file"
+backup_complete=true
+echo "Backup archive verified. SHA-256 manifest: $checksum_file"
 echo "No database rows or schema objects were modified."
