@@ -84,7 +84,7 @@ test('createSessionForActiveFaceUser requires an active account and enabled face
 
     try {
         const session = await loaded.repository.createSessionForActiveFaceUser(
-            '42', 'Browser', 'Example UA', '127.0.0.1'
+            '42', 'Browser', 'Example UA', '127.0.0.1', 'face-credential-1'
         );
 
         assert.equal(session.id, 'face-session-1');
@@ -108,9 +108,26 @@ test('createSessionForActiveFaceUser refuses session creation without an active 
 
     try {
         const session = await loaded.repository.createSessionForActiveFaceUser(
+            '42', 'Browser', 'Example UA', '127.0.0.1', 'missing-credential'
+        );
+        assert.equal(session, null);
+    } finally {
+        loaded.restore();
+    }
+});
+
+
+test('createSessionForActiveFaceUser fails closed without the matched credential id', async () => {
+    let queried = false;
+    const loaded = loadRepositoryWithPool({
+        query: async () => { queried = true; return { rows: [] }; }
+    });
+    try {
+        const session = await loaded.repository.createSessionForActiveFaceUser(
             '42', 'Browser', 'Example UA', '127.0.0.1'
         );
         assert.equal(session, null);
+        assert.equal(queried, false);
     } finally {
         loaded.restore();
     }
