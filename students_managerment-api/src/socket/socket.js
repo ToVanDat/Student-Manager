@@ -12,7 +12,7 @@ const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { publishRealtimeBestEffort } = require('../../service/realtimeDelivery.js');
 const { isValidCallId, isValidCallType, normalizeCallFailureReason } = require('../../service/callValidation.js');
-const { isValidSessionDescription, isValidIceCandidate, wrapSocketEventListener } = require('../../service/socketPayloadValidation.js');
+const { isValidSessionDescription, isValidIceCandidate, installSocketEventValidation } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 
@@ -156,12 +156,25 @@ const initSocket = async (server) => {
     });
 
     io.on('connection', async (socket) => {
-        // Normalize client event payloads centrally. Do not wrap Socket.IO's
-        // reserved lifecycle events: their first argument is often a string
-        // (for example, the disconnect reason), not an application payload.
-        // Preserve the listener receiver and all trailing arguments/ACKs.
-        const registerClientEvent = socket.on.bind(socket);
-        const reservedSocketEvents = new Set([
+        // Normalize application payloads while preserving EventEmitter listener
+        // identity so off/removeListener and once retain their native semantics.
+        installSocketEventValidation(socket, (error, receiver) => {
+            console.error('[SOCKET][event handler failed]', {
+                event: String(error?.eventName || 'unknown').slice(0, 80),
+                userId: Number(socket.user?.id) || null,
+                code: error?.code || 'SOCKET_EVENT_FAILED'
+            });
+            try {
+                receiver.emit('socket:error', {
+                    code: 'EVENT_FAILED',
+                    message: 'Không thể xử lý sự kiện realtime. Vui lòng thử lại.'
+                });
+            } catch (emitError) {
+                console.error('[SOCKET][event error notification failed]', {
+                    code: emitError?.code || 'SOCKET_ERROR_EMIT_FAILED'
+                });
+            }
+        }, [
             'connect',
             'connect_error',
             'disconnect',
@@ -170,29 +183,6 @@ const initSocket = async (server) => {
             'newListener',
             'removeListener'
         ]);
-        socket.on = (eventName, listener) => registerClientEvent(
-            eventName,
-            reservedSocketEvents.has(eventName)
-                ? listener
-                : wrapSocketEventListener(listener, (error, receiver) => {
-                    console.error('[SOCKET][event handler failed]', {
-                        event: String(eventName).slice(0, 80),
-                        userId: Number(socket.user?.id) || null,
-                        code: error?.code || 'SOCKET_EVENT_FAILED'
-                    });
-                    try {
-                        receiver.emit('socket:error', {
-                            code: 'EVENT_FAILED',
-                            message: 'Không thể xử lý sự kiện realtime. Vui lòng thử lại.'
-                        });
-                    } catch (emitError) {
-                        console.error('[SOCKET][event error notification failed]', {
-                            event: String(eventName).slice(0, 80),
-                            code: emitError?.code || 'SOCKET_ERROR_EMIT_FAILED'
-                        });
-                    }
-                })
-        );
 
         const userId = Number(socket.user.id);
         const sessionId = socket.user.sessionId;
@@ -1543,9 +1533,9 @@ const initSocket = async (server) => {
                             const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
 
                             for (const activeCall of activeCalls) {
-                                const targetId = activeCall.caller_id === userId
-                                    ? activeCall.receiver_id
-                                    : activeCall.caller_id;
+                                const targetId = Number(activeCall.caller_id) === userId
+                                    ? Number(activeCall.receiver_id)
+                                    : Number(activeCall.caller_id);
 
                                 const ended = await callRepository.updateCallStatusIfCurrent(
                                     activeCall.call_id,
