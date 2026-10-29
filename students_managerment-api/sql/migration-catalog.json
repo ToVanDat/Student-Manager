@@ -233,6 +233,16 @@
       ],
       "risk": "schema-and-data",
       "notes": "Overlaps group_presence.sql and backfills roles; do not apply both blindly."
+    },
+    {
+      "file": "chat_schema_hardening_migration.sql",
+      "feature": "chat-schema-hardening",
+      "dependsOn": [
+        "group_chat_presence.sql",
+        "conversation_management.sql"
+      ],
+      "risk": "schema-validation-and-indexes",
+      "notes": "Apply only after selecting and reviewing one migration from each overlapping group-presence and chat-safety family. Validates existing values before adding v2 CHECK constraints; aborts without rewriting rows if unsupported values exist. The group_chat_presence.sql dependency is representative of the group-presence family; group_presence.sql is an alternative, not an additional required step."
     }
   ]
 }
