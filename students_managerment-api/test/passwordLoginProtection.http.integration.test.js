@@ -1,6 +1,8 @@
 // Exercise the real application bootstrap so TRUST_PROXY_HOPS and middleware
 // registration are covered, rather than mounting authRouter in a test-only app.
 process.env.TRUST_PROXY_HOPS = process.env.TRUST_PROXY_HOPS || '1';
+// App bootstrap constructs the email SDK; this test never sends mail.
+process.env.RESEND_API_KEY = process.env.RESEND_API_KEY || 're_test_ci_only_not_a_real_credential';
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
