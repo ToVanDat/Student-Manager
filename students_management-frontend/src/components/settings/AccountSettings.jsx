@@ -82,7 +82,7 @@ function AccountSettings({
                     />
                 ) : (
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-200">
-                        {(user?.username || 'U').slice(0, 1).toUpperCase()}
+                        {(user?.full_name || user?.username || 'U').slice(0, 1).toUpperCase()}
                     </div>
                 )}
 
@@ -133,17 +133,40 @@ function AccountSettings({
                         <User size={17} className="shrink-0 text-slate-400" />
                         <input
                             id="account-username"
-                            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
+                            className="min-w-0 flex-1 cursor-not-allowed border-0 bg-transparent text-sm text-slate-500 outline-none dark:text-slate-400"
                             type="text"
-                            value={form.username}
+                            value={form.username || ''}
                             readOnly
                             aria-describedby="account-username-help"
-                            className="min-w-0 flex-1 cursor-not-allowed border-0 bg-transparent text-sm text-slate-500 outline-none dark:text-slate-400"
-                            required
                         />
                     </div>
                     <p id="account-username-help" className="m-0 text-xs text-slate-500 dark:text-slate-400">
                         Username là định danh đăng nhập và không thể đổi tại mục thông tin cá nhân.
+                    </p>
+                </div>
+
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="account-full-name"
+                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                    >
+                        Tên hiển thị
+                    </label>
+                    <div className="flex min-h-[46px] items-center gap-2.5 rounded-lg border border-line bg-white px-3 transition focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-950">
+                        <User size={17} className="shrink-0 text-slate-400" />
+                        <input
+                            id="account-full-name"
+                            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
+                            type="text"
+                            autoComplete="name"
+                            maxLength={120}
+                            value={form.full_name || ''}
+                            onChange={(event) => onChange({ ...form, full_name: event.target.value })}
+                            required
+                        />
+                    </div>
+                    <p className="m-0 text-xs text-slate-500 dark:text-slate-400">
+                        Tên hiển thị không làm thay đổi username dùng để đăng nhập.
                     </p>
                 </div>
 
