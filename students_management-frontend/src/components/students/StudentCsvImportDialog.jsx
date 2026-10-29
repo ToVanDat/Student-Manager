@@ -13,6 +13,8 @@ function StudentCsvImportDialog({ onClose, onImported }) {
     const dialogRef = useRef(null);
     const closeButtonRef = useRef(null);
     const busyRef = useRef(false);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
     busyRef.current = previewing || importing;
 
     useEffect(() => {
@@ -22,7 +24,7 @@ function StudentCsvImportDialog({ onClose, onImported }) {
             if (event.key === 'Escape') {
                 if (!busyRef.current) {
                     event.preventDefault();
-                    onClose?.();
+                    onCloseRef.current?.();
                 }
                 return;
             }
@@ -50,7 +52,7 @@ function StudentCsvImportDialog({ onClose, onImported }) {
             document.removeEventListener('keydown', handleKeyDown);
             if (previouslyFocused?.isConnected) previouslyFocused.focus();
         };
-    }, [onClose]);
+    }, []);
 
     const selectFile = (nextFile) => {
         setFile(nextFile || null);
