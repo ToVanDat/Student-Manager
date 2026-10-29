@@ -158,9 +158,9 @@ const initSocket = async (server) => {
     io.on('connection', async (socket) => {
         // Normalize application payloads while preserving EventEmitter listener
         // identity so off/removeListener and once retain their native semantics.
-        installSocketEventValidation(socket, (error, receiver) => {
+        installSocketEventValidation(socket, (error, receiver, eventName) => {
             console.error('[SOCKET][event handler failed]', {
-                event: String(error?.eventName || 'unknown').slice(0, 80),
+                event: String(eventName || 'unknown').slice(0, 80),
                 userId: Number(socket.user?.id) || null,
                 code: error?.code || 'SOCKET_EVENT_FAILED'
             });
