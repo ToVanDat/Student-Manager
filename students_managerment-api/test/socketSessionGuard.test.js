@@ -61,3 +61,22 @@ test('propagates database failures so the Socket.IO caller can fail closed', asy
         /database unavailable/
     );
 });
+
+
+test('uses the single-query session/account guard when the repository provides it', async () => {
+    const calls = [];
+    const repository = {
+        async isSessionActiveForSocket(sessionId, userId) {
+            calls.push([sessionId, userId]);
+            return true;
+        },
+        async findSessionByIdAndUserId() {
+            assert.fail('single-query guard should avoid separate session lookup');
+        },
+        async findUserById() {
+            assert.fail('single-query guard should avoid separate user lookup');
+        }
+    };
+    assert.equal(await isSocketSessionActive(repository, 'session-1', 7), true);
+    assert.deepEqual(calls, [['session-1', 7]]);
+});
