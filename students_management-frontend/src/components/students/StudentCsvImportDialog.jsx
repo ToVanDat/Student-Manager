@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FileUp, LoaderCircle, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -10,6 +10,45 @@ function StudentCsvImportDialog({ onClose, onImported }) {
     const [preview, setPreview] = useState(null);
     const [previewing, setPreviewing] = useState(false);
     const [importing, setImporting] = useState(false);
+    const dialogRef = useRef(null);
+    const closeButtonRef = useRef(null);
+
+    useEffect(() => {
+        const previouslyFocused = document.activeElement;
+        closeButtonRef.current?.focus();
+        const handleKeyDown = (event) => {
+            if (event.key === 'Escape') {
+                if (!previewing && !importing) {
+                    event.preventDefault();
+                    onClose?.();
+                }
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const focusable = dialogRef.current?.querySelectorAll(
+                'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])'
+            );
+            if (!focusable?.length) {
+                event.preventDefault();
+                dialogRef.current?.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            if (previouslyFocused?.isConnected) previouslyFocused.focus();
+        };
+    }, [onClose, previewing, importing]);
 
     const selectFile = (nextFile) => {
         setFile(nextFile || null);
@@ -53,7 +92,7 @@ function StudentCsvImportDialog({ onClose, onImported }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-sm sm:p-6" role="presentation" onMouseDown={(event) => {
             if (event.target === event.currentTarget && !previewing && !importing) onClose?.();
         }}>
-            <section role="dialog" aria-modal="true" aria-labelledby="student-csv-import-title" className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="student-csv-import-title" tabIndex={-1} className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                 <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-800 sm:px-6">
                     <div className="flex items-start gap-3">
                         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"><FileUp size={20} /></span>
@@ -62,7 +101,7 @@ function StudentCsvImportDialog({ onClose, onImported }) {
                             <p className="mb-0 mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentImportDescription')}</p>
                         </div>
                     </div>
-                    <button type="button" onClick={onClose} disabled={previewing || importing} aria-label={t('close')} className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800"><X size={18} /></button>
+                    <button type="button" onClick={onClose} disabled={previewing || importing} aria-label={t('close')} ref={closeButtonRef} className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-50 dark:hover:bg-slate-800"><X size={18} /></button>
                 </header>
 
                 <div className="min-h-0 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
