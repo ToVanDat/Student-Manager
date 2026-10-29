@@ -50,8 +50,13 @@ function getOllamaConfig() {
         error.status = 503;
         throw error;
     }
-    if (url.protocol === 'http:' && !['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname)) {
-        const error = new Error('OLLAMA_BASE_URL từ xa phải sử dụng HTTPS');
+    const isLoopbackHost = ['localhost', '127.0.0.1', '[::1]', '::1'].includes(url.hostname);
+    // Docker Desktop's host gateway is a narrowly allowed HTTP exception only
+    // when the operator explicitly opts in; arbitrary LAN/WAN plaintext stays blocked.
+    const isOptedInDockerHost = process.env.OLLAMA_ALLOW_DOCKER_HOST === 'true'
+        && url.hostname === 'host.docker.internal';
+    if (url.protocol === 'http:' && !isLoopbackHost && !isOptedInDockerHost) {
+        const error = new Error('OLLAMA_BASE_URL từ xa phải sử dụng HTTPS; host.docker.internal cần OLLAMA_ALLOW_DOCKER_HOST=true');
         error.status = 503;
         throw error;
     }
