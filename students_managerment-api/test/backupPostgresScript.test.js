@@ -14,7 +14,7 @@ async function fixture(t, overrides = {}) {
     const backupDir = path.join(root, 'backups');
     await mkdir(bin);
     const stubs = {
-        psql: '#!/usr/bin/env bash\nprintf "%s" "\${IDENTITY_RESULT:-t}"\n',
+        psql: '#!/usr/bin/env bash\\nset -e\\nargs="$*"\\n[[ "$args" == *"--set=expected_db=$DB_NAME"* ]]\\n[[ "$args" == *"--set=expected_user=$DB_USER"* ]]\\nquery="$(cat)"\\n[[ "$query" == *"current_database()"* ]]\\nprintf "%s" "\\${IDENTITY_RESULT:-t}"\\n',
         pg_dump: '#!/usr/bin/env bash\nfor arg in "$@"; do case "$arg" in --file=*) output="\${arg#--file=}";; esac; done\n[[ "\${PG_DUMP_FAIL:-0}" != 1 ]] || exit 31\nprintf "test-archive" > "$output"\n',
         pg_restore: '#!/usr/bin/env bash\n[[ "\${RESTORE_FAIL:-0}" != 1 ]] || exit 32\n[[ -s "$2" ]]\n',
         sha256sum: '#!/usr/bin/env bash\n[[ "\${SHA_FAIL:-0}" != 1 ]] || exit 33\nprintf "test-checksum  %s\\n" "$1"'
