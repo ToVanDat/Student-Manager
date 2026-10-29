@@ -361,8 +361,8 @@ test('chatbot history and conversation index are isolated across different users
     const sevenConversation = await createConversation({
         userId: '7', sessionId: 'shared-session', title: 'User seven', redis
     });
-    assert.equal((await listConversations({ userId: '7', sessionId: 'shared-session', redis })).length, 1);
-    assert.equal((await listConversations({ userId: '8', sessionId: 'shared-session', redis })).length, 0);
+    assert.equal((await listConversations({ userId: '7', sessionId: 'shared-session', redis })).length, 2); // legacy default history + new conversation
+    assert.equal((await listConversations({ userId: '8', sessionId: 'shared-session', redis })).length, 1); // only this user's legacy default history
     await deleteConversation({
         userId: '8', sessionId: 'shared-session', conversationId: sevenConversation.id, redis
     }).then(
