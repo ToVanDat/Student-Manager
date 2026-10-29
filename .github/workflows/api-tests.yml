@@ -438,3 +438,43 @@ jobs:
         run: docker build -t student-manager-api-smoke -f students_managerment-api/Dockerfile students_managerment-api
       - name: Verify ONNX Runtime native module inside production image
         run: docker run --rm --entrypoint node student-manager-api-smoke -e "require('onnxruntime-node'); console.log('ONNX Runtime native module loaded in API image')"
+
+
+  rag-schema-guard-postgres-integration:
+    name: RAG schema readiness PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_schema_guard_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rag_schema_guard_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: students_managerment-api
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: rag_schema_guard_integration
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      RAG_SCHEMA_GUARD_INTEGRATION: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Verify RAG fails closed without document tables or pgvector
+        run: node --test test/ragSchemaReadiness.integration.test.js
