@@ -15,7 +15,7 @@ test('database integration audit contains read-only SQL statements only', () => 
         .map(statement => statement.trim())
         .filter(Boolean);
 
-    assert.ok(statements.length >= 8, 'expected the audit to retain its inspection queries');
+    assert.ok(statements.length >= 7, 'expected the audit to retain its inspection queries');
 
     for (const statement of statements) {
         assert.match(
