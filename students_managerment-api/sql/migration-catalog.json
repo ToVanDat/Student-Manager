@@ -1,0 +1,238 @@
+{
+  "formatVersion": 1,
+  "policy": {
+    "execution": "manual-reviewed-only",
+    "automaticExecutionAllowed": false,
+    "alphabeticalExecutionAllowed": false,
+    "existingDatabaseRequiresReadOnlyAudit": true,
+    "approvalRequiredBeforeApplying": true
+  },
+  "migrations": [
+    {
+      "file": "advanced_auth_features_migration.sql",
+      "feature": "authentication",
+      "dependsOn": [
+        "users",
+        "sessions"
+      ],
+      "risk": "schema",
+      "notes": "WebAuthn, OAuth and QR-login storage; feature tables alone do not prove provider configuration or flow readiness."
+    },
+    {
+      "file": "role_permissions_migration.sql",
+      "feature": "rbac",
+      "dependsOn": [
+        "users"
+      ],
+      "risk": "schema-and-seed",
+      "notes": "Review seeded roles and permission grants against application role names."
+    },
+    {
+      "file": "student_account_link_schema_migration.sql",
+      "feature": "student-account-link",
+      "dependsOn": [
+        "users",
+        "students"
+      ],
+      "risk": "schema",
+      "notes": "Creates mapping table and initially uses CASCADE foreign keys; do not rerun if table already exists."
+    },
+    {
+      "file": "student_account_link_admin_workflow_migration.sql",
+      "feature": "student-account-link",
+      "dependsOn": [
+        "student_account_link_schema_migration.sql",
+        "role_permissions_migration.sql"
+      ],
+      "risk": "schema-data-and-trigger",
+      "notes": "Changes FK delete rules to RESTRICT, creates append-only audit protection and upserts permission rows."
+    },
+    {
+      "file": "assistant_rag_schema_migration.sql",
+      "feature": "rag",
+      "dependsOn": [
+        "users",
+        "vector extension"
+      ],
+      "risk": "schema",
+      "notes": "Requires operator-provisioned pgvector and fixed vector(768) embedding contract."
+    },
+    {
+      "file": "assistant_rag_lifecycle_migration.sql",
+      "feature": "rag",
+      "dependsOn": [
+        "assistant_rag_schema_migration.sql"
+      ],
+      "risk": "schema",
+      "notes": "Adds archive lifecycle; verify the base schema first."
+    },
+    {
+      "file": "face_login_credentials_migration.sql",
+      "feature": "face-login",
+      "dependsOn": [
+        "users"
+      ],
+      "risk": "schema",
+      "notes": "Credential storage only; does not validate models, PAD, liveness or thresholds."
+    },
+    {
+      "file": "e2ee_foundation_migration.sql",
+      "feature": "e2ee",
+      "dependsOn": [
+        "users",
+        "conversations",
+        "messages"
+      ],
+      "risk": "schema",
+      "notes": "Foundation for E2EE devices, prekeys and envelopes."
+    },
+    {
+      "file": "e2ee_attachment_objects_migration.sql",
+      "feature": "e2ee-attachments",
+      "dependsOn": [
+        "users",
+        "conversations"
+      ],
+      "risk": "schema",
+      "notes": "Creates attachment object metadata."
+    },
+    {
+      "file": "e2ee_attachment_retry_identity_migration.sql",
+      "feature": "e2ee-attachments",
+      "dependsOn": [
+        "e2ee_attachment_objects_migration.sql"
+      ],
+      "risk": "schema",
+      "notes": "Alters the attachment table created by the base attachment migration."
+    },
+    {
+      "file": "e2ee_pause_mode_migration.sql",
+      "feature": "e2ee",
+      "dependsOn": [
+        "conversation_e2ee_settings",
+        "users"
+      ],
+      "risk": "schema",
+      "notes": "Adds pause-mode behavior to existing conversation E2EE settings."
+    },
+    {
+      "file": "e2ee_provisioning_proof_v1_migration.sql",
+      "feature": "e2ee",
+      "dependsOn": [
+        "e2ee_sdk_provisioning_sessions"
+      ],
+      "risk": "schema",
+      "notes": "Alters existing provisioning-session schema."
+    },
+    {
+      "file": "user_preferences.sql",
+      "feature": "preferences",
+      "dependsOn": [
+        "users"
+      ],
+      "risk": "schema",
+      "notes": "Creates account preference storage."
+    },
+    {
+      "file": "theme_preferences_migration.sql",
+      "feature": "preferences",
+      "dependsOn": [
+        "user_preferences.sql",
+        "conversation_management.sql"
+      ],
+      "risk": "schema-and-data",
+      "notes": "Normalizes invalid theme values and replaces named CHECK constraints inside a transaction."
+    },
+    {
+      "file": "shared_conversation_chat_theme_migration.sql",
+      "feature": "chat-theme",
+      "dependsOn": [
+        "conversation_management.sql"
+      ],
+      "risk": "schema-and-data",
+      "notes": "Backfills shared conversation theme from most recently updated per-user preference."
+    },
+    {
+      "file": "profile_notifications_push.sql",
+      "feature": "notifications",
+      "dependsOn": [
+        "users",
+        "conversations"
+      ],
+      "risk": "schema-and-data",
+      "notes": "Creates preference and push-subscription tables; may copy values from legacy enabled column."
+    },
+    {
+      "file": "notifications_center.sql",
+      "feature": "notifications",
+      "dependsOn": [
+        "profile_notifications_push.sql",
+        "messages"
+      ],
+      "risk": "schema",
+      "notes": "Creates notification history and alters user notification preferences."
+    },
+    {
+      "file": "conversation_management.sql",
+      "feature": "chat-management",
+      "dependsOn": [
+        "users",
+        "conversations"
+      ],
+      "risk": "schema",
+      "notes": "Creates conversation settings, blocked users and reports; overlaps chat_safety_features.sql."
+    },
+    {
+      "file": "chat_safety_features.sql",
+      "feature": "chat-safety",
+      "dependsOn": [
+        "users",
+        "conversations"
+      ],
+      "risk": "schema",
+      "notes": "Also creates blocked_users and conversation_reports with different definitions from conversation_management.sql."
+    },
+    {
+      "file": "chat_features.sql",
+      "feature": "chat",
+      "dependsOn": [
+        "users",
+        "messages"
+      ],
+      "risk": "schema-and-data",
+      "notes": "Review all message backfill/deduplication and index operations before applying."
+    },
+    {
+      "file": "call_features.sql",
+      "feature": "calls",
+      "dependsOn": [
+        "users",
+        "conversations"
+      ],
+      "risk": "schema-and-data",
+      "notes": "Creates call history/notifications and adjusts call-related schema."
+    },
+    {
+      "file": "group_presence.sql",
+      "feature": "group-chat",
+      "dependsOn": [
+        "users",
+        "conversations",
+        "conversation_members"
+      ],
+      "risk": "schema",
+      "notes": "Overlaps group_chat_presence.sql; creates full membership lookup indexes."
+    },
+    {
+      "file": "group_chat_presence.sql",
+      "feature": "group-chat",
+      "dependsOn": [
+        "users",
+        "conversations",
+        "conversation_members"
+      ],
+      "risk": "schema-and-data",
+      "notes": "Overlaps group_presence.sql and backfills roles; do not apply both blindly."
+    }
+  ]
+}
