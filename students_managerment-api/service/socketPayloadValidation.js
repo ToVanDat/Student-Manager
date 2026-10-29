@@ -52,7 +52,7 @@ const installSocketEventValidation = (socket, onError, reservedEvents = []) => {
 
         let wrapped = eventListeners.get(listener);
         if (!wrapped) {
-            wrapped = wrapSocketEventListener(listener, onError);
+            wrapped = wrapSocketEventListener(listener, (error, receiver) => onError?.(error, receiver, eventName));
             eventListeners.set(listener, wrapped);
         }
 
