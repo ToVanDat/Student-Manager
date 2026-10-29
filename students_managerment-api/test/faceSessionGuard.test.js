@@ -83,8 +83,17 @@ test('createSessionForActiveFaceUser requires an active account and enabled face
     const loaded = loadRepositoryWithPool(fakePool);
 
     try {
+        const expectedCredential = {
+            id: 'face-credential-1',
+            ciphertext: Buffer.from([1, 2, 3]),
+            nonce: Buffer.alloc(12, 4),
+            authTag: Buffer.alloc(16, 5),
+            keyVersion: 1,
+            modelId: 'mobilefacenet+minifasnet-v2',
+            modelVersion: 'supplied-bundle-v1'
+        };
         const session = await loaded.repository.createSessionForActiveFaceUser(
-            '42', 'Browser', 'Example UA', '127.0.0.1', 'face-credential-1'
+            '42', 'Browser', 'Example UA', '127.0.0.1', expectedCredential
         );
 
         assert.equal(session.id, 'face-session-1');
@@ -109,7 +118,11 @@ test('createSessionForActiveFaceUser refuses session creation without an active 
 
     try {
         const session = await loaded.repository.createSessionForActiveFaceUser(
-            '42', 'Browser', 'Example UA', '127.0.0.1', 'missing-credential'
+            '42', 'Browser', 'Example UA', '127.0.0.1', {
+                id: 'missing-credential', ciphertext: Buffer.from([1]),
+                nonce: Buffer.alloc(12), authTag: Buffer.alloc(16),
+                keyVersion: 1, modelId: 'model', modelVersion: 'v1'
+            }
         );
         assert.equal(session, null);
     } finally {
