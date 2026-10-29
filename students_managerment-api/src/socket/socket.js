@@ -1366,7 +1366,7 @@ const initSocket = async (server) => {
             };
             io.to(`user:${userId}`).emit('call:ended', payload);
             io.to(`user:${targetId}`).emit('call:ended', payload);
-            console.warn('[CALL][connection failed]', { callId, userId, targetId, reason });
+            console.warn('[CALL][connection failed]', { callId, userId, targetId, reason: safeReason });
         });
 
         socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
