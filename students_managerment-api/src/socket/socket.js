@@ -15,6 +15,7 @@ const { isValidCallId, isValidCallType, normalizeCallFailureReason } = require('
 const { isValidSessionDescription, isValidIceCandidate, installSocketEventValidation } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
+const { joinConversationRoom } = require('../../service/socketRoomAccess.js');
 
 let io = null;
 let presenceSubscriber = null;
@@ -483,8 +484,13 @@ const initSocket = async (server) => {
             }
 
             try {
-                const isMember = await conversationRepository.isConversationMember(id, userId);
-                if (!isMember) {
+                const joined = await joinConversationRoom(
+                    socket,
+                    conversationRepository,
+                    userId,
+                    id
+                );
+                if (!joined) {
                     return socket.emit('conversation:error', {
                         code: 'NOT_MEMBER',
                         conversationId: id,
@@ -492,7 +498,6 @@ const initSocket = async (server) => {
                     });
                 }
 
-                socket.join(`conversation:${id}`);
                 socket.emit('conversation:joined', { conversationId: id });
 
                 // Đồng bộ presence ngay khi mở conversation mới.
