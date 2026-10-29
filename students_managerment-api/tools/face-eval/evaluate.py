@@ -118,14 +118,20 @@ def calibrate_recognition(rows):
 
 def wilson_interval(errors, total, z=1.959963984540054):
     """Two-sided 95% Wilson score interval for a binomial error rate."""
-    if total <= 0:
-        raise ValueError("Confidence interval requires at least one sample")
+    if not isinstance(total, int) or total <= 0:
+        raise ValueError("Confidence interval requires a positive integer sample count")
+    if not isinstance(errors, int) or errors < 0 or errors > total:
+        raise ValueError("Confidence interval errors must be an integer within the sample count")
     rate = errors / total
     denominator = 1 + z * z / total
     center = (rate + z * z / (2 * total)) / denominator
     margin = z * math.sqrt((rate * (1 - rate) / total) +
                            (z * z / (4 * total * total))) / denominator
-    return [max(0.0, center - margin), min(1.0, center + margin)]
+    # Preserve exact binomial boundaries instead of leaking floating-point
+    # round-off (for example, 3e-18) into a mathematically zero lower bound.
+    lower = 0.0 if errors == 0 else max(0.0, center - margin)
+    upper = 1.0 if errors == total else min(1.0, center + margin)
+    return [lower, upper]
 
 
 def pad_metrics(rows, threshold):
