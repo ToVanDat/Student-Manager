@@ -74,6 +74,7 @@ const findUserByUsername = async (username) => {
         SELECT
             id,
             username,
+            full_name,
             email,
             password_hash,
             role,
@@ -102,6 +103,7 @@ const findUserByEmail = async (email) => {
         SELECT
             id,
             username,
+            full_name,
             email,
             password_hash,
             role,
