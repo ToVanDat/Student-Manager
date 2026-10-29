@@ -77,3 +77,10 @@ test('backup script removes partial archive when archive validation fails', { sk
     assert.notEqual(result.status, 0);
     assert.deepEqual(await readdir(f.backupDir), []);
 });
+
+test('backup script removes archive when checksum generation fails', { skip: !bashAvailable }, async t => {
+    const f = await fixture(t, { SHA_FAIL: '1' });
+    const result = run(f.env);
+    assert.notEqual(result.status, 0);
+    assert.deepEqual(await readdir(f.backupDir), []);
+});
