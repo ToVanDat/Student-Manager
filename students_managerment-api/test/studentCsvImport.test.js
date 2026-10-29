@@ -33,8 +33,8 @@ test('CSV import flags duplicate student codes and emails within the file', () =
     const result = validateStudentCsvText(
         header + '\n001,An,an@example.test,,Nam,CTK44,\n001,Binh,an@example.test,,Nam,CTK44,'
     );
-    assert.ok(result.rows[1].errors.some(error => error.includes('mã sinh viên bị trùng')));
-    assert.ok(result.rows[1].errors.some(error => error.includes('Email bị trùng')));
+    assert.ok(result.rows[1].errors.some(error => error.toLowerCase().includes('mã sinh viên bị trùng')));
+    assert.ok(result.rows[1].errors.some(error => error.toLowerCase().includes('email bị trùng')));
 });
 
 test('CSV import rejects malformed quotes and inconsistent column counts', () => {
