@@ -78,7 +78,7 @@ test('Face session issuance requires an active account and active credential in 
     );
     await pool.query('UPDATE users SET is_active = FALSE WHERE id = $1', [activeUserId]);
     const inactiveAccountSession = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredentialId
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredential
     );
     assert.equal(inactiveAccountSession, null, 'inactive account must not create a Face session');
 });
