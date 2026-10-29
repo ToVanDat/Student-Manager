@@ -1,11 +1,13 @@
 const test = require('node:test');
+const { EventEmitter } = require('node:events');
 const assert = require('node:assert/strict');
 
 const {
     MAX_SESSION_DESCRIPTION_BYTES,
     MAX_ICE_CANDIDATE_BYTES,
     isValidSessionDescription,
-    isValidIceCandidate
+    isValidIceCandidate,
+    installSocketEventValidation
 } = require('../service/socketPayloadValidation');
 
 test('accepts bounded WebRTC offer and answer descriptions', () => {
@@ -118,4 +120,45 @@ test('wrapped Socket.IO listeners preserve normal return values without an error
     const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
     const wrapped = wrapSocketEventListener(payload => payload.value);
     assert.equal(wrapped({ value: 42 }), 42);
+});
+
+
+test('Socket.IO validation preserves once listener single-fire behavior', () => {
+    const socket = installSocketEventValidation(new EventEmitter(), () => {});
+    let calls = 0;
+    socket.once('sample:event', () => { calls += 1; });
+
+    socket.emit('sample:event', { value: 1 });
+    socket.emit('sample:event', { value: 2 });
+
+    assert.equal(calls, 1);
+    assert.equal(socket.listenerCount('sample:event'), 0);
+});
+
+test('Socket.IO validation preserves off and removeListener callback identity', () => {
+    const socket = installSocketEventValidation(new EventEmitter(), () => {});
+    let calls = 0;
+    const offListener = () => { calls += 1; };
+    const removeListener = () => { calls += 10; };
+
+    socket.on('off:event', offListener);
+    socket.on('remove:event', removeListener);
+    socket.off('off:event', offListener);
+    socket.removeListener('remove:event', removeListener);
+
+    socket.emit('off:event', {});
+    socket.emit('remove:event', {});
+
+    assert.equal(calls, 0);
+    assert.equal(socket.listenerCount('off:event'), 0);
+    assert.equal(socket.listenerCount('remove:event'), 0);
+});
+
+test('Socket.IO validation leaves reserved lifecycle listeners unwrapped', () => {
+    const socket = new EventEmitter();
+    const listener = () => {};
+    installSocketEventValidation(socket, () => {}, ['disconnect']);
+    socket.on('disconnect', listener);
+
+    assert.equal(socket.listeners('disconnect')[0], listener);
 });
