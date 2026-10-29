@@ -652,5 +652,7 @@
   "studentImportMoreRows": "Còn {{count}} dòng chưa hiển thị.",
   "studentImportFixErrors": "Hãy sửa các dòng lỗi trong tệp CSV rồi chọn lại tệp để kiểm tra. Không thể xác nhận khi còn lỗi.",
   "studentImportSuccess": "Đã nhập thành công {{count}} sinh viên.",
-  "studentImportFailed": "Không thể nhập CSV. Vui lòng kiểm tra tệp và thử lại."
+  "studentImportFailed": "Không thể nhập CSV. Vui lòng kiểm tra tệp và thử lại.",
+  "chatComposerPlaceholder": "Nhập tin nhắn...",
+  "chatComposerLabel": "Soạn tin nhắn"
 }
