@@ -55,6 +55,12 @@ test('getEmbeddingConfig permits Docker host gateway only with explicit opt-in',
         assert.equal(getEmbeddingConfig().endpoint, 'http://host.docker.internal:11434/api/embed');
         process.env.OLLAMA_BASE_URL = 'http://192.168.1.20:11434';
         assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://ollama.example.com?token=secret';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://ollama.example.com#debug';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://user:secret@ollama.example.com';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
     } finally {
         if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
         else process.env.OLLAMA_BASE_URL = previousUrl;
