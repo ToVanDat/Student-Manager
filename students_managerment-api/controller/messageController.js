@@ -285,10 +285,7 @@ const updateMessage = async (req, res) => {
                 content
             );
 
-        getIO().to(`conversation:${message.conversation_id}`).emit(
-            'message:updated',
-            message
-        );
+        emitMessageRealtimeBestEffort('conversation:' + message.conversation_id, 'message:updated', message);
 
         return res.status(200).json({
             message: 'Chỉnh sửa message thành công',
@@ -332,10 +329,7 @@ const recallMessage = async (req, res) => {
                 userId
             );
 
-        getIO().to(`conversation:${message.conversation_id}`).emit(
-            'message:recalled',
-            message
-        );
+        emitMessageRealtimeBestEffort('conversation:' + message.conversation_id, 'message:recalled', message);
 
         return res.status(200).json({
             message: 'Thu hồi message thành công',
@@ -378,14 +372,11 @@ const deleteMessageForMe = async (req, res) => {
                 userId
             );
 
-        getIO().to(`user:${userId}`).emit(
-            'message:deleted:me',
-            {
-                messageId,
-                conversationId: deletion.conversation_id,
-                deletion
-            }
-        );
+        emitMessageRealtimeBestEffort('user:' + userId, 'message:deleted:me', {
+            messageId,
+            conversationId: deletion.conversation_id,
+            deletion
+        });
 
         return res.status(200).json({
             message: 'Xoá message cho tôi thành công',
@@ -428,10 +419,7 @@ const deleteMessageForEveryone = async (req, res) => {
                 userId
             );
 
-        getIO().to(`conversation:${message.conversation_id}`).emit(
-            'message:deleted:everyone',
-            message
-        );
+        emitMessageRealtimeBestEffort('conversation:' + message.conversation_id, 'message:deleted:everyone', message);
 
         return res.status(200).json({
             message: 'Xoá message cho tất cả thành công',
@@ -460,18 +448,11 @@ const addReaction = async (req, res) => {
         }
 
         const reaction = await messageService.addReaction(messageId, userId, emoji);
-        const io = getIO();
-        const target = await messageRepository.getMessageById(messageId);
-        io.to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
-            messageId,
-            conversationId: target.conversation_id,
-            action: 'add',
-            reaction
-        });
-
+        await publishReactionUpdateBestEffort(messageId, 'add', reaction, userId, emoji);
         return res.status(201).json({ data: reaction });
     } catch (error) {
-        return res.status(error.statusCode || 500).json({ message: error.message || 'Không thể thêm reaction' });
+        const failure = toSafeHttpError(error, 'Không thể thêm reaction');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -485,22 +466,18 @@ const removeReaction = async (req, res) => {
             return res.status(400).json({ message: 'messageId không hợp lệ' });
         }
 
-        const reaction = await messageService.removeReaction(messageId, userId, decodeURIComponent(emoji));
-        const target = await messageRepository.getMessageById(messageId);
-        getIO().to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
-            messageId,
-            conversationId: target.conversation_id,
-            action: 'remove',
-            reaction: reaction || {
-                message_id: messageId,
-                user_id: userId,
-                emoji: decodeURIComponent(emoji)
-            }
-        });
-
+        let normalizedEmoji;
+        try {
+            normalizedEmoji = decodeURIComponent(emoji);
+        } catch {
+            return res.status(400).json({ message: 'Emoji không hợp lệ' });
+        }
+        const reaction = await messageService.removeReaction(messageId, userId, normalizedEmoji);
+        await publishReactionUpdateBestEffort(messageId, 'remove', reaction, userId, normalizedEmoji);
         return res.json({ data: reaction });
     } catch (error) {
-        return res.status(error.statusCode || 500).json({ message: error.message || 'Không thể xoá reaction' });
+        const failure = toSafeHttpError(error, 'Không thể xoá reaction');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
