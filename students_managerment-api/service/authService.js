@@ -1191,11 +1191,26 @@ const refresh = async (
     if (!rotatedToken) {
         // This request observed an active token before attempting rotation.
         // A competing tab/request may have consumed it in the meantime.
-        // Do not classify this race as replay: doing so would revoke the
-        // legitimate session when two refreshes overlap. A later request
-        // presenting the already-revoked token is handled by the historical
-        // lookup above and triggers replay response.
-        await removeAccessTokenFromRedis(newAccessToken);
+        // Preserve the winning session when the orphan AT can be removed.
+        try {
+            await removeAccessTokenFromRedis(newAccessToken);
+        } catch (cleanupError) {
+            // Fail closed only when Redis cannot confirm removal: otherwise
+            // this unreturned access token could remain usable in the still
+            // active session. PostgreSQL session state remains authoritative.
+            console.error('[AUTH] Could not remove losing refresh access token:', cleanupError.code || cleanupError.message);
+            try {
+                const revokedSession = await authRepository.revokeSessionForUserAndRefreshTokens(
+                    session.id,
+                    user.id
+                );
+                if (revokedSession) {
+                    emitSessionRevoked(session.id, 'REFRESH_ROTATION_CLEANUP_FAILED');
+                }
+            } catch (revocationError) {
+                console.error('[AUTH] Could not fail-close refresh rotation cleanup:', revocationError.code || revocationError.message);
+            }
+        }
 
         throw new Error(
             'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
