@@ -240,6 +240,8 @@ jobs:
         run: node -e "require('onnxruntime-node'); console.log('[Face Login] ONNX Runtime native module loaded')"
       - name: Run API unit tests
         run: npm test
+      - name: Verify cross-node session revocation over Redis Pub/Sub
+        run: node --test test/sessionRevocationPubSub.test.js
       - name: Test Face evaluation split isolation
         run: python -m unittest discover -s tools/face-eval -p 'test_*.py'
       - name: Run Cloudflare R2 Worker tests
