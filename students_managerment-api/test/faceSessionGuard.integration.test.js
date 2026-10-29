@@ -32,17 +32,27 @@ test('Face session issuance requires an active account and active credential in 
         [activeUserId, Buffer.from([1]), Buffer.alloc(12), Buffer.alloc(16), 'test-model', 'test-version']
     );
 
+    const credentialResult = await pool.query(
+        'SELECT id FROM user_face_credentials WHERE user_id = $1 AND disabled_at IS NULL',
+        [activeUserId]
+    );
+    const matchedCredentialId = String(credentialResult.rows[0].id);
     const session = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1'
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredentialId
     );
     assert.ok(session?.id, 'active account with active Face credential should create a session');
+
+    const mismatchedCredentialSession = await repository.createSessionForActiveFaceUser(
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', '00000000-0000-4000-8000-000000000000'
+    );
+    assert.equal(mismatchedCredentialSession, null, 'a replaced or different credential must not authorize the session');
 
     await pool.query(
         'UPDATE user_face_credentials SET disabled_at = CURRENT_TIMESTAMP WHERE user_id = $1',
         [activeUserId]
     );
     const disabledCredentialSession = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1'
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredentialId
     );
     assert.equal(disabledCredentialSession, null, 'disabled Face credential must not create a session');
 
@@ -52,7 +62,7 @@ test('Face session issuance requires an active account and active credential in 
     );
     await pool.query('UPDATE users SET is_active = FALSE WHERE id = $1', [activeUserId]);
     const inactiveAccountSession = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1'
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredentialId
     );
     assert.equal(inactiveAccountSession, null, 'inactive account must not create a Face session');
 });
