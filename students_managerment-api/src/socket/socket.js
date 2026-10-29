@@ -10,6 +10,7 @@ const notificationDeliveryService = require('../../service/notificationDeliveryS
 const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
+const { publishRealtimeBestEffort } = require('../../service/realtimeDelivery.js');
 const { isValidCallId, isValidCallType, normalizeCallFailureReason } = require('../../service/callValidation.js');
 const { isValidSessionDescription, isValidIceCandidate, wrapSocketEventListener } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
@@ -1012,6 +1013,12 @@ const initSocket = async (server) => {
             );
         };
 
+        const emitCallEventBestEffort = (room, event, payload) =>
+            publishRealtimeBestEffort(
+                () => io.to(room).emit(event, payload),
+                { event, room }
+            );
+
         const emitCallNotification = async (userIdToNotify, call, type, title, body) => {
             try {
                 const notification = await callRepository.createCallNotification(
@@ -1039,9 +1046,9 @@ const initSocket = async (server) => {
                 status: call.status,
                 activityAt: call.ended_at || call.updated_at || call.started_at || null
             };
-            io.to(`user:${payload.callerId}`).emit('call:activity:updated', payload);
-            io.to(`user:${payload.receiverId}`).emit('call:activity:updated', payload);
-            io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
+            emitCallEventBestEffort(`user:${payload.callerId}`, 'call:activity:updated', payload);
+            emitCallEventBestEffort(`user:${payload.receiverId}`, 'call:activity:updated', payload);
+            emitCallEventBestEffort(`conversation:${payload.conversationId}`, 'call:activity:updated', payload);
         };
 
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
@@ -1080,8 +1087,15 @@ const initSocket = async (server) => {
             // Offline users cannot receive the incoming-call event, but the call is
             // still recorded as ringing until the shared timeout marks it missed.
             if (onlineUsers.has(targetId)) {
-                const callerProfile = await userRepository.findActiveUserById(userId);
-                io.to(`user:${targetId}`).emit('call:incoming', {
+                let callerProfile = null;
+                try {
+                    callerProfile = await userRepository.findActiveUserById(userId);
+                } catch (profileError) {
+                    // The call record already exists; profile decoration must
+                    // not prevent the ringing timeout from being scheduled.
+                    console.warn('[CALL] Caller profile lookup failed:', profileError.code || 'PROFILE_LOOKUP_FAILED');
+                }
+                emitCallEventBestEffort(`user:${targetId}`, 'call:incoming', {
                     callId,
                     fromUserId: userId,
                     fromUsername: socket.user.username,
