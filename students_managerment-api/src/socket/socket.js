@@ -173,7 +173,24 @@ const initSocket = async (server) => {
             eventName,
             reservedSocketEvents.has(eventName)
                 ? listener
-                : wrapSocketEventListener(listener)
+                : wrapSocketEventListener(listener, (error, receiver) => {
+                    console.error('[SOCKET][event handler failed]', {
+                        event: String(eventName).slice(0, 80),
+                        userId: Number(socket.user?.id) || null,
+                        code: error?.code || 'SOCKET_EVENT_FAILED'
+                    });
+                    try {
+                        receiver.emit('socket:error', {
+                            code: 'EVENT_FAILED',
+                            message: 'Không thể xử lý sự kiện realtime. Vui lòng thử lại.'
+                        });
+                    } catch (emitError) {
+                        console.error('[SOCKET][event error notification failed]', {
+                            event: String(eventName).slice(0, 80),
+                            code: emitError?.code || 'SOCKET_ERROR_EMIT_FAILED'
+                        });
+                    }
+                })
         );
 
         const userId = Number(socket.user.id);
