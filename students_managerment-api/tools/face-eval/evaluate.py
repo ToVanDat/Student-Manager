@@ -38,6 +38,14 @@ def number(value, context):
     return result
 
 
+def validate_pair_identity(label, participant_a, participant_b, context):
+    same_participant = participant_a.strip() == participant_b.strip()
+    if label == "genuine" and not same_participant:
+        raise ValueError(f"{context}: genuine pairs must contain the same participant")
+    if label == "impostor" and same_participant:
+        raise ValueError(f"{context}: impostor pairs must contain different participants")
+
+
 def load_recognition(path):
     result = []
     for line, row in enumerate(read_rows(path, {"split", "label", "similarity", "participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b"}), 2):
@@ -48,8 +56,7 @@ def load_recognition(path):
         for key in ("participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b"):
             if not row[key].strip():
                 raise ValueError(f"{path}:{line}: {key} must be a pseudonymous non-empty identifier")
-        if row["participant_a"].strip() == row["participant_b"].strip():
-            raise ValueError(f"{path}:{line}: participant_a and participant_b must differ")
+        validate_pair_identity(label, row["participant_a"], row["participant_b"], f"{path}:{line}")
         if not -1 <= score <= 1:
             raise ValueError(f"{path}:{line}: cosine similarity must be in [-1,1]")
         result.append({"split": split, "genuine": label == "genuine", "score": score, **{key: row[key].strip() for key in ("participant_a", "participant_b", "session_a", "session_b", "device_a", "device_b")}})
