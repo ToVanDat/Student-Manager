@@ -102,12 +102,12 @@ const getMe = async (userId) => {
 
 // =====================================================
 // UPDATE PROFILE
-// username + email
+// display name + email
 // =====================================================
 
 const updateProfile = async (
     userId,
-    username,
+    fullName,
     email
 ) => {
 
@@ -120,19 +120,20 @@ const updateProfile = async (
 
 
     // =================================================
-    // VALIDATE USERNAME
+    // VALIDATE DISPLAY NAME
     // =================================================
 
     if (
-        !username ||
-        !String(username).trim()
+        !fullName ||
+        !String(fullName).trim()
     ) {
-
-        throw new Error(
-            'Username là bắt buộc'
-        );
+        throw new Error('Tên hiển thị là bắt buộc');
     }
 
+    fullName = String(fullName).trim();
+    if (fullName.length > 120) {
+        throw new Error('Tên hiển thị không được vượt quá 120 ký tự');
+    }
 
     // =================================================
     // VALIDATE EMAIL
@@ -149,32 +150,10 @@ const updateProfile = async (
     }
 
 
-    username =
-        String(username).trim();
-
     email =
         String(email)
             .trim()
             .toLowerCase();
-
-
-    // =================================================
-    // CHECK DUPLICATE USERNAME
-    // =================================================
-
-    const existingUsername =
-        await authRepository
-            .findUserByUsernameExceptId(
-                username,
-                userId
-            );
-
-    if (existingUsername) {
-
-        throw new Error(
-            'Username đã tồn tại'
-        );
-    }
 
 
     // =================================================
@@ -204,7 +183,7 @@ const updateProfile = async (
         await authRepository
             .updateUserProfile(
                 userId,
-                username,
+                fullName,
                 email
             );
 
