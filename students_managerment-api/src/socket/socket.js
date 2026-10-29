@@ -16,6 +16,7 @@ const { isValidSessionDescription, isValidIceCandidate, installSocketEventValida
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 const { joinConversationRoom } = require('../../service/socketRoomAccess.js');
+const { isSocketSessionActive } = require('../../service/socketSessionGuard.js');
 
 let io = null;
 let presenceSubscriber = null;
@@ -255,17 +256,7 @@ const initSocket = async (server) => {
             if (sessionGuardRunning || !socket.connected) return;
             sessionGuardRunning = true;
             try {
-                const currentSession = await authRepository.findSessionByIdAndUserId(
-                    sessionId,
-                    userId
-                );
-                const currentUser = await authRepository.findUserById(userId);
-                if (
-                    !currentSession ||
-                    currentSession.revoked_at !== null ||
-                    !currentUser ||
-                    !currentUser.is_active
-                ) {
+                if (!await isSocketSessionActive(authRepository, sessionId, userId)) {
                     socket.emit('session:revoked', {
                         sessionId,
                         reason: 'SESSION_REVOKED'
