@@ -8,6 +8,8 @@ const passwordLoginProtection = require('../middleware/passwordLoginProtection')
 
 test('three successful password logins from one IP do not consume the failed-login quota', async () => {
     const originalEval = redisClient.eval;
+    const originalSecret = process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+    process.env.AUTH_RATE_LIMIT_HASH_SECRET = 'test-only-secret-with-at-least-32-characters';
     const counts = new Map();
 
     redisClient.eval = async (script, options) => {
@@ -65,5 +67,7 @@ test('three successful password logins from one IP do not consume the failed-log
     } finally {
         await new Promise(resolve => server.close(resolve));
         redisClient.eval = originalEval;
+        if (originalSecret === undefined) delete process.env.AUTH_RATE_LIMIT_HASH_SECRET;
+        else process.env.AUTH_RATE_LIMIT_HASH_SECRET = originalSecret;
     }
 });
