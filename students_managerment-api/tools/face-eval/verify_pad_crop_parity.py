@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the production JavaScript PAD crop byte-for-byte with MiniVision/OpenCV."""
+"""Compare the production JavaScript PAD crop with MiniVision/OpenCV (<=1 intensity level)."""
 import argparse
 import base64
 import json
@@ -78,15 +78,19 @@ def main():
             "mismatched_pixels": mismatch_pixels,
             "total_pixels": 80 * 80,
         })
-        if max_difference != 0:
+        # OpenCV INTER_LINEAR uses fixed-point interpolation coefficients;
+        # the JavaScript implementation uses floating-point bilinear sampling.
+        # A one-level uint8 rounding delta is acceptable; larger deltas indicate
+        # a geometry or sampling regression and must fail the parity gate.
+        if max_difference > 1:
             raise SystemExit(
                 f"[crop-parity] {case['name']} differs from MiniVision/OpenCV: "
                 f"max_abs_difference={max_difference}, mismatched_pixels={mismatch_pixels}"
             )
 
     print(json.dumps({
-        "status": "PIXEL_PARITY_OK",
-        "reference": "MiniVision CropImage._get_new_box + cv2.resize(INTER_LINEAR)",
+        "status": "PIXEL_PARITY_TOLERANCE_OK",
+        "reference": "MiniVision CropImage._get_new_box + cv2.resize(INTER_LINEAR), max absolute uint8 delta <= 1",
         "cases": results,
         "limitations": [
             "Synthetic deterministic RGB buffers; no camera/device PAD accuracy claim.",
