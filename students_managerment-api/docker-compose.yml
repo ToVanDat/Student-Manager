@@ -23,6 +23,11 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       FRONTEND_URLS: ${FRONTEND_URLS:-http://localhost:5173,http://127.0.0.1:5173,https://student-manager.local}
       RESEND_API_KEY: ${RESEND_API_KEY}
+      # Ollama runs on the Windows host; opt in only to Docker Desktop's host gateway.
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_ALLOW_DOCKER_HOST: ${OLLAMA_ALLOW_DOCKER_HOST:-true}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
     depends_on:
       postgres:
         condition: service_healthy
