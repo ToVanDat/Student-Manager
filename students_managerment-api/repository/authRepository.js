@@ -572,9 +572,15 @@ const createSessionForActiveFaceUser = async (
     deviceName = null,
     userAgent = null,
     ipAddress = null,
-    expectedCredentialId = null
+    expectedCredential = null
 ) => {
-    if (typeof expectedCredentialId !== 'string' || !expectedCredentialId) return null;
+    if (!expectedCredential || typeof expectedCredential.id !== 'string' ||
+        !Buffer.isBuffer(expectedCredential.ciphertext) ||
+        !Buffer.isBuffer(expectedCredential.nonce) ||
+        !Buffer.isBuffer(expectedCredential.authTag) ||
+        !Number.isInteger(Number(expectedCredential.keyVersion)) ||
+        typeof expectedCredential.modelId !== 'string' ||
+        typeof expectedCredential.modelVersion !== 'string') return null;
     const sessionId = crypto.randomUUID();
     const result = await pool.query(
         `
@@ -590,6 +596,12 @@ const createSessionForActiveFaceUser = async (
             FROM user_face_credentials AS credential
             INNER JOIN active_user AS account ON account.id = credential.user_id
             WHERE credential.id = $6
+              AND credential.ciphertext = $7
+              AND credential.nonce = $8
+              AND credential.auth_tag = $9
+              AND credential.key_version = $10
+              AND credential.model_id = $11
+              AND credential.model_version = $12
               AND credential.disabled_at IS NULL
             FOR UPDATE OF credential
         )
@@ -601,7 +613,10 @@ const createSessionForActiveFaceUser = async (
         INNER JOIN active_face_credential AS face ON face.user_id = account.id
         RETURNING *
         `,
-        [sessionId, userId, deviceName, userAgent, ipAddress, expectedCredentialId]
+        [sessionId, userId, deviceName, userAgent, ipAddress,
+            expectedCredential.id, expectedCredential.ciphertext, expectedCredential.nonce,
+            expectedCredential.authTag, expectedCredential.keyVersion,
+            expectedCredential.modelId, expectedCredential.modelVersion]
     );
     return result.rows[0] || null;
 };
