@@ -25,9 +25,9 @@ test('single-session revocation scopes the session by both session ID and owner,
         assert.deepEqual(params, ['session-1', 42]);
         assert.match(sql, /^WITH revoked_session AS/);
         assert.match(sql, /UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP/);
-        assert.match(sql, /WHERE id = \\$1 AND user_id = \\$2 AND revoked_at IS NULL/);
+        assert.match(sql, /WHERE id = \$1 AND user_id = \$2 AND revoked_at IS NULL/);
         assert.match(sql, /UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP/);
-        assert.match(sql, /session_id IN \\(SELECT id FROM revoked_session\\)/);
+        assert.match(sql, /session_id IN \(SELECT id FROM revoked_session\)/);
         assert.match(sql, /revoked_at IS NULL/);
         return { rows: [{ id: 'session-1', user_id: 42, revoked_at: new Date() }], rowCount: 1 };
     }, async () => {
@@ -41,9 +41,9 @@ test('bulk session revocation preserves the current session and scopes all revok
     await withMockQuery(async (sql, params) => {
         assert.deepEqual(params, [42, 'current-session']);
         assert.match(sql, /^WITH revoked_sessions AS/);
-        assert.match(sql, /WHERE user_id = \\$1 AND id <> \\$2 AND revoked_at IS NULL/);
+        assert.match(sql, /WHERE user_id = \$1 AND id <> \$2 AND revoked_at IS NULL/);
         assert.match(sql, /UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP/);
-        assert.match(sql, /session_id IN \\(SELECT id FROM revoked_sessions\\)/);
+        assert.match(sql, /session_id IN \(SELECT id FROM revoked_sessions\)/);
         return { rows: [{ id: 'other-1' }, { id: 'other-2' }], rowCount: 2 };
     }, async () => {
         const result = await authRepository.revokeOtherSessionsAndRefreshTokens(42, 'current-session');
