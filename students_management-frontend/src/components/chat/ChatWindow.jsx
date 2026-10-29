@@ -1763,7 +1763,7 @@ export default function ChatWindow({
                 <textarea
                     ref={composerInputRef}
                     rows={1}
-                    placeholder="Nhập tin nhắn..."
+                    placeholder={t("chatComposerPlaceholder")}
                     value={input}
                     onChange={event => {
                         handleChange(event);
@@ -1780,8 +1780,8 @@ export default function ChatWindow({
                         event.currentTarget.style.height = 'auto';
                         event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 160)}px`;
                     }}
-                    aria-label="Soạn tin nhắn"
-                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border px-4 py-3 text-sm leading-5 placeholder:text-slate-400 outline-none transition focus:ring-4 focus:ring-blue-50"
+                    aria-label={t("chatComposerLabel")}
+                    className="max-h-40 min-h-12 flex-1 resize-none self-center rounded-2xl border px-4 py-3 text-base leading-5 placeholder:text-slate-400 outline-none transition focus:ring-4 focus:ring-blue-50 sm:text-sm"
                     style={{ backgroundColor: 'var(--chat-theme-bg)', color: 'var(--chat-theme-other-text)', borderColor: 'var(--chat-theme-border)' }}
                 />
 
