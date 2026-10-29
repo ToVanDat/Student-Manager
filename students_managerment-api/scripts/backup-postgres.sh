@@ -21,16 +21,18 @@ for command_name in psql pg_dump pg_restore; do
   fi
 done
 
-# Fail before creating an artifact if libpq connected to a different database
-# or role than the operator explicitly selected.
+# Use stdin (not psql -c) so psql safely interpolates the expected identity
+# variables before sending the query to PostgreSQL.
 identity_ok="$(psql --no-psqlrc --no-align --tuples-only \
-  --set=ON_ERROR_STOP=1 --set=expected_db="$DB_NAME" --set=expected_user="$DB_USER" \
-  --command="SELECT (current_database() = :'expected_db') AND (current_user = :'expected_user');")"
+  --set=ON_ERROR_STOP=1 --set=expected_db="$DB_NAME" --set=expected_user="$DB_USER" <<'SQL'
+SELECT (current_database() = :'expected_db') AND (current_user = :'expected_user');
+SQL
+)"
 if [[ "$identity_ok" != "t" ]]; then
   echo "Connected PostgreSQL database/user does not match DB_NAME/DB_USER; refusing backup." >&2
   exit 1
 fi
-printf 'Verified PostgreSQL target: host=%s port=%s database=%s user=%s\\n' \
+printf 'Verified PostgreSQL target: host=%s port=%s database=%s user=%s\n' \
   "$PGHOST" "$PGPORT" "$DB_NAME" "$DB_USER"
 
 mkdir -p "$BACKUP_DIR"
