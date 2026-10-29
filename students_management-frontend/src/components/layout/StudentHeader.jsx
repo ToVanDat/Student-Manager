@@ -217,11 +217,11 @@ function StudentHeader({
                             <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-8 shrink-0 rounded-full object-cover" />
                         ) : (
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
-                                {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                                {(user?.full_name || user?.username)?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
                         )}
                         <div className="hidden min-w-0 flex-col sm:flex">
-                            <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.username || 'User'}</strong>
+                            <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.full_name || user?.username || 'User'}</strong>
                             <span className="text-[10px] text-[#71829b] dark:text-slate-400">
                                 {user?.role === 'admin' ? t('administrator') : t('user')}
                             </span>
