@@ -84,7 +84,8 @@ async function issueSession(user, req, options = {}) {
             user.id,
             deviceName,
             userAgent,
-            req.ip || null
+            req.ip || null,
+            options.requireFaceCredential ? options.faceCredentialId : undefined
         );
         if (!session) {
             const inactiveError = new Error('Tài khoản đã bị khóa hoặc không tồn tại');
