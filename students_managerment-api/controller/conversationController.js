@@ -4,6 +4,7 @@ const callRepository = require('../repository/callRepository');
 const userRepository = require('../repository/userRepository');
 const { getIO, publishRealtimeEvent } = require('../src/socket/socket');
 const { publishRealtimeBestEffort } = require('../service/realtimeDelivery');
+const { evictUserFromConversation } = require('../service/socketRoomAccess');
 
 const emitConversationEventBestEffort = (conversationId, event, payload) =>
     publishRealtimeBestEffort(
@@ -443,12 +444,12 @@ const removeGroupMember = async (req, res, next) => {
             Number(req.user.id),
             targetUserId
         );
-        const io = getIO();
         const removedUserId = Number(data.user_id);
 
         // Enforce room eviction immediately after the committed membership
-        // change, before optional notification metadata lookups.
-        io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
+        // change, before optional notification metadata lookups. If the
+        // adapter cannot remove room membership, disconnect the user's sockets.
+        await evictUserFromConversation(getIO(), removedUserId, conversationId);
 
         const memberIdsAfter = await getMemberIdsForNotification(conversationId);
         const targetName = await getUsername(targetUserId);
@@ -490,11 +491,10 @@ const leaveGroup = async (req, res, next) => {
             conversationId,
             Number(req.user.id)
         );
-        const io = getIO();
         const leavingUserId = Number(data.user_id);
 
         // Evict all tabs immediately after the membership mutation commits.
-        io.in(`user:${leavingUserId}`).socketsLeave(`conversation:${conversationId}`);
+        await evictUserFromConversation(getIO(), leavingUserId, conversationId);
 
         const memberIdsAfter = await getMemberIdsForNotification(conversationId);
         const leavingName = await getUsername(Number(req.user.id));
