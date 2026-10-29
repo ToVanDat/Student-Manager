@@ -2,14 +2,9 @@ name: RAG migration smoke
 
 on:
   push:
-    branches:
-      - main
-      - feature/chat-1to1-complete
-      - fix/password-cooldown-ip-guard
+    branches: [main, feature/chat-1to1-complete, fix/password-cooldown-ip-guard]
   pull_request:
-    branches:
-      - main
-      - feature/chat-1to1-complete
+    branches: [main, feature/chat-1to1-complete]
   workflow_dispatch:
 
 permissions:
@@ -17,7 +12,7 @@ permissions:
 
 jobs:
   rag-migration-smoke:
-    name: RAG schema and lifecycle migration smoke
+    name: RAG schema, lifecycle, and retrieval smoke
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -34,9 +29,8 @@ jobs:
           --health-timeout 5s
           --health-retries 20
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Create isolated prerequisite schema
+      - uses: actions/checkout@v4
+      - name: Create isolated prerequisites
         env:
           PGPASSWORD: postgres
         run: |
@@ -45,72 +39,74 @@ jobs:
           CREATE TABLE users (id BIGSERIAL PRIMARY KEY);
           INSERT INTO users DEFAULT VALUES;
           SQL
-      - name: Apply RAG schema migration
+      - name: Apply schema and lifecycle migrations (twice)
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_schema_migration.sql
-      - name: Apply RAG lifecycle migration twice
-        env:
-          PGPASSWORD: postgres
-        run: |
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_lifecycle_migration.sql
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/assistant_rag_lifecycle_migration.sql
-      - name: Verify constraints, archive, restore, and retention
+      - name: Verify constraints, lifecycle, retrieval scope, and vector distance
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d rag_migration_test -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO assistant_documents
+            (id, title, source_name, source_sha256, mime_type, visibility, status, created_by)
+          VALUES
+            ('123e4567-e89b-42d3-a456-426614174000', 'Student handbook', 'student.txt', repeat('a', 64), 'text/plain', 'student', 'ready', 1),
+            ('123e4567-e89b-42d3-a456-426614174001', 'Admin operations', 'admin.txt', repeat('b', 64), 'text/plain', 'admin', 'ready', 1),
+            ('123e4567-e89b-42d3-a456-426614174002', 'Public guide', 'public.txt', repeat('c', 64), 'text/plain', 'all', 'ready', 1);
+          INSERT INTO assistant_document_chunks (document_id, chunk_index, content, embedding)
+          SELECT id, 0, title || ' retrieval fixture', array_fill(0.1::real, ARRAY[768])::vector
+          FROM assistant_documents;
+
           DO $verify$
           DECLARE
-            doc_id uuid := '123e4567-e89b-42d3-a456-426614174000';
+            student_count integer;
+            admin_count integer;
+            visible_after_archive integer;
+            vector_hits integer;
             rejected boolean := false;
+            student_id uuid := '123e4567-e89b-42d3-a456-426614174000';
           BEGIN
-            IF NOT EXISTS (
-              SELECT 1 FROM information_schema.columns
-              WHERE table_schema = 'public' AND table_name = 'assistant_documents'
-                AND column_name = 'archived_at'
-            ) THEN RAISE EXCEPTION 'archived_at column was not installed'; END IF;
+            SELECT count(*) INTO student_count
+              FROM assistant_document_chunks c JOIN assistant_documents d ON d.id = c.document_id
+             WHERE d.status = 'ready' AND d.visibility = ANY(ARRAY['all', 'student']::varchar[]);
+            IF student_count <> 2 THEN RAISE EXCEPTION 'student scope expected 2 rows, got %', student_count; END IF;
 
-            INSERT INTO assistant_documents
-              (id, title, source_name, source_sha256, mime_type, visibility, status, created_by)
-            VALUES
-              (doc_id, 'CI handbook', 'handbook.txt', repeat('a', 64),
-               'text/plain', 'student', 'ready', 1);
+            SELECT count(*) INTO admin_count
+              FROM assistant_document_chunks c JOIN assistant_documents d ON d.id = c.document_id
+             WHERE d.status = 'ready' AND d.visibility = ANY(ARRAY['all', 'student', 'admin']::varchar[]);
+            IF admin_count <> 3 THEN RAISE EXCEPTION 'admin scope expected 3 rows, got %', admin_count; END IF;
 
-            INSERT INTO assistant_document_chunks
-              (document_id, chunk_index, content, embedding)
-            VALUES
-              (doc_id, 0, 'CI-only test chunk', array_fill(0.1::real, ARRAY[768])::vector);
+            SELECT count(*) INTO vector_hits
+              FROM assistant_document_chunks
+             WHERE embedding <=> array_fill(0.1::real, ARRAY[768])::vector < 0.001;
+            IF vector_hits <> 3 THEN RAISE EXCEPTION 'pgvector distance query expected 3 hits, got %', vector_hits; END IF;
 
-            UPDATE assistant_documents
-               SET status = 'archived', archived_at = CURRENT_TIMESTAMP
-             WHERE id = doc_id;
-            IF NOT EXISTS (SELECT 1 FROM assistant_documents WHERE id = doc_id AND status = 'archived' AND archived_at IS NOT NULL) THEN
-              RAISE EXCEPTION 'document archive transition failed';
-            END IF;
-            IF NOT EXISTS (SELECT 1 FROM assistant_document_chunks WHERE document_id = doc_id) THEN
-              RAISE EXCEPTION 'archiving unexpectedly removed chunks';
+            UPDATE assistant_documents SET status = 'archived', archived_at = CURRENT_TIMESTAMP WHERE id = student_id;
+            SELECT count(*) INTO visible_after_archive
+              FROM assistant_document_chunks c JOIN assistant_documents d ON d.id = c.document_id
+             WHERE d.status = 'ready' AND d.visibility = ANY(ARRAY['all', 'student']::varchar[]);
+            IF visible_after_archive <> 1 THEN RAISE EXCEPTION 'archived document leaked into retrieval'; END IF;
+            IF NOT EXISTS (SELECT 1 FROM assistant_document_chunks WHERE document_id = student_id) THEN
+              RAISE EXCEPTION 'archive deleted document chunks';
             END IF;
 
-            UPDATE assistant_documents
-               SET status = 'ready', archived_at = NULL
-             WHERE id = doc_id;
-            IF NOT EXISTS (SELECT 1 FROM assistant_documents WHERE id = doc_id AND status = 'ready' AND archived_at IS NULL) THEN
-              RAISE EXCEPTION 'document restore transition failed';
+            UPDATE assistant_documents SET status = 'ready', archived_at = NULL WHERE id = student_id;
+            IF NOT EXISTS (SELECT 1 FROM assistant_documents WHERE id = student_id AND status = 'ready' AND archived_at IS NULL) THEN
+              RAISE EXCEPTION 'restore transition failed';
             END IF;
 
             BEGIN
               INSERT INTO assistant_documents
                 (title, source_name, source_sha256, mime_type, visibility, status, created_by)
-              VALUES ('Invalid scope', 'invalid.txt', repeat('b', 64),
-                      'text/plain', 'private', 'ready', 1);
-            EXCEPTION WHEN check_violation THEN
-              rejected := true;
+              VALUES ('Invalid scope', 'invalid.txt', repeat('d', 64), 'text/plain', 'private', 'ready', 1);
+            EXCEPTION WHEN check_violation THEN rejected := true;
             END;
             IF NOT rejected THEN RAISE EXCEPTION 'invalid visibility scope was accepted'; END IF;
-
-            IF (SELECT count(*) FROM assistant_document_chunks WHERE document_id = doc_id) <> 1 THEN
+            IF (SELECT count(*) FROM assistant_document_chunks WHERE document_id = student_id) <> 1 THEN
               RAISE EXCEPTION 'chunk retention invariant failed';
             END IF;
           END
