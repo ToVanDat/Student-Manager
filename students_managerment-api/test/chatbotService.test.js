@@ -378,3 +378,24 @@ test('chatbot history and conversation index are isolated across different users
         error => assert.equal(error.status, 404)
     );
 });
+
+test('conversation indexes and histories are isolated across users sharing the same session id', async () => {
+    const store = new Map();
+    const redis = {
+        isReady: true,
+        get: async key => store.get(key) ?? null,
+        set: async (key, value) => { store.set(key, value); },
+        exists: async key => store.has(key),
+        del: async key => { store.delete(key); }
+    };
+
+    const userA = await createConversation({ userId: '101', sessionId: 'same-session', title: 'A private chat', redis });
+    const userB = await createConversation({ userId: '202', sessionId: 'same-session', title: 'B private chat', redis });
+    await redis.set('assistant:history:101:same-session:' + userA.id, JSON.stringify([{ role: 'assistant', content: 'private A' }]));
+    await redis.set('assistant:history:202:same-session:' + userB.id, JSON.stringify([{ role: 'assistant', content: 'private B' }]));
+
+    assert.deepEqual((await listConversations({ userId: '101', sessionId: 'same-session', redis })).map(item => item.id), [userA.id]);
+    assert.deepEqual((await listConversations({ userId: '202', sessionId: 'same-session', redis })).map(item => item.id), [userB.id]);
+    assert.deepEqual(await getHistory({ userId: '101', sessionId: 'same-session', conversationId: userB.id, redis }), []);
+    assert.deepEqual(await getHistory({ userId: '202', sessionId: 'same-session', conversationId: userA.id, redis }), []);
+});
