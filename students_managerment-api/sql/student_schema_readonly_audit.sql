@@ -201,3 +201,83 @@ UNION ALL
 SELECT
     'pgvector extension',
     (SELECT extname || ' ' || extversion FROM pg_extension WHERE extname = 'vector');
+
+
+-- 11) Enrollment schema, constraints and indexes.
+-- Confirms whether duplicate prevention and score boundaries are enforced by PostgreSQL.
+SELECT
+    table_name,
+    ordinal_position,
+    column_name,
+    data_type,
+    udt_name,
+    is_nullable,
+    column_default
+FROM information_schema.columns
+WHERE table_schema = current_schema()
+  AND table_name IN ('enrollments', 'subjects', 'semesters')
+ORDER BY table_name, ordinal_position;
+
+SELECT
+    tc.table_name,
+    tc.constraint_name,
+    tc.constraint_type,
+    kcu.column_name,
+    ccu.table_name AS referenced_table,
+    ccu.column_name AS referenced_column,
+    rc.delete_rule,
+    chk.check_clause
+FROM information_schema.table_constraints tc
+LEFT JOIN information_schema.key_column_usage kcu
+  ON kcu.constraint_catalog = tc.constraint_catalog
+ AND kcu.constraint_schema = tc.constraint_schema
+ AND kcu.constraint_name = tc.constraint_name
+ AND kcu.table_name = tc.table_name
+LEFT JOIN information_schema.constraint_column_usage ccu
+  ON ccu.constraint_catalog = tc.constraint_catalog
+ AND ccu.constraint_schema = tc.constraint_schema
+ AND ccu.constraint_name = tc.constraint_name
+LEFT JOIN information_schema.referential_constraints rc
+  ON rc.constraint_catalog = tc.constraint_catalog
+ AND rc.constraint_schema = tc.constraint_schema
+ AND rc.constraint_name = tc.constraint_name
+LEFT JOIN information_schema.check_constraints chk
+  ON chk.constraint_catalog = tc.constraint_catalog
+ AND chk.constraint_schema = tc.constraint_schema
+ AND chk.constraint_name = tc.constraint_name
+WHERE tc.table_schema = current_schema()
+  AND tc.table_name = 'enrollments'
+ORDER BY tc.constraint_type, tc.constraint_name, kcu.ordinal_position;
+
+SELECT
+    tablename AS table_name,
+    indexname AS index_name,
+    indexdef AS index_definition
+FROM pg_indexes
+WHERE schemaname = current_schema()
+  AND tablename = 'enrollments'
+ORDER BY indexname;
+
+-- 12) Enrollment data-quality counts only; no student or grade values are exposed.
+SELECT
+    COUNT(*) AS total_enrollments,
+    COUNT(*) FILTER (WHERE student_id IS NULL) AS missing_student_id,
+    COUNT(*) FILTER (WHERE subject_id IS NULL) AS missing_subject_id,
+    COUNT(*) FILTER (WHERE semester_id IS NULL) AS missing_semester_id,
+    COUNT(*) FILTER (WHERE midterm_score IS NOT NULL AND (midterm_score < 0 OR midterm_score > 10)) AS invalid_midterm_score_count,
+    COUNT(*) FILTER (WHERE final_score IS NOT NULL AND (final_score < 0 OR final_score > 10)) AS invalid_final_score_count,
+    COUNT(*) FILTER (WHERE total_score IS NOT NULL AND (total_score < 0 OR total_score > 10)) AS invalid_total_score_count
+FROM enrollments;
+
+-- 13) Duplicate enrollment candidates by (student_id, subject_id, semester_id).
+-- A non-zero count must be investigated before adding a UNIQUE constraint.
+SELECT
+    COUNT(*)::int AS duplicate_group_count,
+    COALESCE(SUM(group_size), 0)::bigint AS rows_in_duplicate_groups,
+    COALESCE(MAX(group_size), 0)::bigint AS largest_duplicate_group
+FROM (
+    SELECT COUNT(*) AS group_size
+    FROM enrollments
+    GROUP BY student_id, subject_id, semester_id
+    HAVING COUNT(*) > 1
+) duplicate_groups;
