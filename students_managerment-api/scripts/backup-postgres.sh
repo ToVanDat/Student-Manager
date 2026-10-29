@@ -37,9 +37,9 @@ pg_restore --list "$temporary_file" >/dev/null
 mv "$temporary_file" "$final_file"
 
 if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$final_file" > "$final_file.sha256"
+  (cd "$BACKUP_DIR" && sha256sum "$(basename "$final_file")" > "$(basename "$final_file").sha256")
 elif command -v shasum >/dev/null 2>&1; then
-  shasum -a 256 "$final_file" > "$final_file.sha256"
+  (cd "$BACKUP_DIR" && shasum -a 256 "$(basename "$final_file")" > "$(basename "$final_file").sha256")
 else
   echo "Backup verified, but no SHA-256 utility is available." >&2
   exit 1
