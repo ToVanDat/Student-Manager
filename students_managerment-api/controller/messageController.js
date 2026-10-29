@@ -93,10 +93,19 @@ const createMessage = async (req, res) => {
                 replyToMessageId
             );
 
-        await conversationRepository.unhideConversationForMembers(
-            conversationId,
-            senderId
-        );
+        try {
+            await conversationRepository.unhideConversationForMembers(
+                conversationId,
+                senderId
+            );
+        } catch (sideEffectError) {
+            // Message persistence is already committed. A visibility-refresh
+            // failure must not tell the sender that the message itself failed.
+            console.error('[MESSAGE] Conversation visibility refresh failed:', {
+                conversationId,
+                code: sideEffectError?.code || 'CONVERSATION_VISIBILITY_REFRESH_FAILED'
+            });
+        }
 
         // Persistence has completed. Realtime fan-out and push delivery are
         // best-effort and must not turn a committed message into an HTTP failure.
