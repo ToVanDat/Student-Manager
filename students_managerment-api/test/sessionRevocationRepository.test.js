@@ -8,7 +8,7 @@ const withMockQuery = async (handler, run) => {
     const originalQuery = pool.query;
     const calls = [];
     pool.query = async (sql, params = []) => {
-        const statement = sql.replace(/\\s+/g, ' ').trim();
+        const statement = sql.replace(/\s+/g, ' ').trim();
         calls.push({ statement, params });
         return handler(statement, params, calls);
     };
