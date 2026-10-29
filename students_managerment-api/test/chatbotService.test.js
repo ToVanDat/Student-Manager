@@ -218,9 +218,15 @@ test('getOllamaConfig permits loopback HTTP and defaults to the local model', ()
     }
 });
 
-test('getOllamaConfig rejects remote plaintext, credentials and URL query strings', () => {
+test('getOllamaConfig allows Docker host gateway only with explicit opt-in', () => {
     const previousUrl = process.env.OLLAMA_BASE_URL;
+    const previousOptIn = process.env.OLLAMA_ALLOW_DOCKER_HOST;
     try {
+        process.env.OLLAMA_BASE_URL = 'http://host.docker.internal:11434';
+        delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        assert.throws(() => getOllamaConfig(), error => error.status === 503);
+        process.env.OLLAMA_ALLOW_DOCKER_HOST = 'true';
+        assert.equal(getOllamaConfig().baseUrl, 'http://host.docker.internal:11434');
         process.env.OLLAMA_BASE_URL = 'http://192.168.1.20:11434';
         assert.throws(() => getOllamaConfig(), error => error.status === 503);
         process.env.OLLAMA_BASE_URL = 'https://user:secret@example.com';
@@ -230,6 +236,8 @@ test('getOllamaConfig rejects remote plaintext, credentials and URL query string
     } finally {
         if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
         else process.env.OLLAMA_BASE_URL = previousUrl;
+        if (previousOptIn === undefined) delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        else process.env.OLLAMA_ALLOW_DOCKER_HOST = previousOptIn;
     }
 });
 
