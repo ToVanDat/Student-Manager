@@ -17,6 +17,7 @@ const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middlewar
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 const { joinConversationRoom } = require('../../service/socketRoomAccess.js');
 const { isSocketSessionActive } = require('../../service/socketSessionGuard.js');
+const { parseSessionRevocationEvent, publishSessionRevocation } = require('../../service/sessionRevocationPubSub.js');
 
 let io = null;
 let presenceSubscriber = null;
@@ -84,11 +85,9 @@ const initSocket = async (server) => {
                 }
                 return;
             }
-            if (event?.event === 'session:revoked') {
-                disconnectSessionSocketsLocally(
-                    event?.payload?.sessionId,
-                    event?.payload?.reason || 'SESSION_REVOKED'
-                );
+            const revocation = parseSessionRevocationEvent(event);
+            if (revocation) {
+                disconnectSessionSocketsLocally(revocation.sessionId, revocation.reason);
             }
         } catch (error) {
             console.error('[PRESENCE][pubsub message invalid]', error.message);
@@ -1680,7 +1679,7 @@ const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
     // Disconnect sockets on this node immediately, then fan out the revocation
     // to every other Socket.IO node through the shared Redis Pub/Sub channel.
     disconnectSessionSocketsLocally(sessionId, reason);
-    publishRealtimeEvent('session:revoked', { sessionId, reason }).catch((error) => {
+    publishSessionRevocation(redisClient, String(sessionId), reason).catch((error) => {
         console.error('[SOCKET][session revocation broadcast failed]', {
             sessionId,
             code: error.code || 'SESSION_REVOCATION_BROADCAST_FAILED'
