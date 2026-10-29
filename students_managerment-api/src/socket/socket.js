@@ -1115,14 +1115,14 @@ const initSocket = async (server) => {
                     for (const expired of expiredCalls) {
                         emitCallActivityUpdated(expired);
                         clearCallTimer(expired.call_id);
-                        io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                        emitCallEventBestEffort(`user:${Number(expired.receiver_id)}`, 'call:ended', {
                             callId: expired.call_id,
                             fromUserId: Number(expired.caller_id),
                             toUserId: Number(expired.receiver_id),
                             reason: 'ring-timeout',
                             status: 'missed'
                         });
-                        io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                        emitCallEventBestEffort(`user:${Number(expired.caller_id)}`, 'call:timeout', {
                             callId: expired.call_id, status: 'missed', reason: 'ring-timeout'
                         });
                         await emitCallNotification(
@@ -1206,14 +1206,14 @@ const initSocket = async (server) => {
                 for (const expired of expiredCalls) {
                     emitCallActivityUpdated(expired);
                     clearCallTimer(expired.call_id);
-                    io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                    emitCallEventBestEffort(`user:${Number(expired.receiver_id)}`, 'call:ended', {
                         callId: expired.call_id,
                         fromUserId: Number(expired.caller_id),
                         toUserId: Number(expired.receiver_id),
                         reason: 'ring-timeout',
                         status: 'missed'
                     });
-                    io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                    emitCallEventBestEffort(`user:${Number(expired.caller_id)}`, 'call:timeout', {
                         callId: expired.call_id, status: 'missed', reason: 'ring-timeout'
                     });
                     await emitCallNotification(
