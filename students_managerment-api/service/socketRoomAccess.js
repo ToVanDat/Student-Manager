@@ -27,4 +27,27 @@ async function evictUserFromConversation(io, userId, conversationId) {
     }
 }
 
-module.exports = { evictUserFromConversation };
+
+/**
+ * Close the race between membership validation and room subscription.
+ * Check once before joining, then again after joining. If membership was
+ * revoked while the join was in flight, immediately leave before confirming
+ * the subscription to the client. A later revocation is handled by the
+ * membership-removal path's room eviction.
+ */
+async function joinConversationRoom(socket, conversationRepository, userId, conversationId) {
+    const roomName = `conversation:${Number(conversationId)}`;
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        return false;
+    }
+
+    await socket.join(roomName);
+    if (!await conversationRepository.isConversationMember(conversationId, userId)) {
+        await socket.leave(roomName);
+        return false;
+    }
+
+    return true;
+}
+
+module.exports = { evictUserFromConversation, joinConversationRoom };
