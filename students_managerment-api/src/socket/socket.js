@@ -81,6 +81,13 @@ const initSocket = async (server) => {
                 if (Number.isSafeInteger(conversationId) && conversationId > 0) {
                     io?.to(`conversation:${conversationId}`).emit(event.event, event.payload);
                 }
+                return;
+            }
+            if (event?.event === 'session:revoked') {
+                disconnectSessionSocketsLocally(
+                    event?.payload?.sessionId,
+                    event?.payload?.reason || 'SESSION_REVOKED'
+                );
             }
         } catch (error) {
             console.error('[PRESENCE][pubsub message invalid]', error.message);
@@ -1623,23 +1630,30 @@ const getIO = () => {
 
 const isUserOnline = (userId) => onlineUsers.has(Number(userId));
 
-const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
-    const socketServer = getIO();
+const disconnectSessionSocketsLocally = (sessionId, reason = 'SESSION_REVOKED') => {
+    if (!io || !sessionId) return;
     const roomName = `session:${sessionId}`;
-
-    // Notify and forcibly disconnect every tab/socket belonging to this
-    // revoked session. Emitting an event alone would leave old sockets able
-    // to continue sending realtime events after their session was revoked.
-    const roomSocketIds = socketServer.sockets.adapter.rooms.get(roomName);
+    const roomSocketIds = io.sockets.adapter.rooms.get(roomName);
     if (!roomSocketIds) return;
 
     for (const socketId of [...roomSocketIds]) {
-        const clientSocket = socketServer.sockets.sockets.get(socketId);
+        const clientSocket = io.sockets.sockets.get(socketId);
         if (!clientSocket) continue;
-
         clientSocket.emit('session:revoked', { sessionId, reason });
         clientSocket.disconnect(true);
     }
+};
+
+const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
+    // Disconnect sockets on this node immediately, then fan out the revocation
+    // to every other Socket.IO node through the shared Redis Pub/Sub channel.
+    disconnectSessionSocketsLocally(sessionId, reason);
+    publishRealtimeEvent('session:revoked', { sessionId, reason }).catch((error) => {
+        console.error('[SOCKET][session revocation broadcast failed]', {
+            sessionId,
+            code: error.code || 'SESSION_REVOCATION_BROADCAST_FAILED'
+        });
+    });
 };
 
 module.exports = {
