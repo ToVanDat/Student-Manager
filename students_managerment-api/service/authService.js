@@ -662,8 +662,9 @@ const login = async (
     let accessToken = null;
 
     try {
-    session = await authRepository.createSessionForActiveUser(
+    session = await authRepository.createSessionForVerifiedPassword(
         user.id,
+        user.password_hash,
         deviceName,
         userAgent,
         ipAddress
