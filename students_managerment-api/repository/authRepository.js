@@ -693,6 +693,26 @@ const findSessionByIdAndUserId = async (
 // UPDATE SESSION LAST USED
 // ======================================================
 
+// Single indexed lookup for periodic Socket.IO authorization checks.
+// Keeping session and account state in one query halves the guard's DB round trips.
+const isSessionActiveForSocket = async (sessionId, userId) => {
+    const result = await pool.query(
+        `
+        SELECT EXISTS (
+            SELECT 1
+            FROM sessions AS session
+            INNER JOIN users AS account ON account.id = session.user_id
+            WHERE session.id = $1
+              AND session.user_id = $2
+              AND session.revoked_at IS NULL
+              AND account.is_active = TRUE
+        ) AS active
+        `,
+        [sessionId, userId]
+    );
+    return result.rows[0]?.active === true;
+};
+
 const updateSessionLastUsed = async (
     sessionId
 ) => {
@@ -1400,6 +1420,7 @@ module.exports = {
     findSessionsByUserId,
 
     findSessionByIdAndUserId,
+    isSessionActiveForSocket,
 
     updateSessionLastUsed,
 
