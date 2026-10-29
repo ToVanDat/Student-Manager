@@ -9,6 +9,16 @@ SPEC.loader.exec_module(EVALUATOR)
 
 
 class SplitIsolationTests(unittest.TestCase):
+    def test_genuine_pairs_require_the_same_participant(self):
+        EVALUATOR.validate_pair_identity('genuine', 'person-1', 'person-1', 'row 2')
+        with self.assertRaisesRegex(ValueError, 'genuine pairs must contain the same participant'):
+            EVALUATOR.validate_pair_identity('genuine', 'person-1', 'person-2', 'row 2')
+
+    def test_impostor_pairs_require_different_participants(self):
+        EVALUATOR.validate_pair_identity('impostor', 'person-1', 'person-2', 'row 3')
+        with self.assertRaisesRegex(ValueError, 'impostor pairs must contain different participants'):
+            EVALUATOR.validate_pair_identity('impostor', 'person-1', 'person-1', 'row 3')
+
     def test_recognition_pair_checks_both_participant_roles(self):
         rows = [
             {"split": "calibration", "participant_a": ("person-1", "person-2")},
