@@ -3,6 +3,19 @@ const messageRepository = require('../repository/messageRepository');
 const callRepository = require('../repository/callRepository');
 const userRepository = require('../repository/userRepository');
 const { getIO, publishRealtimeEvent } = require('../src/socket/socket');
+const { publishRealtimeBestEffort } = require('../service/realtimeDelivery');
+
+const emitConversationEventBestEffort = (conversationId, event, payload) =>
+    publishRealtimeBestEffort(
+        () => getIO().to(`conversation:${conversationId}`).emit(event, payload),
+        { event, conversationId: Number(conversationId) }
+    );
+
+const emitUserEventBestEffort = (userId, event, payload) =>
+    publishRealtimeBestEffort(
+        () => getIO().to(`user:${userId}`).emit(event, payload),
+        { event, userId: Number(userId) }
+    );
 
 const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
     try {
@@ -11,7 +24,7 @@ const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
             actorId,
             content
         );
-        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
+        emitConversationEventBestEffort(conversationId, 'message:new', message);
         return message;
     } catch (error) {
         // Group membership changes must not fail just because the optional
@@ -135,7 +148,7 @@ const clearConversationMessagesForUser = async (req, res, next) => {
 
         const data = await conversationService.clearConversationMessagesForUser(conversationId, userId);
         await callRepository.hideConversationCallHistoryForUser(userId, conversationId);
-        getIO().to(`user:${userId}`).emit('conversation:history-cleared', {
+        emitUserEventBestEffort(userId, 'conversation:history-cleared', {
             conversationId,
             deletedCount: data.deleted_count
         });
@@ -308,7 +321,7 @@ const createGroup = async (req, res, next) => {
         );
         const memberIds = [...new Set([Number(req.user.id), ...(Array.isArray(req.body.memberIds) ? req.body.memberIds.map(Number) : [])])];
         for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:created', { conversation: data });
+            emitUserEventBestEffort(memberId, 'conversation:created', { conversation: data });
         }
 
         const actorName = await getUsername(Number(req.user.id));
@@ -342,7 +355,7 @@ const updateGroup = async (req, res, next) => {
         const memberIds = await getMemberIdsForNotification(conversationId);
 
         for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 conversation: data
             });
@@ -383,11 +396,11 @@ const addGroupMember = async (req, res, next) => {
         const io = getIO();
 
         for (const memberId of memberIds) {
-            io.to(`user:${memberId}`).emit('member:added', {
+            emitUserEventBestEffort(memberId, 'member:added', {
                 conversationId,
                 member: data
             });
-            io.to(`user:${memberId}`).emit('conversation:updated', {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 action: 'member-added',
                 member: data
@@ -398,7 +411,7 @@ const addGroupMember = async (req, res, next) => {
         // contact list của các thành viên hiện tại.
         if (require('../src/socket/socket').isUserOnline(Number(data.user_id))) {
             for (const memberId of memberIds) {
-                io.to(`user:${memberId}`).emit('presence:online', {
+                emitUserEventBestEffort(memberId, 'presence:online', {
                     userId: Number(data.user_id)
                 });
             }
@@ -443,14 +456,14 @@ const removeGroupMember = async (req, res, next) => {
         const targetName = await getUsername(targetUserId);
         const actorName = await getUsername(Number(req.user.id));
 
-        io.to(`user:${removedUserId}`).emit('member:removed', {
+        emitUserEventBestEffort(removedUserId, 'member:removed', {
             conversationId,
             member: data,
             message: 'Bạn đã bị xóa khỏi nhóm'
         });
 
         for (const memberId of memberIdsAfter) {
-            io.to(`user:${memberId}`).emit('conversation:updated', {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 action: 'member-removed',
                 member: data
@@ -489,14 +502,14 @@ const leaveGroup = async (req, res, next) => {
         const leavingName = await getUsername(Number(req.user.id));
 
         for (const memberId of memberIdsAfter) {
-            io.to(`user:${memberId}`).emit('conversation:updated', {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 action: 'member-left',
                 member: data
             });
         }
 
-        io.to(`user:${leavingUserId}`).emit('member:left', {
+        emitUserEventBestEffort(leavingUserId, 'member:left', {
             conversationId,
             member: data,
             message: 'Bạn đã rời nhóm'
@@ -539,12 +552,12 @@ const updateGroupMemberRole = async (req, res, next) => {
         if (req.body.role === 'owner') {
             // Ownership transfer is atomic in the repository. Only emit after COMMIT.
             for (const memberId of memberIds) {
-                io.to(`user:${memberId}`).emit('conversation:updated', {
+                emitUserEventBestEffort(memberId, 'conversation:updated', {
                     conversationId,
                     action: 'member-role-updated',
                     member: data.previousOwner
                 });
-                io.to(`user:${memberId}`).emit('conversation:updated', {
+                emitUserEventBestEffort(memberId, 'conversation:updated', {
                     conversationId,
                     action: 'member-role-updated',
                     member: data.newOwner
@@ -552,7 +565,7 @@ const updateGroupMemberRole = async (req, res, next) => {
             }
         } else {
             for (const memberId of memberIds) {
-                io.to(`user:${memberId}`).emit('conversation:updated', {
+                emitUserEventBestEffort(memberId, 'conversation:updated', {
                     conversationId,
                     action: 'member-role-updated',
                     member: data
