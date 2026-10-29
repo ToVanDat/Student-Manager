@@ -33,26 +33,42 @@ test('Face session issuance requires an active account and active credential in 
     );
 
     const credentialResult = await pool.query(
-        'SELECT id FROM user_face_credentials WHERE user_id = $1 AND disabled_at IS NULL',
+        'SELECT id, ciphertext, nonce, auth_tag, key_version, model_id, model_version FROM user_face_credentials WHERE user_id = $1 AND disabled_at IS NULL',
         [activeUserId]
     );
-    const matchedCredentialId = String(credentialResult.rows[0].id);
+    const matchedCredential = {
+        id: String(credentialResult.rows[0].id),
+        ciphertext: credentialResult.rows[0].ciphertext,
+        nonce: credentialResult.rows[0].nonce,
+        authTag: credentialResult.rows[0].auth_tag,
+        keyVersion: credentialResult.rows[0].key_version,
+        modelId: credentialResult.rows[0].model_id,
+        modelVersion: credentialResult.rows[0].model_version
+    };
     const session = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredentialId
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredential
     );
     assert.ok(session?.id, 'active account with active Face credential should create a session');
 
-    const mismatchedCredentialSession = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', '00000000-0000-4000-8000-000000000000'
+    await pool.query(
+        'UPDATE user_face_credentials SET ciphertext = $1 WHERE user_id = $2',
+        [Buffer.from([9, 9, 9]), activeUserId]
     );
-    assert.equal(mismatchedCredentialSession, null, 'a replaced or different credential must not authorize the session');
+    const replacedCredentialSession = await repository.createSessionForActiveFaceUser(
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredential
+    );
+    assert.equal(replacedCredentialSession, null, 'a replaced credential must not authorize the session');
+    await pool.query(
+        'UPDATE user_face_credentials SET ciphertext = $1 WHERE user_id = $2',
+        [matchedCredential.ciphertext, activeUserId]
+    );
 
     await pool.query(
         'UPDATE user_face_credentials SET disabled_at = CURRENT_TIMESTAMP WHERE user_id = $1',
         [activeUserId]
     );
     const disabledCredentialSession = await repository.createSessionForActiveFaceUser(
-        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredentialId
+        activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredential
     );
     assert.equal(disabledCredentialSession, null, 'disabled Face credential must not create a session');
 
