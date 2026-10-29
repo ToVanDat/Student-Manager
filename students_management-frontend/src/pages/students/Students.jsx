@@ -886,11 +886,7 @@ function Students() {
 
                 {settingsTab === "security" && (
                   <SecuritySettings
-                    onOpenSessions={() =>
-                      setSettingsTab(
-                        "sessions"
-                      )
-                    }
+                    onOpenSessions={() => openSettings("sessions")}
                   />
                 )}
 
