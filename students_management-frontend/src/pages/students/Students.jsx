@@ -423,7 +423,7 @@ function Students() {
     handleChangePassword,
     formatSessionDate,
     getSessionIcon,
-  } = useStudentSettings(user);
+  } = useStudentSettings(user, updateUser);
 
   // =====================================================
   // OPEN SETTINGS
