@@ -571,8 +571,10 @@ const createSessionForActiveFaceUser = async (
     userId,
     deviceName = null,
     userAgent = null,
-    ipAddress = null
+    ipAddress = null,
+    expectedCredentialId = null
 ) => {
+    if (typeof expectedCredentialId !== 'string' || !expectedCredentialId) return null;
     const sessionId = crypto.randomUUID();
     const result = await pool.query(
         `
@@ -587,7 +589,8 @@ const createSessionForActiveFaceUser = async (
             SELECT credential.user_id
             FROM user_face_credentials AS credential
             INNER JOIN active_user AS account ON account.id = credential.user_id
-            WHERE credential.disabled_at IS NULL
+            WHERE credential.id = $6
+              AND credential.disabled_at IS NULL
             FOR UPDATE OF credential
         )
         INSERT INTO sessions (
@@ -598,7 +601,7 @@ const createSessionForActiveFaceUser = async (
         INNER JOIN active_face_credential AS face ON face.user_id = account.id
         RETURNING *
         `,
-        [sessionId, userId, deviceName, userAgent, ipAddress]
+        [sessionId, userId, deviceName, userAgent, ipAddress, expectedCredentialId]
     );
     return result.rows[0] || null;
 };
