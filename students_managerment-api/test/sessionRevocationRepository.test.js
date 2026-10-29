@@ -57,3 +57,19 @@ test('single-session revocation returns null when the session is already revoked
         assert.equal(result, null);
     });
 });
+
+
+test('Socket.IO session guard checks session ownership, revocation and account status in one indexed query', async () => {
+    await withMockQuery(async (sql, params) => {
+        assert.deepEqual(params, ['session-1', 42]);
+        assert.match(sql, /SELECT EXISTS/);
+        assert.match(sql, /INNER JOIN users AS account ON account.id = session.user_id/);
+        assert.match(sql, /session.id = \$1/);
+        assert.match(sql, /session.user_id = \$2/);
+        assert.match(sql, /session.revoked_at IS NULL/);
+        assert.match(sql, /account.is_active = TRUE/);
+        return { rows: [{ active: true }], rowCount: 1 };
+    }, async () => {
+        assert.equal(await authRepository.isSessionActiveForSocket('session-1', 42), true);
+    });
+});
