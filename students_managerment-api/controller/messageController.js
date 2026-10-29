@@ -218,20 +218,8 @@ const getMessagesByConversation = async (req, res) => {
             error
         );
 
-        if (
-            error.message ===
-            'Bạn không thuộc conversation này'
-        ) {
-            return res.status(403).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể lấy messages'
-        });
+        const failure = toSafeHttpError(error, 'Không thể lấy messages');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -258,9 +246,8 @@ const searchMessages = async (req, res) => {
 
         return res.status(200).json({ data });
     } catch (error) {
-        return res.status(error.statusCode || 500).json({
-            message: error.message || 'Không thể tìm kiếm message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể tìm kiếm message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -314,17 +301,8 @@ const updateMessage = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể chỉnh sửa message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể chỉnh sửa message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -369,17 +347,8 @@ const recallMessage = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể thu hồi message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể thu hồi message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -428,17 +397,8 @@ const deleteMessageForMe = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể xoá message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể xoá message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -483,17 +443,8 @@ const deleteMessageForEveryone = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể xoá message cho tất cả'
-        });
+        const failure = toSafeHttpError(error, 'Không thể xoá message cho tất cả');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
