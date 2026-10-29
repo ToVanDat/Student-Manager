@@ -413,14 +413,14 @@ const initSocket = async (server) => {
                 for (const expired of expiredCalls) {
                     emitCallActivityUpdated(expired);
                     clearCallTimer(expired.call_id);
-                    io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                    emitCallEventBestEffort(`user:${Number(expired.receiver_id)}`, 'call:ended', {
                         callId: expired.call_id,
                         fromUserId: Number(expired.caller_id),
                         toUserId: Number(expired.receiver_id),
                         reason: 'ring-timeout',
                         status: 'missed'
                     });
-                    io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                    emitCallEventBestEffort(`user:${Number(expired.caller_id)}`, 'call:timeout', {
                         callId: expired.call_id,
                         status: 'missed',
                         reason: 'ring-timeout'
@@ -1229,7 +1229,7 @@ const initSocket = async (server) => {
                 });
             }
             clearCallTimer(callId);
-            io.to(`user:${targetId}`).emit('call:accepted', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType: currentCall.call_type
             });
 
@@ -1243,10 +1243,10 @@ const initSocket = async (server) => {
                     );
                     if (failed) {
                         emitCallActivityUpdated(failed);
-                        io.to(`user:${targetId}`).emit('call:ended', {
+                        emitCallEventBestEffort(`user:${targetId}`, 'call:ended', {
                             callId, fromUserId: userId, toUserId: targetId, reason: 'connection-timeout'
                         });
-                        io.to(`user:${userId}`).emit('call:timeout', {
+                        emitCallEventBestEffort(`user:${userId}`, 'call:timeout', {
                             callId, status: 'failed', reason: 'connection-timeout'
                         });
                     }
@@ -1276,7 +1276,7 @@ const initSocket = async (server) => {
             if (!updated) return;
 
             emitCallActivityUpdated(updated);
-            io.to(`user:${targetId}`).emit('call:rejected', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:rejected', {
                 callId, fromUserId: userId, toUserId: targetId, reason: 'rejected'
             });
             await emitCallNotification(
@@ -1365,7 +1365,7 @@ const initSocket = async (server) => {
             clearCallTimer(callId);
             emitCallActivityUpdated(connectedCall);
 
-            io.to(`user:${targetId}`).emit('call:connected', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:connected', {
                 callId, fromUserId: userId, toUserId: targetId
             });
         });
@@ -1395,8 +1395,8 @@ const initSocket = async (server) => {
                 reason: safeReason,
                 status: 'failed'
             };
-            io.to(`user:${userId}`).emit('call:ended', payload);
-            io.to(`user:${targetId}`).emit('call:ended', payload);
+            emitCallEventBestEffort(`user:${userId}`, 'call:ended', payload);
+            emitCallEventBestEffort(`user:${targetId}`, 'call:ended', payload);
             console.warn('[CALL][connection failed]', { callId, userId, targetId, reason: safeReason });
         });
 
@@ -1465,7 +1465,7 @@ const initSocket = async (server) => {
 
             emitCallActivityUpdated(updated);
             
-            io.to(`user:${targetId}`).emit('call:ended', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason: safeReason
             });
             if (updated?.status === 'completed') {
