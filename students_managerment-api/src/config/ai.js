@@ -8,7 +8,13 @@ module.exports = Object.freeze({
         chatModel: process.env.OLLAMA_MODEL || 'qwen2.5:3b',
         embeddingModel: process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text',
         embeddingDimensions: 768,
-        requestTimeoutMs: 45000
+        // Local CPU inference can take longer on the first request while the
+        // model is loaded. Allow an operator override without editing source.
+        requestTimeoutMs: Math.min(
+            Math.max(Number.parseInt(process.env.OLLAMA_REQUEST_TIMEOUT_MS || '120000', 10) || 120000, 15000),
+            300000
+        ),
+        keepAlive: process.env.OLLAMA_KEEP_ALIVE || '10m'
     }),
     rag: Object.freeze({
         maxUploadBytes: 1024 * 1024,
