@@ -654,5 +654,6 @@
   "studentImportSuccess": "Successfully imported {{count}} students.",
   "studentImportFailed": "Could not import the CSV. Check the file and try again.",
   "chatComposerPlaceholder": "Type a message...",
-  "chatComposerLabel": "Message composer"
+  "chatComposerLabel": "Message composer",
+  "loginSecurityNote": "Your sign-in is protected by a secure authentication session."
 }
