@@ -478,3 +478,25 @@ BEGIN
     END IF;
 END
 $audit$;
+
+
+-- 15) Verify the append-only account-link audit table and admin permission.
+-- The account-link API writes an audit event in the same transaction as link/unlink.
+SELECT
+    'student_account_link_audit' AS object_name,
+    to_regclass(format('%I.%I', current_schema(), 'student_account_link_audit'))::text AS relation_name;
+
+SELECT role, permission_key, allowed
+FROM role_permissions
+WHERE permission_key IN ('students.link_accounts', 'students.view')
+ORDER BY permission_key, role;
+
+-- 16) Verify the audit table's append-only triggers without reading audit PII.
+SELECT
+    trigger_name,
+    event_manipulation,
+    action_timing
+FROM information_schema.triggers
+WHERE event_object_schema = current_schema()
+  AND event_object_table = 'student_account_link_audit'
+ORDER BY trigger_name, event_manipulation;
