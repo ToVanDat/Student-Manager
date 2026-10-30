@@ -187,6 +187,7 @@ function AccountSettings({
                             className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
                             type="email"
                             autoComplete="email"
+                            aria-invalid={Boolean(error)}
                             maxLength={254}
                             value={form.email}
                             onChange={(event) =>
