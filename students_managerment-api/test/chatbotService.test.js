@@ -218,9 +218,15 @@ test('getOllamaConfig permits loopback HTTP and defaults to the local model', ()
     }
 });
 
-test('getOllamaConfig rejects remote plaintext, credentials and URL query strings', () => {
+test('getOllamaConfig allows Docker host gateway only with explicit opt-in', () => {
     const previousUrl = process.env.OLLAMA_BASE_URL;
+    const previousOptIn = process.env.OLLAMA_ALLOW_DOCKER_HOST;
     try {
+        process.env.OLLAMA_BASE_URL = 'http://host.docker.internal:11434';
+        delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        assert.throws(() => getOllamaConfig(), error => error.status === 503);
+        process.env.OLLAMA_ALLOW_DOCKER_HOST = 'true';
+        assert.equal(getOllamaConfig().baseUrl, 'http://host.docker.internal:11434');
         process.env.OLLAMA_BASE_URL = 'http://192.168.1.20:11434';
         assert.throws(() => getOllamaConfig(), error => error.status === 503);
         process.env.OLLAMA_BASE_URL = 'https://user:secret@example.com';
@@ -230,6 +236,8 @@ test('getOllamaConfig rejects remote plaintext, credentials and URL query string
     } finally {
         if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
         else process.env.OLLAMA_BASE_URL = previousUrl;
+        if (previousOptIn === undefined) delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        else process.env.OLLAMA_ALLOW_DOCKER_HOST = previousOptIn;
     }
 });
 
@@ -331,4 +339,63 @@ test('rateAnswer rejects stale answer hashes and unsupported ratings', async () 
     };
     await assert.rejects(rateAnswer({ userId: '42', sessionId: 's1', answerHash: 'a'.repeat(64), rating: 'helpful', redis }), error => error.status === 409);
     await assert.rejects(rateAnswer({ userId: '42', sessionId: 's1', answerHash: 'b'.repeat(64), rating: 'neutral', redis }), error => error.status === 400);
+});
+
+
+test('chatbot history and conversation index are isolated across different users even when session IDs match', async () => {
+    const store = new Map();
+    const redis = {
+        isReady: true,
+        get: async key => store.get(key) ?? null,
+        set: async (key, value) => { store.set(key, value); },
+        exists: async key => store.has(key),
+        del: async key => { store.delete(key); }
+    };
+
+    await redis.set('assistant:history:7:shared-session', JSON.stringify([
+        { role: 'user', content: 'private question' },
+        { role: 'assistant', content: 'private answer' }
+    ]));
+    await redis.set('assistant:history:8:shared-session', JSON.stringify([
+        { role: 'user', content: 'another user question' },
+        { role: 'assistant', content: 'another user answer' }
+    ]));
+
+    const userSeven = await getHistory({ userId: '7', sessionId: 'shared-session', redis });
+    const userEight = await getHistory({ userId: '8', sessionId: 'shared-session', redis });
+    assert.equal(userSeven[1].content, 'private answer');
+    assert.equal(userEight[1].content, 'another user answer');
+
+    const sevenConversation = await createConversation({
+        userId: '7', sessionId: 'shared-session', title: 'User seven', redis
+    });
+    assert.equal((await listConversations({ userId: '7', sessionId: 'shared-session', redis })).length, 2); // legacy default history + new conversation
+    assert.equal((await listConversations({ userId: '8', sessionId: 'shared-session', redis })).length, 1); // only this user's legacy default history
+    await deleteConversation({
+        userId: '8', sessionId: 'shared-session', conversationId: sevenConversation.id, redis
+    }).then(
+        () => assert.fail('another user must not delete this conversation'),
+        error => assert.equal(error.status, 404)
+    );
+});
+
+test('conversation indexes and histories are isolated across users sharing the same session id', async () => {
+    const store = new Map();
+    const redis = {
+        isReady: true,
+        get: async key => store.get(key) ?? null,
+        set: async (key, value) => { store.set(key, value); },
+        exists: async key => store.has(key),
+        del: async key => { store.delete(key); }
+    };
+
+    const userA = await createConversation({ userId: '101', sessionId: 'same-session', title: 'A private chat', redis });
+    const userB = await createConversation({ userId: '202', sessionId: 'same-session', title: 'B private chat', redis });
+    await redis.set('assistant:history:101:same-session:' + userA.id, JSON.stringify([{ role: 'assistant', content: 'private A' }]));
+    await redis.set('assistant:history:202:same-session:' + userB.id, JSON.stringify([{ role: 'assistant', content: 'private B' }]));
+
+    assert.deepEqual((await listConversations({ userId: '101', sessionId: 'same-session', redis })).map(item => item.id), [userA.id]);
+    assert.deepEqual((await listConversations({ userId: '202', sessionId: 'same-session', redis })).map(item => item.id), [userB.id]);
+    assert.deepEqual(await getHistory({ userId: '101', sessionId: 'same-session', conversationId: userB.id, redis }), []);
+    assert.deepEqual(await getHistory({ userId: '202', sessionId: 'same-session', conversationId: userA.id, redis }), []);
 });

@@ -186,6 +186,7 @@ export const finishSensitiveReauthApi = async (challengeId, responsePayload, pur
 export const getFaceLoginStatusApi = async () => (await apiClient.get('/api/auth/face/status')).data;
 export const beginFaceEnrollmentApi = async (verificationToken, currentPassword) => (await apiClient.post('/api/auth/face/enrollment/options', { verificationToken, currentPassword })).data;
 export const finishFaceEnrollmentApi = async challengeId => (await apiClient.post('/api/auth/face/enrollment/verify', { challengeId })).data;
+export const cancelFaceEnrollmentApi = async challengeId => (await apiClient.delete('/api/auth/face/enrollment/challenge', { data: { challengeId } })).data;
 export const captureFaceEnrollmentFrameApi = async (challengeId, livenessNonce, frame) => {
   const body = new FormData();
   body.append('challengeId', challengeId);
@@ -193,7 +194,7 @@ export const captureFaceEnrollmentFrameApi = async (challengeId, livenessNonce, 
   body.append('frame', frame, 'face-frame.jpg');
   return (await apiClient.post('/api/auth/face/enrollment/frame', body, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
 };
-export const disableFaceLoginApi = async () => (await apiClient.delete('/api/auth/face/credential')).data;
+export const disableFaceLoginApi = async (currentPassword, verificationToken) => (await apiClient.delete('/api/auth/face/credential', { data: { currentPassword, verificationToken } })).data;
 export const beginFaceLoginApi = async username => (await axios.post(`${API_BASE_URL}/api/auth/face/login/options`, { username }, { withCredentials: true })).data;
 export const captureFaceLoginFrameApi = async (challengeId, livenessNonce, frame) => {
   const body = new FormData();

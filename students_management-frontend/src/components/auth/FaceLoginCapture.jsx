@@ -6,8 +6,8 @@ import {
     finishFaceLoginApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 8;
-const FRAME_INTERVAL_MS = 350;
+const FRAME_COUNT = 6;
+const FRAME_INTERVAL_MS = 500;
 
 function captureJpeg(video) {
     if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) {
@@ -35,6 +35,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
     const cancelledRef = useRef(false);
     const [cameraActive, setCameraActive] = useState(false);
     const [busy, setBusy] = useState(false);
+    const [isFinalizing, setIsFinalizing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [instruction, setInstruction] = useState('Camera chỉ bật sau khi bạn chọn bắt đầu.');
     const [error, setError] = useState('');
@@ -75,9 +76,8 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
 
             const challenge = await beginFaceLoginApi(username);
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
-            const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
-            setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
-            await wait(900);
+            setInstruction(`Bước 1/2: ${actions[0] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+            await wait(1200);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
                 if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình xác minh.');
@@ -88,11 +88,15 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
                     frame,
                 );
                 setProgress(Math.min(FRAME_COUNT, result.frameCount || index + 1));
+                if (index === Math.floor(FRAME_COUNT / 2) - 1) {
+                    setInstruction(`Bước 2/2: ${actions[1] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+                }
                 if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình xác minh.');
                 if (index < FRAME_COUNT - 1) await wait(FRAME_INTERVAL_MS);
             }
 
             setInstruction('Đang xác minh khuôn mặt và kiểm tra PAD…');
+            setIsFinalizing(true);
             sessionStorage.setItem('auth:login-in-progress', 'true');
             const data = await finishFaceLoginApi(challenge.challengeId);
             stopCamera();
@@ -104,6 +108,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             stopCamera();
         } finally {
             sessionStorage.removeItem('auth:login-in-progress');
+            setIsFinalizing(false);
             setBusy(false);
         }
     };
@@ -141,8 +146,9 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
                             {busy ? <LoaderCircle size={16} className="animate-spin" /> : <Camera size={16} />}
                             {error ? 'Thử lại' : 'Bắt đầu xác minh'}
                         </button>}
-                        {cameraActive && <button type="button" onClick={stopCamera} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
-                            <CameraOff size={16} /> Dừng camera
+                        {cameraActive && <button type="button" onClick={stopCamera} disabled={isFinalizing} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:text-slate-200">
+                            {isFinalizing ? <LoaderCircle size={16} className="animate-spin" /> : <CameraOff size={16} />}
+                            {isFinalizing ? 'Đang xác minh…' : 'Dừng camera'}
                         </button>}
                         <button type="button" onClick={onClose} disabled={busy} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300">Hủy</button>
                     </div>

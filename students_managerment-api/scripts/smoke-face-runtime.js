@@ -1,36 +1,34 @@
 'use strict';
 
-const { inferAlignedFace } = require('../service/faceInferenceService.js');
+const { getRuntime } = require('../service/faceInferenceService.js');
 
 async function main() {
-    // Synthetic tensors validate ONNX graph loading/execution only. They are not
-    // face samples and must never be interpreted as recognition/PAD accuracy.
-    const result = await inferAlignedFace({
-        rgb112: new Float32Array(3 * 112 * 112),
-        bgr80: new Float32Array(3 * 80 * 80)
-    });
-
-    const norm = Math.sqrt(result.embedding.reduce((sum, value) => sum + value * value, 0));
-    const probabilities = [
-        result.pad.liveProbability,
-        result.pad.printAttackProbability,
-        result.pad.replayAttackProbability
-    ];
-    if (result.embedding.length !== 128 ||
-        !Number.isFinite(norm) || Math.abs(norm - 1) > 1e-4 ||
-        probabilities.some(value => !Number.isFinite(value) || value < 0 || value > 1) ||
-        Math.abs(probabilities.reduce((sum, value) => sum + value, 0) - 1) > 1e-4) {
-        throw new Error('ONNX model outputs failed the runtime contract');
+    // Synthetic tensors validate native ONNX loading, graph execution and output
+    // dimensions only. PAD class semantics are intentionally not interpreted here.
+    const runtime = await getRuntime();
+    const { ort, mobile, pad, padInputName, padOutputName } = runtime;
+    const rgb112 = new Float32Array(3 * 112 * 112);
+    const bgr80 = new Float32Array(3 * 80 * 80);
+    const mobileTensor = new ort.Tensor('float32', rgb112, [1, 3, 112, 112]);
+    const padTensor = new ort.Tensor('float32', bgr80, [1, 3, 80, 80]);
+    const [mobileResult, padResult] = await Promise.all([
+        mobile.run({ img1: mobileTensor, img2: mobileTensor }),
+        pad.run({ [padInputName]: padTensor })
+    ]);
+    const embeddingValues = mobileResult.embeddings?.data;
+    const padValues = padResult[padOutputName]?.data;
+    if (!embeddingValues || embeddingValues.length !== 256 ||
+        !padValues || padValues.length !== 3 ||
+        Array.from(padValues).some(value => !Number.isFinite(value))) {
+        throw new Error('ONNX graph output shapes/values failed runtime validation');
     }
 
     console.log(JSON.stringify({
         status: 'ONNX_RUNTIME_OK',
-        model: result.model,
-        embeddingDimensions: result.embedding.length,
-        embeddingL2Norm: Number(norm.toFixed(6)),
-        padProbabilityCount: probabilities.length,
-        padProbabilitiesFinite: true,
-        note: 'Synthetic zero tensors only: validates model loading, graph execution and output shapes. It does not validate preprocessing, recognition accuracy, PAD or liveness.'
+        embeddingDimensionsPerImage: 128,
+        padOutputCount: padValues.length,
+        padOutputSemantics: 'UNVERIFIED_NOT_INTERPRETED',
+        note: 'Synthetic zero tensors only. This validates graph loading/execution and output shape; it does not establish class order, logits-vs-probabilities, preprocessing parity, recognition accuracy or PAD accuracy.'
     }, null, 2));
 }
 

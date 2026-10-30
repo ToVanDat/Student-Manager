@@ -62,10 +62,17 @@ async function consumeChallenge(kind, id) {
     try { return JSON.parse(raw); } catch { return null; }
 }
 function publicUser(user) {
-    return { id: user.id, username: user.username, email: user.email, role: user.role, avatar_url: user.avatar_url || null };
+    return {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name || '',
+        email: user.email,
+        role: user.role,
+        avatar_url: user.avatar_url || null
+    };
 }
 
-async function issueSession(user, req) {
+async function issueSession(user, req, options = {}) {
     if (!user || !user.is_active) throw new Error('Tài khoản đã bị khóa hoặc không tồn tại');
 
     // sessions.device_name is VARCHAR(100), while user_agent is TEXT.
@@ -77,12 +84,21 @@ async function issueSession(user, req) {
     let accessToken = null;
 
     try {
-        session = await authRepository.createSession(
+        const createSession = options.requireFaceCredential
+            ? authRepository.createSessionForActiveFaceUser
+            : authRepository.createSessionForActiveUser;
+        session = await createSession(
             user.id,
             deviceName,
             userAgent,
-            req.ip || null
+            req.ip || null,
+            options.requireFaceCredential ? options.faceCredential : undefined
         );
+        if (!session) {
+            const inactiveError = new Error('Tài khoản đã bị khóa hoặc không tồn tại');
+            inactiveError.code = 'ACCOUNT_INACTIVE';
+            throw inactiveError;
+        }
         accessToken = jwt.sign({
             sub: user.id, username: user.username, role: user.role, sessionId: session.id
         }, process.env.JWT_SECRET, {
@@ -169,7 +185,7 @@ async function verifySensitiveAction(userId, currentPassword, verificationToken,
 }
 
 async function beginSensitiveReauth(userId, purpose) {
-    if (!['google-link', 'google-unlink', 'face-enroll'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
+    if (!['google-link', 'google-unlink', 'face-enroll', 'face-disable'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
     const userResult = await pool.query('SELECT id, is_active FROM users WHERE id = $1', [userId]);
     if (!userResult.rows[0]?.is_active) throw new Error('Tài khoản không hoạt động');
     const rows = await pool.query('SELECT credential_id, transports FROM user_webauthn_credentials WHERE user_id = $1', [userId]);

@@ -126,62 +126,33 @@ test('removes every indexed access token for a revoked session only', async () =
     assert.deepEqual(await mock.client.sMembers('session_access_tokens:session-B'), [keyFor(tokenB)]);
 });
 
-test('revoke-other-sessions preserves current session and clears other session tokens', async (t) => {
+test('revoke-other-sessions atomically revokes other sessions and clears only their access tokens', async (t) => {
     const mock = createRedisMock();
     installRedisMock(mock);
-
     const repositoryCalls = [];
-    const sessions = [
-        { id: 'current', revoked_at: null },
-        { id: 'other-1', revoked_at: null },
-        { id: 'already-revoked', revoked_at: new Date() },
-        { id: 'other-2', revoked_at: null },
-    ];
     const repositoryMock = {
-        async findSessionsByUserId(userId) {
-            repositoryCalls.push(['list', userId]);
-            return sessions;
-        },
-        async revokeSession(sessionId) {
-            repositoryCalls.push(['revoke-session', sessionId]);
-        },
-        async revokeRefreshTokensBySessionId(sessionId) {
-            repositoryCalls.push(['revoke-refresh', sessionId]);
-        },
+        async revokeOtherSessionsAndRefreshTokens(userId, currentSessionId) {
+            repositoryCalls.push([userId, currentSessionId]);
+            return [{ id: 'other-1' }, { id: 'other-2' }];
+        }
     };
-
-    require.cache[sessionRepositoryPath] = {
-        id: sessionRepositoryPath,
-        filename: sessionRepositoryPath,
-        loaded: true,
-        exports: repositoryMock,
-    };
+    require.cache[sessionRepositoryPath] = { id: sessionRepositoryPath, filename: sessionRepositoryPath, loaded: true, exports: repositoryMock };
     delete require.cache[sessionStorePath];
-
     const sessionService = require('../service/sessionService.js');
     const currentToken = createAccessToken('current');
     const otherToken1 = createAccessToken('other-1');
     const otherToken2 = createAccessToken('other-2');
-    await require('../service/accessTokenStore.js').saveAccessTokenToRedis(currentToken, 'user-1');
-    await require('../service/accessTokenStore.js').saveAccessTokenToRedis(otherToken1, 'user-1');
-    await require('../service/accessTokenStore.js').saveAccessTokenToRedis(otherToken2, 'user-1');
-
-    const result = await sessionService.revokeOtherSessions('user-1', 'current');
-
-    assert.equal(result.revokedCount, 2);
-    assert.deepEqual(
-        repositoryCalls.filter(call => call[0] === 'revoke-session').map(call => call[1]),
-        ['other-1', 'other-2']
-    );
-    assert.deepEqual(
-        repositoryCalls.filter(call => call[0] === 'revoke-refresh').map(call => call[1]),
-        ['other-1', 'other-2']
-    );
-
     const store = require('../service/accessTokenStore.js');
-    assert.equal(await mock.client.get(`access_token:${crypto.createHash('sha256').update(currentToken).digest('hex')}`), 'user-1');
-    assert.equal(await mock.client.get(`access_token:${crypto.createHash('sha256').update(otherToken1).digest('hex')}`), null);
-    assert.equal(await mock.client.get(`access_token:${crypto.createHash('sha256').update(otherToken2).digest('hex')}`), null);
+    await store.saveAccessTokenToRedis(currentToken, 'user-1');
+    await store.saveAccessTokenToRedis(otherToken1, 'user-1');
+    await store.saveAccessTokenToRedis(otherToken2, 'user-1');
+    const result = await sessionService.revokeOtherSessions('user-1', 'current');
+    assert.equal(result.revokedCount, 2);
+    assert.deepEqual(repositoryCalls, [['user-1', 'current']]);
+    const keyFor = token => `access_token:${crypto.createHash('sha256').update(token).digest('hex')}`;
+    assert.equal(await mock.client.get(keyFor(currentToken)), 'user-1');
+    assert.equal(await mock.client.get(keyFor(otherToken1)), null);
+    assert.equal(await mock.client.get(keyFor(otherToken2)), null);
     t.after(() => {
         delete require.cache[sessionRepositoryPath];
         delete require.cache[sessionStorePath];

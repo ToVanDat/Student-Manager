@@ -24,11 +24,18 @@ npm run face:runtime-smoke
 npm run face:smoke -- C:\\face-test\\consented-test.jpg
 ```
 
-Use a consented local test image. The smoke command runs the actual server-side MediaPipe + ONNX pipeline and prints only model metadata, PAD scores, and output-contract status; it does not print or save the face embedding. `face:runtime-smoke` executes both ONNX graphs with synthetic zero tensors and validates the output contracts; it does not validate preprocessing or accuracy. `face:smoke` then exercises the actual MediaPipe + ONNX path with a consented image. Neither command calibrates thresholds or certifies PAD.
+Use a consented local test image. The smoke command runs the actual server-side MediaPipe + ONNX pipeline and prints only model metadata, PAD scores, and output-contract status; it does not print or save the face embedding. `face:runtime-smoke` executes both ONNX graphs with synthetic zero tensors and validates the output contracts; it does not validate preprocessing or accuracy. `face:smoke` then exercises the actual MediaPipe + ONNX path with a consented image. Neither command calibrates thresholds or certifies PAD. `face:runtime-smoke` validates graph output shapes and the runtime output contract; `face:smoke` still requires the actual local model bundle and must not be treated as threshold calibration or security certification.
 
 Extract the supplied archive under `students_managerment-api/storage/` (or set `FACE_MODEL_DIR` to the directory containing the extracted `face-models/` folder). The resolver supports the archive's nested `recognition/` and `anti-spoofing/` layout.
 
 No default threshold is supplied. Never copy benchmark thresholds into production without evaluation on this exact model/preprocessing/camera population.
+
+## Preprocessing verification state
+
+- **MiniFASNet:** reference input is BGR, NCHW, 80x80, float32 in [0,255], with a 2.7x expanded face box and no landmark alignment warp. The CI reference check `verify_pad_crop_parity.py` reports `PIXEL_PARITY_TOLERANCE_OK` against MiniVision `CropImage._get_new_box` + OpenCV `INTER_LINEAR`, with maximum absolute uint8 delta <= 1 across its deterministic fixtures. This validates crop geometry and resize bytes for those fixtures, not equivalence of the upstream and production face-detector bounding boxes on representative camera frames.
+- **MiniFASNet outputs:** CI has verified exact hash-pinned ONNX/PyTorch output parity (`PARITY_OK`; maximum absolute logit difference 8.08e-06 with atol 1e-5 and rtol 1e-4). The output contract is raw logits, BGR-NCHW float32 in [0,255]. Verified class order is index 0 = attack, index 1 = bona fide, index 2 = attack, based on upstream `test.py`, `AntiSpoofPredict`, and the converter that exports `model.forward()` without class reordering. The ONNX model-card order `[live, print, replay]` conflicts with the verified upstream runtime; retain this discrepancy in the audit. This parity result does not establish PAD accuracy or distinguish print from replay.
+- **MobileFaceNet:** the Qualcomm reference specifies RGB NCHW 112x112 in [0,1], applies ImageNet normalization inside the model, and performs horizontal-flip test-time augmentation. The current five-point alignment implementation and image decode/resize path have not yet passed pixel-level parity against Qualcomm's `warp_and_crop_face` reference. Do not calibrate a recognition threshold until that parity is measured on identical inputs.
+- **Artifact availability:** the model binaries and `recognition/metadata.json` are gitignored local artifacts. A repository hash pin is not proof that the user's local files exist or match; `npm run face:verify-models` must pass on the actual Windows machine.
 
 ## Capture API
 
@@ -64,6 +71,7 @@ Enrollment stores only the aggregate embedding, encrypted with AES-256-GCM. Logi
 
 - The liveness blendshapes are behavioral signals, not a standalone anti-spoof guarantee.
 - MiniFASNet's score is not proof of liveness; evaluate print, replay, mask, lighting, camera, and demographic variation.
+- CI has verified the pinned MiniFASNet ONNX graph against the upstream PyTorch checkpoint and established raw-logit semantics and class index 1 as bona fide. The model-card class order remains inconsistent with this verified upstream runtime contract; the inference implementation must follow the pinned parity evidence, not the model-card label. This does not certify PAD accuracy, print/replay separation, or resistance to unseen attacks.
 - Redis is required. Losing the challenge state invalidates the capture.
 - The API rate-limits challenge creation separately from frame uploads.
 - The status endpoint reports availability only when both release flags are explicitly set, thresholds and AES key are valid, the authenticated MediaPipe sidecar health probe succeeds, and ONNX Runtime can load the hash-verified models.

@@ -5,11 +5,13 @@ on:
     branches:
       - feature/chat-1to1-complete
       - feature/e2ee-foundation
+      - feature/progressive-password-cooldown
   pull_request:
     branches:
       - main
       - feature/chat-1to1-complete
       - feature/e2ee-foundation
+      - feature/student-roster-csv-export
   workflow_dispatch:
 
 permissions:

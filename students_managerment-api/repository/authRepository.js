@@ -44,6 +44,7 @@ const findUserById = async (userId) => {
         SELECT
             id,
             username,
+            full_name,
             email,
             role,
             avatar_url,
@@ -73,6 +74,7 @@ const findUserByUsername = async (username) => {
         SELECT
             id,
             username,
+            full_name,
             email,
             password_hash,
             role,
@@ -101,6 +103,7 @@ const findUserByEmail = async (email) => {
         SELECT
             id,
             username,
+            full_name,
             email,
             password_hash,
             role,
@@ -222,12 +225,12 @@ const createUser = async (
 
 // ======================================================
 // UPDATE USER PROFILE
-// username + email
+// display name + email
 // ======================================================
 
 const updateUserProfile = async (
     userId,
-    username,
+    fullName,
     email
 ) => {
 
@@ -235,13 +238,14 @@ const updateUserProfile = async (
         `
         UPDATE users
         SET
-            username = $1,
+            full_name = $1,
             email = $2,
             updated_at = CURRENT_TIMESTAMP
         WHERE id = $3
         RETURNING
             id,
             username,
+            full_name,
             email,
             role,
             avatar_url,
@@ -250,7 +254,7 @@ const updateUserProfile = async (
             updated_at
         `,
         [
-            username,
+            fullName,
             email,
             userId
         ]
@@ -496,6 +500,132 @@ const createSession = async (
     return result.rows[0];
 };
 
+// Login-session creation must re-check account state in the same SQL statement
+// that inserts the session. A stale user object from an earlier credential
+// verification must not create a session after the account has been disabled.
+const createSessionForActiveUser = async (
+    userId,
+    deviceName = null,
+    userAgent = null,
+    ipAddress = null
+) => {
+    const sessionId = crypto.randomUUID();
+    const result = await pool.query(
+        `
+        WITH active_user AS (
+            SELECT id
+            FROM users
+            WHERE id = $2
+              AND is_active = TRUE
+            FOR UPDATE
+        )
+        INSERT INTO sessions (
+            id, user_id, device_name, user_agent, ip_address
+        )
+        SELECT $1, id, $3, $4, $5
+        FROM active_user
+        RETURNING *
+        `,
+        [sessionId, userId, deviceName, userAgent, ipAddress]
+    );
+    return result.rows[0] || null;
+};
+
+// Password login must re-check the exact password hash that was verified
+// before issuing a session. If a password change wins the race, the stale
+// password verification cannot create a fresh session afterward.
+const createSessionForVerifiedPassword = async (
+    userId,
+    expectedPasswordHash,
+    deviceName = null,
+    userAgent = null,
+    ipAddress = null
+) => {
+    if (typeof expectedPasswordHash !== 'string' || !expectedPasswordHash) {
+        return null;
+    }
+
+    const sessionId = crypto.randomUUID();
+    const result = await pool.query(
+        `
+        WITH active_user AS (
+            SELECT id
+            FROM users
+            WHERE id = $2
+              AND is_active = TRUE
+              AND password_hash = $6
+            FOR UPDATE
+        )
+        INSERT INTO sessions (
+            id, user_id, device_name, user_agent, ip_address
+        )
+        SELECT $1, id, $3, $4, $5
+        FROM active_user
+        RETURNING *
+        `,
+        [sessionId, userId, deviceName, userAgent, ipAddress, expectedPasswordHash]
+    );
+    return result.rows[0] || null;
+};
+
+// Face Login session issuance additionally locks and re-checks the active face
+// credential. Lock order is users -> user_face_credentials, matching enrollment
+// and disable operations so concurrent changes serialize consistently.
+const createSessionForActiveFaceUser = async (
+    userId,
+    deviceName = null,
+    userAgent = null,
+    ipAddress = null,
+    expectedCredential = null
+) => {
+    if (!expectedCredential || typeof expectedCredential.id !== 'string' ||
+        !Buffer.isBuffer(expectedCredential.ciphertext) ||
+        !Buffer.isBuffer(expectedCredential.nonce) ||
+        !Buffer.isBuffer(expectedCredential.authTag) ||
+        !Number.isInteger(Number(expectedCredential.keyVersion)) ||
+        typeof expectedCredential.modelId !== 'string' ||
+        typeof expectedCredential.modelVersion !== 'string') return null;
+    const sessionId = crypto.randomUUID();
+    const result = await pool.query(
+        `
+        WITH active_user AS (
+            SELECT id
+            FROM users
+            WHERE id = $2
+              AND is_active = TRUE
+            FOR UPDATE
+        ),
+        active_face_credential AS (
+            SELECT credential.user_id
+            FROM user_face_credentials AS credential
+            INNER JOIN active_user AS account ON account.id = credential.user_id
+            WHERE credential.id = $6
+              AND credential.ciphertext = $7
+              AND credential.nonce = $8
+              AND credential.auth_tag = $9
+              AND credential.key_version = $10
+              AND credential.model_id = $11
+              AND credential.model_version = $12
+              AND credential.disabled_at IS NULL
+            FOR UPDATE OF credential
+        )
+        INSERT INTO sessions (
+            id, user_id, device_name, user_agent, ip_address
+        )
+        SELECT $1, account.id, $3, $4, $5
+        FROM active_user AS account
+        INNER JOIN active_face_credential AS face ON face.user_id = account.id
+        RETURNING *
+        `,
+        [sessionId, userId, deviceName, userAgent, ipAddress,
+            expectedCredential.id, expectedCredential.ciphertext, expectedCredential.nonce,
+            expectedCredential.authTag, expectedCredential.keyVersion,
+            expectedCredential.modelId, expectedCredential.modelVersion]
+    );
+    return result.rows[0] || null;
+};
+
+
 
 // ======================================================
 // FIND ALL SESSIONS BY USER ID
@@ -567,6 +697,26 @@ const findSessionByIdAndUserId = async (
 // UPDATE SESSION LAST USED
 // ======================================================
 
+// Single indexed lookup for periodic Socket.IO authorization checks.
+// Keeping session and account state in one query halves the guard's DB round trips.
+const isSessionActiveForSocket = async (sessionId, userId) => {
+    const result = await pool.query(
+        `
+        SELECT EXISTS (
+            SELECT 1
+            FROM sessions AS session
+            INNER JOIN users AS account ON account.id = session.user_id
+            WHERE session.id = $1
+              AND session.user_id = $2
+              AND session.revoked_at IS NULL
+              AND account.is_active = TRUE
+        ) AS active
+        `,
+        [sessionId, userId]
+    );
+    return result.rows[0]?.active === true;
+};
+
 const updateSessionLastUsed = async (
     sessionId
 ) => {
@@ -630,6 +780,45 @@ const revokeAllSessions = async (userId) => {
 // ======================================================
 // REVOKE ALL REFRESH TOKENS OF SESSION
 // ======================================================
+
+
+const revokeOtherSessionsAndRefreshTokens = async (userId, currentSessionId) => {
+    const result = await pool.query(
+        `WITH revoked_sessions AS (
+             UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL
+             RETURNING id
+         ),
+         revoked_tokens AS (
+             UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
+             WHERE session_id IN (SELECT id FROM revoked_sessions)
+               AND revoked_at IS NULL
+             RETURNING session_id
+         )
+         SELECT id FROM revoked_sessions`,
+        [userId, currentSessionId]
+    );
+    return result.rows;
+};
+
+const revokeSessionForUserAndRefreshTokens = async (sessionId, userId) => {
+    const result = await pool.query(
+        `WITH revoked_session AS (
+             UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP
+             WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+             RETURNING id, user_id, revoked_at
+         ),
+         revoked_tokens AS (
+             UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
+             WHERE session_id IN (SELECT id FROM revoked_session)
+               AND revoked_at IS NULL
+             RETURNING session_id
+         )
+         SELECT id, user_id, revoked_at FROM revoked_session`,
+        [sessionId, userId]
+    );
+    return result.rows[0] || null;
+};
 
 const revokeRefreshTokensBySessionId = async (
     sessionId
@@ -1228,14 +1417,20 @@ module.exports = {
     // ==================================================
 
     createSession,
+    createSessionForActiveUser,
+    createSessionForVerifiedPassword,
+    createSessionForActiveFaceUser,
 
     findSessionsByUserId,
 
     findSessionByIdAndUserId,
+    isSessionActiveForSocket,
 
     updateSessionLastUsed,
 
     revokeSession,
+    revokeSessionForUserAndRefreshTokens,
+    revokeOtherSessionsAndRefreshTokens,
 
     revokeRefreshTokensBySessionId,
 

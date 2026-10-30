@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
     ArrowRight, Bell, BookOpen, CalendarDays, FileText, GraduationCap,
     MessageSquare, RefreshCw, Settings2, UserRound, Video, AlertCircle,
-    CheckCircle2, Clock3,
+    CheckCircle2, Clock3, Search,
 } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import { getMyStudentPortal } from '@/api/studentApi.js';
@@ -31,7 +31,15 @@ function QuickAction({ icon: Icon, title, detail, onClick, tone = 'blue' }) {
 
 function formatDate(value, language) {
     if (!value) return '—';
-    const date = new Date(value);
+    // PostgreSQL DATE values are date-only strings. Parse them in local time
+    // so UTC parsing cannot shift a student's birth date to the previous day.
+    const dateOnly = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+    const date = dateOnly
+        ? (() => {
+            const [year, month, day] = value.split('-').map(Number);
+            return new Date(year, month - 1, day);
+        })()
+        : new Date(value);
     if (Number.isNaN(date.getTime())) return '—';
     return new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 }
@@ -49,6 +57,8 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
     const [notifications, setNotifications] = useState([]);
     const [notificationError, setNotificationError] = useState('');
     const [reloadKey, setReloadKey] = useState(0);
+    const [courseSearch, setCourseSearch] = useState('');
+    const [courseFilter, setCourseFilter] = useState('all');
     const copy = useMemo(() => language === 'en' ? {
         linked: 'Student record linked', notLinked: 'This account is not linked to a student record',
         linkHelp: 'For privacy, accounts are never matched by email alone. Contact an administrator or the academic office to verify and link your record.',
@@ -57,6 +67,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
         scheduleHelp: 'The academic source does not currently provide class sessions, rooms or scheduled times.',
         retry: 'Retry', loadFail: 'Could not load your student portal. Please try again.',
         noticeFail: 'Could not load notifications.', fallback: 'New notification',
+        courseSearch: 'Search by subject name or code', allCourses: 'All courses', graded: 'Published results', pending: 'Awaiting results', noMatchingCourses: 'No courses match this filter.', registeredCourses: 'Registered courses', creditsRegistered: 'Registered credits', publishedResults: 'Published results',
     } : {
         linked: 'Đã liên kết hồ sơ', notLinked: 'Tài khoản chưa được liên kết hồ sơ sinh viên',
         linkHelp: 'Để bảo vệ dữ liệu cá nhân, hệ thống không tự ghép tài khoản theo email. Vui lòng liên hệ quản trị viên/Phòng đào tạo để xác minh và liên kết hồ sơ.',
@@ -65,6 +76,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
         scheduleHelp: 'Nguồn dữ liệu đào tạo hiện chưa cung cấp ca học, phòng học và thời gian học.',
         retry: 'Thử lại', loadFail: 'Không thể tải cổng sinh viên. Vui lòng thử lại.',
         noticeFail: 'Không thể tải thông báo.', fallback: 'Thông báo mới',
+        courseSearch: 'Tìm theo tên hoặc mã môn học', allCourses: 'Tất cả học phần', graded: 'Đã có điểm', pending: 'Chưa có điểm', noMatchingCourses: 'Không có học phần phù hợp với bộ lọc.', registeredCourses: 'Học phần đã đăng ký', creditsRegistered: 'Tín chỉ đã đăng ký', publishedResults: 'Kết quả đã công bố',
     }, [language]);
     const displayName = portal?.student?.name || user?.full_name || user?.name || user?.username || t('user');
     const date = useMemo(() => new Intl.DateTimeFormat(language === 'en' ? 'en-US' : 'vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date()), [language]);
@@ -91,7 +103,18 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
     const student = portal?.student;
     const enrollments = Array.isArray(portal?.enrollments) ? portal.enrollments : [];
     const linked = portal?.linked === true;
-    const results = enrollments.filter(item => item.total_score !== null && item.total_score !== undefined);
+    const results = enrollments.filter(item => item.total_score !== null && item.total_score !== undefined && item.total_score !== '');
+    const registeredCredits = enrollments.reduce((total, item) => {
+        const credits = Number(item.credits);
+        return Number.isFinite(credits) && credits > 0 ? total + credits : total;
+    }, 0);
+    const filteredEnrollments = enrollments.filter(item => {
+        const query = courseSearch.trim().toLocaleLowerCase();
+        const matchesSearch = !query || `${item.subject_name || ''} ${item.subject_code || ''}`.toLocaleLowerCase().includes(query);
+        const hasResult = item.total_score !== null && item.total_score !== undefined && item.total_score !== '';
+        const matchesFilter = courseFilter === 'all' || (courseFilter === 'graded' && hasResult) || (courseFilter === 'pending' && !hasResult);
+        return matchesSearch && matchesFilter;
+    });
 
     return <div className="mx-auto max-w-[1500px] space-y-6 pb-8">
         <header className="flex flex-wrap items-end justify-between gap-4">
@@ -100,6 +123,19 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
         </header>
 
         {error && <div className="flex flex-col gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200 sm:flex-row sm:items-center sm:justify-between" role="alert"><span className="flex items-start gap-2"><AlertCircle size={18} className="mt-0.5 shrink-0" />{error}</span><button type="button" onClick={() => setReloadKey(value => value + 1)} className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-rose-300 px-3 font-semibold hover:bg-rose-100 dark:border-rose-800 dark:hover:bg-rose-900/40"><RefreshCw size={14} />{copy.retry}</button></div>}
+
+        <section aria-label={t('studentAcademicInfo')} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {[
+                { label: copy.registeredCourses, value: enrollments.length, icon: BookOpen },
+                { label: copy.creditsRegistered, value: registeredCredits, icon: GraduationCap },
+                { label: copy.publishedResults, value: results.length, icon: FileText },
+            ].map(({ label, value, icon: Icon }) => (
+                <div key={label} className="app-panel flex min-w-0 items-center gap-3 p-4 sm:p-5">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><Icon size={20} aria-hidden="true" /></span>
+                    <div className="min-w-0"><p className="text-xs text-slate-500 dark:text-slate-400">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{loading ? '—' : value}</p></div>
+                </div>
+            ))}
+        </section>
 
         <section className="app-panel overflow-hidden">
             <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -117,7 +153,16 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
             <div className="grid gap-4 xl:grid-cols-3">
                 <section className="app-panel p-4 sm:p-5"><div className="mb-4 flex items-center gap-2"><CalendarDays size={18} className="text-blue-600 dark:text-blue-300" /><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('studentSchedule')}</h3></div><EmptyState icon={Clock3} title={copy.schedule} detail={copy.scheduleHelp} /></section>
                 <section className="app-panel p-4 sm:p-5"><div className="mb-4 flex items-center justify-between gap-2"><div className="flex items-center gap-2"><BookOpen size={18} className="text-blue-600 dark:text-blue-300" /><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('studentSubjects')}</h3></div><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">{enrollments.length}</span></div>
-                    {loading ? <div className="space-y-3">{[1,2,3].map(item => <div key={item} className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />)}</div> : !linked || !enrollments.length ? <EmptyState icon={BookOpen} title={t('studentSubjectsEmptyTitle')} detail={t('studentSubjectsEmptyDetail')} /> : <ul className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">{enrollments.map(item => <li key={item.id} className="rounded-lg border border-slate-100 p-3 dark:border-slate-800"><p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.subject_name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.subject_code} · {item.credits} {copy.credits} · {item.semester_name} {item.academic_year}</p></li>)}</ul>}
+                    <label className="mb-3 flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-slate-400 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-950">
+                        <Search size={16} aria-hidden="true" />
+                        <input type="search" value={courseSearch} onChange={event => setCourseSearch(event.target.value)} placeholder={copy.courseSearch} aria-label={copy.courseSearch} className="min-w-0 flex-1 bg-transparent text-xs text-slate-800 outline-none placeholder:text-slate-400 dark:text-slate-100" />
+                    </label>
+                    <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label={t('studentSubjects')}>
+                        {[['all', copy.allCourses], ['graded', copy.graded], ['pending', copy.pending]].map(([value, label]) => (
+                            <button key={value} type="button" aria-pressed={courseFilter === value} onClick={() => setCourseFilter(value)} className={`min-h-8 rounded-full px-3 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${courseFilter === value ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-blue-50 hover:text-blue-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'}`}>{label}</button>
+                        ))}
+                    </div>
+                    {loading ? <div className="space-y-3">{[1,2,3].map(item => <div key={item} className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />)}</div> : !linked || !enrollments.length ? <EmptyState icon={BookOpen} title={t('studentSubjectsEmptyTitle')} detail={t('studentSubjectsEmptyDetail')} /> : filteredEnrollments.length ? <ul className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">{filteredEnrollments.map(item => <li key={item.id} className="rounded-lg border border-slate-100 p-3 dark:border-slate-800"><p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.subject_name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.subject_code} · {item.credits} {copy.credits} · {item.semester_name} {item.academic_year}</p></li>)}</ul> : <p className="rounded-lg border border-dashed border-slate-200 px-3 py-5 text-center text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">{copy.noMatchingCourses}</p>}
                 </section>
                 <section className="app-panel p-4 sm:p-5"><div className="mb-4 flex items-center justify-between gap-2"><div className="flex items-center gap-2"><FileText size={18} className="text-blue-600 dark:text-blue-300" /><h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('studentResults')}</h3></div><span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:bg-violet-950/50 dark:text-violet-300">{results.length}</span></div>
                     {loading ? <div className="space-y-3">{[1,2,3].map(item => <div key={item} className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />)}</div> : !linked || !results.length ? <EmptyState icon={FileText} title={t('studentResultsEmptyTitle')} detail={t('studentResultsEmptyDetail')} /> : <ul className="max-h-[28rem] space-y-2 overflow-y-auto pr-1">{results.map(item => <li key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800"><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{item.subject_name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.semester_name} {item.academic_year}</p></div><div className="shrink-0 text-right"><p className="text-[10px] text-slate-500">{copy.total}</p><Score value={item.total_score} /></div></li>)}</ul>}

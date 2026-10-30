@@ -5,8 +5,12 @@ const crypto = require('node:crypto');
 const ACTIONS = Object.freeze(['blink', 'smile']);
 const MAX_FRAMES = 40;
 const MIN_FRAMES = 6;
-const MAX_DURATION_MS = 12_000;
-const MAX_FRAME_GAP_MS = 3_000;
+// The server runs two CPU ONNX models plus a remote/local MediaPipe request per
+// frame. Keep the challenge bounded, but do not make normal inference latency
+// indistinguishable from an invalid/replayed sequence.
+const MAX_DURATION_MS = 55_000;
+const MAX_FRAME_GAP_MS = 10_000;
+const CHALLENGE_TTL_MS = 60_000;
 
 function createLivenessChallenge(now = Date.now()) {
     const actions = crypto.randomInt(0, 2) === 0 ? [...ACTIONS] : [...ACTIONS].reverse();
@@ -15,7 +19,7 @@ function createLivenessChallenge(now = Date.now()) {
         nonce: crypto.randomBytes(32).toString('base64url'),
         actions,
         issuedAt: now,
-        expiresAt: now + 30_000
+        expiresAt: now + CHALLENGE_TTL_MS
     });
 }
 
@@ -89,4 +93,4 @@ function verifyLivenessSequence({ actions, frames, issuedAt, expiresAt, now = Da
     return { passed: true, reason: 'CHALLENGE_COMPLETED' };
 }
 
-module.exports = { createLivenessChallenge, verifyLivenessSequence };
+module.exports = { createLivenessChallenge, verifyLivenessSequence, MAX_FRAME_GAP_MS };

@@ -2,14 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, ShieldCheck, ShieldAlert, Trash2, Video, VideoOff } from 'lucide-react';
 import {
     beginFaceEnrollmentApi,
+    cancelFaceEnrollmentApi,
     captureFaceEnrollmentFrameApi,
     disableFaceLoginApi,
     finishFaceEnrollmentApi,
     getFaceLoginStatusApi,
 } from '@/api/authApi.js';
 
-const FRAME_COUNT = 8;
-const FRAME_INTERVAL_MS = 350;
+const FRAME_COUNT = 6;
+const FRAME_INTERVAL_MS = 500;
 
 function wait(ms) {
     return new Promise(resolve => window.setTimeout(resolve, ms));
@@ -44,8 +45,10 @@ export default function FaceLoginSettings() {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const mountedRef = useRef(true);
+    const cancelledRef = useRef(false);
 
     const stopCamera = useCallback(() => {
+        cancelledRef.current = true;
         streamRef.current?.getTracks().forEach(track => track.stop());
         streamRef.current = null;
         if (videoRef.current) videoRef.current.srcObject = null;
@@ -77,11 +80,14 @@ export default function FaceLoginSettings() {
     const enroll = async () => {
         const currentPassword = window.prompt('Nhập mật khẩu Student Manager để xác nhận đăng ký khuôn mặt:');
         if (!currentPassword) return;
+        cancelledRef.current = false;
         setBusy(true);
         setError('');
         setProgress(0);
         setInstruction('');
         let stream;
+        let challengeId = null;
+        let enrollmentCompleted = false;
         try {
             if (!navigator.mediaDevices?.getUserMedia) {
                 throw new Error('Trình duyệt không hỗ trợ camera hoặc trang hiện tại chưa chạy trên HTTPS/localhost.');
@@ -90,6 +96,7 @@ export default function FaceLoginSettings() {
                 audio: false,
                 video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
             });
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             streamRef.current = stream;
             setCameraActive(true);
             // Wait for React to mount the conditional video element before binding the stream.
@@ -97,30 +104,44 @@ export default function FaceLoginSettings() {
             if (!videoRef.current) throw new Error('Không thể khởi tạo khung xem camera.');
             videoRef.current.srcObject = stream;
             await videoRef.current.play();
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
 
             const challenge = await beginFaceEnrollmentApi(null, currentPassword);
+            challengeId = challenge.challengeId;
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
-            const actionText = actions.map(action => action === 'blink' ? 'chớp mắt' : 'mỉm cười').join(' → ');
-            setInstruction(`Thực hiện lần lượt: ${actionText}. Giữ khuôn mặt ở giữa khung hình.`);
-            await wait(900);
+            setInstruction(`Bước 1/2: ${actions[0] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+            await wait(1200);
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
+                if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
                 const frame = await captureJpeg(videoRef.current);
                 const result = await captureFaceEnrollmentFrameApi(
                     challenge.challengeId,
                     challenge.livenessNonce,
                     frame,
                 );
+                if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
                 setProgress(Math.min(FRAME_COUNT, result.frameCount || index + 1));
+                if (index === Math.floor(FRAME_COUNT / 2) - 1) {
+                    setInstruction(`Bước 2/2: ${actions[1] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
+                }
                 if (index < FRAME_COUNT - 1) await wait(FRAME_INTERVAL_MS);
             }
 
+            if (cancelledRef.current) throw new Error('Bạn đã dừng quá trình đăng ký khuôn mặt.');
             await finishFaceEnrollmentApi(challenge.challengeId);
+            enrollmentCompleted = true;
+            challengeId = null;
             setInstruction('Đăng ký khuôn mặt đã hoàn tất.');
             await refresh();
         } catch (requestError) {
             setError(requestError.response?.data?.message || requestError.message || 'Không thể đăng ký khuôn mặt.');
         } finally {
+            if (challengeId && !enrollmentCompleted) {
+                try { await cancelFaceEnrollmentApi(challengeId); }
+                catch (cancelError) { console.warn('[FaceLogin] Could not cancel enrollment challenge:', cancelError.message); }
+            }
             stream?.getTracks().forEach(track => track.stop());
             if (streamRef.current === stream) streamRef.current = null;
             if (videoRef.current) videoRef.current.srcObject = null;
@@ -131,10 +152,12 @@ export default function FaceLoginSettings() {
 
     const disable = async () => {
         if (!window.confirm('Vô hiệu hóa Face Login trên tài khoản này?')) return;
+        const currentPassword = window.prompt('Nhập mật khẩu Student Manager để xác nhận vô hiệu hóa Face Login:');
+        if (!currentPassword) return;
         setBusy(true);
         setError('');
         try {
-            await disableFaceLoginApi();
+            await disableFaceLoginApi(currentPassword);
             await refresh();
         } catch (requestError) {
             setError(requestError.response?.data?.message || 'Không thể vô hiệu hóa Face Login.');

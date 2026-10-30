@@ -16,6 +16,8 @@ const faceAuthRateLimiter =
     require('../middleware/faceAuthRateLimiter.js');
 const loginRateLimiter =
     require('../middleware/loginRateLimiter.js');
+const passwordLoginProtection =
+    require('../middleware/passwordLoginProtection.js');
 
 const requireTrustedOrigin =
     require('../middleware/requireTrustedOrigin.js');
@@ -37,6 +39,7 @@ router.get('/face/status', authMiddleware, faceAuthController.status);
 router.post('/face/enrollment/options', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
 router.post('/face/enrollment/frame', requireTrustedOrigin, authMiddleware, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureEnrollmentFrame);
 router.post('/face/enrollment/verify', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.finishEnrollment);
+router.delete('/face/enrollment/challenge', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.cancelEnrollment);
 router.delete('/face/credential', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.disable);
 router.post('/face/login/options', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.beginLogin);
 router.post('/face/login/frame', requireTrustedOrigin, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureLoginFrame);
@@ -72,7 +75,9 @@ router.post('/qr-login/poll', requireTrustedOrigin, authRateLimiter, advancedAut
 router.post('/register', authRateLimiter, authController.register);
 
 // LOGIN
-router.post('/login', requireTrustedOrigin, loginRateLimiter, authController.login);
+// Count cooldown rejections against the IP safety quota as well, so repeatedly
+// probing a cooling-down account cannot bypass the network-level limiter.
+router.post('/login', requireTrustedOrigin, loginRateLimiter, passwordLoginProtection, authController.login);
 
 // REFRESH
 router.post('/refresh', requireTrustedOrigin, authRateLimiter, authController.refresh);

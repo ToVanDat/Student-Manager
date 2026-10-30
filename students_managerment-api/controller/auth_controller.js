@@ -1,5 +1,6 @@
 const authService =
     require('../service/authService.js');
+const { recordFailure, clearAccountIpState } = require('../service/passwordLoginProtection.js');
 
 const { getDeviceInfo } =
     require('../src/utils/device.js');
@@ -78,7 +79,7 @@ const updateProfile = async (req, res) => {
         // ==============================================
 
         const {
-            username,
+            full_name,
             email
         } = req.body;
 
@@ -88,14 +89,16 @@ const updateProfile = async (req, res) => {
         // ==============================================
 
         if (
-            !username ||
-            !email
+            !full_name ||
+            !String(full_name).trim() ||
+            !email ||
+            !String(email).trim()
         ) {
 
             return res.status(400).json({
 
                 message:
-                    'Username và email là bắt buộc'
+                    'Tên hiển thị và email là bắt buộc'
 
             });
 
@@ -109,7 +112,7 @@ const updateProfile = async (req, res) => {
         const user =
             await authService.updateProfile(
                 userId,
-                username,
+                full_name,
                 email
             );
 
@@ -553,6 +556,13 @@ const login = async (req, res) => {
                 ipAddress
             );
 
+        // A valid password clears only this account/IP pair; other IP risk
+        // signals remain isolated and expire naturally.
+        try {
+            await clearAccountIpState(username, ipAddress);
+        } catch (protectionError) {
+            console.warn('[AUTH] Could not clear successful-login cooldown:', protectionError.code || protectionError.message);
+        }
 
         // ==============================================
         // SET REFRESH TOKEN COOKIE
@@ -601,18 +611,26 @@ const login = async (req, res) => {
 
     } catch (error) {
 
-        console.error(
-            'LOGIN ERROR:',
-            error
-        );
+        if (error.code === 'AUTH_INVALID_CREDENTIALS') {
+            try {
+                await recordFailure(req.body?.username, req.ip);
+            } catch (protectionError) {
+                console.error('[AUTH] Could not record failed password attempt:', protectionError.code || protectionError.message);
+            }
 
+            return res.status(401).json({
+                code: 'INVALID_CREDENTIALS',
+                message: 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.'
+            });
+        }
 
-        return res.status(401).json({
+        console.error('[AUTH][login failed]', error.code || error.message);
 
-            message:
-                error.message ||
-                'Đăng nhập thất bại'
-
+        // Only credential mismatches are 401. Database, Redis, JWT and other
+        // operational failures must not be misreported as invalid credentials.
+        return res.status(500).json({
+            code: 'AUTH_LOGIN_UNAVAILABLE',
+            message: 'Dịch vụ đăng nhập tạm thời không khả dụng. Vui lòng thử lại sau.'
         });
 
     }

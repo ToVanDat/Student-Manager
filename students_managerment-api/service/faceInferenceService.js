@@ -11,6 +11,26 @@ const EXPECTED_HASHES = Object.freeze({
     'metadata.json': '2639a8261232328665a2a6204abc8e41805730f323feda1a1c147006685fe92e',
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 });
+// The ONNX artifact is hash-pinned, but class semantics remain deliberately
+// unresolved until direct ONNX-vs-PyTorch parity passes. The parity verifier
+// uses upstream test.py semantics only after exact output equivalence is proven.
+const PAD_MODEL_CONTRACT = Object.freeze({
+    artifactSha256: 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b',
+    input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 255]), source: 'MiniVision AntiSpoofPredict -> custom ToTensor -> functional.to_tensor (raw float conversion, no /255)' }),
+    output: Object.freeze({
+        verified: false,
+        classCount: 3,
+        semantics: null,
+        bonaFideIndex: null,
+        attackIndices: null,
+        classOrder: null,
+        reason: 'The published ONNX model card conflicts with upstream runtime class order and input scale. The exact ONNX/PyTorch parity verifier must pass before the API contract is promoted.'
+    }),
+    upstreamInference: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
+    upstreamConversion: 'https://github.com/QingHeYang/Silent-Face-Anti-Spoofing-onnx/blob/main/convert_minifasnet_to_onnx.py',
+    matchingArtifactCard: 'https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/commit/d29c87568ca9b5662da803b10f217c4db20b142b'
+});
+
 const MODEL_DIR = path.resolve(
     process.env.FACE_MODEL_DIR || path.join(__dirname, '..', 'storage', 'face-models')
 );
@@ -57,30 +77,64 @@ function l2Normalize(values) {
     return Array.from(values, value => Math.fround(value / norm));
 }
 
-function classProbabilities(values) {
-    if (!values || values.length !== 3 || Array.from(values).some(value => !Number.isFinite(value))) {
+function classProbabilities(output, contract = PAD_MODEL_CONTRACT.output) {
+    if (!output || output.length !== contract.classCount ||
+        Array.from(output).some(value => !Number.isFinite(value))) {
         throw configError('MiniFASNet phải trả về đúng 3 giá trị hữu hạn');
     }
-    const scores = Array.from(values);
-    const sum = scores.reduce((total, value) => total + value, 0);
-    // Some exports include Softmax in the graph, others expose logits.
-    // Preserve an already-normalized probability vector; otherwise apply stable Softmax.
-    if (scores.every(value => value >= 0 && value <= 1) && Math.abs(sum - 1) <= 1e-3) {
+    if (!contract.verified) {
+        throw configError('MiniFASNet class mapping/output semantics chưa được xác minh bằng ONNX-PyTorch parity; PAD inference bị khóa.');
+    }
+
+    const scores = Array.from(output);
+    if (contract.semantics === 'logits') {
+        const max = Math.max(...scores);
+        const exps = scores.map(value => Math.exp(value - max));
+        const total = exps.reduce((sum, value) => sum + value, 0);
+        return exps.map(value => value / total);
+    }
+    if (contract.semantics === 'probabilities') {
+        if (scores.some(value => value < 0 || value > 1)) {
+            throw configError('MiniFASNet probability output phải nằm trong [0,1]');
+        }
+        const total = scores.reduce((sum, value) => sum + value, 0);
+        if (Math.abs(total - 1) > 1e-3) {
+            throw configError('MiniFASNet probability output không có tổng bằng 1');
+        }
         return scores;
     }
-    const max = Math.max(...scores);
-    const exps = scores.map(value => Math.exp(value - max));
-    const total = exps.reduce((a, b) => a + b, 0);
-    return exps.map(value => value / total);
+    throw configError('MiniFASNet output semantics phải được xác minh là logits hoặc probabilities');
 }
 
-function assertPixels(buffer, expectedLength, label) {
+function decodePadOutput(output, contract = PAD_MODEL_CONTRACT.output) {
+    const probabilities = classProbabilities(output, contract);
+    const bonaIndex = contract.bonaFideIndex;
+    const attackIndices = contract.attackIndices;
+    if (!Number.isInteger(bonaIndex) || bonaIndex < 0 || bonaIndex >= contract.classCount ||
+        !Array.isArray(attackIndices) || attackIndices.length !== contract.classCount - 1 ||
+        attackIndices.some(index => !Number.isInteger(index) || index < 0 ||
+            index >= contract.classCount || index === bonaIndex) ||
+        new Set(attackIndices).size !== attackIndices.length ||
+        new Set([bonaIndex, ...attackIndices]).size !== contract.classCount) {
+        throw configError('MiniFASNet bona-fide/attack indices chưa được khai báo thành một phân hoạch hợp lệ');
+    }
+    const bonaFideProbability = probabilities[bonaIndex];
+    const attackProbability = attackIndices.reduce((sum, index) => sum + probabilities[index], 0);
+    return {
+        probabilities,
+        bonaFideProbability,
+        attackProbability,
+        score: bonaFideProbability
+    };
+}
+
+function assertPixels(buffer, expectedLength, label, maxValue = 1) {
     if (!(buffer instanceof Float32Array) || buffer.length !== expectedLength) {
         throw new TypeError(label + ' phải là Float32Array có ' + expectedLength + ' phần tử');
     }
     for (const value of buffer) {
-        if (!Number.isFinite(value) || value < 0 || value > 1) {
-            throw new TypeError(label + ' phải chứa pixel hữu hạn trong [0,1]');
+        if (!Number.isFinite(value) || value < 0 || value > maxValue) {
+            throw new TypeError(label + ' phải chứa pixel hữu hạn trong [0,' + maxValue + ']');
         }
     }
 }
@@ -136,29 +190,26 @@ async function inferFaceImage(imageBuffer) {
 
 async function inferAlignedFace({ rgb112, bgr80 }) {
     assertPixels(rgb112, 3 * 112 * 112, 'rgb112');
-    assertPixels(bgr80, 3 * 80 * 80, 'bgr80');
+    assertPixels(bgr80, 3 * 80 * 80, 'bgr80', 255);
     const runtime = await getRuntime();
-    const { ort, mobile, pad, padInputName, padOutputName } = runtime;
+    const { ort, mobile, pad: padSession, padInputName, padOutputName } = runtime;
     const mobileTensor = new ort.Tensor('float32', rgb112, [1, 3, 112, 112]);
     const padTensor = new ort.Tensor('float32', bgr80, [1, 3, 80, 80]);
     const [mobileResult, padResult] = await Promise.all([
         mobile.run({ img1: mobileTensor, img2: mobileTensor }),
-        pad.run({ [padInputName]: padTensor })
+        padSession.run({ [padInputName]: padTensor })
     ]);
     const embeddingRows = mobileResult.embeddings.data;
     if (!embeddingRows || embeddingRows.length !== 256) {
         throw configError('MobileFaceNet output phải có đúng 2x128 giá trị');
     }
     const embedding = l2Normalize(embeddingRows.slice(0, 128));
-    const probabilities = classProbabilities(padResult[padOutputName].data);
+    // Deliberately fail closed until the exact ONNX output semantics and class
+    // order are proven against the original PyTorch model on identical tensors.
+    const padResultDecoded = decodePadOutput(padResult[padOutputName].data);
     return {
         embedding,
-        pad: {
-            liveProbability: probabilities[0],
-            printAttackProbability: probabilities[1],
-            replayAttackProbability: probabilities[2],
-            score: 1 - probabilities[1] - probabilities[2]
-        },
+        pad: padResultDecoded,
         liveness: tensors.liveness,
         model: { id: 'mobilefacenet+minifasnet-v2', version: 'supplied-bundle-v1' }
     };
@@ -166,7 +217,10 @@ async function inferAlignedFace({ rgb112, bgr80 }) {
 
 async function ensureFaceInferenceReady() {
     await getRuntime();
+    if (!PAD_MODEL_CONTRACT.output.verified) {
+        throw configError('MiniFASNet output contract chưa được xác minh; Face Login không được phép nhận challenge.');
+    }
     return true;
 }
 
-module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, l2Normalize, classProbabilities, assertPixels, resolveArtifactPath, EXPECTED_HASHES };
+module.exports = { inferFaceImage, inferAlignedFace, ensureFaceInferenceReady, getRuntime, l2Normalize, classProbabilities, decodePadOutput, assertPixels, resolveArtifactPath, EXPECTED_HASHES, PAD_MODEL_CONTRACT };

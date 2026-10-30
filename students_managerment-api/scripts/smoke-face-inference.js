@@ -22,6 +22,7 @@ async function main() {
     const requiredSignals = ['eyeBlinkLeft', 'eyeBlinkRight', 'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
     if (!Array.isArray(result.embedding) || result.embedding.length !== 128 ||
         !result.pad || !Number.isFinite(result.pad.score) ||
+        !Number.isFinite(result.pad.bonaFideProbability) || !Number.isFinite(result.pad.attackProbability) ||
         !requiredSignals.every(key => Number.isFinite(result.liveness?.[key]))) {
         throw new Error('Face inference output did not satisfy the expected contract');
     }
@@ -31,9 +32,9 @@ async function main() {
         model: result.model,
         embeddingDimensions: result.embedding.length,
         pad: {
-            liveProbability: result.pad.liveProbability,
-            printAttackProbability: result.pad.printAttackProbability,
-            replayAttackProbability: result.pad.replayAttackProbability,
+            bonaFideProbability: result.pad.bonaFideProbability,
+            attackProbability: result.pad.attackProbability,
+            classProbabilities: result.pad.classProbabilities,
             score: result.pad.score
         },
         livenessSignalsPresent: requiredSignals.length,

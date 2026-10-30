@@ -1,4 +1,5 @@
 const studentService = require('../service/studentService.js');
+const { buildStudentsCsv } = require('../service/studentCsv.js');
 
 const handleStudentError = (res, error, fallbackMessage) => {
     // Log database details for operators, but never echo SQL/constraint details to clients.
@@ -74,6 +75,100 @@ const getAllStudents = async (req, res) => {
         return res.status(200).json(result);
     } catch (error) {
         return handleStudentError(res, error, 'Không thể tải danh sách sinh viên.');
+    }
+};
+
+const exportStudentsCsv = async (req, res) => {
+    try {
+        const search = req.query?.search === undefined ? '' : req.query.search;
+        const rawClassId = req.query?.classId;
+        const classId = rawClassId === undefined || rawClassId === '' ? null : Number(rawClassId);
+        const gender = req.query?.gender === undefined ? '' : req.query.gender;
+
+        if (typeof search !== 'string' || search.length > 100) {
+            return res.status(400).json({ message: 'Từ khóa tìm kiếm không hợp lệ hoặc quá dài.' });
+        }
+        if (classId !== null && (!Number.isSafeInteger(classId) || classId <= 0)) {
+            return res.status(400).json({ message: 'classId phải là số nguyên dương.' });
+        }
+        if (typeof gender !== 'string' || !['', 'Nam', 'Nữ'].includes(gender)) {
+            return res.status(400).json({ message: 'gender chỉ chấp nhận Nam hoặc Nữ.' });
+        }
+
+        const result = await studentService.getStudentExportRows({ search, classId, gender });
+        if (result.kind === 'too_many') {
+            return res.status(413).json({
+                code: 'STUDENT_EXPORT_LIMIT_EXCEEDED',
+                maxRows: result.maxRows,
+                totalCount: result.totalCount,
+                message: `Bộ lọc có ${result.totalCount} bản ghi; giới hạn mỗi lần xuất là ${result.maxRows}. Hãy thu hẹp bộ lọc.`
+            });
+        }
+
+        const csv = buildStudentsCsv(result.rows);
+        const date = new Date().toISOString().slice(0, 10);
+        res.set({
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Content-Disposition': `attachment; filename="students-${date}.csv"`,
+            'Cache-Control': 'no-store',
+            'X-Content-Type-Options': 'nosniff'
+        });
+        return res.status(200).send(csv);
+    } catch (error) {
+        return handleStudentError(res, error, 'Không thể xuất danh sách sinh viên.');
+    }
+};
+
+
+const previewStudentCsvImport = async (req, res) => {
+    try {
+        if (!req.file?.buffer) {
+            return res.status(400).json({ message: 'Vui lòng chọn tệp CSV.' });
+        }
+        const preview = await studentService.previewStudentCsvImport(req.file.buffer);
+        return res.status(200).json(preview);
+    } catch (error) {
+        if (error?.statusCode) {
+            return res.status(error.statusCode).json({
+                code: error.code,
+                message: error.message
+            });
+        }
+        return handleStudentError(res, error, 'Không thể kiểm tra tệp CSV.');
+    }
+};
+
+const importStudentsCsv = async (req, res) => {
+    try {
+        if (!req.file?.buffer) {
+            return res.status(400).json({ message: 'Vui lòng chọn lại tệp CSV.' });
+        }
+        const result = await studentService.confirmStudentCsvImport(req.file.buffer);
+        return res.status(201).json({
+            message: 'Nhập danh sách sinh viên thành công.',
+            importedCount: result.importedCount
+        });
+    } catch (error) {
+        if (error?.code === 'STUDENT_IMPORT_VALIDATION_FAILED') {
+            return res.status(422).json({
+                code: error.code,
+                message: error.message,
+                preview: error.details
+            });
+        }
+        if (error?.code === 'STUDENT_IMPORT_CONFLICT') {
+            return res.status(409).json({
+                code: error.code,
+                message: error.message
+            });
+        }
+        if (error?.statusCode) {
+            return res.status(error.statusCode).json({
+                code: error.code,
+                message: error.message
+            });
+        }
+        return handleStudentError(res, error, 'Không thể nhập danh sách sinh viên.');
     }
 };
 
@@ -237,6 +332,9 @@ const deleteStudent = async (req, res) => {
 
 module.exports = {
     getAllStudents,
+    exportStudentsCsv,
+    previewStudentCsvImport,
+    importStudentsCsv,
     getMyStudentPortal,
     getStudentAccountLinks,
     createStudentAccountLink,

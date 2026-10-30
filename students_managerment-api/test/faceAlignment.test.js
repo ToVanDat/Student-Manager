@@ -30,18 +30,22 @@ test('alignment creates a 112x112 RGB crop', () => {
   assert.equal(aligned.length, 112 * 112 * 3);
 });
 
-test('PAD crop is a square 80x80 crop expanded around the face box', () => {
+test('PAD crop follows upstream bounded 2.7x bbox expansion and produces 80x80', () => {
   const rgb = Buffer.alloc(200 * 200 * 3, 200);
   const crop = cropPadRgb(rgb, 200, 200, { x: 70, y: 60, width: 60, height: 80 });
   assert.equal(crop.length, 80 * 80 * 3);
 });
 
-test('NCHW conversion applies BGR channel order and [0,1] scaling', () => {
+test('MobileFaceNet NCHW conversion applies RGB/BGR order and [0,1] scaling', () => {
   const rgb = Buffer.from([255, 128, 0]);
   const tensor = toNchwFloat(rgb, 1, 1, [2, 1, 0]);
   assert.equal(tensor[0], 0);
   assert.ok(Math.abs(tensor[1] - 128 / 255) < 1e-6);
   assert.equal(tensor[2], 1);
+  const rawBgr = toNchwFloat(rgb, 1, 1, [2, 1, 0], 1);
+  assert.equal(rawBgr[0], 0);
+  assert.equal(rawBgr[1], 128);
+  assert.equal(rawBgr[2], 255);
 });
 
 test('preprocessing scales trusted landmarks to the decoded image dimensions', () => {
@@ -56,4 +60,7 @@ test('preprocessing scales trusted landmarks to the decoded image dimensions', (
   const tensors = prepareFaceTensors(rgb, width, height, scaled);
   assert.equal(tensors.rgb112.length, 3 * 112 * 112);
   assert.equal(tensors.bgr80.length, 3 * 80 * 80);
+  assert.equal(tensors.bgr80[0], 100);
+  const centerPixelOffset = (56 * 112 + 56) * 3;
+  assert.ok(Math.abs(tensors.rgb112[centerPixelOffset] - 100 / 255) < 1e-6);
 });

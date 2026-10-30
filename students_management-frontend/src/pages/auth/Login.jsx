@@ -270,9 +270,16 @@ function Login() {
     };
 
     const handleFaceLoginSuccess = data => {
-        loginUser(data);
-        setShowFaceLogin(false);
-        navigate('/students?view=dashboard', { replace: true });
+        // Match password login: ignore stale-session revoke events while this
+        // tab intentionally replaces its current session with Face Login.
+        sessionStorage.setItem('auth:login-in-progress', 'true');
+        try {
+            loginUser(data);
+            setShowFaceLogin(false);
+            navigate('/students?view=dashboard', { replace: true });
+        } finally {
+            sessionStorage.removeItem('auth:login-in-progress');
+        }
     };
 
     // =================================================

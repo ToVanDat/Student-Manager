@@ -141,6 +141,159 @@ const getStudentPage = async ({
     };
 };
 
+const STUDENT_EXPORT_MAX_ROWS = 20000;
+
+const getStudentExportRows = async ({ search = '', classId = null, gender = '' } = {}) => {
+    const { whereSql, values } = buildStudentPageFilters({
+        keyword: String(search || '').trim(),
+        classId,
+        gender
+    });
+    const limitPosition = values.length + 1;
+    const result = await pool.query(
+        `SELECT
+            s.id,
+            s.student_code,
+            s.name,
+            s.email,
+            s.date_of_birth,
+            s.gender,
+            s.class_id,
+            c.class_code,
+            c.class_name,
+            COUNT(*) OVER()::int AS total_count
+         FROM students s
+         JOIN classes c ON c.id = s.class_id
+         ${whereSql}
+         ORDER BY s.id ASC
+         LIMIT $${limitPosition}`,
+        [...values, STUDENT_EXPORT_MAX_ROWS + 1]
+    );
+
+    const totalCount = Number(result.rows[0]?.total_count) || 0;
+    if (totalCount > STUDENT_EXPORT_MAX_ROWS) {
+        return { kind: 'too_many', totalCount, maxRows: STUDENT_EXPORT_MAX_ROWS };
+    }
+
+    const rows = result.rows.map(({ total_count, ...student }) => student);
+    return { kind: 'ok', rows, totalCount };
+};
+
+
+const getStudentImportReferenceData = async ({ studentCodes = [], emails = [], classCodes = [] } = {}) => {
+    const normalizedCodes = [...new Set(studentCodes.map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+    const normalizedEmails = [...new Set(emails.map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+    const normalizedClasses = [...new Set(classCodes.map(value => String(value).trim().toLowerCase()).filter(Boolean))];
+
+    const [classesResult, codesResult, emailsResult] = await Promise.all([
+        pool.query(
+            `SELECT id, class_code
+             FROM classes
+             WHERE LOWER(BTRIM(class_code)) = ANY($1::text[])`,
+            [normalizedClasses]
+        ),
+        pool.query(
+            `SELECT LOWER(BTRIM(student_code)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(student_code)) = ANY($1::text[])`,
+            [normalizedCodes]
+        ),
+        pool.query(
+            `SELECT LOWER(BTRIM(email)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(email)) = ANY($1::text[])`,
+            [normalizedEmails]
+        )
+    ]);
+
+    return {
+        classes: classesResult.rows,
+        existingStudentCodes: codesResult.rows.map(row => row.value),
+        existingEmails: emailsResult.rows.map(row => row.value)
+    };
+};
+
+const createStudentsFromImport = async (rows = []) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+
+        const classCodes = [...new Set(rows.map(row => row.class_code.toLowerCase()))];
+        const classResult = await client.query(
+            `SELECT id, class_code
+             FROM classes
+             WHERE LOWER(BTRIM(class_code)) = ANY($1::text[])
+             FOR SHARE`,
+            [classCodes]
+        );
+        const classMatches = new Map();
+        for (const row of classResult.rows) {
+            const key = row.class_code.trim().toLowerCase();
+            const matches = classMatches.get(key) || [];
+            matches.push(row.id);
+            classMatches.set(key, matches);
+        }
+        const invalidClasses = classCodes.filter(code => (classMatches.get(code) || []).length !== 1);
+        if (invalidClasses.length) {
+            const error = new Error('Một hoặc nhiều mã lớp không tồn tại hoặc không duy nhất. Hãy xem trước tệp lại.');
+            error.code = 'STUDENT_IMPORT_CONFLICT';
+            throw error;
+        }
+        const classIds = new Map([...classMatches.entries()].map(([code, ids]) => [code, ids[0]]));
+
+        const studentCodes = rows.map(row => row.student_code.trim().toLowerCase());
+        const emails = rows.map(row => row.email.trim().toLowerCase());
+        const codesResult = await client.query(
+            `SELECT LOWER(BTRIM(student_code)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(student_code)) = ANY($1::text[])
+             FOR SHARE`,
+            [studentCodes]
+        );
+        const emailsResult = await client.query(
+            `SELECT LOWER(BTRIM(email)) AS value
+             FROM students
+             WHERE LOWER(BTRIM(email)) = ANY($1::text[])
+             FOR SHARE`,
+            [emails]
+        );
+        if (codesResult.rowCount || emailsResult.rowCount) {
+            const error = new Error('Mã sinh viên hoặc email đã được sử dụng. Không có bản ghi nào được nhập.');
+            error.code = 'STUDENT_IMPORT_CONFLICT';
+            throw error;
+        }
+
+        for (const row of rows) {
+            await client.query(
+                `INSERT INTO students (
+                    student_code, name, email, date_of_birth, gender, class_id
+                 ) VALUES ($1, $2, $3, $4, $5, $6)`,
+                [
+                    row.student_code,
+                    row.name,
+                    row.email,
+                    row.date_of_birth,
+                    row.gender,
+                    classIds.get(row.class_code.toLowerCase())
+                ]
+            );
+        }
+
+        await client.query('COMMIT');
+        return { importedCount: rows.length };
+    } catch (error) {
+        await client.query('ROLLBACK');
+        if (error?.code === '40001' || error?.code === '23505' || error?.code === '23503') {
+            const conflict = new Error('Dữ liệu đã thay đổi hoặc bị trùng trong lúc nhập. Không có bản ghi nào được nhập; hãy xem trước và thử lại.');
+            conflict.code = 'STUDENT_IMPORT_CONFLICT';
+            throw conflict;
+        }
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const getStudentById = async (id) => {
     const result = await pool.query(`
         SELECT
@@ -403,6 +556,9 @@ const removeStudentAccountLink = async ({ userId, actorId, reason }) => {
 module.exports = {
     getAllStudents,
     getStudentPage,
+    getStudentExportRows,
+    getStudentImportReferenceData,
+    createStudentsFromImport,
     getStudentPortalByUserId,
     listStudentAccountLinkAdminData,
     createVerifiedStudentAccountLink,

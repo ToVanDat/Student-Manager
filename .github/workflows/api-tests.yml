@@ -1,7 +1,11 @@
 name: API tests
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
-  contents: write
+  contents: read
 
 on:
   push:
@@ -9,11 +13,17 @@ on:
       - main
       - feature/chat-1to1-complete
       - feature/e2ee-foundation
+      - feature/face-login-hardening
+      - feature/student-roster-csv-export
+      - feature/progressive-password-cooldown
+      - fix/password-cooldown-ip-guard
   pull_request:
     branches:
       - main
       - feature/chat-1to1-complete
       - feature/e2ee-foundation
+      - feature/face-login-hardening
+      - feature/student-roster-csv-export
   workflow_dispatch:
 
 jobs:
@@ -197,6 +207,21 @@ jobs:
 
   test-api:
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      REDIS_INTEGRATION: "1"
+      AUTH_RATE_LIMIT_HASH_SECRET: "ci-only-test-secret-not-used-outside-automation"
     defaults:
       run:
         working-directory: students_managerment-api
@@ -207,30 +232,20 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install API dependencies
-        run: npm install --no-audit --no-fund
-      - name: Install and lock Face Login ONNX Runtime
-        run: npm install --save-exact onnxruntime-node@1.30.0 --no-audit --no-fund
+      - name: Install API dependencies from committed lockfile
+        run: npm ci --no-audit --no-fund
       - name: Install Linux sharp runtime omitted from the cross-platform lockfile
         run: npm install --no-save --package-lock=false --include=optional sharp@0.34.5
       - name: Verify Face Login ONNX Runtime native module loads
         run: node -e "require('onnxruntime-node'); console.log('[Face Login] ONNX Runtime native module loaded')"
       - name: Run API unit tests
         run: npm test
+      - name: Verify cross-node session revocation over Redis Pub/Sub
+        run: node --test test/sessionRevocationPubSub.test.js
+      - name: Test Face evaluation split isolation
+        run: python -m unittest discover -s tools/face-eval -p 'test_*.py'
       - name: Run Cloudflare R2 Worker tests
         run: node --test cloudflare/e2ee-r2-worker/test/worker.test.js
-      - name: Commit npm-generated Face Login dependency lock
-        run: |
-          git -C .. config user.name "github-actions[bot]"
-          git -C .. config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C .. add students_managerment-api/package.json students_managerment-api/package-lock.json
-          if git -C .. diff --cached --quiet; then
-            echo "No dependency lock changes to commit."
-          else
-            git -C .. commit -m "deps(face-auth): commit npm-generated ONNX Runtime lock [skip ci]"
-            git -C .. push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
-
   build-frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -291,3 +306,177 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run live PostgreSQL relay integration test
         run: node --test test/e2eeRelayPostgres.integration.test.js
+
+  face-auth-postgres-integration:
+    name: Face Login PostgreSQL session guard integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: face_auth_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d face_auth_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: students_managerment-api
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: face_auth_integration
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      REDIS_URL: redis://localhost:6379
+      FACE_AUTH_DB_INTEGRATION: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies from committed lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Install Linux sharp runtime omitted from the cross-platform lockfile
+        run: npm install --no-save --package-lock=false --include=optional sharp@0.34.5
+      - name: Create isolated Face Login integration schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d face_auth_integration -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE users (
+            id BIGSERIAL PRIMARY KEY,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE
+          );
+          CREATE TABLE user_face_credentials (
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+            ciphertext BYTEA NOT NULL,
+            nonce BYTEA NOT NULL,
+            auth_tag BYTEA NOT NULL,
+            key_version SMALLINT NOT NULL,
+            model_id TEXT NOT NULL,
+            model_version TEXT NOT NULL,
+            disabled_at TIMESTAMPTZ
+          );
+          CREATE TABLE sessions (
+            id UUID PRIMARY KEY,
+            user_id BIGINT NOT NULL REFERENCES users(id),
+            device_name VARCHAR(100),
+            user_agent TEXT,
+            ip_address TEXT
+          );
+          SQL
+      - name: Run Face Login PostgreSQL integration test
+        run: node --test test/faceSessionGuard.integration.test.js
+      - name: Run Face Login Redis enrollment-lock integration test
+        run: node --test test/faceEnrollmentLock.integration.test.js
+
+  face-minifasnet-reference-parity:
+    name: MiniFASNet ONNX versus upstream PyTorch parity
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout application repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pinned CPU parity dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.4 onnxruntime==1.17.3
+          python -m pip install opencv-python-headless==4.10.0.84 --no-deps
+          python -m pip install torch==2.2.2 --index-url https://download.pytorch.org/whl/cpu
+      - name: Checkout upstream MiniVision reference
+        run: |
+          git init /tmp/Silent-Face-Anti-Spoofing
+          git -C /tmp/Silent-Face-Anti-Spoofing remote add origin https://github.com/minivision-ai/Silent-Face-Anti-Spoofing.git
+          git -C /tmp/Silent-Face-Anti-Spoofing fetch --depth 1 origin b6d5f04ad78778917853b25c778acef6d5626d15
+          git -C /tmp/Silent-Face-Anti-Spoofing checkout --detach FETCH_HEAD
+      - name: Download hash-pinned model artifacts
+        run: |
+          curl --fail --location --retry 3 --output /tmp/2.7_80x80_MiniFASNetV2.pth https://raw.githubusercontent.com/minivision-ai/Silent-Face-Anti-Spoofing/b6d5f04ad78778917853b25c778acef6d5626d15/resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth
+          curl --fail --location --retry 3 --output /tmp/minifasnet-v2.onnx https://huggingface.co/garciafido/minifasnet-v2-anti-spoofing-onnx/resolve/d29c87568ca9b5662da803b10f217c4db20b142b/minifasnet_v2.onnx
+      - name: Verify production PAD crop against MiniVision OpenCV
+        working-directory: students_managerment-api
+        run: python tools/face-eval/verify_pad_crop_parity.py --upstream-root /tmp/Silent-Face-Anti-Spoofing
+      - name: Verify checkpoint and ONNX parity
+        working-directory: students_managerment-api
+        run: |
+          python tools/face-eval/verify_minifasnet_parity.py --upstream-root /tmp/Silent-Face-Anti-Spoofing --checkpoint /tmp/2.7_80x80_MiniFASNetV2.pth --onnx /tmp/minifasnet-v2.onnx --output /tmp/minifasnet-parity.json
+      - name: Upload parity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minifasnet-reference-parity
+          path: /tmp/minifasnet-parity.json
+          if-no-files-found: ignore
+
+
+  docker-build-smoke:
+    name: API Docker image and native runtime smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build API image from committed lockfile
+        run: docker build -t student-manager-api-smoke -f students_managerment-api/Dockerfile students_managerment-api
+      - name: Verify ONNX Runtime native module inside production image
+        run: docker run --rm --entrypoint node student-manager-api-smoke -e "require('onnxruntime-node'); console.log('ONNX Runtime native module loaded in API image')"
+
+
+  rag-schema-guard-postgres-integration:
+    name: RAG schema readiness PostgreSQL integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rag_schema_guard_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rag_schema_guard_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    defaults:
+      run:
+        working-directory: students_managerment-api
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: rag_schema_guard_integration
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      RAG_SCHEMA_GUARD_INTEGRATION: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install API dependencies from lockfile
+        run: npm ci --no-audit --no-fund
+      - name: Verify RAG fails closed without document tables or pgvector
+        run: node --test test/ragSchemaReadiness.integration.test.js
