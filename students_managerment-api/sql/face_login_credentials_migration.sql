@@ -4,9 +4,9 @@
 
 BEGIN;
 
-CREATE TABLE IF NOT EXISTS user_face_credentials (
+CREATE TABLE IF NOT EXISTS public.user_face_credentials (
     id BIGSERIAL PRIMARY KEY,
-    user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
     ciphertext BYTEA NOT NULL,
     nonce BYTEA NOT NULL CHECK (octet_length(nonce) = 12),
     auth_tag BYTEA NOT NULL CHECK (octet_length(auth_tag) = 16),
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS user_face_credentials (
 );
 
 CREATE INDEX IF NOT EXISTS idx_user_face_credentials_active
-    ON user_face_credentials(user_id)
+    ON public.user_face_credentials(user_id)
     WHERE disabled_at IS NULL;
 
 COMMIT;
