@@ -132,8 +132,9 @@ function StudentSidebar({
                         type="button"
                         title={t('settingsTitle')}
                         aria-label={t('settingsTitle')}
+                        aria-current={activePage === 'settings' ? 'page' : undefined}
                         onClick={() => { onOpenSettings?.('account'); onClose?.(); }}
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300`}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} ${activePage === 'settings' ? 'bg-blue-50 font-semibold text-blue-800 dark:bg-blue-950/60 dark:text-blue-200' : 'text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300'}`}
                     >
                         <Settings2 size={19} />
                         <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t('settingsTitle')}</span>
