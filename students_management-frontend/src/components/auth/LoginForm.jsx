@@ -85,7 +85,7 @@ function LoginForm({
                 <span>{t('noAccountYet')}</span>
                 <button className="rounded border-0 bg-transparent px-2 py-1.5 text-xs font-semibold text-blue-700 hover:underline" type="button" onClick={onOpenRegister}>{t('registerNow')}</button>
             </div>
-            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-400"><ShieldCheck size={13} aria-hidden="true" />Thông tin đăng nhập được bảo vệ bằng phiên xác thực an toàn.</p>
+            <p className="mt-1 flex items-center justify-center gap-1.5 text-[11px] text-slate-400"><ShieldCheck size={13} aria-hidden="true" />{t('loginSecurityNote')}</p>
         </form>
     );
 }
