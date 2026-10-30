@@ -258,16 +258,63 @@ WHERE schemaname = current_schema()
   AND tablename = 'enrollments'
 ORDER BY indexname;
 
--- 12) Enrollment data-quality counts only; no student or grade values are exposed.
-SELECT
-    COUNT(*) AS total_enrollments,
-    COUNT(*) FILTER (WHERE student_id IS NULL) AS missing_student_id,
-    COUNT(*) FILTER (WHERE subject_id IS NULL) AS missing_subject_id,
-    COUNT(*) FILTER (WHERE semester_id IS NULL) AS missing_semester_id,
-    COUNT(*) FILTER (WHERE midterm_score IS NOT NULL AND (midterm_score < 0 OR midterm_score > 10)) AS invalid_midterm_score_count,
-    COUNT(*) FILTER (WHERE final_score IS NOT NULL AND (final_score < 0 OR final_score > 10)) AS invalid_final_score_count,
-    COUNT(*) FILTER (WHERE total_score IS NOT NULL AND (total_score < 0 OR total_score > 10)) AS invalid_total_score_count
-FROM enrollments;
+-- 12) Guarded enrollment data-quality counts. Emits NOTICE counts only and
+-- does not fail when an optional score column is absent.
+DO $audit_enrollment_quality$
+DECLARE
+    enrollment_table regclass := to_regclass(format('%I.%I', current_schema(), 'enrollments'));
+    total_rows bigint;
+    missing_student bigint;
+    missing_subject bigint;
+    missing_semester bigint;
+    invalid_midterm bigint := 0;
+    invalid_final bigint := 0;
+    invalid_total bigint := 0;
+    has_student boolean;
+    has_subject boolean;
+    has_semester boolean;
+    has_midterm boolean;
+    has_final boolean;
+    has_total boolean;
+BEGIN
+    IF enrollment_table IS NULL THEN
+        RAISE NOTICE 'enrollments table is MISSING';
+        RETURN;
+    END IF;
+    SELECT
+        BOOL_OR(column_name = 'student_id'),
+        BOOL_OR(column_name = 'subject_id'),
+        BOOL_OR(column_name = 'semester_id'),
+        BOOL_OR(column_name = 'midterm_score'),
+        BOOL_OR(column_name = 'final_score'),
+        BOOL_OR(column_name = 'total_score')
+    INTO has_student, has_subject, has_semester, has_midterm, has_final, has_total
+    FROM information_schema.columns
+    WHERE table_schema = current_schema() AND table_name = 'enrollments';
+
+    EXECUTE format('SELECT COUNT(*) FROM %s', enrollment_table) INTO total_rows;
+    IF has_student THEN
+        EXECUTE format('SELECT COUNT(*) FROM %s WHERE student_id IS NULL', enrollment_table) INTO missing_student;
+    END IF;
+    IF has_subject THEN
+        EXECUTE format('SELECT COUNT(*) FROM %s WHERE subject_id IS NULL', enrollment_table) INTO missing_subject;
+    END IF;
+    IF has_semester THEN
+        EXECUTE format('SELECT COUNT(*) FROM %s WHERE semester_id IS NULL', enrollment_table) INTO missing_semester;
+    END IF;
+    IF has_midterm THEN
+        EXECUTE format('SELECT COUNT(*) FROM %s WHERE midterm_score IS NOT NULL AND (midterm_score < 0 OR midterm_score > 10)', enrollment_table) INTO invalid_midterm;
+    END IF;
+    IF has_final THEN
+        EXECUTE format('SELECT COUNT(*) FROM %s WHERE final_score IS NOT NULL AND (final_score < 0 OR final_score > 10)', enrollment_table) INTO invalid_final;
+    END IF;
+    IF has_total THEN
+        EXECUTE format('SELECT COUNT(*) FROM %s WHERE total_score IS NOT NULL AND (total_score < 0 OR total_score > 10)', enrollment_table) INTO invalid_total;
+    END IF;
+    RAISE NOTICE 'enrollments rows=%; missing student_id=%; missing subject_id=%; missing semester_id=%; invalid midterm_score=%; invalid final_score=%; invalid total_score=%',
+        total_rows, missing_student, missing_subject, missing_semester, invalid_midterm, invalid_final, invalid_total;
+END
+$audit_enrollment_quality$;
 
 -- 13) Duplicate enrollment candidates by (student_id, subject_id, semester_id).
 -- A non-zero count must be investigated before adding a UNIQUE constraint.
