@@ -17,6 +17,7 @@ const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middlewar
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
 const { joinConversationRoom } = require('../../service/socketRoomAccess.js');
 const { isSocketSessionActive } = require('../../service/socketSessionGuard.js');
+const { isAccessTokenActive } = require('../../service/accessTokenStore.js');
 const { parseSessionRevocationEvent, publishSessionRevocation } = require('../../service/sessionRevocationPubSub.js');
 
 let io = null;
