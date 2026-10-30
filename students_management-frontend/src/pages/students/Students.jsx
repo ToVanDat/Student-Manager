@@ -411,6 +411,7 @@ function Students() {
     setAccountForm,
     accountSaving,
     accountMessage,
+    accountError,
     passwordForm,
     setPasswordForm,
     passwordSaving,
@@ -871,6 +872,7 @@ function Students() {
                     message={
                       accountMessage
                     }
+                    error={accountError}
                     onAvatarUpdated={updateUser}
                   />
                 )}
