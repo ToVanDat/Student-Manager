@@ -15,6 +15,7 @@ import {
     ShieldCheck,
     UserCog,
     ChartNoAxesColumn,
+    Settings2,
 } from 'lucide-react';
 
 function StudentSidebar({
@@ -126,6 +127,16 @@ function StudentSidebar({
                                 {unreadCount}
                             </span>
                         )}
+                    </button>
+                    <button
+                        type="button"
+                        title={t('settingsTitle')}
+                        aria-label={t('settingsTitle')}
+                        onClick={() => { onOpenSettings?.('account'); onClose?.(); }}
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 text-left text-xs font-medium transition ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''} text-[#334155] dark:text-slate-300 hover:bg-[#e8f1ff] dark:hover:bg-slate-800 hover:text-[#1d4ed8] dark:hover:text-blue-300`}
+                    >
+                        <Settings2 size={19} />
+                        <span className={collapsed ? 'min-[801px]:hidden' : ''}>{t('settingsTitle')}</span>
                     </button>
 
 
