@@ -103,7 +103,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
     const student = portal?.student;
     const enrollments = Array.isArray(portal?.enrollments) ? portal.enrollments : [];
     const linked = portal?.linked === true;
-    const results = enrollments.filter(item => item.total_score !== null && item.total_score !== undefined);
+    const results = enrollments.filter(item => item.total_score !== null && item.total_score !== undefined && item.total_score !== '');
     const registeredCredits = enrollments.reduce((total, item) => {
         const credits = Number(item.credits);
         return Number.isFinite(credits) && credits > 0 ? total + credits : total;
