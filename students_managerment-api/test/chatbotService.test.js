@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { normalizeHistory, removeLastTurn, rateAnswer, getHistory, clearHistory, listConversations, createConversation, renameConversation, deleteConversation, extractSubjectSearchTerm, extractDepartmentSearchTerm, extractClassSearchTerm, extractSemesterSearchTerm, loadAcademicContext, acquireOllamaSlot, serializeUntrustedContext, getOllamaConfig } = require('../service/chatbotService.js');
 const pool = require('../src/config/database.js');
+const studentService = require('../service/studentService.js');
 
 test('normalizeHistory keeps only the latest eight valid messages', () => {
     const history = Array.from({ length: 10 }, (_, index) => ({
@@ -398,4 +399,57 @@ test('conversation indexes and histories are isolated across users sharing the s
     assert.deepEqual((await listConversations({ userId: '202', sessionId: 'same-session', redis })).map(item => item.id), [userB.id]);
     assert.deepEqual(await getHistory({ userId: '101', sessionId: 'same-session', conversationId: userB.id, redis }), []);
     assert.deepEqual(await getHistory({ userId: '202', sessionId: 'same-session', conversationId: userA.id, redis }), []);
+});
+
+
+test('student chatbot context reports not_linked without exposing a guessed student record', async () => {
+    const originalQuery = pool.query;
+    const originalPortal = studentService.getStudentPortalByUserId;
+    pool.query = async sql => {
+        if (sql.includes('FROM subjects')) return { rows: [] };
+        if (sql.includes('FROM semesters')) return { rows: [] };
+        if (sql.includes('FROM departments')) return { rows: [] };
+        if (sql.includes('FROM classes')) return { rows: [] };
+        throw new Error('Unexpected query');
+    };
+    studentService.getStudentPortalByUserId = async userId => {
+        assert.equal(userId, 42);
+        return { linked: false, student: null, enrollments: [] };
+    };
+    try {
+        const context = await loadAcademicContext('user', 'điểm của tôi', 42);
+        assert.equal(context.studentAcademicStatus, 'not_linked');
+        assert.equal(Object.hasOwn(context, 'ownStudentProfile'), false);
+        assert.equal(Object.hasOwn(context, 'ownStudentGrades'), false);
+    } finally {
+        pool.query = originalQuery;
+        studentService.getStudentPortalByUserId = originalPortal;
+    }
+});
+
+test('student chatbot context includes only the authenticated user verified profile and grades', async () => {
+    const originalQuery = pool.query;
+    const originalPortal = studentService.getStudentPortalByUserId;
+    pool.query = async sql => {
+        if (sql.includes('FROM subjects')) return { rows: [] };
+        if (sql.includes('FROM semesters')) return { rows: [] };
+        if (sql.includes('FROM departments')) return { rows: [] };
+        if (sql.includes('FROM classes')) return { rows: [] };
+        throw new Error('Unexpected query');
+    };
+    const ownStudent = { id: 9, student_code: 'SV009' };
+    const ownGrades = [{ subject_code: 'CS101', total_score: '8.5' }];
+    studentService.getStudentPortalByUserId = async userId => {
+        assert.equal(userId, 42);
+        return { linked: true, student: ownStudent, enrollments: ownGrades };
+    };
+    try {
+        const context = await loadAcademicContext('user', 'điểm của tôi', 42);
+        assert.equal(context.studentAcademicStatus, 'available');
+        assert.deepEqual(context.ownStudentProfile, ownStudent);
+        assert.deepEqual(context.ownStudentGrades, ownGrades);
+    } finally {
+        pool.query = originalQuery;
+        studentService.getStudentPortalByUserId = originalPortal;
+    }
 });
