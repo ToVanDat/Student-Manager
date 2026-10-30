@@ -24,6 +24,7 @@ const e2eeRouter = require('../router/e2eeRouter');
 const e2eeRelayRouter = require('../router/e2eeRelayRouter');
 const chatbotRouter = require('../router/chatbotRouter');
 const healthRouter = require('../router/healthRouter');
+const academicRouter = require('../router/academicRouter');
 
 const app = express();
 
@@ -85,6 +86,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/students', studentRouter);
+app.use('/api/academic', academicRouter);
 app.use('/api/classes', classerRouter);
 app.use('/api/departments', departmentRouter);
 app.use('/api/enrollments', enrollmentRouter);
