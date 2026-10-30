@@ -2,9 +2,24 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
-const { redisClient } = require('../src/config/redis.js');
+// Store only a one-way digest of refresh tokens in PostgreSQL.
+// Refresh tokens are generated from 64 random bytes, so SHA-256 is
+// appropriate here and does not require a separately managed pepper.
+const hashRefreshToken = (token) => {
+    if (typeof token !== 'string' || token.length === 0) {
+        throw new TypeError('Refresh token must be a non-empty string');
+    }
+
+    return crypto
+        .createHash('sha256')
+        .update(token, 'utf8')
+        .digest('hex');
+};
+
 const authRepository = require('../repository/authRepository');
 const emailService = require('./emailService.js');
+const { resetAccountState } = require('./passwordLoginProtection.js');
+const { retryRedisCleanup } = require('./redisCleanupRetry.js');
 
 // =====================================================
 // CONFIG
@@ -21,54 +36,26 @@ const JWT_ISSUER =
 const JWT_AUDIENCE =
     'student-management-client';
 
+// Keep the JWT payload minimal: never include password/password_hash,
+// refresh tokens, or other credentials in an access token.
+const generateAccessToken = (user, sessionId) => {
+    if (!user?.id || !sessionId) {
+        throw new Error('User ID hoặc Session ID không hợp lệ');
+    }
 
-// =====================================================
-// HASH ACCESS TOKEN
-// =====================================================
-
-const hashAccessToken = (token) => {
-
-    return crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex');
-};
-
-
-// =====================================================
-// HASH REFRESH TOKEN
-// =====================================================
-
-const hashRefreshToken = (token) => {
-
-    return crypto
-        .createHash('sha256')
-        .update(token)
-        .digest('hex');
-};
-
-
-// =====================================================
-// GENERATE ACCESS TOKEN
-// =====================================================
-
-const generateAccessToken = (
-    user,
-    sessionId
-) => {
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET chưa được cấu hình');
+    }
 
     return jwt.sign(
-
         {
-            sub: user.id,
             username: user.username,
             role: user.role,
-            sessionId: sessionId
+            sessionId
         },
-
         process.env.JWT_SECRET,
-
         {
+            subject: String(user.id),
             expiresIn: ACCESS_TOKEN_EXPIRES_IN,
             issuer: JWT_ISSUER,
             audience: JWT_AUDIENCE,
@@ -78,76 +65,11 @@ const generateAccessToken = (
 };
 
 
-// =====================================================
-// SAVE ACCESS TOKEN TO REDIS
-// =====================================================
-
-const saveAccessTokenToRedis = async (
-    accessToken,
-    userId
-) => {
-
-    const tokenHash =
-        hashAccessToken(accessToken);
-
-    const key =
-        `access_token:${tokenHash}`;
-
-    const decoded =
-        jwt.decode(accessToken);
-
-    if (!decoded || !decoded.exp) {
-
-        throw new Error(
-            'Access token không hợp lệ'
-        );
-    }
-
-    const currentTime =
-        Math.floor(Date.now() / 1000);
-
-    const ttl =
-        decoded.exp - currentTime;
-
-    if (ttl <= 0) {
-
-        throw new Error(
-            'Access token đã hết hạn'
-        );
-    }
-
-    await redisClient.set(
-        key,
-        String(userId),
-        {
-            EX: ttl
-        }
-    );
-
-    return key;
-};
-
-
-// =====================================================
-// REMOVE ACCESS TOKEN FROM REDIS
-// =====================================================
-
-const removeAccessTokenFromRedis = async (
-    accessToken
-) => {
-
-    if (!accessToken) {
-        return;
-    }
-
-    const tokenHash =
-        hashAccessToken(accessToken);
-
-    const key =
-        `access_token:${tokenHash}`;
-
-    await redisClient.del(key);
-};
+const {
+    saveAccessTokenToRedis,
+    removeAccessTokenFromRedis,
+    removeAccessTokensForSession,
+} = require('./accessTokenStore.js');
 
 
 // =====================================================
@@ -186,6 +108,11 @@ const revokeUserSessions = async (userId, reason = 'CREDENTIALS_CHANGED') => {
 
     for (const session of sessions || []) {
         await authRepository.revokeRefreshTokensBySessionId(session.id);
+        try {
+            await removeAccessTokensForSession(session.id);
+        } catch (error) {
+            console.warn('[AUTH] Could not clear revoked session access tokens:', error.message);
+        }
         emitSessionRevoked(session.id, reason);
     }
 };
@@ -217,12 +144,12 @@ const getMe = async (userId) => {
 
 // =====================================================
 // UPDATE PROFILE
-// username + email
+// display name + email
 // =====================================================
 
 const updateProfile = async (
     userId,
-    username,
+    fullName,
     email
 ) => {
 
@@ -235,19 +162,20 @@ const updateProfile = async (
 
 
     // =================================================
-    // VALIDATE USERNAME
+    // VALIDATE DISPLAY NAME
     // =================================================
 
     if (
-        !username ||
-        !String(username).trim()
+        !fullName ||
+        !String(fullName).trim()
     ) {
-
-        throw new Error(
-            'Username là bắt buộc'
-        );
+        throw new Error('Tên hiển thị là bắt buộc');
     }
 
+    fullName = String(fullName).trim();
+    if (fullName.length > 120) {
+        throw new Error('Tên hiển thị không được vượt quá 120 ký tự');
+    }
 
     // =================================================
     // VALIDATE EMAIL
@@ -264,32 +192,10 @@ const updateProfile = async (
     }
 
 
-    username =
-        String(username).trim();
-
     email =
         String(email)
             .trim()
             .toLowerCase();
-
-
-    // =================================================
-    // CHECK DUPLICATE USERNAME
-    // =================================================
-
-    const existingUsername =
-        await authRepository
-            .findUserByUsernameExceptId(
-                username,
-                userId
-            );
-
-    if (existingUsername) {
-
-        throw new Error(
-            'Username đã tồn tại'
-        );
-    }
 
 
     // =================================================
@@ -319,7 +225,7 @@ const updateProfile = async (
         await authRepository
             .updateUserProfile(
                 userId,
-                username,
+                fullName,
                 email
             );
 
@@ -457,9 +363,21 @@ const changePassword = async (
         throw new Error('Không thể cập nhật mật khẩu');
     }
 
+    // PostgreSQL is already committed. Retry Redis cleanup briefly without
+    // turning a successful password change into a failed HTTP response.
+    await retryRedisCleanup(
+        () => resetAccountState(user.username),
+        { operation: 'password-change cooldown cleanup' }
+    );
+
     // Database revocation is already committed atomically. Socket notification
     // is best-effort and must not turn a successful credential change into 500.
     for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            await removeAccessTokensForSession(sessionId);
+        } catch (error) {
+            console.warn('[AUTH] Could not clear password-change access tokens:', error.message);
+        }
         try {
             emitSessionRevoked(sessionId, 'PASSWORD_CHANGED');
         } catch (error) {
@@ -715,10 +633,9 @@ const login = async (
             );
 
     if (!user) {
-
-        throw new Error(
-            'Username hoặc password không đúng'
-        );
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
     }
 
 
@@ -727,10 +644,9 @@ const login = async (
     // =================================================
 
     if (!user.is_active) {
-
-        throw new Error(
-            'Tài khoản đã bị khóa'
-        );
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
     }
 
 
@@ -745,10 +661,9 @@ const login = async (
         );
 
     if (!isPasswordCorrect) {
-
-        throw new Error(
-            'Username hoặc password không đúng'
-        );
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
     }
 
 
@@ -768,15 +683,21 @@ const login = async (
     let accessToken = null;
 
     try {
-    session =
-        await authRepository
-            .createSession(
-                user.id,
-                deviceName,
-                userAgent,
-                ipAddress
-            );
+    session = await authRepository.createSessionForVerifiedPassword(
+        user.id,
+        user.password_hash,
+        deviceName,
+        userAgent,
+        ipAddress
+    );
 
+    // The account may have been disabled after password verification.
+    // Re-check under a row lock before issuing any session credentials.
+    if (!session) {
+        const error = new Error('Thông tin đăng nhập không chính xác. Vui lòng kiểm tra và thử lại.');
+        error.code = 'AUTH_INVALID_CREDENTIALS';
+        throw error;
+    }
 
     // =================================================
     // GENERATE ACCESS TOKEN
@@ -861,6 +782,7 @@ const login = async (
         user: {
             id: user.id,
             username: user.username,
+            full_name: user.full_name || '',
             email: user.email,
             role: user.role,
             avatar_url: user.avatar_url || null
@@ -885,12 +807,7 @@ const login = async (
 
         if (session?.id) {
             try {
-                await authRepository.revokeRefreshTokensBySessionId(session.id);
-            } catch (cleanupError) {
-                console.error('Login refresh-token cleanup failed:', cleanupError.code || cleanupError.message);
-            }
-            try {
-                await authRepository.revokeSession(session.id);
+                await authRepository.revokeSessionForUserAndRefreshTokens(session.id, user.id);
             } catch (cleanupError) {
                 console.error('Login session cleanup failed:', cleanupError.code || cleanupError.message);
             }
@@ -1008,6 +925,11 @@ const logout = async (
                 sessionId
             );
 
+        try {
+            await removeAccessTokensForSession(sessionId);
+        } catch (cleanupError) {
+            console.warn('[AUTH] Could not clear logout access tokens:', cleanupError.message);
+        }
 
         // Notify every tab/socket in this session and disconnect it. The
         // frontend treats LOGOUT as a silent local cleanup, not a forced-login
@@ -1103,10 +1025,22 @@ const refresh = async (
             );
 
             if (revokedSession) {
-                emitSessionRevoked(
-                    revokedSession.id,
-                    'REFRESH_TOKEN_REUSE'
-                );
+                try {
+                    await removeAccessTokensForSession(revokedSession.id);
+                } catch (cleanupError) {
+                    console.warn('[AUTH] Could not clear replayed session access tokens:', cleanupError.message);
+                }
+
+                try {
+                    emitSessionRevoked(
+                        revokedSession.id,
+                        'REFRESH_TOKEN_REUSE'
+                    );
+                } catch (socketError) {
+                    // The refresh-token family is already revoked in PostgreSQL.
+                    // Socket delivery is only an acceleration of client cleanup.
+                    console.warn('[AUTH] Could not notify refresh-token replay revocation:', socketError.message);
+                }
             }
         }
 
@@ -1280,11 +1214,26 @@ const refresh = async (
     if (!rotatedToken) {
         // This request observed an active token before attempting rotation.
         // A competing tab/request may have consumed it in the meantime.
-        // Do not classify this race as replay: doing so would revoke the
-        // legitimate session when two refreshes overlap. A later request
-        // presenting the already-revoked token is handled by the historical
-        // lookup above and triggers replay response.
-        await removeAccessTokenFromRedis(newAccessToken);
+        // Preserve the winning session when the orphan AT can be removed.
+        try {
+            await removeAccessTokenFromRedis(newAccessToken);
+        } catch (cleanupError) {
+            // Fail closed only when Redis cannot confirm removal: otherwise
+            // this unreturned access token could remain usable in the still
+            // active session. PostgreSQL session state remains authoritative.
+            console.error('[AUTH] Could not remove losing refresh access token:', cleanupError.code || cleanupError.message);
+            try {
+                const revokedSession = await authRepository.revokeSessionForUserAndRefreshTokens(
+                    session.id,
+                    user.id
+                );
+                if (revokedSession) {
+                    emitSessionRevoked(session.id, 'REFRESH_ROTATION_CLEANUP_FAILED');
+                }
+            } catch (revocationError) {
+                console.error('[AUTH] Could not fail-close refresh rotation cleanup:', revocationError.code || revocationError.message);
+            }
+        }
 
         throw new Error(
             'Refresh token đã được sử dụng, hết hạn hoặc session đã bị thu hồi'
@@ -1574,8 +1523,27 @@ const resetPassword = async (
         throw new Error('Reset token không hợp lệ, đã được sử dụng hoặc tài khoản không hoạt động');
     }
 
+    // PostgreSQL is already committed. Resolve the account and retry Redis
+    // cleanup briefly; Redis failure must not undo the completed password reset.
+    try {
+        const resetUser = await authRepository.findUserById(resetRequest.user_id);
+        if (resetUser?.username) {
+            await retryRedisCleanup(
+                () => resetAccountState(resetUser.username),
+                { operation: 'password-reset cooldown cleanup' }
+            );
+        }
+    } catch (error) {
+        console.warn('[AUTH] Could not resolve account for password-reset cooldown cleanup:', error.code || error.message);
+    }
+
     // Session revocation is already committed. Socket delivery is best-effort.
     for (const sessionId of result.revokedSessionIds || []) {
+        try {
+            await removeAccessTokensForSession(sessionId);
+        } catch (error) {
+            console.warn('[AUTH] Could not clear password-reset access tokens:', error.message);
+        }
         try {
             emitSessionRevoked(sessionId, 'PASSWORD_RESET');
         } catch (error) {

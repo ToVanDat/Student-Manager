@@ -44,6 +44,31 @@ test('getEmbeddingConfig uses centralized AI runtime configuration', () => {
     });
 });
 
+test('getEmbeddingConfig permits Docker host gateway only with explicit opt-in', () => {
+    const previousUrl = process.env.OLLAMA_BASE_URL;
+    const previousOptIn = process.env.OLLAMA_ALLOW_DOCKER_HOST;
+    try {
+        process.env.OLLAMA_BASE_URL = 'http://host.docker.internal:11434';
+        delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_ALLOW_DOCKER_HOST = 'true';
+        assert.equal(getEmbeddingConfig().endpoint, 'http://host.docker.internal:11434/api/embed');
+        process.env.OLLAMA_BASE_URL = 'http://192.168.1.20:11434';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://ollama.example.com?token=secret';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://ollama.example.com#debug';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+        process.env.OLLAMA_BASE_URL = 'https://user:secret@ollama.example.com';
+        assert.throws(() => getEmbeddingConfig(), error => error.status === 503);
+    } finally {
+        if (previousUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+        else process.env.OLLAMA_BASE_URL = previousUrl;
+        if (previousOptIn === undefined) delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        else process.env.OLLAMA_ALLOW_DOCKER_HOST = previousOptIn;
+    }
+});
+
 test('createDocumentEmbedding validates the 768-dimensional response', async () => {
     const oldUrl = process.env.OLLAMA_BASE_URL;
     try {
@@ -161,4 +186,52 @@ test('document restore reports missing archived records and duplicate conflicts 
         }),
         error => error.status === 409
     );
+});
+
+test('retrieveDocumentContext enforces visibility in SQL for student and admin roles', async () => {
+    const pool = require('../src/config/database.js');
+    const ragService = require('../service/ragService.js');
+    const originalQuery = pool.query;
+    const originalFetch = global.fetch;
+    const originalUrl = process.env.OLLAMA_BASE_URL;
+    const originalOptIn = process.env.OLLAMA_ALLOW_DOCKER_HOST;
+    const embedding = Array.from({ length: EMBEDDING_DIMENSIONS }, () => 0.125);
+    const retrievalCalls = [];
+
+    process.env.OLLAMA_BASE_URL = 'http://127.0.0.1:11434';
+    delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+    global.fetch = async (_url, options) => {
+        assert.equal(JSON.parse(options.body).input, 'policy question');
+        return { ok: true, json: async () => ({ embeddings: [embedding] }) };
+    };
+    pool.query = async (sql, params) => {
+        if (sql.includes('to_regclass')) {
+            return { rows: [{ documents_ready: true, chunks_ready: true, vector_ready: true, archive_ready: true }] };
+        }
+        retrievalCalls.push({ sql, params });
+        return { rows: [{ document_id: 'doc-1', title: 'Student handbook', source_name: 'handbook.txt', chunk_index: 0, page_number: null, content: 'Policy excerpt', distance: 0.1 }] };
+    };
+
+    try {
+        const studentSources = await ragService.retrieveDocumentContext({ question: 'policy question', role: 'student' });
+        assert.equal(studentSources.length, 1);
+        assert.match(retrievalCalls[0].sql, /d\.status = 'ready'/);
+        assert.match(retrievalCalls[0].sql, /d\.visibility = ANY\(\$2::varchar\[\]\)/);
+        assert.deepEqual(retrievalCalls[0].params[1], ['all', 'student']);
+
+        retrievalCalls.length = 0;
+        await ragService.retrieveDocumentContext({ question: 'policy question', role: 'admin' });
+        assert.deepEqual(retrievalCalls[0].params[1], ['all', 'student', 'admin']);
+
+        retrievalCalls.length = 0;
+        await ragService.retrieveDocumentContext({ question: 'policy question', role: 'unexpected-role' });
+        assert.deepEqual(retrievalCalls[0].params[1], []);
+    } finally {
+        pool.query = originalQuery;
+        global.fetch = originalFetch;
+        if (originalUrl === undefined) delete process.env.OLLAMA_BASE_URL;
+        else process.env.OLLAMA_BASE_URL = originalUrl;
+        if (originalOptIn === undefined) delete process.env.OLLAMA_ALLOW_DOCKER_HOST;
+        else process.env.OLLAMA_ALLOW_DOCKER_HOST = originalOptIn;
+    }
 });

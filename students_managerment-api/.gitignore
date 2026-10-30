@@ -5,3 +5,14 @@ storage/uploads/chat/
 
 # User-uploaded avatar files should not be newly committed.
 storage/uploads/avatars/
+
+# Locally deployed biometric model artifacts (do not commit model binaries).
+storage/face-models/
+
+# Downloaded MediaPipe task model (fetch with the pinned hash script).
+face-landmark-service/models/*.task
+
+# Local Python virtual environment and bytecode for the private MediaPipe service.
+face-landmark-service/.venv/
+face-landmark-service/__pycache__/
+face-landmark-service/*.pyc

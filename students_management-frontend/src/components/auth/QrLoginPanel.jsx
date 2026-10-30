@@ -28,6 +28,9 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const frameRef = useRef(null);
+    const pollingRef = useRef(false);
+    const onLoginRef = useRef(onLogin);
+    onLoginRef.current = onLogin;
 
     const createRequest = async () => {
         setBusy(true);
@@ -60,12 +63,17 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
         if (mode !== 'login' || !request) return undefined;
         let active = true;
         const poll = async () => {
+            // Prevent overlapping polls across effect restarts and keep the
+            // session guard active while a poll may issue the replacement session.
+            if (!active || pollingRef.current) return;
+            pollingRef.current = true;
+            sessionStorage.setItem('auth:login-in-progress', 'true');
             try {
                 const result = await pollQrLoginApi(request.requestId, request.secret);
                 if (!active) return;
                 if (result.status === 'consumed' && result.accessToken) {
                     setStatus('Đăng nhập QR thành công.');
-                    onLogin?.(result);
+                    onLoginRef.current?.(result);
                     setRequest(null);
                     return;
                 }
@@ -75,12 +83,15 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                 }
             } catch (error) {
                 if (active && error.response?.status >= 400) setStatus(error.response?.data?.message || 'Không thể kiểm tra trạng thái QR.');
+            } finally {
+                sessionStorage.removeItem('auth:login-in-progress');
+                pollingRef.current = false;
             }
         };
         const timer = window.setInterval(poll, 2000);
         void poll();
         return () => { active = false; window.clearInterval(timer); };
-    }, [mode, request, onLogin]);
+    }, [mode, request]);
 
     useEffect(() => {
         if (mode !== 'approve' || !allowApprove || !scannerEnabled || !videoRef.current) return undefined;

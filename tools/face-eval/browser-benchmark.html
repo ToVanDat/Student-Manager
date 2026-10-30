@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Manager · ONNX model benchmark</title>
+<style>
+:root{font:16px/1.5 system-ui,sans-serif;color:#172033;background:#f5f7fb}body{max-width:850px;margin:32px auto;padding:0 16px}main{background:white;border:1px solid #dce2ec;border-radius:16px;padding:24px}h1{font-size:1.45rem}label{display:block;margin:16px 0 6px;font-weight:600}input,select,button{font:inherit}input,select{max-width:100%}button{margin-top:18px;padding:10px 16px;border:0;border-radius:9px;background:#2459c4;color:white;font-weight:650;cursor:pointer}button:disabled{opacity:.5}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#101827;color:#e7eefc;padding:16px;border-radius:10px;min-height:80px}.note{color:#536176;font-size:.92rem}.warning{border-left:4px solid #d18a14;padding:8px 12px;background:#fff8e9}.ok{color:#137447}.bad{color:#b42318}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js"></script>
+</head>
+<body><main>
+<h1>ONNX Runtime Web · Local model benchmark</h1>
+<p class="note">Runs locally in this browser. Select a model file from your computer. No model or input tensor is uploaded. Use only model files from sources whose license and provenance you have reviewed.</p>
+<p class="warning">This benchmark uses synthetic tensors, not camera frames or real faces. It measures ONNX graph compatibility and runtime latency only; it does not evaluate face recognition accuracy or PAD effectiveness.</p>
+<label for="kind">Model profile</label>
+<select id="kind"><option value="face">MobileFaceNet · recognition</option><option value="pad">MiniFASNet-V2 · PAD</option></select>
+<label for="model">ONNX model file</label><input id="model" type="file" accept=".onnx,application/octet-stream">
+<label for="provider">Execution provider</label>
+<select id="provider"><option value="wasm">WASM · CPU baseline</option><option value="webgpu">WebGPU · if supported</option></select>
+<label for="iterations">Measured iterations</label><select id="iterations"><option>30</option><option selected>50</option><option>100</option></select>
+<button id="run">Inspect model and benchmark</button>
+<pre id="output" aria-live="polite">Choose an ONNX file to begin.</pre>
+</main>
+<script>
+const $=id=>document.getElementById(id), out=$('output');
+const median=a=>{const s=[...a].sort((x,y)=>x-y);return s[Math.floor(s.length/2)]};
+const percentile=(a,p)=>{const s=[...a].sort((x,y)=>x-y);return s[Math.min(s.length-1,Math.ceil(p*s.length)-1)]};
+function concreteShape(dims){return dims.map((d)=>Number.isInteger(d)&&d>0?d:0)}
+function makeInput(shape,kind){const size=shape.reduce((a,b)=>a*b,1);const data=new Float32Array(size);let seed=0x12345678;for(let i=0;i<size;i++){seed=(1664525*seed+1013904223)>>>0;const u=seed/4294967296;data[i]=kind==='pad'?u:u*2-1}return new ort.Tensor('float32',data,shape)}
+$('run').addEventListener('click',async()=>{
+ const file=$('model').files[0];if(!file){out.textContent='Select a model file first.';return}
+ const button=$('run');button.disabled=true;out.textContent='Loading model…';
+ try{
+  if(!window.ort)throw new Error('ONNX Runtime Web failed to load. Check CDN/network access.');
+  const kind=$('kind').value, provider=$('provider').value;
+  if(provider==='webgpu'&&!navigator.gpu)throw new Error('WebGPU is not available in this browser/device. Select WASM.');
+  const bytes=await file.arrayBuffer();
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  const sha=[...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const expectedPad='d7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b';
+  const session=await ort.InferenceSession.create(bytes,{executionProviders:[provider],graphOptimizationLevel:'all'});
+  const inputName=session.inputNames[0], outputNames=session.outputNames;
+  const inputMeta=(session.inputMetadata||[]).find(meta=>meta.name===inputName)||session.inputMetadata?.[0];
+  const rawShape=inputMeta?.dimensions||inputMeta?.dims||[];
+  const shape=concreteShape(rawShape);
+  if(!shape.length||shape.some(x=>!x))throw new Error('Input shape is dynamic/unknown; this harness requires a fixed input shape. Model metadata: '+JSON.stringify(inputMeta));
+  if(inputMeta.type&&inputMeta.type!=='float32')throw new Error('Unsupported input tensor type: '+inputMeta.type+' (expected float32).');
+  if(kind==='face'&&(shape.length!==4||shape[1]!==3||shape[2]!==112||shape[3]!==112))throw new Error('Unexpected MobileFaceNet input shape '+JSON.stringify(shape)+'. Expected NCHW [1,3,112,112]; verify model card/preprocessing.');
+  if(kind==='pad'&&(shape.length!==4||shape[1]!==3||shape[2]!==80||shape[3]!==80))throw new Error('Unexpected MiniFASNet input shape '+JSON.stringify(shape)+'. Expected NCHW [1,3,80,80]; verify model card/preprocessing.');
+  const tensor=makeInput(shape,kind), feeds={[inputName]:tensor};
+  const warmup=5, count=Number($('iterations').value), times=[];
+  for(let i=0;i<warmup;i++)await session.run(feeds);
+  for(let i=0;i<count;i++){const start=performance.now();await session.run(feeds);times.push(performance.now()-start)}
+  const first=await session.run(feeds), outputMeta=outputNames.map(name=>({name,dims:first[name]?.dims,type:first[name]?.type}));
+  const memory=performance.memory?{usedJSHeapSize:performance.memory.usedJSHeapSize,totalJSHeapSize:performance.memory.totalJSHeapSize}:null;
+  const report={file:file.name,fileBytes:file.size,sha256:sha,expectedMiniFASNetSha256:kind==='pad'?expectedPad:undefined,hashMatchesPublishedMiniFASNetArtifact:kind==='pad'?sha===expectedPad:undefined,profile:kind,provider,onnxRuntimeWeb:'1.22.0',input:{name:inputName,type:inputMeta?.type||'unknown',shape},outputs:outputMeta,warmupRuns:warmup,measuredRuns:count,latencyMs:{min:Math.min(...times),median:median(times),p95:percentile(times,.95),max:Math.max(...times)},jsHeap:memory,note:'Synthetic input only. Does not validate model preprocessing, recognition quality, PAD quality, camera pipeline, or biometric security.'};
+  out.textContent=JSON.stringify(report,null,2);
+  const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='onnx-benchmark-report.json';a.textContent='Download JSON report';a.style.display='block';a.style.marginTop='12px';out.after(a);
+  await session.release();
+ }catch(e){out.textContent='Benchmark failed: '+(e?.message||String(e))}finally{button.disabled=false}
+});
+</script></body></html>

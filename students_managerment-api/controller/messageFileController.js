@@ -11,7 +11,9 @@ const handleError = (res, error) => {
     }
 
     return res.status(statusCode).json({
-        message: error.message || 'Lỗi xử lý file'
+        message: statusCode >= 500
+            ? 'Không thể xử lý file đính kèm'
+            : (error.message || 'Lỗi xử lý file')
     });
 };
 

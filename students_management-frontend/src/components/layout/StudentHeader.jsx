@@ -42,17 +42,29 @@ function StudentHeader({
     const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
     const [notificationsLoading, setNotificationsLoading] = useState(false);
     const menuRef = useRef(null);
+    const languageMenuRef = useRef(null);
+    const notificationsRef = useRef(null);
     const notificationIdsRef = useRef(new Set());
 
     useEffect(() => {
         const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
-                setMenuOpen(false);
-            }
+            if (menuRef.current && !menuRef.current.contains(event.target)) setMenuOpen(false);
+            if (languageMenuRef.current && !languageMenuRef.current.contains(event.target)) setLanguageMenuOpen(false);
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) setNotificationsOpen(false);
+        };
+        const handleEscape = event => {
+            if (event.key !== 'Escape') return;
+            setMenuOpen(false);
+            setLanguageMenuOpen(false);
+            setNotificationsOpen(false);
         };
 
         document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleEscape);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('keydown', handleEscape);
+        };
     }, []);
 
     useEffect(() => {
@@ -143,6 +155,7 @@ function StudentHeader({
                 <input
                     className="min-w-0 flex-1 border-0 bg-transparent text-xs text-[#293b55] dark:text-slate-100 outline-none placeholder:text-slate-400"
                     type="text"
+                    aria-label={t('searchStudents')}
                     placeholder={t("searchStudents")}
                     value={search}
                     onChange={(event) => onSearchChange(event.target.value)}
@@ -150,7 +163,7 @@ function StudentHeader({
             </div>}
 
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
-                <div className="relative">
+                <div className="relative" ref={languageMenuRef}>
                     <button type="button" onClick={() => setLanguageMenuOpen(open => !open)} className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-[#71829b] transition hover:bg-brand-50 hover:text-brand-700 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-blue-300" aria-label={t('quickLanguage')} title={t('quickLanguage')} aria-expanded={languageMenuOpen}>
                         <Languages size={18} />{language === "vi" ? <VN title="Tiếng Việt" className="h-3.5 w-5 rounded-[2px]" /> : <GB title="English" className="h-3.5 w-5 rounded-[2px]" />}<span>{language.toUpperCase()}</span>
                     </button>
@@ -167,7 +180,7 @@ function StudentHeader({
                 >
                     {darkMode ? <Sun size={19} /> : <Moon size={19} />}
                 </button>
-                <div className="relative">
+                <div className="relative" ref={notificationsRef}>
                     <button type="button" onClick={() => setNotificationsOpen(open => !open)} className="relative flex size-9 items-center justify-center rounded-lg text-[#71829b] dark:text-slate-400 hover:bg-brand-50 dark:hover:bg-slate-800 hover:text-brand-700 dark:hover:text-blue-300" aria-label={t('notifications')} aria-expanded={notificationsOpen}>
                         <Bell size={20} />
                         {notificationUnreadCount > 0 && <span className="absolute -right-0.5 -top-0.5 flex min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{notificationUnreadCount > 9 ? '9+' : notificationUnreadCount}</span>}
@@ -210,6 +223,10 @@ function StudentHeader({
 
                 <div className="relative" ref={menuRef}>
                     <button
+                        type="button"
+                        aria-expanded={menuOpen}
+                        aria-haspopup="menu"
+                        aria-label={t('account')}
                         className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left hover:bg-[#f5f8ff] sm:gap-3"
                         onClick={() => setMenuOpen((open) => !open)}
                     >
@@ -217,11 +234,11 @@ function StudentHeader({
                             <img src={resolveMediaUrl(user.avatar_url || user.avatar)} alt={t("account")} className="size-8 shrink-0 rounded-full object-cover" />
                         ) : (
                             <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#dcecff] text-xs font-bold text-[#1d4ed8]">
-                                {user?.username?.charAt(0)?.toUpperCase() || 'U'}
+                                {(user?.full_name || user?.username)?.charAt(0)?.toUpperCase() || 'U'}
                             </div>
                         )}
                         <div className="hidden min-w-0 flex-col sm:flex">
-                            <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.username || 'User'}</strong>
+                            <strong className="max-w-28 truncate text-xs text-[#293b55] dark:text-slate-100">{user?.full_name || user?.username || 'User'}</strong>
                             <span className="text-[10px] text-[#71829b] dark:text-slate-400">
                                 {user?.role === 'admin' ? t('administrator') : t('user')}
                             </span>

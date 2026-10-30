@@ -8,6 +8,8 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       PORT: 3000
+      # Set TRUST_PROXY_HOPS=1 only when this API is reachable exclusively through one trusted reverse proxy.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
@@ -16,10 +18,16 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
+      AUTH_RATE_LIMIT_HASH_SECRET: ${AUTH_RATE_LIMIT_HASH_SECRET:?Set AUTH_RATE_LIMIT_HASH_SECRET in students_managerment-api/.env}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       FRONTEND_URLS: ${FRONTEND_URLS:-http://localhost:5173,http://127.0.0.1:5173,https://student-manager.local}
       RESEND_API_KEY: ${RESEND_API_KEY}
+      # Ollama runs on the Windows host; opt in only to Docker Desktop's host gateway.
+      OLLAMA_BASE_URL: ${OLLAMA_DOCKER_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_ALLOW_DOCKER_HOST: ${OLLAMA_ALLOW_DOCKER_HOST:-true}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:3b}
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
     depends_on:
       postgres:
         condition: service_healthy

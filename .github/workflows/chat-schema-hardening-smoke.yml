@@ -1,0 +1,113 @@
+name: Chat schema hardening smoke
+
+on:
+  push:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+      - fix/password-cooldown-ip-guard
+  pull_request:
+    branches:
+      - main
+      - feature/chat-1to1-complete
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  migration-order-smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: chat_primary_order_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d chat_primary_order_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create isolated fixtures for both historical migration orders
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE chat_alternate_order_test"
+          for database in chat_primary_order_test chat_alternate_order_test; do
+            psql -h localhost -U postgres -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE TABLE users (
+            id BIGSERIAL PRIMARY KEY,
+            username TEXT NOT NULL,
+            avatar_url TEXT
+          );
+          CREATE TABLE conversations (
+            id BIGSERIAL PRIMARY KEY,
+            type VARCHAR(20) NOT NULL DEFAULT 'direct',
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+          CREATE TABLE conversation_members (
+            conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+            user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            PRIMARY KEY (conversation_id, user_id)
+          );
+          INSERT INTO users (username) VALUES ('owner'), ('member');
+          INSERT INTO conversations (type) VALUES ('group'), ('direct');
+          INSERT INTO conversation_members (conversation_id, user_id)
+          VALUES (1, 1), (1, 2), (2, 1), (2, 2);
+          SQL
+          done
+      - name: Apply migration order A and rerun hardening
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d chat_primary_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/group_presence.sql
+          psql -h localhost -U postgres -d chat_primary_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/group_chat_presence.sql
+          psql -h localhost -U postgres -d chat_primary_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/conversation_management.sql
+          psql -h localhost -U postgres -d chat_primary_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/chat_safety_features.sql
+          psql -h localhost -U postgres -d chat_primary_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/chat_schema_hardening_migration.sql
+          psql -h localhost -U postgres -d chat_primary_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/chat_schema_hardening_migration.sql
+      - name: Apply migration order B and rerun hardening
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d chat_alternate_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/group_chat_presence.sql
+          psql -h localhost -U postgres -d chat_alternate_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/group_presence.sql
+          psql -h localhost -U postgres -d chat_alternate_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/chat_safety_features.sql
+          psql -h localhost -U postgres -d chat_alternate_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/conversation_management.sql
+          psql -h localhost -U postgres -d chat_alternate_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/chat_schema_hardening_migration.sql
+          psql -h localhost -U postgres -d chat_alternate_order_test -v ON_ERROR_STOP=1 -f students_managerment-api/sql/chat_schema_hardening_migration.sql
+      - name: Verify allowed values, role backfill and constraints
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for database in chat_primary_order_test chat_alternate_order_test; do
+            psql -h localhost -U postgres -d "$database" -v ON_ERROR_STOP=1 <<'SQL'
+          DO $verify$
+          BEGIN
+            IF (SELECT COUNT(*) FROM conversation_members WHERE conversation_id = 1 AND role IS NOT NULL) <> 2 THEN
+              RAISE EXCEPTION 'expected both active group members to have roles';
+            END IF;
+            IF EXISTS (SELECT 1 FROM conversation_members cm JOIN conversations c ON c.id = cm.conversation_id WHERE c.type = 'direct' AND cm.role IS NOT NULL) THEN
+              RAISE EXCEPTION 'direct conversation members must not have group roles';
+            END IF;
+            BEGIN
+              INSERT INTO conversation_reports (conversation_id, reporter_id, target_user_id, reason)
+              VALUES (2, 1, 2, 'unsupported');
+              RAISE EXCEPTION 'unsupported report reason was accepted';
+            EXCEPTION WHEN check_violation THEN
+              NULL;
+            END;
+            INSERT INTO conversation_reports (conversation_id, reporter_id, target_user_id, reason)
+            VALUES (2, 1, 2, 'spam');
+          END
+          $verify$;
+          SQL
+          done

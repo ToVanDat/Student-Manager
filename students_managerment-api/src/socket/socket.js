@@ -10,10 +10,15 @@ const notificationDeliveryService = require('../../service/notificationDeliveryS
 const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
-const { isValidCallId, isValidCallType } = require('../../service/callValidation.js');
-const { isValidSessionDescription, isValidIceCandidate } = require('../../service/socketPayloadValidation.js');
+const { publishRealtimeBestEffort } = require('../../service/realtimeDelivery.js');
+const { isValidCallId, isValidCallType, normalizeCallFailureReason } = require('../../service/callValidation.js');
+const { isValidSessionDescription, isValidIceCandidate, installSocketEventValidation } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
 const { allowSocketHandshake } = require('../../middleware/socketHandshakeRateLimiter.js');
+const { joinConversationRoom } = require('../../service/socketRoomAccess.js');
+const { isSocketSessionActive } = require('../../service/socketSessionGuard.js');
+const { isAccessTokenActive } = require('../../service/accessTokenStore.js');
+const { parseSessionRevocationEvent, publishSessionRevocation } = require('../../service/sessionRevocationPubSub.js');
 
 let io = null;
 let presenceSubscriber = null;
@@ -79,6 +84,11 @@ const initSocket = async (server) => {
                 if (Number.isSafeInteger(conversationId) && conversationId > 0) {
                     io?.to(`conversation:${conversationId}`).emit(event.event, event.payload);
                 }
+                return;
+            }
+            const revocation = parseSessionRevocationEvent(event);
+            if (revocation) {
+                disconnectSessionSocketsLocally(revocation.sessionId, revocation.reason);
             }
         } catch (error) {
             console.error('[PRESENCE][pubsub message invalid]', error.message);
@@ -155,6 +165,34 @@ const initSocket = async (server) => {
     });
 
     io.on('connection', async (socket) => {
+        // Normalize application payloads while preserving EventEmitter listener
+        // identity so off/removeListener and once retain their native semantics.
+        installSocketEventValidation(socket, (error, receiver, eventName) => {
+            console.error('[SOCKET][event handler failed]', {
+                event: String(eventName || 'unknown').slice(0, 80),
+                userId: Number(socket.user?.id) || null,
+                code: error?.code || 'SOCKET_EVENT_FAILED'
+            });
+            try {
+                receiver.emit('socket:error', {
+                    code: 'EVENT_FAILED',
+                    message: 'Không thể xử lý sự kiện realtime. Vui lòng thử lại.'
+                });
+            } catch (emitError) {
+                console.error('[SOCKET][event error notification failed]', {
+                    code: emitError?.code || 'SOCKET_ERROR_EMIT_FAILED'
+                });
+            }
+        }, [
+            'connect',
+            'connect_error',
+            'disconnect',
+            'disconnecting',
+            'error',
+            'newListener',
+            'removeListener'
+        ]);
+
         const userId = Number(socket.user.id);
         const sessionId = socket.user.sessionId;
 
@@ -210,11 +248,42 @@ const initSocket = async (server) => {
 
         scheduleTokenExpiry(socket.handshake.auth?.accessToken);
 
+        // Redis Pub/Sub provides immediate cross-node revocation. This DB
+        // guard is the fail-closed backstop when Pub/Sub is unavailable or a
+        // node misses a transient notification.
+        let sessionGuardRunning = false;
+        const sessionGuardTimer = setInterval(async () => {
+            if (sessionGuardRunning || !socket.connected) return;
+            sessionGuardRunning = true;
+            try {
+                if (!await isSocketSessionActive(authRepository, sessionId, userId)) {
+                    socket.emit('session:revoked', {
+                        sessionId,
+                        reason: 'SESSION_REVOKED'
+                    });
+                    socket.disconnect(true);
+                }
+            } catch (error) {
+                // Authorization cannot be safely maintained without checking
+                // the authoritative session/account state.
+                console.error('[SOCKET][session guard failed closed]', {
+                    userId,
+                    sessionId,
+                    code: error.code || 'SESSION_GUARD_UNAVAILABLE'
+                });
+                socket.disconnect(true);
+            } finally {
+                sessionGuardRunning = false;
+            }
+        }, 10_000);
+        sessionGuardTimer.unref?.();
+
         socket.once('disconnect', () => {
             if (tokenExpiryTimer) {
                 clearTimeout(tokenExpiryTimer);
                 tokenExpiryTimer = null;
             }
+            clearInterval(sessionGuardTimer);
         });
 
         // Refresh the authenticated token in-place so an access-token expiry
@@ -374,14 +443,14 @@ const initSocket = async (server) => {
                 for (const expired of expiredCalls) {
                     emitCallActivityUpdated(expired);
                     clearCallTimer(expired.call_id);
-                    io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                    emitCallEventBestEffort(`user:${Number(expired.receiver_id)}`, 'call:ended', {
                         callId: expired.call_id,
                         fromUserId: Number(expired.caller_id),
                         toUserId: Number(expired.receiver_id),
                         reason: 'ring-timeout',
                         status: 'missed'
                     });
-                    io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                    emitCallEventBestEffort(`user:${Number(expired.caller_id)}`, 'call:timeout', {
                         callId: expired.call_id,
                         status: 'missed',
                         reason: 'ring-timeout'
@@ -445,7 +514,8 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('conversation:join', async ({ conversationId }) => {
+        socket.on('conversation:join', async (payload = {}) => {
+            const { conversationId } = payload && typeof payload === 'object' ? payload : {};
             if (!await allowRealtimeEvent('conversation:join')) return;
             const id = Number(conversationId);
             if (!Number.isInteger(id) || id <= 0) {
@@ -453,8 +523,13 @@ const initSocket = async (server) => {
             }
 
             try {
-                const isMember = await conversationRepository.isConversationMember(id, userId);
-                if (!isMember) {
+                const joined = await joinConversationRoom(
+                    socket,
+                    conversationRepository,
+                    userId,
+                    id
+                );
+                if (!joined) {
                     return socket.emit('conversation:error', {
                         code: 'NOT_MEMBER',
                         conversationId: id,
@@ -462,7 +537,6 @@ const initSocket = async (server) => {
                     });
                 }
 
-                socket.join(`conversation:${id}`);
                 socket.emit('conversation:joined', { conversationId: id });
 
                 // Đồng bộ presence ngay khi mở conversation mới.
@@ -478,12 +552,14 @@ const initSocket = async (server) => {
             }
         });
 
-        socket.on('conversation:leave', ({ conversationId }) => {
+        socket.on('conversation:leave', (payload = {}) => {
+            const { conversationId } = payload && typeof payload === 'object' ? payload : {};
             const id = Number(conversationId);
             if (Number.isInteger(id) && id > 0) socket.leave(`conversation:${id}`);
         });
 
-        socket.on('message:send', async ({ conversationId, content, replyToMessageId = null }) => {
+        socket.on('message:send', async (payload = {}) => {
+            const { conversationId, content, replyToMessageId = null } = payload && typeof payload === 'object' ? payload : {};
             if (!await allowRealtimeEvent('message:send')) return;
             const id = Number(conversationId);
             const text = typeof content === 'string' ? content.trim() : '';
@@ -971,6 +1047,12 @@ const initSocket = async (server) => {
             );
         };
 
+        const emitCallEventBestEffort = (room, event, payload) =>
+            publishRealtimeBestEffort(
+                () => io.to(room).emit(event, payload),
+                { event, room }
+            );
+
         const emitCallNotification = async (userIdToNotify, call, type, title, body) => {
             try {
                 const notification = await callRepository.createCallNotification(
@@ -998,9 +1080,9 @@ const initSocket = async (server) => {
                 status: call.status,
                 activityAt: call.ended_at || call.updated_at || call.started_at || null
             };
-            io.to(`user:${payload.callerId}`).emit('call:activity:updated', payload);
-            io.to(`user:${payload.receiverId}`).emit('call:activity:updated', payload);
-            io.to(`conversation:${payload.conversationId}`).emit('call:activity:updated', payload);
+            emitCallEventBestEffort(`user:${payload.callerId}`, 'call:activity:updated', payload);
+            emitCallEventBestEffort(`user:${payload.receiverId}`, 'call:activity:updated', payload);
+            emitCallEventBestEffort(`conversation:${payload.conversationId}`, 'call:activity:updated', payload);
         };
 
         socket.on('call:start', async ({ callId, targetUserId, callType = 'voice' } = {}) => {
@@ -1039,8 +1121,15 @@ const initSocket = async (server) => {
             // Offline users cannot receive the incoming-call event, but the call is
             // still recorded as ringing until the shared timeout marks it missed.
             if (onlineUsers.has(targetId)) {
-                const callerProfile = await userRepository.findActiveUserById(userId);
-                io.to(`user:${targetId}`).emit('call:incoming', {
+                let callerProfile = null;
+                try {
+                    callerProfile = await userRepository.findActiveUserById(userId);
+                } catch (profileError) {
+                    // The call record already exists; profile decoration must
+                    // not prevent the ringing timeout from being scheduled.
+                    console.warn('[CALL] Caller profile lookup failed:', profileError.code || 'PROFILE_LOOKUP_FAILED');
+                }
+                emitCallEventBestEffort(`user:${targetId}`, 'call:incoming', {
                     callId,
                     fromUserId: userId,
                     fromUsername: socket.user.username,
@@ -1060,14 +1149,14 @@ const initSocket = async (server) => {
                     for (const expired of expiredCalls) {
                         emitCallActivityUpdated(expired);
                         clearCallTimer(expired.call_id);
-                        io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                        emitCallEventBestEffort(`user:${Number(expired.receiver_id)}`, 'call:ended', {
                             callId: expired.call_id,
                             fromUserId: Number(expired.caller_id),
                             toUserId: Number(expired.receiver_id),
                             reason: 'ring-timeout',
                             status: 'missed'
                         });
-                        io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                        emitCallEventBestEffort(`user:${Number(expired.caller_id)}`, 'call:timeout', {
                             callId: expired.call_id, status: 'missed', reason: 'ring-timeout'
                         });
                         await emitCallNotification(
@@ -1151,14 +1240,14 @@ const initSocket = async (server) => {
                 for (const expired of expiredCalls) {
                     emitCallActivityUpdated(expired);
                     clearCallTimer(expired.call_id);
-                    io.to(`user:${Number(expired.receiver_id)}`).emit('call:ended', {
+                    emitCallEventBestEffort(`user:${Number(expired.receiver_id)}`, 'call:ended', {
                         callId: expired.call_id,
                         fromUserId: Number(expired.caller_id),
                         toUserId: Number(expired.receiver_id),
                         reason: 'ring-timeout',
                         status: 'missed'
                     });
-                    io.to(`user:${Number(expired.caller_id)}`).emit('call:timeout', {
+                    emitCallEventBestEffort(`user:${Number(expired.caller_id)}`, 'call:timeout', {
                         callId: expired.call_id, status: 'missed', reason: 'ring-timeout'
                     });
                     await emitCallNotification(
@@ -1174,7 +1263,7 @@ const initSocket = async (server) => {
                 });
             }
             clearCallTimer(callId);
-            io.to(`user:${targetId}`).emit('call:accepted', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:accepted', {
                 callId, fromUserId: userId, toUserId: targetId, callType: currentCall.call_type
             });
 
@@ -1188,10 +1277,10 @@ const initSocket = async (server) => {
                     );
                     if (failed) {
                         emitCallActivityUpdated(failed);
-                        io.to(`user:${targetId}`).emit('call:ended', {
+                        emitCallEventBestEffort(`user:${targetId}`, 'call:ended', {
                             callId, fromUserId: userId, toUserId: targetId, reason: 'connection-timeout'
                         });
-                        io.to(`user:${userId}`).emit('call:timeout', {
+                        emitCallEventBestEffort(`user:${userId}`, 'call:timeout', {
                             callId, status: 'failed', reason: 'connection-timeout'
                         });
                     }
@@ -1203,7 +1292,7 @@ const initSocket = async (server) => {
             }, CALL_CONNECT_TIMEOUT_MS));
         });
 
-        socket.on('call:reject', async ({ callId, targetUserId, reason = 'rejected' } = {}) => {
+        socket.on('call:reject', async ({ callId, targetUserId } = {}) => {
             if (!await allowRealtimeEvent('call:reject')) return;
             const targetId = Number(targetUserId);
             const currentCall = await getAuthorizedCall(callId, targetId);
@@ -1221,8 +1310,8 @@ const initSocket = async (server) => {
             if (!updated) return;
 
             emitCallActivityUpdated(updated);
-            io.to(`user:${targetId}`).emit('call:rejected', {
-                callId, fromUserId: userId, toUserId: targetId, reason
+            emitCallEventBestEffort(`user:${targetId}`, 'call:rejected', {
+                callId, fromUserId: userId, toUserId: targetId, reason: 'rejected'
             });
             await emitCallNotification(
                 targetId,
@@ -1310,7 +1399,7 @@ const initSocket = async (server) => {
             clearCallTimer(callId);
             emitCallActivityUpdated(connectedCall);
 
-            io.to(`user:${targetId}`).emit('call:connected', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:connected', {
                 callId, fromUserId: userId, toUserId: targetId
             });
         });
@@ -1321,12 +1410,14 @@ const initSocket = async (server) => {
             const currentCall = await getAuthorizedCall(callId, targetId);
             if (!currentCall || currentCall.status !== 'connecting' || currentCall.ended_at) return;
 
+            // Never persist or relay arbitrary client-controlled failure text.
+            const safeReason = normalizeCallFailureReason(reason);
             clearCallTimer(callId);
             const failed = await callRepository.updateCallStatusIfCurrent(
                 callId,
                 'failed',
                 'connecting',
-                reason
+                safeReason
             );
             if (!failed) return;
             emitCallActivityUpdated(failed);
@@ -1335,12 +1426,12 @@ const initSocket = async (server) => {
                 callId,
                 fromUserId: userId,
                 toUserId: targetId,
-                reason: 'connection-timeout',
+                reason: safeReason,
                 status: 'failed'
             };
-            io.to(`user:${userId}`).emit('call:ended', payload);
-            io.to(`user:${targetId}`).emit('call:ended', payload);
-            console.warn('[CALL][connection failed]', { callId, userId, targetId, reason });
+            emitCallEventBestEffort(`user:${userId}`, 'call:ended', payload);
+            emitCallEventBestEffort(`user:${targetId}`, 'call:ended', payload);
+            console.warn('[CALL][connection failed]', { callId, userId, targetId, reason: safeReason });
         });
 
         socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
@@ -1408,7 +1499,7 @@ const initSocket = async (server) => {
 
             emitCallActivityUpdated(updated);
             
-            io.to(`user:${targetId}`).emit('call:ended', {
+            emitCallEventBestEffort(`user:${targetId}`, 'call:ended', {
                 callId, fromUserId: userId, toUserId: targetId, reason: safeReason
             });
             if (updated?.status === 'completed') {
@@ -1476,19 +1567,34 @@ const initSocket = async (server) => {
                         disconnectGraceTimers.delete(userId);
 
                         const currentSockets = onlineUsers.get(userId);
-                        let sharedCount = 0;
-                        try { sharedCount = Number(await redisClient.sCard(presenceSocketKey(userId))); } catch { /* fail safe below */ }
+                        let sharedCount;
+                        try {
+                            sharedCount = Number(await redisClient.sCard(presenceSocketKey(userId)));
+                            if (!Number.isSafeInteger(sharedCount) || sharedCount < 0) {
+                                throw new Error('Invalid shared presence socket count');
+                            }
+                        } catch (presenceError) {
+                            // Never infer that a user is offline when shared
+                            // presence cannot be read. Another Socket.IO node
+                            // may still own an active socket for this account.
+                            console.error('[CALL][disconnect cleanup deferred]', {
+                                userId,
+                                code: presenceError.code || 'PRESENCE_CHECK_FAILED'
+                            });
+                            return;
+                        }
+
                         if ((currentSockets && currentSockets.size > 0) || sharedCount > 0) {
-                                                        return;
+                            return;
                         }
 
                         try {
                             const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
 
                             for (const activeCall of activeCalls) {
-                                const targetId = activeCall.caller_id === userId
-                                    ? activeCall.receiver_id
-                                    : activeCall.caller_id;
+                                const targetId = Number(activeCall.caller_id) === userId
+                                    ? Number(activeCall.receiver_id)
+                                    : Number(activeCall.caller_id);
 
                                 const ended = await callRepository.updateCallStatusIfCurrent(
                                     activeCall.call_id,
@@ -1500,7 +1606,7 @@ const initSocket = async (server) => {
                                 if (ended) {
                                     emitCallActivityUpdated(ended);
                                     clearCallTimer(activeCall.call_id);
-                                    io.to(`user:${targetId}`).emit('call:ended', {
+                                    emitCallEventBestEffort(`user:${targetId}`, 'call:ended', {
                                         callId: activeCall.call_id,
                                         fromUserId: userId,
                                         toUserId: targetId,
@@ -1556,23 +1662,30 @@ const getIO = () => {
 
 const isUserOnline = (userId) => onlineUsers.has(Number(userId));
 
-const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
-    const socketServer = getIO();
+const disconnectSessionSocketsLocally = (sessionId, reason = 'SESSION_REVOKED') => {
+    if (!io || !sessionId) return;
     const roomName = `session:${sessionId}`;
-
-    // Notify and forcibly disconnect every tab/socket belonging to this
-    // revoked session. Emitting an event alone would leave old sockets able
-    // to continue sending realtime events after their session was revoked.
-    const roomSocketIds = socketServer.sockets.adapter.rooms.get(roomName);
+    const roomSocketIds = io.sockets.adapter.rooms.get(roomName);
     if (!roomSocketIds) return;
 
     for (const socketId of [...roomSocketIds]) {
-        const clientSocket = socketServer.sockets.sockets.get(socketId);
+        const clientSocket = io.sockets.sockets.get(socketId);
         if (!clientSocket) continue;
-
         clientSocket.emit('session:revoked', { sessionId, reason });
         clientSocket.disconnect(true);
     }
+};
+
+const emitSessionRevoked = (sessionId, reason = 'SESSION_REVOKED') => {
+    // Disconnect sockets on this node immediately, then fan out the revocation
+    // to every other Socket.IO node through the shared Redis Pub/Sub channel.
+    disconnectSessionSocketsLocally(sessionId, reason);
+    publishSessionRevocation(redisClient, String(sessionId), reason).catch((error) => {
+        console.error('[SOCKET][session revocation broadcast failed]', {
+            sessionId,
+            code: error.code || 'SESSION_REVOCATION_BROADCAST_FAILED'
+        });
+    });
 };
 
 module.exports = {

@@ -29,7 +29,7 @@ export default function AdminOverview({ user, statistics, classStatistics = [], 
             <header className="admin-overview__hero relative isolate flex flex-col justify-between gap-5 overflow-hidden rounded-2xl border border-blue-950/10 bg-gradient-to-br from-[#142f50] via-[#1d4b70] to-[#276b78] px-5 py-6 text-white shadow-[0_16px_40px_rgba(23,59,89,0.14)] sm:flex-row sm:items-end sm:px-8 sm:py-8 before:pointer-events-none before:absolute before:-right-12 before:-top-24 before:-z-10 before:size-72 before:rounded-full before:border-[36px] before:border-white/5 after:pointer-events-none after:absolute after:-bottom-32 after:right-1/4 after:-z-10 after:size-64 after:rounded-full after:bg-cyan-300/10 after:blur-2xl">
                 <div className="min-w-0">
                     <p className="mb-3 text-[11px] font-semibold uppercase tracking-[.12em] text-sky-200">{t('administrator')}</p>
-                    <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">{t('welcome')}, {user?.username || 'Admin'}!</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-white sm:text-[28px]">{t('welcome')}, {user?.full_name || user?.username || 'Admin'}!</h1>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-slate-200">{t('overview')}</p>
                 </div>
                 <div className="inline-flex max-w-full items-center gap-3 self-start rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-xs text-white sm:self-auto">

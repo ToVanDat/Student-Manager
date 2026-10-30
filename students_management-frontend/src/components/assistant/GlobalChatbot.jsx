@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     BookOpen, Check, ChevronDown, Copy, LoaderCircle, MessageCircle, MessageSquare,
-    Pencil, Plus, RefreshCw, Search, Send, Sparkles, Square, ThumbsDown, ThumbsUp, Trash2, X
+    Pencil, Plus, RefreshCw, Search, Send, Square, ThumbsDown, ThumbsUp, Trash2, X
 } from 'lucide-react';
 import AssistantMessage from '@/components/assistant/AssistantMessage.jsx';
 import AssistantKnowledgeManager from '@/components/assistant/AssistantKnowledgeManager.jsx';
@@ -326,21 +326,25 @@ export default function GlobalChatbot() {
             : assistantTitle;
 
     return (
-        <div className="fixed bottom-4 right-4 z-[70] sm:bottom-5 sm:right-5">
+        <div className="fixed bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))] z-[70]">
             {open && (
                 <section
-                    className="fixed inset-2 flex flex-col overflow-hidden rounded-[26px] border border-slate-200/80 bg-white shadow-[0_28px_100px_-30px_rgba(15,23,42,.55)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-16 sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(500px,calc(100vw-40px))]"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="global-assistant-title"
+                    onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); setOpen(false); } }}
+                    className="student-assistant-dialog fixed inset-x-0 bottom-0 flex h-[min(88dvh,820px)] flex-col overflow-hidden rounded-t-[26px] border border-slate-200/90 bg-[#fbfcff] shadow-[0_24px_90px_-28px_rgba(15,23,42,.48)] dark:border-slate-700 dark:bg-slate-950 sm:absolute sm:inset-auto sm:bottom-[76px] sm:right-0 sm:h-[min(760px,calc(100dvh-112px))] sm:w-[min(440px,calc(100vw-32px))] sm:rounded-[24px]"
                     aria-label={vi ? 'Trợ lý Student Manager' : 'Student Manager assistant'}
                     aria-live="off"
                 >
-                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3.5 dark:border-slate-800 dark:bg-slate-950">
-                        <div className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/20">
-                            <Sparkles size={19} />
+                    <header className="relative flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-5 sm:py-3.5">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-700">
+                            <MessageCircle size={19} strokeWidth={1.8} />
                         </div>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                                <h2 className="m-0 truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">{panelTitle}</h2>
-                                {!showKnowledgeManager && !showConversationList && <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300">AI</span>}
+                                <h2 id="global-assistant-title" className="m-0 truncate text-sm font-bold tracking-tight text-slate-900 dark:text-white">{panelTitle}</h2>
+                                {!showKnowledgeManager && !showConversationList && <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-semibold tracking-wide text-slate-500">ASSISTANT</span>}
                             </div>
                             <p className="m-0 mt-0.5 truncate text-[11px] text-slate-500 dark:text-slate-400">
                                 {showKnowledgeManager
@@ -422,7 +426,7 @@ export default function GlobalChatbot() {
                                 )}
                                 {messages.length === 0 && !historyLoading && (
                                     <div className="mx-auto flex min-h-full max-w-sm flex-col items-center justify-center py-6 text-center">
-                                        <div className="mb-4 flex size-16 items-center justify-center rounded-[22px] bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-xl shadow-blue-500/20"><Sparkles size={27} /></div>
+                                        <div className="mb-4 flex size-14 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm"><MessageCircle size={25} strokeWidth={1.6} /></div>
                                         <p className="m-0 text-lg font-bold tracking-tight text-slate-900 dark:text-white">{vi ? (isAdmin ? 'Xin chào quản trị viên!' : 'Xin chào!') : (isAdmin ? 'Hello, administrator!' : 'Hello!')}</p>
                                         <p className="mb-5 mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{vi
                                             ? (isAdmin ? 'Tôi có thể hỗ trợ tra cứu danh mục và số liệu quản lý trong phạm vi được cấp quyền.' : 'Tôi có thể hỗ trợ bạn tra cứu thông tin học tập và hướng dẫn sử dụng Student Manager.')
@@ -445,10 +449,10 @@ export default function GlobalChatbot() {
                                         return (
                                         <div key={item.id || index} className={`group flex ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                             {item.role === 'assistant' && (
-                                                <div className="mr-2 mt-1 flex size-7 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 text-white"><Sparkles size={14} /></div>
+                                                <div className="mr-2 mt-1 flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500"><MessageCircle size={14} strokeWidth={1.7} /></div>
                                             )}
                                             <div className={`min-w-0 max-w-[88%] rounded-[20px] px-4 py-3.5 sm:max-w-[86%] ${item.role === 'user'
-                                                ? 'rounded-br-md bg-gradient-to-br from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-950/10'
+                                                ? 'rounded-br-md bg-[#2457a7] text-white shadow-sm'
                                                 : 'rounded-bl-md border border-slate-200/80 bg-white/95 text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200'} ${item.error ? 'border-amber-300 dark:border-amber-800' : ''}`}>
                                                 {item.role === 'assistant'
                                                     ? <AssistantMessage content={item.content} />
@@ -475,7 +479,7 @@ export default function GlobalChatbot() {
                                                 )}
                                                 {item.role === 'assistant' && item.content && !item.streaming && (
                                                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
-                                                        <span className="text-[10px] text-slate-400">{item.model || 'AI Assistant'}</span>
+                                                        <span className="text-[10px] font-medium text-slate-400">{item.model || (vi ? 'Trợ lý' : 'Assistant')}</span>
                                                         <div className="flex flex-wrap items-center gap-1">
                                                         {isLatestAssistant && !item.error && !item.stopped && <>
                                                             <button type="button" onClick={() => void send(null, messages[lastUserIndex]?.content || '', true)} disabled={loading || lastUserIndex < 0 || feedbackBusy} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 disabled:opacity-40 dark:hover:bg-slate-800" title={vi ? 'Tạo lại câu trả lời' : 'Regenerate response'}><RefreshCw size={12} />{vi ? 'Tạo lại' : 'Regenerate'}</button>
@@ -502,9 +506,9 @@ export default function GlobalChatbot() {
                                 )}
                             </div>
 
-                            <div className="shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
+                            <div className="student-assistant-composer shrink-0 border-t border-slate-200/80 bg-white px-3 pb-2 pt-3 dark:border-slate-800 dark:bg-slate-950 sm:px-4">
                                 {editingLatestQuestion && <div className="mb-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-[11px] text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"><span>{vi ? 'Đang chỉnh sửa câu hỏi gần nhất' : 'Editing the latest question'}</span><button type="button" onClick={() => { setEditingLatestQuestion(false); setReplaceLastTurnOnSubmit(false); setInput(''); }} className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900" aria-label={vi ? 'Hủy chỉnh sửa' : 'Cancel edit'}><X size={13} /></button></div>}
-                                <form onSubmit={send} className="rounded-[20px] border border-slate-200 bg-slate-50 p-2 shadow-sm transition focus-within:border-blue-300 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:bg-slate-900">
+                                <form onSubmit={send} className="student-assistant-composer-form relative flex min-h-[68px] items-center rounded-[18px] border border-slate-200 bg-white px-4 py-2 shadow-[0_2px_8px_rgba(15,23,42,.045)] transition duration-200 focus-within:border-slate-300 focus-within:shadow-[0_4px_14px_rgba(15,23,42,.08)] dark:border-slate-700 dark:bg-slate-900">
                                     <textarea
                                         ref={textareaRef}
                                         value={input}
@@ -515,37 +519,31 @@ export default function GlobalChatbot() {
                                                 void send(event);
                                             }
                                         }}
-                                        rows={2}
+                                        rows={1}
                                         maxLength={4000}
-                                        placeholder={vi ? 'Nhắn tin cho trợ lý...' : 'Message the assistant...'}
+                                        placeholder={vi ? 'Hỏi tôi bất cứ điều gì...' : 'Ask me anything...'}
                                         aria-label={vi ? 'Nội dung câu hỏi' : 'Your message'}
-                                        className="max-h-32 min-h-12 w-full resize-y bg-transparent px-2 py-2 text-sm leading-6 text-slate-800 outline-none placeholder:text-slate-400 dark:text-white"
+                                        className="max-h-32 min-h-[48px] w-full resize-y bg-transparent py-2 pr-14 text-[15px] leading-6 text-slate-700 outline-none placeholder:text-slate-500 dark:text-slate-100 dark:placeholder:text-slate-400"
                                     />
-                                    <div className="flex items-center justify-between gap-2 px-1">
-                                        <span className="text-[10px] text-slate-400">{vi ? 'Enter để gửi · Shift + Enter xuống dòng' : 'Enter to send · Shift + Enter for a new line'}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] tabular-nums text-slate-400">{input.length}/4000</span>
-                                            {loading ? (
-                                                <button type="button" onClick={stopGeneration} className="flex size-9 items-center justify-center rounded-xl bg-slate-900 text-white transition hover:bg-red-600 dark:bg-slate-700" aria-label={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'} title={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'}>
-                                                    <Square size={14} fill="currentColor" />
-                                                </button>
-                                            ) : (
-                                                <button type="submit" disabled={!input.trim()} className="flex size-9 items-center justify-center rounded-xl bg-blue-600 text-white shadow-md shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:translate-y-0" aria-label={vi ? 'Gửi tin nhắn' : 'Send message'}>
-                                                    <Send size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
+                                    {loading ? (
+                                        <button type="button" onClick={stopGeneration} className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition hover:bg-slate-300 dark:bg-slate-700 dark:text-white" aria-label={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'} title={vi ? 'Dừng tạo câu trả lời' : 'Stop generating'}>
+                                            <Square size={14} fill="currentColor" />
+                                        </button>
+                                    ) : (
+                                        <button type="submit" disabled={!input.trim()} className="absolute right-2 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-[#82c9b4] text-white transition hover:bg-[#6bb89f] disabled:cursor-not-allowed disabled:bg-[#cbd5d1] disabled:text-white" aria-label={vi ? 'Gửi tin nhắn' : 'Send message'}>
+                                            <Send size={17} className="-rotate-45" />
+                                        </button>
+                                    )}
                                 </form>
-                                <p className="mb-0 mt-2 text-center text-[10px] leading-4 text-slate-400">{vi ? 'AI có thể mắc lỗi. Không nhập mật khẩu hoặc mã xác thực.' : 'AI can make mistakes. Never enter passwords or verification codes.'}</p>
+                                
                             </div>
                         </>
                     )}
                 </section>
             )}
             {!open && (
-                <button type="button" onClick={() => setOpen(true)} className="ml-auto flex size-14 items-center justify-center rounded-[20px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-950/25 transition hover:-translate-y-1 hover:shadow-2xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-500" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} title={assistantTitle}>
-                    <MessageCircle size={23} />
+                <button type="button" onClick={() => setOpen(true)} className="group flex size-14 items-center justify-center rounded-2xl border border-slate-200 bg-[#2457a7] text-white shadow-[0_8px_24px_-10px_rgba(15,23,42,.55)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#1d478b] active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/20" aria-label={vi ? 'Mở trợ lý AI' : 'Open AI assistant'} aria-expanded={open} aria-haspopup="dialog" title={assistantTitle}>
+                    <MessageCircle size={23} className="transition-transform duration-200 group-hover:scale-105" />
                 </button>
             )}
         </div>

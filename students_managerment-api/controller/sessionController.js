@@ -11,7 +11,8 @@ const getSessions = async (req, res) => {
             await sessionService.getUserSessions(userId);
 
         return res.status(200).json({
-            sessions
+            sessions,
+            currentSessionId: req.user.sessionId || null
         });
 
     } catch (error) {

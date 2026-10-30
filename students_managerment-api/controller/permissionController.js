@@ -22,6 +22,7 @@ const updateForRole = async (req, res, next) => {
             invalid_body: [400, 'Dữ liệu gửi lên không hợp lệ'],
             invalid_fields: [400, 'Danh sách quyền không hợp lệ hoặc có trường trùng lặp'],
             unknown_permission: [400, 'Danh sách chứa quyền không tồn tại'],
+            incomplete_permissions: [400, 'Danh sách quyền chưa đầy đủ; hãy tải lại danh sách quyền trước khi lưu'],
             last_permission_manager: [409, 'Quyền quản lý phân quyền của vai trò Admin phải được giữ bật để tránh khóa hệ thống']
         };
         if (result.kind !== 'ok') {
