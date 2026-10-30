@@ -8,8 +8,12 @@ function parseOptionalSemesterId(value) {
 }
 
 async function getMyProfile(userId) {
-    const result = await academicRepository.getStudentPortalByUserId(userId);
-    return { status: result.status, student: result.student, linked: result.status !== 'not_linked' };
+    const student = await academicRepository.getVerifiedStudentByUserId(userId);
+    return {
+        status: student ? 'linked' : 'not_linked',
+        student,
+        linked: Boolean(student)
+    };
 }
 
 async function getMyGrades(userId, semesterId = null) {
