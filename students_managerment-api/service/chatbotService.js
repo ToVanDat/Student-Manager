@@ -466,8 +466,13 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                 })
             });
             if (!response.ok) {
-                const unavailable = new Error('Ollama chưa sẵn sàng hoặc model chưa được tải. Kiểm tra OLLAMA_MODEL.');
-                unavailable.status = 503;
+                const responseBody = await response.text().catch(() => '');
+                const unavailable = new Error(
+                    'Ollama trả về HTTP ' + response.status
+                    + (responseBody ? ': ' + responseBody.slice(0, 500) : '')
+                );
+                unavailable.status = 502;
+                unavailable.code = 'OLLAMA_HTTP_' + response.status;
                 throw unavailable;
             }
 
