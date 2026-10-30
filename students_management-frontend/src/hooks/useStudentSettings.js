@@ -20,6 +20,7 @@ export function useStudentSettings(user, updateUser) {
     });
     const [accountSaving, setAccountSaving] = useState(false);
     const [accountMessage, setAccountMessage] = useState('');
+    const [accountError, setAccountError] = useState('');
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: '',
         newPassword: '',
@@ -97,17 +98,30 @@ export function useStudentSettings(user, updateUser) {
 
     const handleUpdateAccount = async (event) => {
         event.preventDefault();
-        setAccountSaving(true);
         setAccountMessage('');
+        setAccountError('');
 
+        const fullName = String(accountForm.full_name || '').trim();
+        const email = String(accountForm.email || '').trim().toLowerCase();
+        if (!fullName) {
+            setAccountError('Vui lòng nhập tên hiển thị.');
+            return;
+        }
+        if (fullName.length > 120) {
+            setAccountError('Tên hiển thị không được vượt quá 120 ký tự.');
+            return;
+        }
+        if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+            setAccountError('Vui lòng nhập địa chỉ email hợp lệ.');
+            return;
+        }
+
+        setAccountSaving(true);
         try {
-            const response = await apiClient.patch(
-                '/api/auth/me',
-                {
-                    full_name: accountForm.full_name,
-                    email: accountForm.email,
-                },
-            );
+            const response = await apiClient.patch('/api/auth/me', {
+                full_name: fullName,
+                email,
+            });
 
             if (response.data?.user) {
                 updateUser?.(response.data.user);
@@ -120,9 +134,7 @@ export function useStudentSettings(user, updateUser) {
             setAccountMessage('Cập nhật thông tin tài khoản thành công.');
         } catch (error) {
             console.error('UPDATE ACCOUNT ERROR:', error);
-            setAccountMessage(
-                error.response?.data?.message || 'Cập nhật tài khoản thất bại.',
-            );
+            setAccountError(error.response?.data?.message || 'Cập nhật tài khoản thất bại.');
         } finally {
             setAccountSaving(false);
         }
@@ -221,6 +233,7 @@ export function useStudentSettings(user, updateUser) {
         setAccountForm,
         accountSaving,
         accountMessage,
+        accountError,
         passwordForm,
         setPasswordForm,
         passwordSaving,
