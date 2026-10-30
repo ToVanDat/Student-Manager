@@ -4,6 +4,7 @@ const { redisClient } = require('../src/config/redis.js');
 const aiConfig = require('../src/config/ai.js');
 const ragService = require('./ragService.js');
 const { acquireOllamaSlot, acquireChatbotRequestSlot } = require('./ollamaRequestGate.js');
+const studentService = require('./studentService.js');
 
 const MAX_HISTORY_MESSAGES = 8;
 const MAX_MESSAGE_LENGTH = 4000;
@@ -132,7 +133,7 @@ function normalizeHistory(history) {
     }).filter(Boolean);
 }
 
-async function loadAcademicContext(role, question = '') {
+async function loadAcademicContext(role, question = '', userId = null) {
     const [subjects, semesters, departments, classes] = await Promise.all([
         pool.query(
             `SELECT subject_code, subject_name, credits
@@ -229,8 +230,19 @@ async function loadAcademicContext(role, question = '') {
     }
     await Promise.all(targetedLookups);
 
-    // Student records, grades, emails and personal details are deliberately
-    // excluded until the schema has a verified user_id -> student_id mapping.
+    // Student private records are included only for the authenticated user and
+    // only when the backend has a verified student_account_links relationship.
+    if (role === 'user' && userId !== null && userId !== undefined) {
+        const ownAcademic = await studentService.getStudentPortalByUserId(userId);
+        context.studentAcademicStatus = ownAcademic.linked
+            ? (ownAcademic.enrollments.length ? 'available' : 'no_enrollments')
+            : 'not_linked';
+        if (ownAcademic.linked) {
+            context.ownStudentProfile = ownAcademic.student;
+            context.ownStudentGrades = ownAcademic.enrollments;
+        }
+    }
+
     if (role === 'admin') {
         const overview = await pool.query(
             `SELECT
@@ -395,7 +407,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
         if (replaceLastTurn) history = removeLastTurn(history);
 
         const config = getOllamaConfig();
-        const context = await loadAcademicContext(role, message);
+        const context = await loadAcademicContext(role, message, userId);
         if (signal?.aborted) throw signal.reason || new Error('Chat request cancelled');
 
         let ragSources = [];
@@ -435,7 +447,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                     'Không được suy luận rằng một bản ghi thuộc người dùng hiện tại chỉ dựa trên tên, email hoặc nội dung hội thoại.',
                     'Bạn không có quyền thực hiện CRUD, thay đổi điểm, sửa tài khoản hoặc gọi công cụ.',
                     'Người dùng không phải admin: không được suy diễn hay tiết lộ dữ liệu cá nhân, điểm số hoặc danh sách sinh viên.',
-                    'Student-to-user mapping chưa được xác minh nên không có truy vấn điểm cá nhân trong phiên bản này.',
+                    'Dữ liệu hồ sơ và điểm cá nhân của sinh viên chỉ được phép sử dụng nếu studentAcademicStatus là available; nếu not_linked, thông báo tài khoản chưa được liên kết/xác minh; nếu no_enrollments, thông báo hiện chưa có bản ghi đăng ký môn học/điểm. Không suy luận hoặc tự tạo dữ liệu còn thiếu.',
                     `Current authenticated role: ${role}.`,
                     serializeUntrustedContext(context)
                 ].join('\n')
