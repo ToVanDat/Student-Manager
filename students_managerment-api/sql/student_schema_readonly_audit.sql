@@ -316,18 +316,34 @@ BEGIN
 END
 $audit_enrollment_quality$;
 
--- 13) Duplicate enrollment candidates by (student_id, subject_id, semester_id).
--- A non-zero count must be investigated before adding a UNIQUE constraint.
-SELECT
-    COUNT(*)::int AS duplicate_group_count,
-    COALESCE(SUM(group_size), 0)::bigint AS rows_in_duplicate_groups,
-    COALESCE(MAX(group_size), 0)::bigint AS largest_duplicate_group
-FROM (
-    SELECT COUNT(*) AS group_size
-    FROM enrollments
-    GROUP BY student_id, subject_id, semester_id
-    HAVING COUNT(*) > 1
-) duplicate_groups;
+-- 13) Guarded duplicate enrollment check; supports incomplete schemas.
+DO $audit_enrollment_duplicates$
+DECLARE
+    enrollment_table regclass := to_regclass(format('%I.%I', current_schema(), 'enrollments'));
+    has_required_columns boolean;
+    duplicate_groups bigint;
+BEGIN
+    IF enrollment_table IS NULL THEN
+        RAISE NOTICE 'enrollments duplicate check: table MISSING';
+        RETURN;
+    END IF;
+    SELECT COUNT(DISTINCT column_name) = 3
+      INTO has_required_columns
+      FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'enrollments'
+       AND column_name IN ('student_id', 'subject_id', 'semester_id');
+    IF NOT COALESCE(has_required_columns, false) THEN
+        RAISE NOTICE 'enrollments duplicate check: requires student_id, subject_id, semester_id';
+        RETURN;
+    END IF;
+    EXECUTE format(
+        'SELECT COUNT(*) FROM (SELECT student_id, subject_id, semester_id FROM %s GROUP BY student_id, subject_id, semester_id HAVING COUNT(*) > 1) duplicate_groups',
+        enrollment_table
+    ) INTO duplicate_groups;
+    RAISE NOTICE 'enrollments duplicate (student_id, subject_id, semester_id) groups=%', duplicate_groups;
+END
+$audit_enrollment_duplicates$;
 
 -- 14) Guarded verification of verified link rows and orphan references.
 -- This block is safe when optional columns/tables are absent. It reports counts
