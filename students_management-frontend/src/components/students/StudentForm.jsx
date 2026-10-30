@@ -15,6 +15,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
     });
 
     const [errors, setErrors] = useState({});
+    const [submitError, setSubmitError] = useState('');
     const [classes, setClasses] = useState([]);
     const [classesLoading, setClassesLoading] = useState(true);
     const [classesError, setClassesError] = useState('');
@@ -78,6 +79,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
             ...prev,
             [name]: ''
         }));
+        setSubmitError('');
     };
 
     const validateForm = () => {
@@ -155,14 +157,21 @@ function StudentForm({ student, onSubmit, onCancel }) {
         if (isSubmitting || !validateForm()) return;
 
         setIsSubmitting(true);
+        setSubmitError('');
         try {
             await onSubmit({
                 ...formData,
                 student_code: formData.student_code.trim(),
                 name: formData.name.trim(),
-                email: formData.email.trim(),
+                email: formData.email.trim().toLowerCase(),
                 class_id: Number(formData.class_id)
             });
+        } catch (error) {
+            const serverErrors = error?.response?.data?.errors;
+            if (serverErrors && typeof serverErrors === 'object') {
+                setErrors(previous => ({ ...previous, ...serverErrors }));
+            }
+            setSubmitError(error?.response?.data?.message || error?.message || 'Không thể lưu thông tin sinh viên.');
         } finally {
             setIsSubmitting(false);
         }
@@ -186,6 +195,8 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         id="student-code"
                         type="text"
                         name="student_code"
+                        maxLength={10}
+                        autoComplete="off"
                         aria-invalid={Boolean(errors.student_code)}
                         aria-describedby={errors.student_code ? "student-code-error" : undefined}
                         value={formData.student_code}
@@ -209,6 +220,8 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         id="student-name"
                         type="text"
                         name="name"
+                        maxLength={20}
+                        autoComplete="name"
                         aria-invalid={Boolean(errors.name)}
                         aria-describedby={errors.name ? "student-name-error" : undefined}
                         value={formData.name}
@@ -232,6 +245,8 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         id="student-email"
                         type="email"
                         name="email"
+                        maxLength={50}
+                        autoComplete="email"
                         aria-invalid={Boolean(errors.email)}
                         aria-describedby={errors.email ? "student-email-error" : undefined}
                         value={formData.email}
@@ -254,6 +269,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3.5 text-sm text-slate-900 shadow-sm shadow-slate-900/[0.02] outline-none transition duration-150 placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 dark:border-slate-700 dark:bg-slate-800/80 dark:text-white dark:hover:border-slate-600 dark:focus:bg-slate-800"
                         id="student-date-of-birth"
                         type="date"
+                        max={new Date().toLocaleDateString('sv-SE')}
                         name="date_of_birth"
                         aria-invalid={Boolean(errors.date_of_birth)}
                         aria-describedby={errors.date_of_birth ? "student-date-of-birth-error" : undefined}
@@ -333,6 +349,8 @@ function StudentForm({ student, onSubmit, onCancel }) {
                         </p>
                     )}
                 </div>
+
+                {submitError && <p role="alert" aria-live="polite" className="col-span-full rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">{submitError}</p>}
 
                 {/* Buttons */}
                 <div className="col-span-full mt-2 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-5 dark:border-slate-800">
