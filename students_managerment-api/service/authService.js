@@ -2,6 +2,20 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 
+// Store only a one-way digest of refresh tokens in PostgreSQL.
+// Refresh tokens are generated from 64 random bytes, so SHA-256 is
+// appropriate here and does not require a separately managed pepper.
+const hashRefreshToken = (token) => {
+    if (typeof token !== 'string' || token.length === 0) {
+        throw new TypeError('Refresh token must be a non-empty string');
+    }
+
+    return crypto
+        .createHash('sha256')
+        .update(token, 'utf8')
+        .digest('hex');
+};
+
 const authRepository = require('../repository/authRepository');
 const emailService = require('./emailService.js');
 const { resetAccountState } = require('./passwordLoginProtection.js');
