@@ -1,5 +1,8 @@
 const http = require('http');
 
+// Load backend-local .env before importing app/config modules that read process.env.
+require('dotenv').config();
+
 const app = require('./app');
 const pool = require('./config/database');
 const { connectRedis, redisClient } = require('./config/redis');
