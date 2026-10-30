@@ -12,6 +12,7 @@ function AccountSettings({
     onSubmit,
     saving,
     message,
+    error,
     onAvatarUpdated,
 }) {
     const { t } = useLanguage();
@@ -120,7 +121,7 @@ function AccountSettings({
                 </div>
             </div>
 
-            <form className="grid gap-4" onSubmit={onSubmit}>
+            <form className="grid gap-4" onSubmit={onSubmit} noValidate>
                 <div className="grid gap-2">
                     <label
                         htmlFor="account-username"
@@ -160,6 +161,7 @@ function AccountSettings({
                             type="text"
                             autoComplete="name"
                             maxLength={120}
+                            aria-invalid={Boolean(error)}
                             value={form.full_name || ''}
                             onChange={(event) => onChange({ ...form, full_name: event.target.value })}
                             required
@@ -184,6 +186,8 @@ function AccountSettings({
                             id="account-email"
                             className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
                             type="email"
+                            autoComplete="email"
+                            maxLength={254}
                             value={form.email}
                             onChange={(event) =>
                                 onChange({ ...form, email: event.target.value })
@@ -212,6 +216,12 @@ function AccountSettings({
                         </strong>
                     </div>
                 </div>
+
+                {error && (
+                    <div role="alert" aria-live="polite" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+                        {error}
+                    </div>
+                )}
 
                 {message && (
                     <div
