@@ -60,8 +60,21 @@ const removeAccessTokensForSession = async (sessionId) => {
     return tokenKeys.length;
 };
 
+// Validate that this exact access token is still present in Redis and belongs
+// to the authenticated user. Missing keys are treated as revoked; Redis errors
+// propagate so Socket.IO authentication fails closed.
+const isAccessTokenActive = async (accessToken, userId) => {
+    if (typeof accessToken !== 'string' || !accessToken || !userId) {
+        return false;
+    }
+
+    const storedUserId = await redisClient.get(accessTokenKey(accessToken));
+    return storedUserId !== null && storedUserId === String(userId);
+};
+
 module.exports = {
     saveAccessTokenToRedis,
     removeAccessTokenFromRedis,
     removeAccessTokensForSession,
+    isAccessTokenActive,
 };
