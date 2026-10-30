@@ -111,7 +111,7 @@ export function useStudentSettings(user, updateUser) {
             setAccountError('Tên hiển thị không được vượt quá 120 ký tự.');
             return;
         }
-        if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
             setAccountError('Vui lòng nhập địa chỉ email hợp lệ.');
             return;
         }
