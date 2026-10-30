@@ -64,6 +64,7 @@ function StudentForm({ student, onSubmit, onCancel }) {
         }
 
         setErrors({});
+        setSubmitError('');
     }, [student]);
 
     const handleChange = (event) => {
