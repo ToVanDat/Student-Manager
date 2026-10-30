@@ -654,5 +654,6 @@
   "studentImportSuccess": "Đã nhập thành công {{count}} sinh viên.",
   "studentImportFailed": "Không thể nhập CSV. Vui lòng kiểm tra tệp và thử lại.",
   "chatComposerPlaceholder": "Nhập tin nhắn...",
-  "chatComposerLabel": "Soạn tin nhắn"
+  "chatComposerLabel": "Soạn tin nhắn",
+  "loginSecurityNote": "Thông tin đăng nhập được bảo vệ bằng phiên xác thực an toàn."
 }
