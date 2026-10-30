@@ -488,13 +488,24 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                     for (const line of lines) {
                         if (!line.trim()) continue;
                         let chunk;
-                        try { chunk = JSON.parse(line); } catch { continue; }
+                        try {
+                            chunk = JSON.parse(line);
+                        } catch (parseError) {
+                            const invalidChunk = new Error('Ollama trả về dữ liệu streaming không đúng định dạng NDJSON');
+                            invalidChunk.code = 'OLLAMA_INVALID_STREAM_CHUNK';
+                            invalidChunk.cause = parseError;
+                            throw invalidChunk;
+                        }
+                        if (chunk?.error) {
+                            const streamError = new Error(String(chunk.error).slice(0, 500));
+                            streamError.code = 'OLLAMA_STREAM_ERROR';
+                            throw streamError;
+                        }
                         const token = chunk?.message?.content;
                         if (typeof token === 'string' && token) {
                             content += token;
                             onToken(token);
                         }
-                        if (chunk?.error) throw new Error('Ollama stream failed');
                     }
                     if (done) break;
                 }
@@ -511,9 +522,39 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                 content = payload?.message?.content || '';
             }
         } catch (error) {
+            // Preserve the original failure so timeout, client abort, network errors,
+            // malformed NDJSON and Ollama-side errors can be diagnosed separately.
             if (Number.isInteger(error?.status)) throw error;
-            const unavailable = new Error('Không thể kết nối hoặc đọc phản hồi Ollama. Hãy kiểm tra dịch vụ Ollama và OLLAMA_BASE_URL.');
-            unavailable.status = 503;
+
+            if (signal?.aborted) {
+                const cancelled = new Error('Chat stream đã bị đóng bởi client');
+                cancelled.status = 499;
+                cancelled.code = 'CHAT_CLIENT_ABORTED';
+                cancelled.cause = error;
+                throw cancelled;
+            }
+
+            const timedOut = ollamaAbort.signal.aborted
+                && /timed out/i.test(String(ollamaAbort.signal.reason?.message || ''));
+            const unavailable = new Error(
+                timedOut
+                    ? 'Ollama không phản hồi trong thời hạn 45 giây'
+                    : 'Không thể hoàn tất yêu cầu Ollama. Kiểm tra lỗi gốc trong log backend.'
+            );
+            unavailable.status = timedOut ? 504 : 503;
+            unavailable.code = timedOut ? 'OLLAMA_TIMEOUT' : (error?.code || 'OLLAMA_REQUEST_FAILED');
+            unavailable.cause = error;
+            console.error('[CHATBOT][OLLAMA] Request failed:', {
+                name: error?.name,
+                message: error?.message,
+                code: error?.code,
+                causeName: error?.cause?.name,
+                causeMessage: error?.cause?.message,
+                causeCode: error?.cause?.code,
+                clientAborted: Boolean(signal?.aborted),
+                ollamaAborted: ollamaAbort.signal.aborted,
+                abortReason: ollamaAbort.signal.reason?.message || null
+            });
             throw unavailable;
         } finally {
             ollamaAbort.cleanup();
