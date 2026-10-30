@@ -36,6 +36,34 @@ const JWT_ISSUER =
 const JWT_AUDIENCE =
     'student-management-client';
 
+// Keep the JWT payload minimal: never include password/password_hash,
+// refresh tokens, or other credentials in an access token.
+const generateAccessToken = (user, sessionId) => {
+    if (!user?.id || !sessionId) {
+        throw new Error('User ID hoặc Session ID không hợp lệ');
+    }
+
+    if (!process.env.JWT_SECRET) {
+        throw new Error('JWT_SECRET chưa được cấu hình');
+    }
+
+    return jwt.sign(
+        {
+            username: user.username,
+            role: user.role,
+            sessionId
+        },
+        process.env.JWT_SECRET,
+        {
+            subject: String(user.id),
+            expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+            issuer: JWT_ISSUER,
+            audience: JWT_AUDIENCE,
+            algorithm: 'HS256'
+        }
+    );
+};
+
 
 const {
     saveAccessTokenToRedis,
