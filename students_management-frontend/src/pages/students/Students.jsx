@@ -556,6 +556,7 @@ function Students() {
             ? "Cập nhật sinh viên thất bại"
             : "Thêm sinh viên thất bại")
       );
+      throw error;
     }
   };
 
