@@ -281,3 +281,137 @@ FROM (
     GROUP BY student_id, subject_id, semester_id
     HAVING COUNT(*) > 1
 ) duplicate_groups;
+
+-- 14) Guarded verification of verified link rows and orphan references.
+-- This block is safe when optional columns/tables are absent. It reports counts
+-- only; it does not return student identifiers, grades, emails, or other PII.
+DO $audit$
+DECLARE
+    schema_name text := current_schema();
+    links regclass := to_regclass(format('%I.%I', current_schema(), 'student_account_links'));
+    enrollments regclass := to_regclass(format('%I.%I', current_schema(), 'enrollments'));
+    users_table regclass := to_regclass(format('%I.%I', current_schema(), 'users'));
+    students_table regclass := to_regclass(format('%I.%I', current_schema(), 'students'));
+    link_count bigint;
+    unverified_count bigint;
+    orphan_user_count bigint;
+    orphan_student_count bigint;
+    enrollment_count bigint;
+    orphan_enrollment_student bigint;
+    orphan_enrollment_subject bigint;
+    orphan_enrollment_semester bigint;
+    duplicate_enrollment_groups bigint;
+    score_columns text[] := ARRAY[]::text[];
+    score_expr text;
+BEGIN
+    IF links IS NULL THEN
+        RAISE NOTICE 'student_account_links: MISSING';
+    ELSE
+        EXECUTE format('SELECT COUNT(*) FROM %s', links) INTO link_count;
+        RAISE NOTICE 'student_account_links: rows=%', link_count;
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'student_account_links'
+              AND column_name = 'verified_at'
+        ) THEN
+            EXECUTE format('SELECT COUNT(*) FROM %s WHERE verified_at IS NULL', links)
+                INTO unverified_count;
+            RAISE NOTICE 'student_account_links: rows_without_verified_at=%', unverified_count;
+        ELSE
+            RAISE NOTICE 'student_account_links: verified_at column MISSING';
+        END IF;
+
+        IF users_table IS NOT NULL AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'student_account_links'
+              AND column_name = 'user_id'
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*) FROM %s l WHERE NOT EXISTS (SELECT 1 FROM %s u WHERE u.id = l.user_id)',
+                links, users_table
+            ) INTO orphan_user_count;
+            RAISE NOTICE 'student_account_links: orphan_user_refs=%', orphan_user_count;
+        END IF;
+
+        IF students_table IS NOT NULL AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'student_account_links'
+              AND column_name = 'student_id'
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*) FROM %s l WHERE NOT EXISTS (SELECT 1 FROM %s s WHERE s.id = l.student_id)',
+                links, students_table
+            ) INTO orphan_student_count;
+            RAISE NOTICE 'student_account_links: orphan_student_refs=%', orphan_student_count;
+        END IF;
+    END IF;
+
+    IF enrollments IS NULL THEN
+        RAISE NOTICE 'enrollments: MISSING';
+    ELSE
+        EXECUTE format('SELECT COUNT(*) FROM %s', enrollments) INTO enrollment_count;
+        RAISE NOTICE 'enrollments: rows=%', enrollment_count;
+
+        IF students_table IS NOT NULL AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'enrollments' AND column_name = 'student_id'
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*) FROM %s e WHERE e.student_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM %s s WHERE s.id = e.student_id)',
+                enrollments, students_table
+            ) INTO orphan_enrollment_student;
+            RAISE NOTICE 'enrollments: orphan_student_refs=%', orphan_enrollment_student;
+        END IF;
+
+        IF to_regclass(format('%I.%I', schema_name, 'subjects')) IS NOT NULL AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'enrollments' AND column_name = 'subject_id'
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*) FROM %s e WHERE e.subject_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM %I.subjects s WHERE s.id = e.subject_id)',
+                enrollments, schema_name
+            ) INTO orphan_enrollment_subject;
+            RAISE NOTICE 'enrollments: orphan_subject_refs=%', orphan_enrollment_subject;
+        END IF;
+
+        IF to_regclass(format('%I.%I', schema_name, 'semesters')) IS NOT NULL AND EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'enrollments' AND column_name = 'semester_id'
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*) FROM %s e WHERE e.semester_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM %I.semesters sm WHERE sm.id = e.semester_id)',
+                enrollments, schema_name
+            ) INTO orphan_enrollment_semester;
+            RAISE NOTICE 'enrollments: orphan_semester_refs=%', orphan_enrollment_semester;
+        END IF;
+
+        SELECT array_agg(column_name ORDER BY column_name)
+          INTO score_columns
+          FROM information_schema.columns
+         WHERE table_schema = schema_name
+           AND table_name = 'enrollments'
+           AND column_name IN ('midterm_score', 'final_score', 'total_score');
+
+        IF COALESCE(array_length(score_columns, 1), 0) = 0 THEN
+            RAISE NOTICE 'enrollments: no known score columns found';
+        ELSE
+            RAISE NOTICE 'enrollments: score_columns=%', score_columns;
+        END IF;
+
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns
+            WHERE table_schema = schema_name AND table_name = 'enrollments'
+              AND column_name IN ('student_id', 'subject_id', 'semester_id')
+            GROUP BY table_schema, table_name
+            HAVING COUNT(DISTINCT column_name) = 3
+        ) THEN
+            EXECUTE format(
+                'SELECT COUNT(*) FROM (SELECT student_id, subject_id, semester_id FROM %s GROUP BY student_id, subject_id, semester_id HAVING COUNT(*) > 1) d',
+                enrollments
+            ) INTO duplicate_enrollment_groups;
+            RAISE NOTICE 'enrollments: duplicate_student_subject_semester_groups=%', duplicate_enrollment_groups;
+        END IF;
+    END IF;
+END
+$audit$;
