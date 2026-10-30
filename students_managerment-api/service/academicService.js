@@ -2,7 +2,7 @@ const academicRepository = require('../repository/academicRepository.js');
 
 function parseOptionalSemesterId(value) {
     if (value === undefined || value === null || value === '') return { valid: true, value: null };
-    if (!/^\\d+$/.test(String(value))) return { valid: false, value: null };
+    if (!/^\d+$/.test(String(value))) return { valid: false, value: null };
     const parsed = Number(value);
     return Number.isSafeInteger(parsed) && parsed > 0 ? { valid: true, value: parsed } : { valid: false, value: null };
 }
