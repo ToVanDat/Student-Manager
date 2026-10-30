@@ -17,6 +17,25 @@ export const deleteStudentAccountLink = async (userId, reason) => {
   return response.data;
 };
 
+export const getMyAcademicProfile = async () => {
+  const response = await apiClient.get('/api/academic/me');
+  return response.data;
+};
+
+export const getMyAcademicGrades = async (semesterId) => {
+  const response = await apiClient.get('/api/academic/me/grades', {
+    params: semesterId ? { semesterId } : undefined,
+  });
+  return response.data;
+};
+
+export const getAcademicStudentByCode = async (studentCode, semesterId) => {
+  const response = await apiClient.get('/api/academic/students/' + encodeURIComponent(studentCode), {
+    params: semesterId ? { semesterId } : undefined,
+  });
+  return response.data;
+};
+
 export const getMyStudentPortal = async () => {
   const response = await apiClient.get(`${STUDENT_API_URL}/me`);
   return response.data;
