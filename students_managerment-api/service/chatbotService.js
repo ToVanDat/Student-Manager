@@ -453,6 +453,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
             throw busy;
         }
         const ollamaAbort = createOllamaAbortSignal(signal, aiConfig.ollama.requestTimeoutMs);
+        const ollamaStartedAt = Date.now();
         try {
             response = await fetch(`${config.baseUrl}/api/chat`, {
                 method: 'POST',
@@ -462,6 +463,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                     model: config.model,
                     messages,
                     stream: typeof onToken === 'function',
+                    keep_alive: aiConfig.ollama.keepAlive || '10m',
                     options: { temperature: 0.2, num_predict: 512 }
                 })
             });
@@ -543,7 +545,7 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                 && /timed out/i.test(String(ollamaAbort.signal.reason?.message || ''));
             const unavailable = new Error(
                 timedOut
-                    ? 'Ollama không phản hồi trong thời hạn 45 giây'
+                    ? `Ollama không hoàn tất yêu cầu trong thời hạn ${Math.round(aiConfig.ollama.requestTimeoutMs / 1000)} giây`
                     : 'Không thể hoàn tất yêu cầu Ollama. Kiểm tra lỗi gốc trong log backend.'
             );
             unavailable.status = timedOut ? 504 : 503;
@@ -558,7 +560,10 @@ async function answer({ userId, sessionId, role, message, conversationId = 'defa
                 causeCode: error?.cause?.code,
                 clientAborted: Boolean(signal?.aborted),
                 ollamaAborted: ollamaAbort.signal.aborted,
-                abortReason: ollamaAbort.signal.reason?.message || null
+                abortReason: ollamaAbort.signal.reason?.message || null,
+                elapsedMs: Date.now() - ollamaStartedAt,
+                timeoutMs: aiConfig.ollama.requestTimeoutMs,
+                model: config.model
             });
             throw unavailable;
         } finally {
