@@ -37,8 +37,19 @@ export const getAcademicStudentByCode = async (studentCode, semesterId) => {
 };
 
 export const getMyStudentPortal = async () => {
-  const response = await apiClient.get(`${STUDENT_API_URL}/me`);
-  return response.data;
+  const [profileResponse, gradesResponse] = await Promise.all([
+    apiClient.get('/api/academic/me'),
+    apiClient.get('/api/academic/me/grades'),
+  ]);
+  return {
+    linked: profileResponse.data?.linked === true,
+    student: profileResponse.data?.student || null,
+    enrollments: Array.isArray(gradesResponse.data?.grades) ? gradesResponse.data.grades.map(item => ({
+      ...item,
+      id: item.enrollment_id,
+    })) : [],
+    academicStatus: gradesResponse.data?.status || profileResponse.data?.status || 'unknown',
+  };
 };
 
 export const exportStudentsCsv = async (params = {}) => {
