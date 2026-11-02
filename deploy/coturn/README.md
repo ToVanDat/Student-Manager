@@ -56,6 +56,20 @@ openssl rand -hex 32
 
 Store it only in the backend's private environment file and `/etc/turnserver.conf`. Never add it to `VITE_*`, frontend build arguments, browser JavaScript, Git, chat messages, or logs.
 
+## 2.2 Forced-relay browser acceptance test
+
+After Coturn is reachable from the public internet and the backend has the matching `TURN_SHARED_SECRET`, deploy the frontend and open:
+
+```text
+https://app.smartsmanage.com/turn-relay-smoke.html
+```
+
+Use a short-lived access token for a test account. The page calls the authenticated `GET /api/calls/ice-config` endpoint, keeps the token only in page memory, does not print TURN credentials, and creates two local peer connections with `iceTransportPolicy: "relay"`. It exchanges SDP, opens a data channel, reads the selected candidate pair from `getStats()`, and reports PASS only when a selected pair includes a `relay` candidate and the data channel transfers its test message.
+
+For stronger acceptance, repeat from a second device/network (for example, mobile data rather than the same Wi-Fi). The in-browser loopback test proves TURN allocation/relay transport from that browser; it does not prove real camera/microphone RTP quality or two-user signaling. Complete a real two-account audio/video call after this smoke test and inspect `chrome://webrtc-internals` on both peers. Confirm the selected candidate pair contains a `relay` candidate. Do not infer relay success from a `srflx` candidate alone.
+
+The test page intentionally forces relay, so it fails rather than silently falling back to direct P2P. Remove or restrict this diagnostic page after deployment acceptance if it is not needed operationally.
+
 ## 2.1 Automated, guarded installation
 
 After DNS and the Certbot certificate are valid, run the repository installer on the **VPS host** (not inside the development WSL instance). It installs Coturn, copies the certificate with restricted permissions, writes the shared-secret config, adds only the Coturn UFW allow rules when UFW is present, installs the renewal hook, and enables the service. It does not enable UFW, alter SSH rules, or configure provider firewall rules.
