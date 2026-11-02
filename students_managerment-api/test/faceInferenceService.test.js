@@ -22,6 +22,8 @@ test('MiniFASNet class mapping matches the hash-pinned upstream PyTorch parity r
   assert.deepEqual(PAD_MODEL_CONTRACT.output.attackIndices, [0, 2]);
   assert.deepEqual(PAD_MODEL_CONTRACT.output.classOrder, ['attack', 'bona_fide', 'attack']);
   assert.equal(PAD_MODEL_CONTRACT.output.evidence.parityStatus, 'PARITY_OK');
+  assert.ok(PAD_MODEL_CONTRACT.output.evidence.maxAbsDifferenceVsLogits <= PAD_MODEL_CONTRACT.output.evidence.absoluteTolerance,
+    'Recorded ONNX/PyTorch max difference must remain within the declared absolute tolerance');
   const decoded = decodePadOutput([0, 8, 0]);
   assert.ok(decoded.bonaFideProbability > 0.99);
   assert.ok(decoded.attackProbability < 0.01);
