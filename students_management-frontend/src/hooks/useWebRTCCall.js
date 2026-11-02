@@ -3,6 +3,8 @@ import socket from '@/socket/socket.js';
 import { callApi } from '@/api/callApi.js';
 import { buildIceConfiguration, getIceCredentialRefreshDelay, isIceCandidateForRemoteDescription } from '@/utils/iceConfiguration.js';
 
+const createNegotiationId = () => crypto.randomUUID();
+
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
     return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
@@ -17,6 +19,8 @@ export default function useWebRTCCall() {
     const localStreamRef = useRef(null);
     const remoteStreamRef = useRef(new MediaStream());
     const pendingCandidatesRef = useRef([]);
+    const activeNegotiationIdRef = useRef(null);
+    const lastRemoteNegotiationIdRef = useRef(null);
     const callRef = useRef(null);
 
     const [state, setState] = useState('idle');
@@ -117,6 +121,10 @@ export default function useWebRTCCall() {
         remoteStreamRef.current = new MediaStream();
 
         pendingCandidatesRef.current = [];
+        activeNegotiationIdRef.current = null;
+        lastRemoteNegotiationIdRef.current = null;
+        activeNegotiationIdRef.current = null;
+        lastRemoteNegotiationIdRef.current = null;
         callRef.current = null;
         setRemoteStream(null);
         setCall(null);
@@ -280,6 +288,7 @@ export default function useWebRTCCall() {
         const queued = pendingCandidatesRef.current;
         pendingCandidatesRef.current = [];
         for (const entry of queued) {
+            if (entry.negotiationId && entry.negotiationId !== activeNegotiationIdRef.current) continue;
             const usernameFragment = entry.candidate.usernameFragment || entry.usernameFragment;
             if (!isIceCandidateForRemoteDescription({ usernameFragment }, pc.remoteDescription?.sdp || '')) continue;
             try {
@@ -340,9 +349,12 @@ export default function useWebRTCCall() {
 
             pc.onicecandidate = event => {
                 if (event.candidate) {
+                    const negotiationId = activeNegotiationIdRef.current;
+                    if (!negotiationId) return;
                     socket.emit('call:ice-candidate', {
                         callId,
                         targetUserId,
+                        negotiationId,
                         candidate: event.candidate
                     });
                 }
@@ -866,12 +878,15 @@ export default function useWebRTCCall() {
                 const pc = await createPeer(current.targetUserId, current.callId);
                 addLocalTracksToPeer(pc);
 
+                const negotiationId = createNegotiationId();
+                activeNegotiationIdRef.current = negotiationId;
                 const offer = await pc.createOffer();
                 await pc.setLocalDescription(offer);
 
                 socket.emit('call:offer', {
                     callId: current.callId,
                     targetUserId: current.targetUserId,
+                    negotiationId,
                     offer: pc.localDescription
                 });
                 updateNegotiationState(pc);
@@ -904,12 +919,15 @@ export default function useWebRTCCall() {
                 }
                 if (callRef.current?.callId !== current.callId || peerRef.current !== pc) return;
                 pc.restartIce();
+                const negotiationId = createNegotiationId();
+                activeNegotiationIdRef.current = negotiationId;
                 const offer = await pc.createOffer({ iceRestart: true });
                 await pc.setLocalDescription(offer);
 
                 socket.emit('call:offer', {
                     callId: current.callId,
                     targetUserId: current.targetUserId,
+                    negotiationId,
                     offer: pc.localDescription
                 });
             } catch (err) {
@@ -921,9 +939,20 @@ export default function useWebRTCCall() {
             console.log('[CALL][offer received]', { callId: data?.callId, fromUserId: data?.fromUserId });
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
+            if (typeof data.negotiationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.negotiationId)) return;
+            if (lastRemoteNegotiationIdRef.current === data.negotiationId) return;
 
             try {
                 const pc = peerRef.current || await createPeer(current.targetUserId, current.callId);
+                if (pc.signalingState !== 'stable') {
+                    console.warn('[WebRTC] Ignored colliding or out-of-order offer.', {
+                        callId: current.callId,
+                        signalingState: pc.signalingState
+                    });
+                    return;
+                }
+                activeNegotiationIdRef.current = data.negotiationId;
+                lastRemoteNegotiationIdRef.current = data.negotiationId;
                 addLocalTracksToPeer(pc);
 
                 await pc.setRemoteDescription(data.offer);
@@ -935,6 +964,7 @@ export default function useWebRTCCall() {
                 socket.emit('call:answer', {
                     callId: current.callId,
                     targetUserId: current.targetUserId,
+                    negotiationId: data.negotiationId,
                     answer: pc.localDescription
                 });
                 updateNegotiationState(pc);
@@ -950,12 +980,14 @@ export default function useWebRTCCall() {
             console.log('[CALL][answer received]', { callId: data?.callId, fromUserId: data?.fromUserId });
             const pc = peerRef.current;
             if (!pc || callRef.current?.callId !== data.callId) return;
+            if (
+                typeof data.negotiationId !== 'string' ||
+                data.negotiationId !== activeNegotiationIdRef.current
+            ) return;
             try {
+                if (pc.signalingState !== 'have-local-offer') return;
                 await pc.setRemoteDescription(data.answer);
-                for (const candidate of pendingCandidatesRef.current) {
-                    await pc.addIceCandidate(candidate);
-                }
-                pendingCandidatesRef.current = [];
+                await flushPendingIceCandidates(pc);
                 if (callRef.current?.callId !== data.callId || peerRef.current !== pc) return;
                 updateNegotiationState(pc);
             } catch (err) {
@@ -966,6 +998,10 @@ export default function useWebRTCCall() {
 
         const onIceCandidate = async data => {
             if (callRef.current?.callId !== data.callId) return;
+            if (
+                typeof data.negotiationId !== 'string' ||
+                (activeNegotiationIdRef.current && data.negotiationId !== activeNegotiationIdRef.current)
+            ) return;
             const candidate = new RTCIceCandidate(data.candidate);
             const pc = peerRef.current;
             const usernameFragment = candidate.usernameFragment || data.candidate?.usernameFragment || null;
@@ -979,7 +1015,7 @@ export default function useWebRTCCall() {
                 }
             } else {
                 if (pendingCandidatesRef.current.length < 256) {
-                    pendingCandidatesRef.current.push({ candidate, usernameFragment });
+                    pendingCandidatesRef.current.push({ candidate, usernameFragment, negotiationId: data.negotiationId });
                 } else {
                     console.warn('[WebRTC] Dropped ICE candidate because the pre-SDP queue is full.', { callId: data.callId });
                 }
