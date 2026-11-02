@@ -17,6 +17,7 @@ fail() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 [[ "$(id -u)" -eq 0 ]] || fail "Run with sudo/root on the Ubuntu VPS."
 [[ -r "$EXAMPLE" ]] || fail "Missing template: $EXAMPLE"
 [[ -r "$CERT_LINEAGE/fullchain.pem" && -r "$CERT_LINEAGE/privkey.pem" ]] || fail "TLS certificate is missing. Issue the Certbot certificate before installing Coturn."
+openssl x509 -in "$CERT_LINEAGE/fullchain.pem" -noout -checkhost "$TURN_HOST" >/dev/null || fail "The installed certificate does not cover $TURN_HOST."
 [[ -n "${TURN_SHARED_SECRET:-}" ]] || fail "Export TURN_SHARED_SECRET for this process; do not put it in this script."
 [[ "$TURN_SHARED_SECRET" =~ ^[a-fA-F0-9]{64}$ ]] || fail "TURN_SHARED_SECRET must be exactly 64 hexadecimal characters."
 
