@@ -343,8 +343,10 @@ async function getStatus(userId) {
         [userId]
     );
     const credential = result.rows[0] || null;
+    const releaseGatesOpen = process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' &&
+        process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true';
     let pipelineReady = false;
-    if (process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' && process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true') {
+    if (releaseGatesOpen) {
         try {
             requirePipelineConfig();
             await ensureLandmarkServiceReady();
@@ -362,7 +364,7 @@ async function getStatus(userId) {
         } : null,
         enrollmentAvailable: pipelineReady,
         loginAvailable: pipelineReady,
-        reason: pipelineReady ? null : 'SERVER_SIDE_INFERENCE_REQUIRED'
+        reason: pipelineReady ? null : releaseGatesOpen ? 'SERVER_PIPELINE_NOT_READY' : 'RELEASE_GATES_CLOSED'
     };
 }
 
