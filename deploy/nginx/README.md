@@ -14,9 +14,9 @@ After confirming the DNS provider's authoritative nameservers, create:
 
 | Type | Name | Value | Proxy |
 | --- | --- | --- | --- |
-| A | `app` | `157.10.200.241` | DNS only |
-| A | `api` | `157.10.200.241` | DNS only |
-| A | `turn` | `157.10.200.241` | DNS only |
+| A | `app` | `<VERIFIED_VPS_IPV4>` | DNS only |
+| A | `api` | `<VERIFIED_VPS_IPV4>` | DNS only |
+| A | `turn` | `<VERIFIED_VPS_IPV4>` | DNS only |
 
 If Cloudflare is used, all three records are safest as DNS only for this setup. In particular, TURN cannot use the ordinary orange-cloud HTTP proxy. Do not change the apex, `www`, MX, SPF, DKIM or DMARC records.
 
@@ -31,7 +31,7 @@ for host in app.smartsmanage.com api.smartsmanage.com turn.smartsmanage.com; do
 done
 ```
 
-Each A lookup must return `157.10.200.241`. If an AAAA record exists but the VPS is not configured for that IPv6 address, correct or remove that AAAA record before issuing the certificate. Repeat against `@8.8.8.8` if the resolvers disagree.
+Each A lookup must return the verified public IPv4 address assigned to the target VPS. Replace `<VERIFIED_VPS_IPV4>` in this runbook with that verified address; do not use an old DNS value, a workstation/WSL egress IP, or an unverified provider address. If an AAAA record exists but the VPS is not configured for that IPv6 address, correct or remove that AAAA record before issuing the certificate. Repeat against `@8.8.8.8` if the resolvers disagree.
 
 ## Issue the certificate
 
@@ -56,7 +56,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Only proceed after public DNS resolves all three names to `157.10.200.241` and inbound TCP/80 reaches this Nginx server:
+Only proceed after public DNS resolves all three names to the verified public IPv4 address assigned to this VPS and inbound TCP/80 reaches this Nginx server:
 
 ```bash
 sudo certbot certonly --webroot \
