@@ -28,7 +28,7 @@ test('rejects TURN entries without short-lived credentials', () => {
     }, 'stun:stun.example.com:3478');
 
     assert.equal(result.turnAvailable, false);
-    assert.deepEqual(result.iceServers, [{ urls: 'stun:stun.example.com:3478' }]);
+    assert.deepEqual(result.iceServers, [{ urls: ['stun:stun.example.com:3478'] }]);
 });
 
 test('deduplicates servers and ignores malformed URLs', () => {
@@ -41,7 +41,7 @@ test('deduplicates servers and ignores malformed URLs', () => {
         ]
     });
 
-    assert.deepEqual(result.iceServers, [{ urls: 'stun:stun.example.com:3478' }]);
+    assert.deepEqual(result.iceServers, [{ urls: ['stun:stun.example.com:3478'] }]);
     assert.equal(result.turnAvailable, false);
 });
 
