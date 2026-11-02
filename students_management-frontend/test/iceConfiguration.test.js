@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildIceConfiguration } from '../src/utils/iceConfiguration.js';
+import { buildIceConfiguration, getIceCredentialRefreshDelay, extractIceUfrags, isIceCandidateForRemoteDescription } from '../src/utils/iceConfiguration.js';
 
 test('keeps authenticated TURN credentials and public STUN URLs', () => {
     const result = buildIceConfiguration({
@@ -55,4 +55,25 @@ test('does not expose credential fields on STUN-only entries', () => {
     });
 
     assert.deepEqual(result.iceServers, [{ urls: ['stun:stun.example.com:3478'] }]);
+});
+
+test('schedules credential refresh before expiry with a bounded safety margin', () => {
+    const now = 1_800_000_000_000;
+    assert.equal(getIceCredentialRefreshDelay(1_800_000_060, now), 45_000);
+    assert.equal(getIceCredentialRefreshDelay(1_800_086_400, now), 86_280_000);
+    assert.equal(getIceCredentialRefreshDelay(null, now), null);
+});
+
+test('extracts distinct ICE generations and rejects stale candidates', () => {
+    const sdp = [
+        'v=0',
+        'a=ice-ufrag:current-generation',
+        'm=audio 9 UDP/TLS/RTP/SAVPF 111',
+        'a=ice-ufrag:audio-generation'
+    ].join('\\r\\n');
+
+    assert.deepEqual(extractIceUfrags(sdp), ['current-generation', 'audio-generation']);
+    assert.equal(isIceCandidateForRemoteDescription({ usernameFragment: 'current-generation' }, sdp), true);
+    assert.equal(isIceCandidateForRemoteDescription({ usernameFragment: 'old-generation' }, sdp), false);
+    assert.equal(isIceCandidateForRemoteDescription({ candidate: 'candidate:1' }, sdp), true);
 });
