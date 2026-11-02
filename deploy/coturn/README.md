@@ -106,7 +106,6 @@ Remove any old `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`, or static TURN pass
 After checking the secret equality, certificate paths, permissions, and UFW/provider firewall:
 
 ```bash
-sudo turnserver -c /etc/turnserver.conf --check-config
 sudo systemctl enable --now coturn
 sudo systemctl status coturn --no-pager
 sudo journalctl -u coturn -n 100 --no-pager
@@ -114,7 +113,7 @@ sudo ss -lntup | grep -E ':(3478|5349)([[:space:]]|$)'
 sudo ufw status numbered
 ```
 
-If the installed Coturn package does not support `--check-config`, rely on the service's startup validation and journal output; do not ignore parse errors.
+The Ubuntu 24.04 (Noble) Coturn man page does not document a `--check-config` option. Validate configuration by starting/restarting the service and inspecting its exit status and journal output; do not run an undocumented check flag.
 
 Test from two clients on different networks and inspect the browser's WebRTC ICE candidates. A successful TURN test must show a selected candidate pair using candidate type `relay`; a working signaling socket or STUN-reflexive candidate alone does not prove relay is working.
 
