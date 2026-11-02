@@ -9,6 +9,7 @@ const createCallId = () => {
 
 export default function useWebRTCCall() {
     const peerRef = useRef(null);
+    const peerCreationRef = useRef(null);
     const localStreamRef = useRef(null);
     const remoteStreamRef = useRef(new MediaStream());
     const pendingCandidatesRef = useRef([]);
@@ -204,6 +205,12 @@ export default function useWebRTCCall() {
     }, []);
 
     const createPeer = useCallback(async (targetUserId, callId) => {
+        if (peerRef.current) return peerRef.current;
+        if (peerCreationRef.current?.callId === callId) {
+            return peerCreationRef.current.promise;
+        }
+
+        const creation = (async () => {
         let iceServers = import.meta.env.VITE_STUN_SERVER
             ? [{ urls: import.meta.env.VITE_STUN_SERVER }]
             : [];
@@ -368,6 +375,16 @@ export default function useWebRTCCall() {
 
         peerRef.current = pc;
         return pc;
+        })();
+
+        peerCreationRef.current = { callId, promise: creation };
+        try {
+            return await creation;
+        } finally {
+            if (peerCreationRef.current?.promise === creation) {
+                peerCreationRef.current = null;
+            }
+        }
     }, [cleanup, failConnection]);
 
     const startMedia = useCallback(async (callType) => {
