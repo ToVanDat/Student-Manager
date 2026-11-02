@@ -2,7 +2,7 @@ import {useCallback, useEffect, useState} from 'react';
 import { Languages, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
-import { loginApi } from '@/api/authApi.js';
+import { getFaceLoginAvailabilityApi, loginApi } from '@/api/authApi.js';
 import { API_BASE_URL } from '@/utils/constants.js';
 import LoginForm from '@/components/auth/LoginForm.jsx';
 import FaceLoginCapture from '@/components/auth/FaceLoginCapture.jsx';
@@ -33,6 +33,7 @@ function Login() {
     const [mode, setMode] = useState('login');
     const [showQrLogin, setShowQrLogin] = useState(false);
     const [showFaceLogin, setShowFaceLogin] = useState(false);
+    const [faceAvailability, setFaceAvailability] = useState({ loading: true, available: false, message: '' });
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -97,6 +98,28 @@ function Login() {
 
         }
 
+    }, []);
+
+    useEffect(() => {
+        let active = true;
+        getFaceLoginAvailabilityApi()
+            .then(result => {
+                if (!active) return;
+                setFaceAvailability({
+                    loading: false,
+                    available: result?.available === true,
+                    message: result?.message || ''
+                });
+            })
+            .catch(() => {
+                if (!active) return;
+                setFaceAvailability({
+                    loading: false,
+                    available: false,
+                    message: 'Không thể kiểm tra trạng thái Face Login. Bạn vẫn có thể đăng nhập bằng mật khẩu hoặc Passkey.'
+                });
+            });
+        return () => { active = false; };
     }, []);
 
 
@@ -260,6 +283,10 @@ function Login() {
     const handleFaceLogin = () => {
         setError('');
         setSuccess('');
+        if (faceAvailability.loading || !faceAvailability.available) {
+            setError(faceAvailability.message || 'Face Login hiện chưa sẵn sàng trên máy chủ. Hãy đăng nhập bằng mật khẩu hoặc Passkey.');
+            return;
+        }
         if (!username.trim()) {
             setError(language === 'vi'
                 ? 'Nhập username trước khi đăng nhập bằng Face Login.'
@@ -492,6 +519,9 @@ function Login() {
             loading={loading}
             onSubmit={handleLogin}
             onFaceLogin={handleFaceLogin}
+            faceLoginAvailable={faceAvailability.available}
+            faceAvailabilityLoading={faceAvailability.loading}
+            faceAvailabilityMessage={faceAvailability.message}
             onOpenRegister={() => changeMode('register')}
         />
     );
@@ -603,6 +633,7 @@ function Login() {
                         <>
                             {renderLogin()}
                             <AdvancedLoginMethods
+                                username={username}
                                 onLogin={handleAdvancedLogin}
                                 onError={reportAdvancedLoginError}
                                 onLoading={setAdvancedLoading}
