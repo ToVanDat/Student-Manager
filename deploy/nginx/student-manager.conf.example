@@ -51,7 +51,7 @@ server {
     ssl_session_timeout 1d;
     ssl_session_tickets off;
 
-    root /opt/student-manager/frontend/dist;
+    root /opt/student-manager/students_management-frontend/dist;
     index index.html;
 
     add_header X-Content-Type-Options nosniff always;
