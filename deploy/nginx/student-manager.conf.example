@@ -1,5 +1,5 @@
 # Place this file at /etc/nginx/sites-available/student-manager.
-# It owns only app.smartsmanage.com and api.smartsmanage.com.
+# It serves HTTP ACME challenges for app/api/turn and HTTPS for app/api.
 # It deliberately does not change smartsmanage.com or www.smartsmanage.com.
 
 map $http_upgrade $student_manager_connection_upgrade {
