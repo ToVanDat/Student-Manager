@@ -10,12 +10,12 @@ function configurationError(message) {
 
 function parseServerUrls(value, protocols, label) {
     const entries = String(value || '')
-        .split(/[;,\\n]/)
+        .split(/[;,\n]/)
         .map(item => item.trim())
         .filter(Boolean);
 
     for (const uri of entries) {
-        const match = uri.match(/^(stun|stuns|turn|turns):(\\[[0-9a-f:.]+\\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::(\\d{1,5}))?(?:\\?transport=(udp|tcp))?$/i);
+        const match = uri.match(/^(stun|stuns|turn|turns):(\[[0-9a-f:.]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::(\d{1,5}))?(?:\?transport=(udp|tcp))?$/i);
         const protocol = match ? match[1].toLowerCase() + ':' : '';
         const port = match?.[3] ? Number(match[3]) : null;
         if (!match || !protocols.includes(protocol) || (port !== null && (port < 1 || port > 65535)) || uri.length > 512) {
