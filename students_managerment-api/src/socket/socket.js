@@ -488,8 +488,43 @@ const initSocket = async (server) => {
             if (!await allowRealtimeEvent('call:sync-pending')) return;
             await syncPendingCalls();
         });
-        // Replay pending invitations after every authenticated reconnect.
+
+        const syncActiveCalls = async () => {
+            try {
+                const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
+                socket.emit('call:active-snapshot', {
+                    serverNow: new Date().toISOString(),
+                    calls: activeCalls.map(activeCall => ({
+                        callId: activeCall.call_id,
+                        fromUserId: Number(activeCall.caller_id),
+                        toUserId: Number(activeCall.receiver_id),
+                        callType: activeCall.call_type,
+                        status: activeCall.status,
+                        expiresAt: activeCall.expires_at,
+                        answeredAt: activeCall.answered_at,
+                        isCaller: Number(activeCall.caller_id) === userId
+                    }))
+                });
+            } catch (error) {
+                console.error('[CALL][sync active failed]', {
+                    userId,
+                    code: error?.code || 'ACTIVE_CALL_SYNC_FAILED'
+                });
+                socket.emit('call:error', {
+                    code: 'ACTIVE_CALL_SYNC_UNAVAILABLE',
+                    message: 'Không thể đồng bộ trạng thái cuộc gọi hiện tại.'
+                });
+            }
+        };
+
+        socket.on('call:sync-active', async () => {
+            if (!await allowRealtimeEvent('call:sync-active')) return;
+            await syncActiveCalls();
+        });
+
+        // Replay pending invitations and active call state after every authenticated reconnect.
         void syncPendingCalls();
+        void syncActiveCalls();
 
         socket.on('presence:heartbeat', async () => {
             try {
