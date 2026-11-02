@@ -1,6 +1,6 @@
 const isIceUri = (value) => {
     if (typeof value !== 'string' || value.length > 512 || /\s/.test(value)) return false;
-    return /^(?:stun|stuns|turn|turns):(?:\[[0-9a-f:.]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::\d{1,5})?(?:\?transport=(?:udp|tcp))?$/i.test(value);
+    const match = value.match(/^(?:stun|stuns|turn|turns):(?:\[[0-9a-f:.]+\]|[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?)(?::(\d{1,5}))?(?:\?transport=(?:udp|tcp))?$/i);\n    if (!match) return false;\n    return !match[1] || (Number(match[1]) >= 1 && Number(match[1]) <= 65535);
 };
 
 const normalizeUrls = (urls) => {
