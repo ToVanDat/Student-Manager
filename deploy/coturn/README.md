@@ -4,7 +4,7 @@ This is a host-level Coturn deployment for a small Ubuntu VPS. It is not enabled
 
 ## 1. DNS and network prerequisites
 
-Create the A record `turn.smartsmanage.com -> 157.10.200.241` (the VPS IPv4 previously supplied). Do not change the apex `smartsmanage.com` or `www` records if they still serve the existing AZDIGI website. If using Cloudflare, set this record to **DNS only**; ordinary HTTP proxying does not proxy TURN UDP/TCP relay traffic. Before requesting the SAN certificate, create the `app.smartsmanage.com` and `api.smartsmanage.com` A records to `157.10.200.241` as well. The temporary Nginx ACME bootstrap can serve certificate challenges before the app and API are fully deployed. Keep any apex, `www`, MX and TXT mail records unchanged.
+Create the A record `turn.smartsmanage.com` pointing to the **verified public IPv4 of the target VPS**. Do not copy an IP from an old DNS record, a developer workstation, WSL, or a provider website address without confirming it is assigned to this VPS. Do not change the apex `smartsmanage.com` or `www` records if they still serve the existing AZDIGI website. If using Cloudflare, set this record to **DNS only**; ordinary HTTP proxying does not proxy TURN UDP/TCP relay traffic. Before requesting the SAN certificate, create the `app.smartsmanage.com` and `api.smartsmanage.com` A records to that same verified VPS IPv4 only if those services will run on this VPS. The temporary Nginx ACME bootstrap can serve certificate challenges before the app and API are fully deployed. Keep any apex, `www`, MX and TXT mail records unchanged.
 
 Open these ports in both UFW and any provider firewall/security group. On the VPS, apply the following only after confirming the Coturn host is the intended service:
 
