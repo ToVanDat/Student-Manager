@@ -154,8 +154,8 @@ async function run() {
     if (!pair) throw new Error('Connected but no selected candidate pair was exposed by getStats().');
     log('Selected candidate pair', pair);
 
-    if (pair.localCandidateType !== 'relay' && pair.remoteCandidateType !== 'relay') {
-      throw new Error('Connected without a relay candidate pair. This does not pass forced-relay acceptance.');
+    if (pair.localCandidateType !== 'relay' || pair.remoteCandidateType !== 'relay') {
+      throw new Error('Selected pair is not relay-to-relay. This does not pass forced-relay acceptance.');
     }
 
     if (channel.readyState !== 'open') {
