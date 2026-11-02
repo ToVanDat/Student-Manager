@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
 import { callApi } from '@/api/callApi.js';
-import { buildIceConfiguration } from '@/utils/iceConfiguration.js';
+import { buildIceConfiguration, getIceCredentialRefreshDelay, isIceCandidateForRemoteDescription, extractIceUfrags } from '@/utils/iceConfiguration.js';
 
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
@@ -254,9 +254,8 @@ export default function useWebRTCCall() {
         if (!Number.isFinite(expiresAt) || !iceConfigurationRef.current?.turnAvailable) return;
 
         // Refresh two minutes before expiry, but never spin for short TTLs.
-        const remainingMs = Math.max(0, expiresAt * 1000 - Date.now());
-        const safetyMarginMs = Math.min(120_000, Math.max(15_000, Math.floor(remainingMs * 0.1)));
-        const refreshInMs = Math.max(1_000, remainingMs - safetyMarginMs);
+        const refreshInMs = getIceCredentialRefreshDelay(expiresAt);
+        if (refreshInMs === null) return;
         iceCredentialRefreshTimerRef.current = setTimeout(async () => {
             iceCredentialRefreshTimerRef.current = null;
             if (callRef.current?.callId !== callId || peerRef.current !== pc) return;
@@ -283,7 +282,7 @@ export default function useWebRTCCall() {
         pendingCandidatesRef.current = [];
         for (const entry of queued) {
             const usernameFragment = entry.candidate.usernameFragment || entry.usernameFragment;
-            if (usernameFragment && remoteUfrags.size && !remoteUfrags.has(usernameFragment)) continue;
+            if (!isIceCandidateForRemoteDescription({ usernameFragment }, pc.remoteDescription?.sdp || '')) continue;
             try {
                 await pc.addIceCandidate(entry.candidate);
             } catch (candidateError) {
@@ -972,7 +971,7 @@ export default function useWebRTCCall() {
             const pc = peerRef.current;
             const remoteUfrags = pc?.remoteDescription ? getRemoteIceUfrags(pc) : new Set();
             const usernameFragment = candidate.usernameFragment || data.candidate?.usernameFragment || null;
-            if (usernameFragment && remoteUfrags.size && !remoteUfrags.has(usernameFragment)) return;
+            if (!isIceCandidateForRemoteDescription({ usernameFragment }, pc?.remoteDescription?.sdp || '')) return;
 
             if (pc?.remoteDescription) {
                 try {
