@@ -4,7 +4,7 @@ This is a host-level Coturn deployment for a small Ubuntu VPS. It is not enabled
 
 ## 1. DNS and network prerequisites
 
-Create an A record such as `turn.example.com -> YOUR_VPS_IPV4`. If using Cloudflare, set this record to **DNS only**; ordinary HTTP proxying does not proxy TURN UDP/TCP relay traffic.
+Create the A record `turn.smartsmanage.com -> 157.10.200.241` (the VPS IPv4 previously supplied). Do not change the apex `smartsmanage.com` or `www` records if they still serve the existing AZDIGI website. If using Cloudflare, set this record to **DNS only**; ordinary HTTP proxying does not proxy TURN UDP/TCP relay traffic. Add `app.smartsmanage.com` and `api.smartsmanage.com` A records to `157.10.200.241` only after the Nginx site and backend/frontend deployment are ready. Keep any apex, `www`, MX and TXT mail records unchanged.
 
 Open these ports in both UFW and any provider firewall/security group:
 
@@ -34,7 +34,7 @@ TURNSERVER_ENABLED=1
 
 Copy `turnserver.conf.example` to `/etc/turnserver.conf`, then replace:
 
-- `turn.example.com` with the real TURN hostname.
+- `turn.smartsmanage.com` with the real TURN hostname.
 - `static-auth-secret` with the exact same 64-character random hex value used by backend `TURN_SHARED_SECRET`.
 - Certificate paths only after the certificate files have been installed.
 
@@ -81,8 +81,8 @@ The hook refreshes the two restricted copies and restarts Coturn only when the m
 Add these settings to the backend private `.env`:
 
 ```env
-STUN_URIS=stun:turn.example.com:3478
-TURN_URIS=turn:turn.example.com:3478?transport=udp,turns:turn.example.com:5349?transport=tcp
+STUN_URIS=stun:turn.smartsmanage.com:3478
+TURN_URIS=turn:turn.smartsmanage.com:3478?transport=udp,turns:turn.smartsmanage.com:5349?transport=tcp
 TURN_SHARED_SECRET=THE_SAME_64_HEX_CHAR_SECRET_AS_COTURN
 TURN_CREDENTIAL_TTL_SECONDS=600
 ```
@@ -100,7 +100,7 @@ sudo turnserver -c /etc/turnserver.conf --check-config
 sudo systemctl enable --now coturn
 sudo systemctl status coturn --no-pager
 sudo journalctl -u coturn -n 100 --no-pager
-sudo ss -lntup | grep -E ':(3478|5349)\\b'
+sudo ss -lntup | grep -E ':(3478|5349)([[:space:]]|$)'
 sudo ufw status numbered
 ```
 
