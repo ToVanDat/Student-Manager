@@ -20,9 +20,33 @@ After confirming the DNS provider's authoritative nameservers, create:
 
 If Cloudflare is used, all three records are safest as DNS only for this setup. In particular, TURN cannot use the ordinary orange-cloud HTTP proxy. Do not change the apex, `www`, MX, SPF, DKIM or DMARC records.
 
+Check A and AAAA answers using a public resolver before proceeding:
+
+```bash
+sudo apt update
+sudo apt install -y dnsutils
+for host in app.smartsmanage.com api.smartsmanage.com turn.smartsmanage.com; do
+  echo "== $host A =="; dig @1.1.1.1 +short A "$host"
+  echo "== $host AAAA =="; dig @1.1.1.1 +short AAAA "$host"
+done
+```
+
+Each A lookup must return `157.10.200.241`. If an AAAA record exists but the VPS is not configured for that IPv6 address, correct or remove that AAAA record before issuing the certificate. Repeat against `@8.8.8.8` if the resolvers disagree.
+
 ## Issue the certificate
 
-Do not enable `student-manager.conf.example` before the certificate exists: its HTTPS virtual hosts reference the named certificate. First install the temporary bootstrap:
+Do not enable `student-manager.conf.example` before the certificate exists: its HTTPS virtual hosts reference the named certificate.
+
+Install Nginx and Certbot if they are not already installed, then inspect the current Nginx configuration. Do not remove existing sites or overwrite unrelated domains:
+
+```bash
+sudo apt update
+sudo apt install -y nginx certbot
+sudo systemctl enable --now nginx
+sudo nginx -T
+```
+
+Check for any existing `server_name` entries for these three subdomains and reconcile conflicts before continuing. First install the temporary bootstrap:
 
 ```bash
 sudo install -d -o root -g root -m 0755 /var/www/letsencrypt/.well-known/acme-challenge
