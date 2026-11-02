@@ -1,7 +1,7 @@
 import client from './client';
 
 export const callApi = {
-    getIceConfig: async () => (await client.get('/api/calls/ice-config')).data,
+    getIceConfig: async () => (await client.get('/api/calls/ice-config', { timeout: 8000 })).data,
 
     hideHistory: (callId) =>
         client.delete(`/api/calls/history/${encodeURIComponent(callId)}`),
