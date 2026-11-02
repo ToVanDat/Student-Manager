@@ -35,6 +35,15 @@ test('TURN REST credentials use an expiry-scoped username and HMAC-SHA1 password
     });
 });
 
+test('TURN credential lifetime defaults to one day when no override is configured', () => {
+    const env = { ...BASE_ENV };
+    delete env.TURN_CREDENTIAL_TTL_SECONDS;
+    const result = createIceConfiguration(7, env, 1_800_000_000_000);
+
+    assert.equal(result.credentialTtlSeconds, 86_400);
+    assert.equal(result.credentialExpiresAt, 1_800_086_400);
+});
+
 test('STUN-only configuration never returns a TURN credential', () => {
     const result = createIceConfiguration(7, {
         STUN_URIS: 'stun:stun.example.test:3478'
