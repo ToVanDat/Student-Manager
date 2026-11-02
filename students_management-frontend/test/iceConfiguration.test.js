@@ -70,7 +70,7 @@ test('extracts distinct ICE generations and rejects stale candidates', () => {
         'a=ice-ufrag:current-generation',
         'm=audio 9 UDP/TLS/RTP/SAVPF 111',
         'a=ice-ufrag:audio-generation'
-    ].join('\\r\\n');
+    ].join('\r\n');
 
     assert.deepEqual(extractIceUfrags(sdp), ['current-generation', 'audio-generation']);
     assert.equal(isIceCandidateForRemoteDescription({ usernameFragment: 'current-generation' }, sdp), true);
