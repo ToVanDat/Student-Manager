@@ -73,7 +73,7 @@ export function getIceCredentialRefreshDelay(expiresAt, nowMs = Date.now()) {
 /** Extract ICE username fragments from all media sections in an SDP. */
 export function extractIceUfrags(sdp = '') {
     if (typeof sdp !== 'string' || !sdp) return [];
-    return [...new Set([...sdp.matchAll(/^a=ice-ufrag:([^\\r\\n]+)/gm)]
+    return [...new Set([...sdp.matchAll(/^a=ice-ufrag:([^\r\n]+)/gm)]
         .map(match => match[1].trim())
         .filter(Boolean))];
 }
