@@ -17,3 +17,22 @@ export const createNegotiationId = () => {
 
 export const isCurrentNegotiation = (incomingId, activeId) =>
     isValidNegotiationId(incomingId) && incomingId === activeId;
+
+
+/**
+ * Deterministic Perfect Negotiation roles for a one-to-one call:
+ * the caller is impolite; the callee is polite and rolls back on glare.
+ */
+export const getPerfectNegotiationRole = ({ isCaller }) => {
+    if (typeof isCaller !== 'boolean') throw new TypeError('isCaller must be boolean');
+    return { polite: !isCaller };
+};
+
+export const shouldIgnoreOfferCollision = ({ polite, signalingState }) => {
+    if (typeof polite !== 'boolean') throw new TypeError('polite must be boolean');
+    if (signalingState === 'stable') return false;
+    return !polite;
+};
+
+export const canRollbackLocalOffer = signalingState =>
+    signalingState === 'have-local-offer';
