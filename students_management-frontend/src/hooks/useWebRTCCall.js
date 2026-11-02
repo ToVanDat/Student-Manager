@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
 import { callApi } from '@/api/callApi.js';
 import { buildIceConfiguration, getIceCredentialRefreshDelay, isIceCandidateForRemoteDescription } from '@/utils/iceConfiguration.js';
-
-const createNegotiationId = () => crypto.randomUUID();
+import { createNegotiationId, isValidNegotiationId, isCurrentNegotiation } from '@/utils/webrtcSignaling.js';
 
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
@@ -168,6 +167,8 @@ export default function useWebRTCCall() {
         });
         remoteStreamRef.current = new MediaStream();
         pendingCandidatesRef.current = [];
+        activeNegotiationIdRef.current = null;
+        lastRemoteNegotiationIdRef.current = null;
         setRemoteStream(null);
         setSharingScreen(false);
         setError(message || 'Không thể kết nối cuộc gọi.');
@@ -939,7 +940,7 @@ export default function useWebRTCCall() {
             console.log('[CALL][offer received]', { callId: data?.callId, fromUserId: data?.fromUserId });
             const current = callRef.current;
             if (!current || current.callId !== data.callId) return;
-            if (typeof data.negotiationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.negotiationId)) return;
+            if (!isValidNegotiationId(data.negotiationId)) return;
             if (lastRemoteNegotiationIdRef.current === data.negotiationId) return;
 
             try {
@@ -981,8 +982,7 @@ export default function useWebRTCCall() {
             const pc = peerRef.current;
             if (!pc || callRef.current?.callId !== data.callId) return;
             if (
-                typeof data.negotiationId !== 'string' ||
-                data.negotiationId !== activeNegotiationIdRef.current
+                !isCurrentNegotiation(data.negotiationId, activeNegotiationIdRef.current)
             ) return;
             try {
                 if (pc.signalingState !== 'have-local-offer') return;
@@ -999,8 +999,8 @@ export default function useWebRTCCall() {
         const onIceCandidate = async data => {
             if (callRef.current?.callId !== data.callId) return;
             if (
-                typeof data.negotiationId !== 'string' ||
-                (activeNegotiationIdRef.current && data.negotiationId !== activeNegotiationIdRef.current)
+                !isValidNegotiationId(data.negotiationId) ||
+                (activeNegotiationIdRef.current && !isCurrentNegotiation(data.negotiationId, activeNegotiationIdRef.current))
             ) return;
             const candidate = new RTCIceCandidate(data.candidate);
             const pc = peerRef.current;
