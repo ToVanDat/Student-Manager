@@ -10,8 +10,8 @@ fingerprint
 use-auth-secret
 static-auth-secret=REPLACE_WITH_THE_SAME_64_HEX_CHAR_BACKEND_TURN_SHARED_SECRET
 
-realm=turn.example.com
-server-name=turn.example.com
+realm=turn.smartsmanage.com
+server-name=turn.smartsmanage.com
 
 min-port=49160
 max-port=49200
