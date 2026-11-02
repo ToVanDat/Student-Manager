@@ -97,4 +97,16 @@ test('only STUN/STUNS and TURN/TURNS URI schemes are accepted', () => {
         () => parseServerUrls('turn:user:password@turn.example.test', ['turn:', 'turns:'], 'TURN_URIS'),
         { code: 'TURN_CONFIG_INVALID' }
     );
+    assert.throws(
+        () => parseServerUrls('turn::3478', ['turn:', 'turns:'], 'TURN_URIS'),
+        { code: 'TURN_CONFIG_INVALID' }
+    );
+    assert.throws(
+        () => parseServerUrls('turn:turn.example.test:70000', ['turn:', 'turns:'], 'TURN_URIS'),
+        { code: 'TURN_CONFIG_INVALID' }
+    );
+    assert.throws(
+        () => parseServerUrls('turn:turn.example.test:3478?transport=icmp', ['turn:', 'turns:'], 'TURN_URIS'),
+        { code: 'TURN_CONFIG_INVALID' }
+    );
 });
