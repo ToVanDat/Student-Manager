@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
 import { callApi } from '@/api/callApi.js';
 import { buildIceConfiguration, getIceCredentialRefreshDelay, isIceCandidateForRemoteDescription } from '@/utils/iceConfiguration.js';
-import { createNegotiationId, isValidNegotiationId, isCurrentNegotiation, getPerfectNegotiationRole, shouldIgnoreOfferCollision, canRollbackLocalOffer } from '@/utils/webrtcSignaling.js';
+import { createNegotiationId, isValidNegotiationId, isCurrentNegotiation, getPerfectNegotiationRole, prepareForRemoteOffer } from '@/utils/webrtcSignaling.js';
 
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
@@ -948,30 +948,18 @@ export default function useWebRTCCall() {
             try {
                 const pc = peerRef.current || await createPeer(current.targetUserId, current.callId);
                 const { polite } = getPerfectNegotiationRole({ isCaller: current.isCaller === true });
-                const offerCollision = pc.signalingState !== 'stable';
-                if (offerCollision && shouldIgnoreOfferCollision({ polite, signalingState: pc.signalingState })) {
-                    console.warn('[WebRTC] Ignored colliding offer on impolite peer.', {
+                const accepted = await prepareForRemoteOffer(pc, { polite, offer: data.offer });
+                if (!accepted) {
+                    console.warn('[WebRTC] Ignored colliding or unsupported remote offer.', {
                         callId: current.callId,
-                        signalingState: pc.signalingState
-                    });
-                    return;
-                }
-                if (offerCollision && canRollbackLocalOffer(pc.signalingState)) {
-                    // The polite peer yields its in-flight local offer, then
-                    // applies the remote offer as the winning negotiation.
-                    await pc.setLocalDescription({ type: 'rollback' });
-                } else if (offerCollision) {
-                    console.warn('[WebRTC] Cannot safely roll back this signaling state.', {
-                        callId: current.callId,
-                        signalingState: pc.signalingState
+                        signalingState: pc.signalingState,
+                        polite
                     });
                     return;
                 }
                 activeNegotiationIdRef.current = data.negotiationId;
                 lastRemoteNegotiationIdRef.current = data.negotiationId;
                 addLocalTracksToPeer(pc);
-
-                await pc.setRemoteDescription(data.offer);
                 await flushPendingIceCandidates(pc);
 
                 const answer = await pc.createAnswer();
