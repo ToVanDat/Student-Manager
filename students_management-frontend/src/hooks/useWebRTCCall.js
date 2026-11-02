@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
 import { callApi } from '@/api/callApi.js';
-import { buildIceConfiguration, getIceCredentialRefreshDelay, isIceCandidateForRemoteDescription, extractIceUfrags } from '@/utils/iceConfiguration.js';
+import { buildIceConfiguration, getIceCredentialRefreshDelay, isIceCandidateForRemoteDescription } from '@/utils/iceConfiguration.js';
 
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
