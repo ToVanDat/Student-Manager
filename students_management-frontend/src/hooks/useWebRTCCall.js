@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
 import { callApi } from '@/api/callApi.js';
+import { buildIceConfiguration } from '@/utils/iceConfiguration.js';
 
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
@@ -211,22 +212,21 @@ export default function useWebRTCCall() {
         }
 
         const creation = (async () => {
-            let iceServers = import.meta.env.VITE_STUN_SERVER
-                ? [{ urls: import.meta.env.VITE_STUN_SERVER }]
-                : [];
+            const fallbackStunUri = import.meta.env.VITE_STUN_SERVER || '';
+            let iceConfiguration = buildIceConfiguration(null, fallbackStunUri);
     
             try {
-                const configuration = await callApi.getIceConfig();
-                if (Array.isArray(configuration?.iceServers)) {
-                    iceServers = [...iceServers, ...configuration.iceServers];
-                }
-                if (!configuration?.turnAvailable) {
+                const response = await callApi.getIceConfig();
+                iceConfiguration = buildIceConfiguration(response, fallbackStunUri);
+                if (response?.turnAvailable && !iceConfiguration.turnAvailable) {
+                    console.warn('[WebRTC] Backend reported TURN available but returned no valid authenticated TURN server.');
+                } else if (!iceConfiguration.turnAvailable) {
                     console.info('[WebRTC] Coturn is not configured; using available STUN/host candidates.');
                 }
             } catch (error) {
-                // Calls can still attempt a direct/STUN path while TURN is being
-                // deployed. The backend never exposes the shared Coturn secret.
-                console.warn('[WebRTC] Could not load short-lived TURN credentials; falling back to STUN/host candidates.', {
+                // Preserve direct/STUN calling during staged deployment, but
+                // make TURN unavailability observable without logging credentials.
+                console.warn('[WebRTC] Could not load short-lived TURN credentials; using STUN/host candidates.', {
                     status: error?.response?.status,
                     code: error?.response?.data?.code
                 });
@@ -237,8 +237,19 @@ export default function useWebRTCCall() {
             }
             if (peerRef.current) return peerRef.current;
     
-            const pc = new RTCPeerConnection({ iceServers });
+            const pc = new RTCPeerConnection({
+                iceServers: iceConfiguration.iceServers,
+                iceCandidatePoolSize: 2
+            });
     
+            pc.onicecandidateerror = event => {
+                console.warn('[WebRTC][ICE candidate error]', {
+                    callId,
+                    url: event.url,
+                    errorCode: event.errorCode
+                });
+            };
+
             pc.onicecandidate = event => {
                 if (event.candidate) {
                     socket.emit('call:ice-candidate', {
@@ -866,7 +877,11 @@ export default function useWebRTCCall() {
                     console.warn('[WebRTC] ICE candidate error:', err);
                 }
             } else {
-                pendingCandidatesRef.current.push(candidate);
+                if (pendingCandidatesRef.current.length < 256) {
+                    pendingCandidatesRef.current.push(candidate);
+                } else {
+                    console.warn('[WebRTC] Dropped ICE candidate because the pre-SDP queue is full.', { callId });
+                }
             }
         };
 
