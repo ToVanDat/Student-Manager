@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
-import { googleLoginApi } from '@/api/authApi.js';
+import { Fingerprint, ShieldCheck } from 'lucide-react';
+import { beginPasskeyLoginApi, finishPasskeyLoginApi, googleLoginApi } from '@/api/authApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
-export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
+const decodeBase64Url = value => Uint8Array.from(
+    atob(value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4)),
+    character => character.charCodeAt(0)
+);
+const encodeBase64Url = value => btoa(String.fromCharCode(...new Uint8Array(value)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+
+export default function AdvancedLoginMethods({ username, onLogin, onError, onLoading }) {
     const { t } = useLanguage();
     const googleButtonRef = useRef(null);
     const callbacksRef = useRef({ onLogin, onError, onLoading });
@@ -95,6 +104,61 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
         };
     }, []);
 
+    const handlePasskeyLogin = async () => {
+        if (!username?.trim()) {
+            callbacksRef.current.onError('Nhập username trước khi đăng nhập bằng Passkey.');
+            return;
+        }
+        if (!window.isSecureContext || !navigator.credentials?.get) {
+            callbacksRef.current.onError('Passkey cần HTTPS và trình duyệt hỗ trợ WebAuthn (localhost được phép khi phát triển).');
+            return;
+        }
+
+        setBusy(true);
+        callbacksRef.current.onLoading(true);
+        callbacksRef.current.onError('');
+        sessionStorage.setItem('auth:login-in-progress', 'true');
+        try {
+            const { challengeId, options } = await beginPasskeyLoginApi(username.trim());
+            const publicKey = {
+                ...options,
+                challenge: decodeBase64Url(options.challenge),
+                allowCredentials: (options.allowCredentials || []).map(item => ({
+                    ...item,
+                    id: decodeBase64Url(item.id)
+                }))
+            };
+            const credential = await navigator.credentials.get({ publicKey });
+            if (!credential) throw new Error('Bạn đã hủy xác minh Passkey.');
+
+            const response = {
+                id: credential.id,
+                rawId: encodeBase64Url(credential.rawId),
+                type: credential.type,
+                authenticatorAttachment: credential.authenticatorAttachment,
+                response: {
+                    clientDataJSON: encodeBase64Url(credential.response.clientDataJSON),
+                    authenticatorData: encodeBase64Url(credential.response.authenticatorData),
+                    signature: encodeBase64Url(credential.response.signature),
+                    userHandle: credential.response.userHandle
+                        ? encodeBase64Url(credential.response.userHandle)
+                        : null
+                },
+                clientExtensionResults: credential.getClientExtensionResults()
+            };
+            const data = await finishPasskeyLoginApi(challengeId, response);
+            callbacksRef.current.onLogin(data);
+        } catch (error) {
+            callbacksRef.current.onError(
+                error.response?.data?.message || error.message || 'Đăng nhập bằng Passkey thất bại.'
+            );
+        } finally {
+            sessionStorage.removeItem('auth:login-in-progress');
+            setBusy(false);
+            callbacksRef.current.onLoading(false);
+        }
+    };
+
     return (
         <div className="auth-methods-content mt-4 space-y-3">
             <div className="relative flex items-center gap-3 text-xs text-slate-400">
@@ -102,6 +166,20 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 <span className="whitespace-nowrap">Hoặc tiếp tục bằng</span>
                 <span className="h-px flex-1 bg-slate-200" />
             </div>
+
+            <button
+                type="button"
+                onClick={handlePasskeyLogin}
+                disabled={busy || !username?.trim()}
+                className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Dùng Passkey đã đăng ký trên thiết bị"
+            >
+                <Fingerprint size={17} aria-hidden="true" />
+                Đăng nhập bằng Passkey
+            </button>
+            <p className="-mt-1 text-center text-[11px] leading-5 text-slate-400">
+                Thiết bị có thể yêu cầu Windows Hello, Face ID, vân tay hoặc PIN. Student Manager không nhận ảnh sinh trắc học.
+            </p>
 
             <div className="flex min-h-11 w-full justify-center overflow-hidden" aria-label="Đăng nhập bằng Google">
                 <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-60' : ''} />
