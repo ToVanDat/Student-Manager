@@ -94,10 +94,10 @@ Add these settings to the backend private `.env`:
 STUN_URIS=stun:turn.smartsmanage.com:3478
 TURN_URIS=turn:turn.smartsmanage.com:3478?transport=udp,turns:turn.smartsmanage.com:5349?transport=tcp
 TURN_SHARED_SECRET=THE_SAME_64_HEX_CHAR_SECRET_AS_COTURN
-TURN_CREDENTIAL_TTL_SECONDS=600
+TURN_CREDENTIAL_TTL_SECONDS=86400
 ```
 
-The backend route `GET /api/calls/ice-config` requires the normal authenticated access token. It creates a per-user username in the Coturn REST form `expiryTimestamp:userId` and an HMAC-SHA1 credential. Responses are marked `Cache-Control: no-store`. The shared secret remains server-side; the browser receives only the short-lived credential.
+The backend route `GET /api/calls/ice-config` requires the normal authenticated access token. It creates a per-user username in the Coturn REST form `expiryTimestamp:userId` and an HMAC-SHA1 credential. The default credential lifetime is 24 hours so an active call can continue authenticating allocation refreshes; shorten it only if the application enforces a matching maximum call lifetime. The service accepts TTL values from 60 to 86400 seconds. Responses are marked `Cache-Control: no-store`. The shared secret remains server-side; the browser receives only the temporary credential.
 
 Remove any old `VITE_TURN_USERNAME`, `VITE_TURN_CREDENTIAL`, or static TURN password from frontend build environments. A `VITE_STUN_SERVER` value may remain because STUN URLs are public configuration, not a shared secret.
 
