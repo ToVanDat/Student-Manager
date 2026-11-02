@@ -4,6 +4,7 @@ const controller = require('../controller/callController');
 
 const router = express.Router();
 
+router.get('/ice-config', authMiddleware, controller.getIceConfig);
 router.get('/history', authMiddleware, controller.getCallHistory);
 router.delete('/history/:callId', authMiddleware, controller.hideCallHistory);
 router.get('/notifications', authMiddleware, controller.getUnreadCallNotifications);
