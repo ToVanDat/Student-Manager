@@ -19,6 +19,10 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET}
       AUTH_RATE_LIMIT_HASH_SECRET: ${AUTH_RATE_LIMIT_HASH_SECRET:?Set AUTH_RATE_LIMIT_HASH_SECRET in students_managerment-api/.env}
+      STUN_URIS: ${STUN_URIS:-}
+      TURN_URIS: ${TURN_URIS:-}
+      TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
+      TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-86400}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       FRONTEND_URLS: ${FRONTEND_URLS:-http://localhost:5173,http://127.0.0.1:5173,https://student-manager.local}
@@ -55,7 +59,9 @@ services:
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PostgreSQL 18+ stores PGDATA under /var/lib/postgresql/<major>/docker.
+      # Mount the parent directory, not the legacy /var/lib/postgresql/data path.
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
