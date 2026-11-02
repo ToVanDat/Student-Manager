@@ -366,6 +366,35 @@ async function getStatus(userId) {
     };
 }
 
+
+async function getPublicAvailability() {
+    if (
+        process.env.FACE_AUTH_PIPELINE_ENABLED !== 'true' ||
+        process.env.FACE_AUTH_PIPELINE_VALIDATED !== 'true'
+    ) {
+        return {
+            available: false,
+            reason: 'RELEASE_GATES_CLOSED',
+            message: 'Face Login đang chờ hoàn tất kiểm định và triển khai pipeline trên máy chủ.'
+        };
+    }
+
+    try {
+        requirePipelineConfig();
+        await ensureLandmarkServiceReady();
+        await ensureFaceInferenceReady();
+        return { available: true, reason: null, message: null };
+    } catch {
+        // Do not reveal internal model paths, secrets, scores, or service details
+        // through the unauthenticated login page.
+        return {
+            available: false,
+            reason: 'SERVER_PIPELINE_NOT_READY',
+            message: 'Dịch vụ Face Login chưa sẵn sàng. Bạn vẫn có thể đăng nhập bằng mật khẩu hoặc Passkey.'
+        };
+    }
+}
+
 async function beginEnrollment(userId, verificationToken, currentPassword) {
     requirePipelineConfig();
     await ensureLandmarkServiceReady();
@@ -505,6 +534,7 @@ async function disable(userId, currentPassword, verificationToken) {
 
 module.exports = {
     getStatus,
+    getPublicAvailability,
     beginEnrollment,
     finishEnrollment,
     cancelEnrollment,
