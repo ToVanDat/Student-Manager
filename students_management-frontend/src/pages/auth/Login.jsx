@@ -633,6 +633,7 @@ function Login() {
                         <>
                             {renderLogin()}
                             <AdvancedLoginMethods
+                                username={username}
                                 onLogin={handleAdvancedLogin}
                                 onError={reportAdvancedLoginError}
                                 onLoading={setAdvancedLoading}
