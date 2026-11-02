@@ -1357,11 +1357,14 @@ const initSocket = async (server) => {
             );
         });
 
-        socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
+        socket.on('call:offer', async ({ callId, targetUserId, offer, negotiationId }) => {
             if (!await allowRealtimeEvent('call:offer')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !['connecting', 'connected'].includes(call.status)) return;
+            if (typeof negotiationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(negotiationId)) {
+                return socket.emit('call:error', { callId, code: 'INVALID_NEGOTIATION_ID', message: 'Mã thương lượng WebRTC không hợp lệ.' });
+            }
             if (!isValidSessionDescription(offer, 'offer')) {
                 return socket.emit('call:error', {
                     callId,
@@ -1370,15 +1373,18 @@ const initSocket = async (server) => {
                 });
             }
             io.to(`user:${targetId}`).emit('call:offer', {
-                callId, fromUserId: userId, toUserId: targetId, offer
+                callId, fromUserId: userId, toUserId: targetId, negotiationId, offer
             });
         });
 
-        socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
+        socket.on('call:answer', async ({ callId, targetUserId, answer, negotiationId }) => {
             if (!await allowRealtimeEvent('call:answer')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !['connecting', 'connected'].includes(call.status)) return;
+            if (typeof negotiationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(negotiationId)) {
+                return socket.emit('call:error', { callId, code: 'INVALID_NEGOTIATION_ID', message: 'Mã thương lượng WebRTC không hợp lệ.' });
+            }
             if (!isValidSessionDescription(answer, 'answer')) {
                 return socket.emit('call:error', {
                     callId,
@@ -1387,7 +1393,7 @@ const initSocket = async (server) => {
                 });
             }
             io.to(`user:${targetId}`).emit('call:answer', {
-                callId, fromUserId: userId, toUserId: targetId, answer
+                callId, fromUserId: userId, toUserId: targetId, negotiationId, answer
             });
         });
 
@@ -1469,11 +1475,14 @@ const initSocket = async (server) => {
             console.warn('[CALL][connection failed]', { callId, userId, targetId, reason: safeReason });
         });
 
-        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
+        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate, negotiationId }) => {
             if (!await allowRealtimeEvent('call:ice-candidate')) return;
             const targetId = Number(targetUserId);
                         const call = await getAuthorizedCall(callId, targetId);
             if (!call || !['connecting', 'connected'].includes(call.status)) return;
+            if (typeof negotiationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(negotiationId)) {
+                return socket.emit('call:error', { callId, code: 'INVALID_NEGOTIATION_ID', message: 'Mã thương lượng WebRTC không hợp lệ.' });
+            }
             if (!isValidIceCandidate(candidate)) {
                 return socket.emit('call:error', {
                     callId,
@@ -1482,7 +1491,7 @@ const initSocket = async (server) => {
                 });
             }
             io.to(`user:${targetId}`).emit('call:ice-candidate', {
-                callId, fromUserId: userId, toUserId: targetId, candidate
+                callId, fromUserId: userId, toUserId: targetId, negotiationId, candidate
             });
         });
 
