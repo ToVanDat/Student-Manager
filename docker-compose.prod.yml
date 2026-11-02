@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: ghcr.io/tovandat/student-manager-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/tovandat/student-manager-frontend:${IMAGE_TAG:-feature-chat-1to1-complete}
     build:
       context: ./students_management-frontend
       dockerfile: Dockerfile
@@ -22,7 +22,7 @@ services:
       - no-new-privileges:true
 
   backend:
-    image: ghcr.io/tovandat/student-manager-api:${IMAGE_TAG:-latest}
+    image: ghcr.io/tovandat/student-manager-api:${IMAGE_TAG:-feature-chat-1to1-complete}
     build:
       context: ./students_managerment-api
       dockerfile: Dockerfile
