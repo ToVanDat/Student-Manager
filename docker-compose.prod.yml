@@ -1,0 +1,58 @@
+services:
+  frontend:
+    image: ghcr.io/tovandat/student-manager-frontend:${IMAGE_TAG:-latest}
+    build:
+      context: ./students_management-frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    container_name: student-manager-frontend
+    ports:
+      - "127.0.0.1:5173:80"
+    networks:
+      - student-manager-app
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  backend:
+    image: ghcr.io/tovandat/student-manager-api:${IMAGE_TAG:-latest}
+    build:
+      context: ./students_managerment-api
+      dockerfile: Dockerfile
+    container_name: student-manager-backend
+    env_file:
+      - ./students_managerment-api/.env.production
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - student-manager-app
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  student-manager-app:
+    name: student-manager-app
+    driver: bridge
