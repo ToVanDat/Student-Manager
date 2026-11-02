@@ -42,8 +42,8 @@ function createIceConfiguration(userId, env = process.env, nowMs = Date.now()) {
     if (secret && !turnUrls.length) {
         throw configurationError('TURN_URIS chưa được cấu hình.');
     }
-    if (turnUrls.length && Buffer.byteLength(secret, 'utf8') < 32) {
-        throw configurationError('TURN_SHARED_SECRET phải có tối thiểu 32 byte.');
+    if (turnUrls.length && !/^[a-f0-9]{64}$/i.test(secret)) {
+        throw configurationError('TURN_SHARED_SECRET phải là 64 ký tự hex (32 byte).');
     }
 
     const ttlRaw = env.TURN_CREDENTIAL_TTL_SECONDS;
