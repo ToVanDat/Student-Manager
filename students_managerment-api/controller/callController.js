@@ -1,4 +1,5 @@
 const callRepository = require('../repository/callRepository');
+const { createIceConfiguration } = require('../service/turnCredentialsService');
 
 const getCallHistory = async (req, res) => {
     try {
@@ -69,7 +70,27 @@ const markCallNotificationRead = async (req, res) => {
     }
 };
 
+const getIceConfig = async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.set('Pragma', 'no-cache');
+
+    try {
+        const userId = Number(req.user?.id);
+        if (!Number.isSafeInteger(userId) || userId <= 0) {
+            return res.status(401).json({ code: 'AUTH_REQUIRED', message: 'Phiên đăng nhập không hợp lệ.' });
+        }
+        return res.json(createIceConfiguration(userId));
+    } catch (error) {
+        console.error('[TURN] ICE configuration unavailable:', { code: error?.code });
+        return res.status(503).json({
+            code: error?.code || 'TURN_CONFIG_UNAVAILABLE',
+            message: 'Máy chủ gọi video chưa có cấu hình TURN hợp lệ.'
+        });
+    }
+};
+
 module.exports = {
+    getIceConfig,
     getCallHistory,
     hideCallHistory,
     getUnreadCallNotifications,
