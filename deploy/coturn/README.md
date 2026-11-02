@@ -56,6 +56,28 @@ openssl rand -hex 32
 
 Store it only in the backend's private environment file and `/etc/turnserver.conf`. Never add it to `VITE_*`, frontend build arguments, browser JavaScript, Git, chat messages, or logs.
 
+## 2.1 Automated, guarded installation
+
+After DNS and the Certbot certificate are valid, run the repository installer on the **VPS host** (not inside the development WSL instance). It installs Coturn, copies the certificate with restricted permissions, writes the shared-secret config, adds only the Coturn UFW allow rules when UFW is present, installs the renewal hook, and enables the service. It does not enable UFW, alter SSH rules, or configure provider firewall rules.
+
+Read the secret without putting it in shell history, then run:
+
+```bash
+cd /opt/student-manager
+read -rsp "TURN shared secret (64 hex chars): " TURN_SHARED_SECRET; echo
+export TURN_SHARED_SECRET
+sudo --preserve-env=TURN_SHARED_SECRET bash deploy/coturn/install.sh
+unset TURN_SHARED_SECRET
+```
+
+The installer requires the existing Certbot lineage `/etc/letsencrypt/live/student-manager-smartsmanage`. It backs up an existing `/etc/turnserver.conf` before replacing it. Review the generated config and service journal after installation.
+
+Read-only diagnostics:
+
+```bash
+sudo bash deploy/coturn/verify.sh
+```
+
 ## 3. Install the certificate with restricted permissions
 
 The expected paths are:
