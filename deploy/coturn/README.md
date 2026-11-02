@@ -6,7 +6,7 @@ This is a host-level Coturn deployment for a small Ubuntu VPS. It is not enabled
 
 Create the A record `turn.smartsmanage.com -> 157.10.200.241` (the VPS IPv4 previously supplied). Do not change the apex `smartsmanage.com` or `www` records if they still serve the existing AZDIGI website. If using Cloudflare, set this record to **DNS only**; ordinary HTTP proxying does not proxy TURN UDP/TCP relay traffic. Add `app.smartsmanage.com` and `api.smartsmanage.com` A records to `157.10.200.241` only after the Nginx site and backend/frontend deployment are ready. Keep any apex, `www`, MX and TXT mail records unchanged.
 
-Open these ports in both UFW and any provider firewall/security group:
+Open these ports in both UFW and any provider firewall/security group. On the VPS, apply the following only after confirming the Coturn host is the intended service:
 
 | Port | Protocol | Purpose |
 | --- | --- | --- |
@@ -14,7 +14,17 @@ Open these ports in both UFW and any provider firewall/security group:
 | 5349 | TCP | TURN over TLS |
 | 49160–49200 | UDP | Relayed media allocation range |
 
-Do not expose the backend API port or Coturn administration CLI. Keep the VPS's existing SSH policy unchanged.
+Apply the UFW rules without removing the current SSH/HTTP/HTTPS rules:
+
+```bash
+sudo ufw allow 3478/udp comment 'Coturn STUN TURN UDP'
+sudo ufw allow 3478/tcp comment 'Coturn TURN TCP'
+sudo ufw allow 5349/tcp comment 'Coturn TURN TLS'
+sudo ufw allow 49160:49200/udp comment 'Coturn UDP media relay'
+sudo ufw status numbered
+```
+
+Authorize the same ports in the AZDIGI VPS/provider firewall if it has a separate network firewall. Do not expose the backend API port or Coturn administration CLI. Keep the VPS's existing SSH rule unchanged.
 
 Before installing, verify the VPS public/private interface addresses. When the VPS has the public IPv4 directly on its interface, leave `external-ip` commented out. When the server is behind NAT, set `external-ip=PUBLIC_IP/PRIVATE_IP` using the actual interface address; do not guess it.
 
