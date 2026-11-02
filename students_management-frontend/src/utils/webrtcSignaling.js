@@ -36,3 +36,28 @@ export const shouldIgnoreOfferCollision = ({ polite, signalingState }) => {
 
 export const canRollbackLocalOffer = signalingState =>
     signalingState === 'have-local-offer';
+
+
+/**
+ * Prepare an RTCPeerConnection to accept a remote offer.
+ * Returns false when the offer must be ignored or cannot be safely applied.
+ */
+export const prepareForRemoteOffer = async (pc, { polite, offer }) => {
+    if (!pc || typeof pc.setRemoteDescription !== 'function') {
+        throw new TypeError('A valid RTCPeerConnection is required');
+    }
+    if (typeof polite !== 'boolean' || !offer || offer.type !== 'offer') {
+        throw new TypeError('A valid negotiation role and remote offer are required');
+    }
+
+    const collision = pc.signalingState !== 'stable';
+    if (collision && shouldIgnoreOfferCollision({ polite, signalingState: pc.signalingState })) {
+        return false;
+    }
+    if (collision) {
+        if (!polite || !canRollbackLocalOffer(pc.signalingState)) return false;
+        await pc.setLocalDescription({ type: 'rollback' });
+    }
+    await pc.setRemoteDescription(offer);
+    return true;
+};
