@@ -30,7 +30,7 @@ const PAD_MODEL_CONTRACT = Object.freeze({
             checkpointSha256: 'a5eb02e1843f19b5386b953cc4c9f011c3f985d0ee2bb9819eea9a142099bec0',
             upstreamSourceCommit: 'b6d5f04ad78778917853b25c778acef6d5626d15',
             converterSourceCommit: '584d4421d7ac42c59e640796f46e886b0095367a',
-            maxAbsDifferenceVsLogits: 9.149312973022461,
+            maxAbsDifferenceVsLogits: 9.149312973022461e-6,
             absoluteTolerance: 1e-5,
             relativeTolerance: 1e-4,
             reportArtifact: 'minifasnet-reference-parity'
