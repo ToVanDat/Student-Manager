@@ -893,8 +893,18 @@ export default function useWebRTCCall() {
 
             try {
                 setState('reconnecting');
-                const freshIce = await applyFreshIceConfiguration(pc, current.callId);
-                scheduleIceCredentialRefresh(pc, current.callId, freshIce.credentialExpiresAt);
+                try {
+                    const freshIce = await applyFreshIceConfiguration(pc, current.callId);
+                    scheduleIceCredentialRefresh(pc, current.callId, freshIce.credentialExpiresAt);
+                } catch (refreshError) {
+                    // Keep the last known STUN/TURN set as a degraded fallback.
+                    // The ICE restart may still succeed through STUN/host candidates.
+                    console.warn('[WebRTC] Could not refresh ICE configuration before restart; retrying with cached servers.', {
+                        status: refreshError?.response?.status,
+                        code: refreshError?.response?.data?.code
+                    });
+                }
+                if (callRef.current?.callId !== current.callId || peerRef.current !== pc) return;
                 pc.restartIce();
                 const offer = await pc.createOffer({ iceRestart: true });
                 await pc.setLocalDescription(offer);
