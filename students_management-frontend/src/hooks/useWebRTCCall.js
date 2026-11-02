@@ -1054,6 +1054,37 @@ export default function useWebRTCCall() {
             }
         };
 
+        const onActiveCallSnapshot = data => {
+            const current = callRef.current;
+            if (!current) return;
+
+            const activeCalls = Array.isArray(data?.calls) ? data.calls : [];
+            const activeCall = activeCalls.find(item => item?.callId === current.callId);
+            if (!activeCall) {
+                // A call that was already established must not remain in a
+                // misleading connected/reconnecting UI after the server has
+                // persisted its terminal state.
+                if (['connected', 'reconnecting'].includes(state)) {
+                    setError('Cuộc gọi đã kết thúc trong thời gian Socket mất kết nối.');
+                    cleanup();
+                }
+                return;
+            }
+
+            const pc = peerRef.current;
+            if (
+                activeCall.isCaller &&
+                pc &&
+                ['disconnected', 'failed'].includes(pc.connectionState) &&
+                socket.connected
+            ) {
+                socket.emit('call:reconnect-request', {
+                    callId: current.callId,
+                    targetUserId: current.targetUserId
+                });
+            }
+        };
+
         const onSocketRateLimit = data => {
             const eventName = data?.event;
             if (typeof eventName !== 'string' || !eventName.startsWith('call:')) return;
@@ -1122,7 +1153,10 @@ export default function useWebRTCCall() {
             }
         };
 
-        const onSocketConnect = () => socket.emit('call:sync-pending');
+        const onSocketConnect = () => {
+            socket.emit('call:sync-pending');
+            socket.emit('call:sync-active');
+        };
 
         socket.on('connect', onSocketConnect);
         socket.on('call:incoming', onIncoming);
@@ -1136,6 +1170,7 @@ export default function useWebRTCCall() {
         socket.on('call:ended', onEnded);
         socket.on('call:error', onError);
         socket.on('socket:rate-limit', onSocketRateLimit);
+        socket.on('call:active-snapshot', onActiveCallSnapshot);
 
         // Handle hooks mounted after Socket.IO has already connected.
         if (socket.connected) socket.emit('call:sync-pending');
@@ -1153,6 +1188,7 @@ export default function useWebRTCCall() {
             socket.off('call:ended', onEnded);
             socket.off('call:error', onError);
             socket.off('socket:rate-limit', onSocketRateLimit);
+            socket.off('call:active-snapshot', onActiveCallSnapshot);
         };
     }, [cleanup, createPeer, addLocalTracksToPeer, failConnection, startConnectionTimeout]);
 
