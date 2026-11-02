@@ -23,6 +23,8 @@ services:
       TURN_URIS: ${TURN_URIS:-}
       TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
       TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-86400}
+      FACE_LANDMARK_SERVICE_URL: ${FACE_LANDMARK_SERVICE_URL:-http://face-landmark:3010}
+      FACE_LANDMARK_SERVICE_TOKEN: ${FACE_LANDMARK_SERVICE_TOKEN:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       FRONTEND_URLS: ${FRONTEND_URLS:-http://localhost:5173,http://127.0.0.1:5173,https://student-manager.local}
@@ -48,6 +50,37 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+
+  face-landmark:
+    profiles: ["face-login"]
+    build:
+      context: ./face-landmark-service
+      dockerfile: Dockerfile
+    container_name: student-management-face-landmark
+    environment:
+      FACE_LANDMARK_SERVICE_TOKEN: ${FACE_LANDMARK_SERVICE_TOKEN:-}
+      FACE_LANDMARK_MODEL: /app/models/face_landmarker.task
+    volumes:
+      # Model binary is downloaded and SHA-256 verified separately; do not commit it.
+      - ./face-landmark-service/models:/app/models:ro
+    expose:
+      - "3010"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,urllib.request; req=urllib.request.Request('http://127.0.0.1:3010/health',headers={'Authorization':'Bearer '+os.environ.get('FACE_LANDMARK_SERVICE_TOKEN','')}); urllib.request.urlopen(req,timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid
 
   postgres:
     image: postgres:18
