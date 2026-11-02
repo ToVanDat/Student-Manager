@@ -1,6 +1,8 @@
 import client from './client';
 
 export const callApi = {
+    getIceConfig: async () => (await client.get('/api/calls/ice-config')).data,
+
     hideHistory: (callId) =>
         client.delete(`/api/calls/history/${encodeURIComponent(callId)}`),
 
