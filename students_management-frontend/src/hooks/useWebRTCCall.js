@@ -277,7 +277,6 @@ export default function useWebRTCCall() {
     };
 
     const flushPendingIceCandidates = async (pc) => {
-        const remoteUfrags = getRemoteIceUfrags(pc);
         const queued = pendingCandidatesRef.current;
         pendingCandidatesRef.current = [];
         for (const entry of queued) {
@@ -969,7 +968,6 @@ export default function useWebRTCCall() {
             if (callRef.current?.callId !== data.callId) return;
             const candidate = new RTCIceCandidate(data.candidate);
             const pc = peerRef.current;
-            const remoteUfrags = pc?.remoteDescription ? getRemoteIceUfrags(pc) : new Set();
             const usernameFragment = candidate.usernameFragment || data.candidate?.usernameFragment || null;
             if (!isIceCandidateForRemoteDescription({ usernameFragment }, pc?.remoteDescription?.sdp || '')) return;
 
