@@ -1,0 +1,19 @@
+# Temporary HTTP-only bootstrap for ACME HTTP-01 validation.
+# Enable this file only while obtaining the SAN certificate, then disable it
+# before enabling student-manager.conf.example (which has its own port-80 block).
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name app.smartsmanage.com api.smartsmanage.com;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location / {
+        return 404;
+    }
+}
