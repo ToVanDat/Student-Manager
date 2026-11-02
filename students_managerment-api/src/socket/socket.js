@@ -510,7 +510,7 @@ const initSocket = async (server) => {
                     userId,
                     code: error?.code || 'ACTIVE_CALL_SYNC_FAILED'
                 });
-                socket.emit('call:error', {
+                socket.emit('call:sync-active-error', {
                     code: 'ACTIVE_CALL_SYNC_UNAVAILABLE',
                     message: 'Không thể đồng bộ trạng thái cuộc gọi hiện tại.'
                 });
