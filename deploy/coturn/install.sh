@@ -44,8 +44,12 @@ install -d -o root -g turnserver -m 0750 "$TLS_DIR"
 install -o root -g turnserver -m 0640 "$CERT_LINEAGE/fullchain.pem" "$TLS_DIR/fullchain.pem"
 install -o root -g turnserver -m 0640 "$CERT_LINEAGE/privkey.pem" "$TLS_DIR/privkey.pem"
 
-# The secret is hex-only, so it is safe to substitute as a single config token.
-sed "s/REPLACE_WITH_THE_SAME_64_HEX_CHAR_BACKEND_TURN_SHARED_SECRET/$TURN_SHARED_SECRET/" "$EXAMPLE" > "$CONFIG.tmp"
+# Substitute in the shell rather than a command-line argument, so the shared
+# secret does not appear in the process list while the config is rendered.
+config_content="$(<"$EXAMPLE")"
+config_content="${config_content//REPLACE_WITH_THE_SAME_64_HEX_CHAR_BACKEND_TURN_SHARED_SECRET/$TURN_SHARED_SECRET}"
+printf '%s\n' "$config_content" > "$CONFIG.tmp"
+unset config_content
 if grep -q 'REPLACE_WITH_THE_SAME_64_HEX_CHAR_BACKEND_TURN_SHARED_SECRET' "$CONFIG.tmp"; then
   rm -f "$CONFIG.tmp"
   fail "TURN secret placeholder substitution failed."
