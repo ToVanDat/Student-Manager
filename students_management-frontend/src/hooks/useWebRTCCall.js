@@ -254,7 +254,9 @@ export default function useWebRTCCall() {
         if (!Number.isFinite(expiresAt) || !iceConfigurationRef.current?.turnAvailable) return;
 
         // Refresh two minutes before expiry, but never spin for short TTLs.
-        const refreshInMs = Math.max(5_000, expiresAt * 1000 - Date.now() - 120_000);
+        const remainingMs = Math.max(0, expiresAt * 1000 - Date.now());
+        const safetyMarginMs = Math.min(120_000, Math.max(15_000, Math.floor(remainingMs * 0.1)));
+        const refreshInMs = Math.max(1_000, remainingMs - safetyMarginMs);
         iceCredentialRefreshTimerRef.current = setTimeout(async () => {
             iceCredentialRefreshTimerRef.current = null;
             if (callRef.current?.callId !== callId || peerRef.current !== pc) return;
@@ -272,7 +274,7 @@ export default function useWebRTCCall() {
 
     const getRemoteIceUfrags = (pc) => {
         const sdp = pc.remoteDescription?.sdp || '';
-        return new Set([...sdp.matchAll(/^a=ice-ufrag:([^\\r\\n]+)/gm)].map(match => match[1].trim()));
+        return new Set([...sdp.matchAll(/^a=ice-ufrag:([^\r\n]+)/gm)].map(match => match[1].trim()));
     };
 
     const flushPendingIceCandidates = async (pc) => {
