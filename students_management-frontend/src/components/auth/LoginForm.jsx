@@ -16,6 +16,9 @@ function LoginForm({
     loading,
     onSubmit,
     onFaceLogin,
+    faceLoginAvailable = false,
+    faceAvailabilityLoading = true,
+    faceAvailabilityMessage = '',
     onOpenRegister,
 }) {
     const { t } = useLanguage();
@@ -78,9 +81,15 @@ function LoginForm({
             <button className="mt-1 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-px hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading} aria-describedby={error ? "login-error" : undefined}>
                 {loading ? <><LoaderCircle size={17} className="animate-spin" aria-hidden="true" />{t("loading")}</> : t("login")}
             </button>
-            <button type="button" onClick={onFaceLogin} disabled={loading || !username.trim()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                <Camera size={18} aria-hidden="true" /> Đăng nhập bằng Face Login
+            <button type="button" onClick={onFaceLogin} disabled={loading || !username.trim() || faceAvailabilityLoading || !faceLoginAvailable} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" title={!faceLoginAvailable ? 'Face Login chưa sẵn sàng trên máy chủ' : 'Đăng nhập bằng Face Login'}>
+                <Camera size={18} aria-hidden="true" />
+                {faceAvailabilityLoading ? 'Đang kiểm tra Face Login…' : 'Đăng nhập bằng Face Login'}
             </button>
+            {!faceAvailabilityLoading && !faceLoginAvailable && (
+                <p role="status" aria-live="polite" className="-mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-5 text-amber-800">
+                    {faceAvailabilityMessage || 'Face Login đang tạm khóa. Bạn vẫn có thể đăng nhập bằng mật khẩu hoặc Passkey.'}
+                </p>
+            )}
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <span>{t('noAccountYet')}</span>
                 <button className="rounded border-0 bg-transparent px-2 py-1.5 text-xs font-semibold text-blue-700 hover:underline" type="button" onClick={onOpenRegister}>{t('registerNow')}</button>
