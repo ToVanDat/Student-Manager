@@ -10,8 +10,7 @@ tls-listening-port=5349
 # The frontend uses TURN/TLS over TCP and UDP media relay only.
 no-dtls
 no-tcp-relay
-no-tlsv1
-no-tlsv1_1
+# Coturn's default TLS minimum is 1.2; do not enable the legacy tlsv1/tlsv1_1 options.
 
 fingerprint
 use-auth-secret
