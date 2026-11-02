@@ -35,6 +35,7 @@ const faceFrameRateLimiter = require('../middleware/faceFrameRateLimiter.js');
 
 // Application-managed Face Login is separate from Passkey/WebAuthn.
 // Login and enrollment remain fail-closed until server-side model inference/PAD is deployed.
+router.get('/face/availability', faceAuthRateLimiter, faceAuthController.availability);
 router.get('/face/status', authMiddleware, faceAuthController.status);
 router.post('/face/enrollment/options', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
 router.post('/face/enrollment/frame', requireTrustedOrigin, authMiddleware, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureEnrollmentFrame);
