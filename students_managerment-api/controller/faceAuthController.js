@@ -35,6 +35,19 @@ function fail(res, error) {
     return res.status(500).json({ message: 'Không thể xử lý yêu cầu Face Login.' });
 }
 
+exports.availability = async (req, res) => {
+    res.set('Cache-Control', 'no-store, private');
+    res.set('Pragma', 'no-cache');
+    try {
+        return res.json(await faceAuth.getPublicAvailability());
+    } catch {
+        return res.status(503).json({
+            available: false,
+            reason: 'SERVER_PIPELINE_NOT_READY',
+            message: 'Dịch vụ Face Login chưa sẵn sàng. Bạn vẫn có thể đăng nhập bằng mật khẩu hoặc Passkey.'
+        });
+    }
+};
 exports.status = async (req, res) => {
     try { return res.json(await faceAuth.getStatus(req.user.sub)); }
     catch (error) { return fail(res, error); }
