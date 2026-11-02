@@ -1353,7 +1353,12 @@ const initSocket = async (server) => {
                 targetId,
                 updated,
                 'call-rejected',
-                'Cuộc gọ        registerCallSignalingHandlers({
+                'Cuộc gọi bị từ chối',
+                'Cuộc gọi của bạn đã bị từ chối.'
+            );
+        });
+
+        registerCallSignalingHandlers({
             socket,
             io,
             userId,
@@ -1361,10 +1366,6 @@ const initSocket = async (server) => {
             getAuthorizedCall,
             isValidSessionDescription,
             isValidIceCandidate
-        });
-
-, fromUserId: userId, toUserId: targetId, negotiationId, answer
-            });
         });
 
         socket.on('call:reconnect-request', async ({ callId, targetUserId }) => {
@@ -1442,8 +1443,7 @@ const initSocket = async (server) => {
             };
             emitCallEventBestEffort(`user:${userId}`, 'call:ended', payload);
             emitCallEventBestEffort(`user:${targetId}`, 'call:ended', payload);
-            console.warn(romUserId: userId, toUserId: targetId, negotiationId, candidate
-            });
+            console.warn('[CALL][connection failed]', { callId, userId, targetId, reason: safeReason });
         });
 
         socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {
