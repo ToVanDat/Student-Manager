@@ -168,16 +168,28 @@ export default function FaceLoginSettings() {
 
     const configured = Boolean(status?.configured);
     const available = Boolean(status?.enrollmentAvailable && status?.loginAvailable);
+    const statusLabel = loading
+        ? 'Đang kiểm tra…'
+        : available
+            ? configured ? 'Đã đăng ký · sẵn sàng' : 'Sẵn sàng đăng ký'
+            : configured ? 'Đã đăng ký · tạm khóa' : 'Chưa khả dụng';
+    const statusMessage = available
+        ? 'Pipeline server đã sẵn sàng. Đăng ký hoặc thay đổi Face Login vẫn yêu cầu xác minh lại tài khoản.'
+        : status?.reason === 'RELEASE_GATES_CLOSED'
+            ? 'Face Login đang tạm khóa an toàn. Máy chủ chưa mở release gate vì còn phải hoàn tất xác minh mô hình, preprocessing, ngưỡng PAD/face-match và kiểm thử chống giả mạo.'
+            : status?.reason === 'SERVER_PIPELINE_NOT_READY'
+                ? 'Release gate đã được cấu hình nhưng một hoặc nhiều dịch vụ/model phía máy chủ chưa sẵn sàng. Không thể đăng ký hoặc đăng nhập bằng camera lúc này.'
+                : 'Không đọc được trạng thái đầy đủ của Face Login. Hãy thử tải lại; đăng nhập bằng mật khẩu và Passkey vẫn hoạt động độc lập.';
 
     return (
         <section className="mb-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
             <div className="mb-2 flex items-center gap-2">
                 <Camera size={19} className="text-indigo-600" />
                 <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Face Login · Nhận diện khuôn mặt</h3>
-                <span className={configured
+                <span className={available
                     ? 'ml-auto rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                     : 'ml-auto rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'}>
-                    {loading ? 'Đang tải…' : configured ? 'Đã đăng ký' : 'Chưa thiết lập'}
+                    {statusLabel}
                 </span>
             </div>
             <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
@@ -187,9 +199,7 @@ export default function FaceLoginSettings() {
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                 <ShieldAlert size={16} className="mt-0.5 shrink-0" />
                 <span>
-                    {available
-                        ? 'Pipeline server đã sẵn sàng. Việc đăng ký vẫn yêu cầu xác minh lại tài khoản.'
-                        : 'Face Login đang khóa an toàn: cần bật release gate sau khi cài đúng ONNX Runtime, xác minh model, kiểm thử camera thực và hiệu chuẩn PAD/face-match. Không chấp nhận embedding hoặc điểm liveness do trình duyệt tự gửi.'}
+                    {statusMessage}
                 </span>
             </div>
             {cameraActive && (
