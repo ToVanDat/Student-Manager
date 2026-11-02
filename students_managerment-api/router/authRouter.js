@@ -59,7 +59,7 @@ router.post('/passkeys/registration/options', authMiddleware, authRateLimiter, a
 router.post('/passkeys/registration/verify', authMiddleware, authRateLimiter, advancedAuthController.finishPasskeyRegistration);
 router.get('/passkeys', authMiddleware, advancedAuthController.listPasskeys);
 router.delete('/passkeys/:id', authMiddleware, authRateLimiter, advancedAuthController.deletePasskey);
-router.post('/passkeys/login/options', authRateLimiter, advancedAuthController.beginPasskeyLogin);
+router.post('/passkeys/login/options', requireTrustedOrigin, authRateLimiter, advancedAuthController.beginPasskeyLogin);
 router.post('/passkeys/login/verify', requireTrustedOrigin, authRateLimiter, advancedAuthController.finishPasskeyLogin);
  // Device biometric login (Face ID / Windows Hello when supported) uses WebAuthn.
  // The server verifies an assertion and never receives biometric samples.
