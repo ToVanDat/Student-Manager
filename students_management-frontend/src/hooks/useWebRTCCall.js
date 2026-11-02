@@ -11,6 +11,9 @@ const createCallId = () => {
 export default function useWebRTCCall() {
     const peerRef = useRef(null);
     const peerCreationRef = useRef(null);
+    const iceCredentialRefreshTimerRef = useRef(null);
+    const iceConfigurationRef = useRef(null);
+    const iceRefreshInFlightRef = useRef(null);
     const localStreamRef = useRef(null);
     const remoteStreamRef = useRef(new MediaStream());
     const pendingCandidatesRef = useRef([]);
@@ -65,6 +68,10 @@ export default function useWebRTCCall() {
         if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
         if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
         if (recoveryDeadlineRef.current) clearTimeout(recoveryDeadlineRef.current);
+        if (iceCredentialRefreshTimerRef.current) clearTimeout(iceCredentialRefreshTimerRef.current);
+        iceCredentialRefreshTimerRef.current = null;
+        iceConfigurationRef.current = null;
+        iceRefreshInFlightRef.current = null;
         ringTimeoutRef.current = null;
         connectTimeoutRef.current = null;
         recoveryTimerRef.current = null;
@@ -122,11 +129,13 @@ export default function useWebRTCCall() {
         const current = callRef.current;
         if (!current) return;
 
-        [connectTimeoutRef, ringTimeoutRef, recoveryTimerRef, recoveryDeadlineRef].forEach(timerRef => {
+        [connectTimeoutRef, ringTimeoutRef, recoveryTimerRef, recoveryDeadlineRef, iceCredentialRefreshTimerRef].forEach(timerRef => {
             if (timerRef.current) clearTimeout(timerRef.current);
             timerRef.current = null;
         });
         recoveryAttemptsRef.current = 0;
+        iceConfigurationRef.current = null;
+        iceRefreshInFlightRef.current = null;
 
         const pc = peerRef.current;
         peerRef.current = null;
@@ -205,6 +214,84 @@ export default function useWebRTCCall() {
         }
     }, []);
 
+    const applyFreshIceConfiguration = async (pc, callId) => {
+        if (iceRefreshInFlightRef.current) return iceRefreshInFlightRef.current;
+
+        const refresh = (async () => {
+            const response = await callApi.getIceConfig();
+            const nextConfiguration = buildIceConfiguration(
+                response,
+                import.meta.env.VITE_STUN_SERVER || ''
+            );
+
+            if (callRef.current?.callId !== callId || peerRef.current !== pc || pc.signalingState === 'closed') {
+                throw new Error('Cuộc gọi đã kết thúc trong khi làm mới ICE credentials.');
+            }
+
+            pc.setConfiguration({
+                ...pc.getConfiguration(),
+                iceServers: nextConfiguration.iceServers
+            });
+            iceConfigurationRef.current = nextConfiguration;
+            return nextConfiguration;
+        })();
+
+        iceRefreshInFlightRef.current = refresh;
+        try {
+            return await refresh;
+        } finally {
+            if (iceRefreshInFlightRef.current === refresh) {
+                iceRefreshInFlightRef.current = null;
+            }
+        }
+    };
+
+    const scheduleIceCredentialRefresh = (pc, callId, expiresAt) => {
+        if (iceCredentialRefreshTimerRef.current) {
+            clearTimeout(iceCredentialRefreshTimerRef.current);
+            iceCredentialRefreshTimerRef.current = null;
+        }
+        if (!Number.isFinite(expiresAt) || !iceConfigurationRef.current?.turnAvailable) return;
+
+        // Refresh two minutes before expiry, but never spin for short TTLs.
+        const refreshInMs = Math.max(5_000, expiresAt * 1000 - Date.now() - 120_000);
+        iceCredentialRefreshTimerRef.current = setTimeout(async () => {
+            iceCredentialRefreshTimerRef.current = null;
+            if (callRef.current?.callId !== callId || peerRef.current !== pc) return;
+            try {
+                const refreshed = await applyFreshIceConfiguration(pc, callId);
+                scheduleIceCredentialRefresh(pc, callId, refreshed.credentialExpiresAt);
+            } catch (refreshError) {
+                console.warn('[WebRTC] TURN credential refresh failed; a fresh credential will be requested before ICE restart.', {
+                    status: refreshError?.response?.status,
+                    code: refreshError?.response?.data?.code
+                });
+            }
+        }, refreshInMs);
+    };
+
+    const getRemoteIceUfrags = (pc) => {
+        const sdp = pc.remoteDescription?.sdp || '';
+        return new Set([...sdp.matchAll(/^a=ice-ufrag:([^\\r\\n]+)/gm)].map(match => match[1].trim()));
+    };
+
+    const flushPendingIceCandidates = async (pc) => {
+        const remoteUfrags = getRemoteIceUfrags(pc);
+        const queued = pendingCandidatesRef.current;
+        pendingCandidatesRef.current = [];
+        for (const entry of queued) {
+            const usernameFragment = entry.candidate.usernameFragment || entry.usernameFragment;
+            if (usernameFragment && remoteUfrags.size && !remoteUfrags.has(usernameFragment)) continue;
+            try {
+                await pc.addIceCandidate(entry.candidate);
+            } catch (candidateError) {
+                console.warn('[WebRTC] Dropped queued ICE candidate that could not be applied.', {
+                    name: candidateError?.name
+                });
+            }
+        }
+    };
+
     const createPeer = useCallback(async (targetUserId, callId) => {
         if (peerRef.current) return peerRef.current;
         if (peerCreationRef.current?.callId === callId) {
@@ -237,6 +324,7 @@ export default function useWebRTCCall() {
             }
             if (peerRef.current) return peerRef.current;
     
+            iceConfigurationRef.current = iceConfiguration;
             const pc = new RTCPeerConnection({
                 iceServers: iceConfiguration.iceServers,
                 iceCandidatePoolSize: 2
@@ -385,6 +473,7 @@ export default function useWebRTCCall() {
             };
     
             peerRef.current = pc;
+            scheduleIceCredentialRefresh(pc, callId, iceConfiguration.credentialExpiresAt);
             return pc;
         })();
 
@@ -802,6 +891,8 @@ export default function useWebRTCCall() {
 
             try {
                 setState('reconnecting');
+                const freshIce = await applyFreshIceConfiguration(pc, current.callId);
+                scheduleIceCredentialRefresh(pc, current.callId, freshIce.credentialExpiresAt);
                 pc.restartIce();
                 const offer = await pc.createOffer({ iceRestart: true });
                 await pc.setLocalDescription(offer);
@@ -826,10 +917,7 @@ export default function useWebRTCCall() {
                 addLocalTracksToPeer(pc);
 
                 await pc.setRemoteDescription(data.offer);
-                for (const candidate of pendingCandidatesRef.current) {
-                    await pc.addIceCandidate(candidate);
-                }
-                pendingCandidatesRef.current = [];
+                await flushPendingIceCandidates(pc);
 
                 const answer = await pc.createAnswer();
                 await pc.setLocalDescription(answer);
@@ -869,18 +957,22 @@ export default function useWebRTCCall() {
         const onIceCandidate = async data => {
             if (callRef.current?.callId !== data.callId) return;
             const candidate = new RTCIceCandidate(data.candidate);
+            const pc = peerRef.current;
+            const remoteUfrags = pc?.remoteDescription ? getRemoteIceUfrags(pc) : new Set();
+            const usernameFragment = candidate.usernameFragment || data.candidate?.usernameFragment || null;
+            if (usernameFragment && remoteUfrags.size && !remoteUfrags.has(usernameFragment)) return;
 
-            if (peerRef.current?.remoteDescription) {
+            if (pc?.remoteDescription) {
                 try {
-                    await peerRef.current.addIceCandidate(candidate);
+                    await pc.addIceCandidate(candidate);
                 } catch (err) {
-                    console.warn('[WebRTC] ICE candidate error:', err);
+                    console.warn('[WebRTC] ICE candidate error:', { name: err?.name });
                 }
             } else {
                 if (pendingCandidatesRef.current.length < 256) {
-                    pendingCandidatesRef.current.push(candidate);
+                    pendingCandidatesRef.current.push({ candidate, usernameFragment });
                 } else {
-                    console.warn('[WebRTC] Dropped ICE candidate because the pre-SDP queue is full.', { callId });
+                    console.warn('[WebRTC] Dropped ICE candidate because the pre-SDP queue is full.', { callId: data.callId });
                 }
             }
         };
