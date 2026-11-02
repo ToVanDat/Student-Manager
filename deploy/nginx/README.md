@@ -60,7 +60,7 @@ sudo systemctl reload nginx
 
 The final vhost expects:
 
-- Frontend build output: `/opt/student-manager/frontend/dist`.
+- Frontend build output: `/opt/student-manager/students_management-frontend/dist`.
 - Backend listening on `127.0.0.1:3000`.
 
 Build the frontend with `VITE_API_BASE_URL=https://api.smartsmanage.com`, and copy its `dist/` output into the expected directory. The API container/process must remain bound to loopback; do not publish port 3000 to the internet.
