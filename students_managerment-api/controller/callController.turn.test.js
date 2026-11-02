@@ -59,7 +59,11 @@ test('ICE config endpoint rejects missing authenticated user', async () => {
 });
 
 test('ICE config endpoint fails closed when TURN secret is absent', async () => {
-    const previous = process.env.TURN_SHARED_SECRET;
+    const original = {
+        STUN_URIS: process.env.STUN_URIS,
+        TURN_URIS: process.env.TURN_URIS,
+        TURN_SHARED_SECRET: process.env.TURN_SHARED_SECRET
+    };
     process.env.STUN_URIS = 'stun:turn.smartsmanage.com:3478';
     process.env.TURN_URIS = 'turn:turn.smartsmanage.com:3478?transport=udp';
     delete process.env.TURN_SHARED_SECRET;
@@ -71,9 +75,9 @@ test('ICE config endpoint fails closed when TURN secret is absent', async () => 
         assert.equal(res.body.code, 'TURN_CONFIG_INVALID');
         assert.equal(JSON.stringify(res.body).includes('secret'), false);
     } finally {
-        if (previous === undefined) delete process.env.TURN_SHARED_SECRET;
-        else process.env.TURN_SHARED_SECRET = previous;
-        delete process.env.STUN_URIS;
-        delete process.env.TURN_URIS;
+        for (const [key, value] of Object.entries(original)) {
+            if (value === undefined) delete process.env[key];
+            else process.env[key] = value;
+        }
     }
 });
