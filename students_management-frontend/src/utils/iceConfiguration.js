@@ -61,3 +61,27 @@ export function buildIceConfiguration(response, fallbackStunUri = '') {
             : null
     };
 }
+
+/** Return a bounded refresh delay that leaves time to rotate short-lived TURN credentials. */
+export function getIceCredentialRefreshDelay(expiresAt, nowMs = Date.now()) {
+    if (!Number.isFinite(expiresAt)) return null;
+    const remainingMs = Math.max(0, expiresAt * 1000 - nowMs);
+    const safetyMarginMs = Math.min(120_000, Math.max(15_000, Math.floor(remainingMs * 0.1)));
+    return Math.max(1_000, remainingMs - safetyMarginMs);
+}
+
+/** Extract ICE username fragments from all media sections in an SDP. */
+export function extractIceUfrags(sdp = '') {
+    if (typeof sdp !== 'string' || !sdp) return [];
+    return [...new Set([...sdp.matchAll(/^a=ice-ufrag:([^\\r\\n]+)/gm)]
+        .map(match => match[1].trim())
+        .filter(Boolean))];
+}
+
+/** Candidates from an earlier ICE restart must not be applied to a newer SDP. */
+export function isIceCandidateForRemoteDescription(candidate, remoteSdp = '') {
+    const usernameFragment = candidate?.usernameFragment;
+    if (!usernameFragment) return true;
+    const activeUfrags = extractIceUfrags(remoteSdp);
+    return activeUfrags.length === 0 || activeUfrags.includes(usernameFragment);
+}
