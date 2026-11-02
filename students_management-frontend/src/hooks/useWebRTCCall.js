@@ -1054,6 +1054,12 @@ export default function useWebRTCCall() {
             }
         };
 
+        const onActiveCallSyncError = data => {
+            console.warn('[CALL][active sync unavailable]', {
+                code: data?.code || 'ACTIVE_CALL_SYNC_UNAVAILABLE'
+            });
+        };
+
         const onActiveCallSnapshot = data => {
             const current = callRef.current;
             if (!current) return;
@@ -1171,9 +1177,7 @@ export default function useWebRTCCall() {
         socket.on('call:error', onError);
         socket.on('socket:rate-limit', onSocketRateLimit);
         socket.on('call:active-snapshot', onActiveCallSnapshot);
-        socket.on('call:sync-active-error', data => {
-            console.warn('[CALL][active sync unavailable]', { code: data?.code || 'ACTIVE_CALL_SYNC_UNAVAILABLE' });
-        });
+        socket.on('call:sync-active-error', onActiveCallSyncError);
 
         // Handle hooks mounted after Socket.IO has already connected.
         if (socket.connected) socket.emit('call:sync-pending');
@@ -1192,7 +1196,7 @@ export default function useWebRTCCall() {
             socket.off('call:error', onError);
             socket.off('socket:rate-limit', onSocketRateLimit);
             socket.off('call:active-snapshot', onActiveCallSnapshot);
-            socket.off('call:sync-active-error');
+            socket.off('call:sync-active-error', onActiveCallSyncError);
         };
     }, [cleanup, createPeer, addLocalTracksToPeer, failConnection, startConnectionTimeout]);
 
