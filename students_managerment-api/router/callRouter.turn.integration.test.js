@@ -13,7 +13,8 @@ const SESSION_ID = 'turn-route-test-session';
 
 const redisState = {
     isReady: true,
-    tokenUserId: String(USER_ID)
+    tokenUserId: String(USER_ID),
+    expectedRedisKey: null
 };
 const repositoryState = {
     session: { id: SESSION_ID, user_id: USER_ID, revoked_at: null, last_used_at: new Date().toISOString() },
@@ -36,7 +37,7 @@ require.cache[redisPath] = {
     loaded: true,
     exports: {
         redisClient: {
-            get: async () => redisState.tokenUserId,
+            get: async (key) => key === redisState.expectedRedisKey ? redisState.tokenUserId : null,
             get isReady() { return redisState.isReady; }
         }
     }
@@ -85,6 +86,7 @@ function tokenRedisKey(token) {
 }
 
 async function requestIce(token) {
+    redisState.expectedRedisKey = token ? tokenRedisKey(token) : null;
     return fetch(baseUrl + '/api/calls/ice-config', {
         headers: token ? { Authorization: 'Bearer ' + token } : {}
     });
