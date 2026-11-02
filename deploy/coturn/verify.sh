@@ -47,11 +47,16 @@ fi
 
 section "TURN/TLS handshake"
 if command -v timeout >/dev/null 2>&1; then
-  if timeout 8 openssl s_client -connect "${TURN_HOST}:5349" -servername "$TURN_HOST" -verify_return_error </dev/null 2>&1 | tail -n 15; then
-    printf 'Inspect the output above for Verify return code: 0 (ok).\n'
+  tls_output="$(timeout 8 openssl s_client -connect "${TURN_HOST}:5349" -servername "$TURN_HOST" -verify_return_error </dev/null 2>&1 || true)"
+  printf '%s\n' "$tls_output" | tail -n 15
+  if grep -q 'Verify return code: 0 (ok)' <<<"$tls_output"; then
+    printf '[OK] TURN/TLS handshake and certificate verification succeeded.\n'
   else
-    printf '[WARN] TLS probe did not complete; check DNS, TCP/5349 and certificate.\n'
+    printf '[FAIL] TURN/TLS handshake or certificate verification failed.\n'
+    failures=$((failures + 1))
   fi
+else
+  printf '[WARN] timeout is unavailable; skipped TLS probe.\n'
 fi
 
 printf '\nDiagnostics finished: %s failed local checks.\n' "$failures"
