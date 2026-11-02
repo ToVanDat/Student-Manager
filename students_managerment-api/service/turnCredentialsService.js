@@ -46,9 +46,9 @@ function createIceConfiguration(userId, env = process.env, nowMs = Date.now()) {
 
     const ttlRaw = env.TURN_CREDENTIAL_TTL_SECONDS;
     const ttlSeconds = ttlRaw == null || ttlRaw === ''
-        ? 600
+        ? 86400
         : Number(ttlRaw);
-    if (!Number.isInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 1800) {
+    if (!Number.isInteger(ttlSeconds) || ttlSeconds < 60 || ttlSeconds > 86400) {
         throw configurationError('TURN_CREDENTIAL_TTL_SECONDS phải nằm trong khoảng 60–1800 giây.');
     }
 
