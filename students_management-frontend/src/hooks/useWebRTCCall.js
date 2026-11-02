@@ -1064,7 +1064,7 @@ export default function useWebRTCCall() {
                 // A call that was already established must not remain in a
                 // misleading connected/reconnecting UI after the server has
                 // persisted its terminal state.
-                if (['connected', 'reconnecting'].includes(state)) {
+                if (callConnectedAtRef.current !== null || peerRef.current?.connectionState === 'connected') {
                     setError('Cuộc gọi đã kết thúc trong thời gian Socket mất kết nối.');
                     cleanup();
                 }
@@ -1171,6 +1171,9 @@ export default function useWebRTCCall() {
         socket.on('call:error', onError);
         socket.on('socket:rate-limit', onSocketRateLimit);
         socket.on('call:active-snapshot', onActiveCallSnapshot);
+        socket.on('call:sync-active-error', data => {
+            console.warn('[CALL][active sync unavailable]', { code: data?.code || 'ACTIVE_CALL_SYNC_UNAVAILABLE' });
+        });
 
         // Handle hooks mounted after Socket.IO has already connected.
         if (socket.connected) socket.emit('call:sync-pending');
@@ -1189,6 +1192,7 @@ export default function useWebRTCCall() {
             socket.off('call:error', onError);
             socket.off('socket:rate-limit', onSocketRateLimit);
             socket.off('call:active-snapshot', onActiveCallSnapshot);
+            socket.off('call:sync-active-error');
         };
     }, [cleanup, createPeer, addLocalTracksToPeer, failConnection, startConnectionTimeout]);
 
