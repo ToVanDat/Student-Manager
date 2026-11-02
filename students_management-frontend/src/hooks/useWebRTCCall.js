@@ -1180,7 +1180,10 @@ export default function useWebRTCCall() {
         socket.on('call:sync-active-error', onActiveCallSyncError);
 
         // Handle hooks mounted after Socket.IO has already connected.
-        if (socket.connected) socket.emit('call:sync-pending');
+        if (socket.connected) {
+            socket.emit('call:sync-pending');
+            socket.emit('call:sync-active');
+        }
 
         return () => {
             socket.off('connect', onSocketConnect);
