@@ -54,5 +54,5 @@ test('does not expose credential fields on STUN-only entries', () => {
         }]
     });
 
-    assert.deepEqual(result.iceServers, [{ urls: 'stun:stun.example.com:3478' }]);
+    assert.deepEqual(result.iceServers, [{ urls: ['stun:stun.example.com:3478'] }]);
 });
