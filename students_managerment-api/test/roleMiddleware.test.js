@@ -39,3 +39,11 @@ test('allows users with the required role', () => {
     assert.equal(result.statusCode, 200);
     assert.equal(result.passed, true);
 });
+
+test('requires an exact role match and rejects case variants or prefixes', () => {
+    for (const role of ['administrator', 'Admin', 'ADMIN', 'admin ']) {
+        const result = runRoleCheck({ id: 1, role });
+        assert.equal(result.statusCode, 403, role);
+        assert.equal(result.passed, false, role);
+    }
+});
