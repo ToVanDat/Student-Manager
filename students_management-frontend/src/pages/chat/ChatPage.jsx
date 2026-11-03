@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ChatLockGate from '@/components/chat/ChatLockGate.jsx';
 import { useNavigate } from 'react-router-dom';
 import { Clock3, LogOut, MoreVertical, UserRound, GraduationCap, Home, MessageSquare, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
@@ -37,12 +37,12 @@ function ChatPageContent() {
     const callNotificationIdsRef = useRef(new Set());
     const incomingToastIdsRef = useRef(new Set());
 
-    const closeCallCenter = () => {
+    const closeCallCenter = useCallback(() => {
         setCallCenterOpen(false);
         if (new URLSearchParams(window.location.search).has('calls')) {
             navigate('/chat', { replace: true });
         }
-    };
+    }, [navigate]);
 
     useEffect(() => {
         if (!user?.id) {
