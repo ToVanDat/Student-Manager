@@ -36,12 +36,12 @@ function SecuritySettings({ onOpenSessions }) {
                             {t('jwtAuthenticationDescription')}
                         </span>
                     </div>
-                    <span className="rounded-full bg-green-50 px-2 py-1 text-[11px] font-bold text-green-700 dark:bg-green-950 dark:text-green-300">
+                    <span role="status" className="rounded-full bg-green-50 px-2 py-1 text-[11px] font-bold text-green-700 dark:bg-green-950 dark:text-green-300">
                         {t('active')}
                     </span>
                 </div>
 
-                <div className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
+                <div className="settings-security-row grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
                     <div className="flex size-10 items-center justify-center rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                         <KeyRound size={20} />
                     </div>
@@ -78,7 +78,7 @@ function SecuritySettings({ onOpenSessions }) {
                     </span>
                 </div>
 
-                <div className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-700 max-[640px]:grid-cols-[40px_minmax(0,1fr)]">
+                <div className="settings-security-row grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
                     <div className="flex size-10 items-center justify-center rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                         <Globe size={20} />
                     </div>
@@ -92,7 +92,7 @@ function SecuritySettings({ onOpenSessions }) {
                     </div>
                     <button
                         type="button"
-                        className="inline-flex items-center justify-center rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 max-[640px]:col-start-2 max-[640px]:justify-self-start dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                        className="inline-flex min-h-10 items-center justify-center rounded-md border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                         onClick={onOpenSessions}
                     >
                         {t('viewSessions')}
