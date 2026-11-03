@@ -664,5 +664,8 @@
   "registerSecurityStepTitle": "Thiết lập mật khẩu",
   "registerSecurityStepDescription": "Tạo mật khẩu và xác nhận để hoàn tất đăng ký.",
   "continue": "Tiếp tục",
-  "backToAccountDetails": "Quay lại thông tin"
+  "backToAccountDetails": "Quay lại thông tin",
+  "authModeLogin": "CỔNG SINH VIÊN",
+  "authModeRegister": "TẠO TÀI KHOẢN",
+  "authModeRecovery": "KHÔI PHỤC TÀI KHOẢN"
 }
