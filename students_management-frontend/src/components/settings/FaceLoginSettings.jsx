@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, ShieldCheck, ShieldAlert, Trash2, Video, VideoOff } from 'lucide-react';
+import { Camera, ShieldCheck, ShieldAlert, Trash2, Video, VideoOff, KeyRound, X } from 'lucide-react';
 import {
     beginFaceEnrollmentApi,
     cancelFaceEnrollmentApi,
@@ -42,6 +42,9 @@ export default function FaceLoginSettings() {
     const [cameraActive, setCameraActive] = useState(false);
     const [progress, setProgress] = useState(0);
     const [instruction, setInstruction] = useState('');
+    const [confirmationAction, setConfirmationAction] = useState(null);
+    const [confirmationPassword, setConfirmationPassword] = useState('');
+    const [confirmationError, setConfirmationError] = useState('');
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const mountedRef = useRef(true);
@@ -77,8 +80,7 @@ export default function FaceLoginSettings() {
         };
     }, [refresh]);
 
-    const enroll = async () => {
-        const currentPassword = window.prompt('Nhập mật khẩu Student Manager để xác nhận đăng ký khuôn mặt:');
+    const enroll = async (currentPassword) => {
         if (!currentPassword) return;
         cancelledRef.current = false;
         setBusy(true);
@@ -150,9 +152,7 @@ export default function FaceLoginSettings() {
         }
     };
 
-    const disable = async () => {
-        if (!window.confirm('Vô hiệu hóa Face Login trên tài khoản này?')) return;
-        const currentPassword = window.prompt('Nhập mật khẩu Student Manager để xác nhận vô hiệu hóa Face Login:');
+    const disable = async (currentPassword) => {
         if (!currentPassword) return;
         setBusy(true);
         setError('');
@@ -166,11 +166,39 @@ export default function FaceLoginSettings() {
         }
     };
 
+    const requestConfirmation = action => {
+        setConfirmationAction(action);
+        setConfirmationPassword('');
+        setConfirmationError('');
+    };
+
+    const closeConfirmation = () => {
+        if (busy) return;
+        setConfirmationAction(null);
+        setConfirmationPassword('');
+        setConfirmationError('');
+    };
+
+    const submitConfirmation = event => {
+        event.preventDefault();
+        if (!confirmationPassword) {
+            setConfirmationError('Vui lòng nhập mật khẩu tài khoản để tiếp tục.');
+            return;
+        }
+        const password = confirmationPassword;
+        const action = confirmationAction;
+        setConfirmationAction(null);
+        setConfirmationPassword('');
+        setConfirmationError('');
+        if (action === 'enroll') void enroll(password);
+        if (action === 'disable') void disable(password);
+    };
+
     const configured = Boolean(status?.configured);
     const available = Boolean(status?.enrollmentAvailable && status?.loginAvailable);
 
     return (
-        <section className="mb-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
+        <section data-ui-region="face-login" aria-busy={busy || loading} className="relative mb-5 min-w-0 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
             <div className="mb-2 flex items-center gap-2">
                 <Camera size={19} className="text-indigo-600" />
                 <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Face Login · Nhận diện khuôn mặt</h3>
@@ -204,13 +232,13 @@ export default function FaceLoginSettings() {
             )}
             {instruction && <p className="mb-3 text-xs font-medium text-indigo-700 dark:text-indigo-300">{instruction}</p>}
             <div className="flex flex-wrap items-center gap-2">
-                <button type="button" disabled={busy || loading || !available || configured} onClick={enroll}
+                <button type="button" disabled={busy || loading || !available || configured} onClick={() => requestConfirmation('enroll')}
                     title={!available ? 'Đang chờ kiểm định pipeline server' : configured ? 'Tài khoản đã có face credential' : 'Đăng ký khuôn mặt'}
                     className="inline-flex h-9 items-center gap-2 rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">
                     {busy ? <Video size={15} /> : <Camera size={15} />}
                     {busy ? 'Đang xử lý…' : 'Đăng ký khuôn mặt'}
                 </button>
-                {configured && <button type="button" disabled={busy || loading} onClick={disable}
+                {configured && <button type="button" disabled={busy || loading} onClick={() => requestConfirmation('disable')}
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30">
                     <Trash2 size={14} /> Vô hiệu hóa
                 </button>}
@@ -222,6 +250,31 @@ export default function FaceLoginSettings() {
             </div>
             {status?.credential?.enrolledAt && <p className="mb-0 mt-3 text-[11px] text-slate-400">Đăng ký: {new Date(status.credential.enrolledAt).toLocaleString()}</p>}
             {error && <p role="alert" className="mb-0 mt-3 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
+            {confirmationAction && (
+                <div className="fixed inset-0 z-[12000] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) closeConfirmation(); }}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="face-login-confirm-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+                        <header className="mb-4 flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-start gap-3">
+                                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"><KeyRound size={19} /></span>
+                                <div className="min-w-0">
+                                    <h4 id="face-login-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmationAction === 'enroll' ? 'Xác nhận đăng ký Face Login' : 'Xác nhận vô hiệu hóa Face Login'}</h4>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Nhập mật khẩu Student Manager để xác minh tài khoản trước khi tiếp tục.</p>
+                                </div>
+                            </div>
+                            <button type="button" onClick={closeConfirmation} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Đóng hộp thoại"><X size={17} /></button>
+                        </header>
+                        <form onSubmit={submitConfirmation} className="grid gap-3">
+                            <label htmlFor="face-login-confirm-password" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mật khẩu tài khoản</label>
+                            <input id="face-login-confirm-password" type="password" autoComplete="current-password" autoFocus value={confirmationPassword} onChange={event => setConfirmationPassword(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" required />
+                            {confirmationError && <p role="alert" className="m-0 text-xs text-rose-600 dark:text-rose-300">{confirmationError}</p>}
+                            <div className="mt-2 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                                <button type="button" onClick={closeConfirmation} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                                <button type="submit" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-semibold text-white hover:bg-indigo-700"><ShieldCheck size={15} /> Xác nhận</button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+            )}
         </section>
     );
 }
