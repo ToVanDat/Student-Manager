@@ -668,5 +668,6 @@
   "authModeLogin": "STUDENT PORTAL",
   "authModeRegister": "CREATE ACCOUNT",
   "authModeRecovery": "ACCOUNT RECOVERY",
-  "authBannerCarousel": "Student Manager introduction"
+  "authBannerCarousel": "Student Manager introduction",
+  "passwordMinimumHint": "Your new password must contain at least 8 characters."
 }
