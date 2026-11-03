@@ -655,5 +655,14 @@
   "studentImportFailed": "Could not import the CSV. Check the file and try again.",
   "chatComposerPlaceholder": "Type a message...",
   "chatComposerLabel": "Message composer",
-  "loginSecurityNote": "Your sign-in is protected by a secure authentication session."
+  "loginSecurityNote": "Your sign-in is protected by a secure authentication session.",
+  "registerStepAccount": "Account details",
+  "registerStepSecurity": "Security",
+  "registerAccountStepTitle": "Start with your account details",
+  "registerAccountStepDescription": "Enter the username and email address you want to associate with your account.",
+  "registerEmailHint": "Use an email address you can access for account notifications.",
+  "registerSecurityStepTitle": "Set your password",
+  "registerSecurityStepDescription": "Create and confirm a password to finish registration.",
+  "continue": "Continue",
+  "backToAccountDetails": "Back to details"
 }
