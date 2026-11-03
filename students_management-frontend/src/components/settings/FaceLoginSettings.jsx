@@ -194,6 +194,15 @@ export default function FaceLoginSettings() {
         if (action === 'disable') void disable(password);
     };
 
+    useEffect(() => {
+        if (!confirmationAction) return undefined;
+        const handleKeyDown = event => {
+            if (event.key === 'Escape' && !busy) closeConfirmation();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [confirmationAction, busy]);
+
     const configured = Boolean(status?.configured);
     const available = Boolean(status?.enrollmentAvailable && status?.loginAvailable);
 
@@ -258,7 +267,7 @@ export default function FaceLoginSettings() {
                                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"><KeyRound size={19} /></span>
                                 <div className="min-w-0">
                                     <h4 id="face-login-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmationAction === 'enroll' ? 'Xác nhận đăng ký Face Login' : 'Xác nhận vô hiệu hóa Face Login'}</h4>
-                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Nhập mật khẩu Student Manager để xác minh tài khoản trước khi tiếp tục.</p>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{confirmationAction === 'enroll' ? 'Nhập mật khẩu Student Manager để xác minh tài khoản trước khi bật camera và bắt đầu đăng ký.' : 'Nhập mật khẩu Student Manager để xác minh tài khoản. Face Login sẽ không còn dùng được cho lần đăng nhập tiếp theo.'}</p>
                                 </div>
                             </div>
                             <button type="button" onClick={closeConfirmation} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label="Đóng hộp thoại"><X size={17} /></button>
