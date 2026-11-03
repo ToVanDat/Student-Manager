@@ -100,7 +100,8 @@ export default function ChatSidebar({
             (filter === 'all' || item.unreadCount > 0);
     });
 
-    const closeNewChat = () => {
+    const closeNewChat = (force = false) => {
+        if (!force && (creatingGroup || startingDirectId)) return;
         setShowNewChat(false);
         setNewChatError('');
         setStartingDirectId(null);
@@ -130,7 +131,7 @@ export default function ChatSidebar({
                 throw new Error('Không nhận được conversation từ server');
             }
 
-            closeNewChat();
+            closeNewChat(true);
         } catch (error) {
             console.error('Không thể mở cuộc trò chuyện:', error);
             setNewChatError(
@@ -150,7 +151,7 @@ export default function ChatSidebar({
             setNewChatError('');
             setCreatingGroup(true);
             await onStartGroupConversation(groupName.trim(), selectedIds);
-            closeNewChat();
+            closeNewChat(true);
         } catch (error) {
             console.error('Không thể tạo group:', error);
             setNewChatError(error?.response?.data?.message || error?.message || 'Không thể tạo nhóm. Vui lòng thử lại.');
@@ -210,6 +211,7 @@ export default function ChatSidebar({
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder={t("groupNamePlaceholder")}
+                            aria-label={t("groupNamePlaceholder")}
                             className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                         />
                     )}
@@ -219,6 +221,7 @@ export default function ChatSidebar({
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder={mode === 'group' ? t('findSelectMembers') : t('findUsernameEmail')}
+                        aria-label={mode === 'group' ? t('findSelectMembers') : t('findUsernameEmail')}
                         className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                     />
 
