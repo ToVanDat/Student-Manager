@@ -45,7 +45,7 @@ function requirePipelineConfig() {
     let templateKey;
     const rawKeyVersion = process.env.FACE_TEMPLATE_KEY_VERSION || '1';
     const keyVersion = Number(rawKeyVersion);
-    if (!/^[1-9]\\d*$/.test(rawKeyVersion) ||
+    if (!/^[1-9]\d*$/.test(rawKeyVersion) ||
         !Number.isSafeInteger(keyVersion) || keyVersion < 1 || keyVersion > 32767) {
         throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'FACE_TEMPLATE_KEY_VERSION không hợp lệ.');
     }
