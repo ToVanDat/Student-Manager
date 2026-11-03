@@ -96,8 +96,6 @@
 .auth-login-card {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  backdrop-filter: blur(18px);
 }
 .auth-login-card::before {
   position: absolute;
