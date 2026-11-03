@@ -69,16 +69,9 @@ module.exports = {
     resolveAttachmentUploadConversation,
     registerDevice: run(req => e2eeRelayService.registerDevice(Number(req.user.id), req.body)),
     getDevices: run(req => e2eeRelayService.getDevices(Number(req.user.id), Number(req.params.userId))),
-    getIdentityKey: run(async req => {
-        const userId = Number(req.params.userId);
-        const identityType = req.query.identityType || 'aci';
-        if (!Number.isSafeInteger(userId) || userId <= 0 || !['aci', 'pni'].includes(identityType)) {
-            const error = new Error('userId hoặc identityType không hợp lệ');
-            error.statusCode = 400;
-            throw error;
-        }
-        return require('../repository/e2eeRelayRepository').getIdentityKey(userId, identityType);
-    }),
+    getIdentityKey: run(req => e2eeRelayService.getIdentityKey(
+        Number(req.user.id), Number(req.params.userId), req.query.identityType || 'aci'
+    )),
     getActiveDevices: run(req => e2eeRelayService.getActiveDevices(
         Number(req.user.id), Number(req.params.userId)
     )),

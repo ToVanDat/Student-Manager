@@ -2,6 +2,12 @@ const conversationRepository = require('../repository/conversationRepository');
 const { canRemoveMember, canChangeMemberRole } = require('./groupAuthorization');
 const userRepository = require('../repository/userRepository');
 
+const createConversationError = (message, statusCode) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
 const getOrCreateDirectConversation = async (currentUserId, targetUserId) => {
     if (currentUserId === targetUserId) {
         throw new Error('Không thể tạo conversation với chính mình');
@@ -189,7 +195,9 @@ const reportConversation = async (conversationId, userId, targetUserId, reason, 
 
 const getConversationMembers = async (conversationId, userId) => {
     if (!await conversationRepository.isConversationMember(conversationId, userId)) {
-        throw new Error('Bạn không thuộc conversation này');
+        const error = new Error('Bạn không thuộc conversation này');
+        error.statusCode = 403;
+        throw error;
     }
     return conversationRepository.getConversationMembers(conversationId);
 };
@@ -197,7 +205,7 @@ const getConversationMembers = async (conversationId, userId) => {
 const createGroupConversation = async (ownerId, memberIds, name, avatarUrl = null) => {
     const normalizedName = typeof name === 'string' ? name.trim() : '';
     if (!normalizedName || normalizedName.length > 120) {
-        throw new Error('Tên nhóm không hợp lệ');
+        throw createConversationError('Tên nhóm không hợp lệ', 400);
     }
 
     const ids = [...new Set(
@@ -207,13 +215,13 @@ const createGroupConversation = async (ownerId, memberIds, name, avatarUrl = nul
     )];
 
     if (ids.length < 1) {
-        throw new Error('Nhóm phải có ít nhất 2 thành viên');
+        throw createConversationError('Nhóm phải có ít nhất 2 thành viên', 400);
     }
 
     const users = [];
     for (const id of ids) {
         const user = await userRepository.findActiveUserById(id);
-        if (!user) throw new Error('Một hoặc nhiều người dùng không tồn tại hoặc đã bị khóa');
+        if (!user) throw createConversationError('Một hoặc nhiều người dùng không tồn tại hoặc đã bị khóa', 404);
         users.push(user);
     }
 
@@ -228,17 +236,17 @@ const createGroupConversation = async (ownerId, memberIds, name, avatarUrl = nul
 const updateGroupConversation = async (conversationId, actorId, name, avatarUrl = null) => {
     const normalizedName = typeof name === 'string' ? name.trim() : '';
     if (!normalizedName || normalizedName.length > 120) {
-        throw new Error('Tên nhóm không hợp lệ');
+        throw createConversationError('Tên nhóm không hợp lệ', 400);
     }
 
     const conversation = await conversationRepository.getConversationInfo(conversationId);
     if (!conversation || conversation.type !== 'group') {
-        throw new Error('Conversation không phải group');
+        throw createConversationError('Conversation không phải group', 404);
     }
 
     const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
     if (actorRole !== 'owner') {
-        throw new Error('Chỉ trưởng nhóm mới có quyền cập nhật thông tin nhóm');
+        throw createConversationError('Chỉ trưởng nhóm mới có quyền cập nhật thông tin nhóm', 403);
     }
 
     const updated = await conversationRepository.updateGroupConversation(
@@ -247,47 +255,56 @@ const updateGroupConversation = async (conversationId, actorId, name, avatarUrl 
         avatarUrl
     );
 
-    if (!updated) throw new Error('Không thể cập nhật thông tin nhóm');
+    if (!updated) throw createConversationError('Không thể cập nhật thông tin nhóm', 409);
     return updated;
 };
 
 const addGroupMember = async (conversationId, actorId, targetUserId) => {
     const conversation = await conversationRepository.getConversationInfo(conversationId);
     if (!conversation || conversation.type !== 'group') {
-        throw new Error('Conversation không phải group');
+        throw createConversationError('Conversation không phải group', 404);
     }
 
     const role = await conversationRepository.getMemberRole(conversationId, actorId);
     if (!['owner', 'admin'].includes(role)) {
-        throw new Error('Bạn không có quyền thêm thành viên');
+        throw createConversationError('Bạn không có quyền thêm thành viên', 403);
     }
 
     const target = await userRepository.findActiveUserById(targetUserId);
-    if (!target) throw new Error('Người dùng không tồn tại hoặc đã bị khóa');
+    if (!target) throw createConversationError('Người dùng không tồn tại hoặc đã bị khóa', 404);
 
     const existingRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
     if (existingRole !== null) {
-        throw new Error('Người dùng đã là thành viên của group');
+        throw createConversationError('Người dùng đã là thành viên của group', 409);
     }
 
-    return conversationRepository.addMember(conversationId, targetUserId, 'member');
+    try {
+        return await conversationRepository.addMember(conversationId, targetUserId, 'member');
+    } catch (error) {
+        // A concurrent add may pass the membership pre-check in another request.
+        // Translate the membership uniqueness race into a stable conflict response.
+        if (error?.code === '23505') {
+            throw createConversationError('Người dùng đã là thành viên của group', 409);
+        }
+        throw error;
+    }
 };
 
 const removeGroupMember = async (conversationId, actorId, targetUserId) => {
     const conversation = await conversationRepository.getConversationInfo(conversationId);
-    if (!conversation || conversation.type !== 'group') throw new Error('Conversation không phải group');
+    if (!conversation || conversation.type !== 'group') throw createConversationError('Conversation không phải group', 404);
 
     const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
     const targetRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
 
-    if (targetRole === null) throw new Error('Thành viên không tồn tại');
-    if (targetRole === 'owner') throw new Error('Không thể xoá trưởng nhóm');
+    if (targetRole === null) throw createConversationError('Thành viên không tồn tại', 404);
+    if (targetRole === 'owner') throw createConversationError('Không thể xoá trưởng nhóm', 409);
 
     if (!canRemoveMember(actorRole, targetRole)) {
         if (actorRole === 'admin' && targetRole !== 'member') {
-            throw new Error('Admin chỉ có thể xoá member');
+            throw createConversationError('Admin chỉ có thể xoá member', 403);
         }
-        throw new Error('Bạn không có quyền xoá thành viên');
+        throw createConversationError('Bạn không có quyền xoá thành viên', 403);
     }
 
     return conversationRepository.removeMember(conversationId, targetUserId);
@@ -295,33 +312,33 @@ const removeGroupMember = async (conversationId, actorId, targetUserId) => {
 
 const leaveGroup = async (conversationId, userId) => {
     const conversation = await conversationRepository.getConversationInfo(conversationId);
-    if (!conversation || conversation.type !== 'group') throw new Error('Conversation không phải group');
+    if (!conversation || conversation.type !== 'group') throw createConversationError('Conversation không phải group', 404);
 
     const role = await conversationRepository.getMemberRole(conversationId, userId);
-    if (role === null) throw new Error('Bạn không thuộc group này');
-    if (role === 'owner') throw new Error('Trưởng nhóm phải chuyển quyền trước khi rời nhóm');
+    if (role === null) throw createConversationError('Bạn không thuộc group này', 403);
+    if (role === 'owner') throw createConversationError('Trưởng nhóm phải chuyển quyền trước khi rời nhóm', 409);
 
     return conversationRepository.removeMember(conversationId, userId);
 };
 
 const updateGroupMemberRole = async (conversationId, actorId, targetUserId, nextRole) => {
     if (!['owner', 'admin', 'member'].includes(nextRole)) {
-        throw new Error('Role không hợp lệ');
+        throw createConversationError('Role không hợp lệ', 400);
     }
 
     const conversation = await conversationRepository.getConversationInfo(conversationId);
-    if (!conversation || conversation.type !== 'group') throw new Error('Conversation không phải group');
+    if (!conversation || conversation.type !== 'group') throw createConversationError('Conversation không phải group', 404);
 
     const actorRole = await conversationRepository.getMemberRole(conversationId, actorId);
     const targetRole = await conversationRepository.getMemberRole(conversationId, targetUserId);
 
-    if (targetRole === null) throw new Error('Thành viên không tồn tại');
+    if (targetRole === null) throw createConversationError('Thành viên không tồn tại', 404);
     if (!canChangeMemberRole(actorRole, targetRole, actorId, targetUserId, nextRole)) {
-        if (actorRole !== 'owner') throw new Error('Chỉ trưởng nhóm mới có quyền thay đổi role');
+        if (actorRole !== 'owner') throw createConversationError('Chỉ trưởng nhóm mới có quyền thay đổi role', 403);
         if (Number(targetUserId) === Number(actorId) && nextRole !== 'owner') {
-            throw new Error('Không thể tự hạ quyền trưởng nhóm');
+            throw createConversationError('Không thể tự hạ quyền trưởng nhóm', 409);
         }
-        throw new Error('Không thể thay đổi role thành viên này');
+        throw createConversationError('Không thể thay đổi role thành viên này', 409);
     }
 
     if (nextRole === 'owner') {

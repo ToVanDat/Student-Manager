@@ -113,5 +113,70 @@ hr { border-color: var(--ui-line); }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  /* Keep non-motion feedback (focus, validation, color/state changes) available. */
+}
+
+
+/* Assistant workspace responsive and keyboard-safe refinements. Scoped to the
+   assistant so existing chat, auth and management layouts are not affected. */
+.student-assistant-dialog {
+  width: min(460px, calc(100vw - 32px));
+  min-width: 0;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.student-assistant-dialog > header {
+  padding-top: max(.75rem, env(safe-area-inset-top));
+}
+.student-assistant-composer {
+  padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+}
+.student-assistant-composer-form {
+  min-width: 0;
+  gap: .5rem;
+}
+.student-assistant-composer-form textarea {
+  min-width: 0;
+  max-height: min(9rem, 24dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  resize: vertical;
+  scrollbar-width: thin;
+}
+.student-assistant-composer-form button {
+  flex: 0 0 2.5rem;
+}
+@media (max-width: 639px) {
+  .student-assistant-dialog {
+    inset-inline: 0;
+    bottom: 0;
+    width: 100%;
+    height: min(92dvh, 860px);
+    max-height: calc(100dvh - env(safe-area-inset-top));
+    border-radius: 24px 24px 0 0;
+  }
+  .student-assistant-dialog > header {
+    padding-inline: max(1rem, env(safe-area-inset-left));
+  }
+  .student-assistant-composer {
+    padding-inline: max(.75rem, env(safe-area-inset-left));
+    padding-right: max(.75rem, env(safe-area-inset-right));
+  }
+  .student-assistant-composer-form {
+    min-height: 60px;
+    border-radius: 16px;
+    padding-inline: .75rem;
+  }
+  .student-assistant-composer-form textarea {
+    max-height: min(7rem, 20dvh);
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .student-assistant-dialog *,
+  .student-assistant-composer-form * {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
 }

@@ -1,52 +1,13 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { Monitor, Smartphone } from 'lucide-react';
+import { apiClient } from '@/api/client.js';
 import {
     getSessionsApi,
     revokeOtherSessionsApi,
     revokeSessionApi,
 } from '@/api/sessionApi.js';
-import { API_BASE_URL } from '@/utils/constants.js';
 
-function getCurrentSessionFromToken() {
-    try {
-        const token = localStorage.getItem('accessToken');
-
-        if (!token) {
-            return null;
-        }
-
-        const parts = token.split('.');
-
-        if (parts.length !== 3) {
-            return null;
-        }
-
-        const base64 = parts[1]
-            .replace(/-/g, '+')
-            .replace(/_/g, '/')
-            .padEnd(parts[1].length + ((4 - (parts[1].length % 4)) % 4), '=');
-        const payload = JSON.parse(
-            decodeURIComponent(
-                atob(base64)
-                    .split('')
-                    .map(
-                        (character) =>
-                            '%' +
-                            ('00' + character.charCodeAt(0).toString(16)).slice(-2),
-                    )
-                    .join(''),
-            ),
-        );
-
-        return payload;
-    } catch (error) {
-        console.error('Không thể đọc access token:', error);
-        return null;
-    }
-}
-
-export function useStudentSettings(user) {
+export function useStudentSettings(user, updateUser) {
     const [settingsTab, setSettingsTab] = useState('account');
     const [sessions, setSessions] = useState([]);
     const [sessionsLoading, setSessionsLoading] = useState(false);
@@ -54,10 +15,12 @@ export function useStudentSettings(user) {
     const [currentSessionId, setCurrentSessionId] = useState(null);
     const [accountForm, setAccountForm] = useState({
         username: user?.username || '',
+        full_name: user?.full_name || '',
         email: user?.email || '',
     });
     const [accountSaving, setAccountSaving] = useState(false);
     const [accountMessage, setAccountMessage] = useState('');
+    const [accountError, setAccountError] = useState('');
     const [passwordForm, setPasswordForm] = useState({
         currentPassword: '',
         newPassword: '',
@@ -70,6 +33,7 @@ export function useStudentSettings(user) {
     useEffect(() => {
         setAccountForm({
             username: user?.username || '',
+            full_name: user?.full_name || '',
             email: user?.email || '',
         });
     }, [user]);
@@ -87,9 +51,9 @@ export function useStudentSettings(user) {
                   : [];
 
             setSessions(sessionList);
-
-            const payload = getCurrentSessionFromToken();
-            setCurrentSessionId(payload?.sessionId || payload?.session_id || null);
+            // The backend derives this from the verified access token. AT is
+            // intentionally memory-only, so the UI must not read localStorage.
+            setCurrentSessionId(data?.currentSessionId ?? null);
         } catch (error) {
             console.error('LOAD SESSIONS ERROR:', error);
             setSessionsError(
@@ -134,29 +98,43 @@ export function useStudentSettings(user) {
 
     const handleUpdateAccount = async (event) => {
         event.preventDefault();
-        setAccountSaving(true);
         setAccountMessage('');
+        setAccountError('');
 
+        const fullName = String(accountForm.full_name || '').trim();
+        const email = String(accountForm.email || '').trim().toLowerCase();
+        if (!fullName) {
+            setAccountError('Vui lòng nhập tên hiển thị.');
+            return;
+        }
+        if (fullName.length > 120) {
+            setAccountError('Tên hiển thị không được vượt quá 120 ký tự.');
+            return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
+            setAccountError('Vui lòng nhập địa chỉ email hợp lệ.');
+            return;
+        }
+
+        setAccountSaving(true);
         try {
-            const accessToken = localStorage.getItem('accessToken');
-            await axios.patch(
-                `${API_BASE_URL}/api/auth/me`,
-                {
-                    username: accountForm.username,
-                    email: accountForm.email,
-                },
-                {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${accessToken}` },
-                },
-            );
+            const response = await apiClient.patch('/api/auth/me', {
+                full_name: fullName,
+                email,
+            });
 
+            if (response.data?.user) {
+                updateUser?.(response.data.user);
+                setAccountForm({
+                    username: response.data.user.username || user?.username || '',
+                    full_name: response.data.user.full_name || '',
+                    email: response.data.user.email || '',
+                });
+            }
             setAccountMessage('Cập nhật thông tin tài khoản thành công.');
         } catch (error) {
             console.error('UPDATE ACCOUNT ERROR:', error);
-            setAccountMessage(
-                error.response?.data?.message || 'Cập nhật tài khoản thất bại.',
-            );
+            setAccountError(error.response?.data?.message || 'Cập nhật tài khoản thất bại.');
         } finally {
             setAccountSaving(false);
         }
@@ -188,17 +166,11 @@ export function useStudentSettings(user) {
 
         try {
             setPasswordSaving(true);
-            const accessToken = localStorage.getItem('accessToken');
-
-            await axios.post(
-                `${API_BASE_URL}/api/auth/change-password`,
+            await apiClient.post(
+                '/api/auth/change-password',
                 {
                     currentPassword: passwordForm.currentPassword,
                     newPassword: passwordForm.newPassword,
-                },
-                {
-                    withCredentials: true,
-                    headers: { Authorization: `Bearer ${accessToken}` },
                 },
             );
 
@@ -261,6 +233,7 @@ export function useStudentSettings(user) {
         setAccountForm,
         accountSaving,
         accountMessage,
+        accountError,
         passwordForm,
         setPasswordForm,
         passwordSaving,

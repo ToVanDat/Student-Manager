@@ -210,6 +210,18 @@ const authMiddleware = async (
             });
         }
 
+        // Keep the session's last-active timestamp useful without writing to
+        // PostgreSQL on every authenticated API request. This is best-effort
+        // telemetry and must never block an otherwise valid authenticated call.
+        const lastUsedAt = session.last_used_at ? new Date(session.last_used_at).getTime() : 0;
+        if (!lastUsedAt || Date.now() - lastUsedAt >= 60_000) {
+            try {
+                await authRepository.updateSessionLastUsed(decoded.sessionId);
+            } catch (lastUsedError) {
+                console.warn('[AUTH] Could not update session last_used_at:', lastUsedError.message);
+            }
+        }
+
 
         // ==================================================
         // 11. LOAD CURRENT USER STATE

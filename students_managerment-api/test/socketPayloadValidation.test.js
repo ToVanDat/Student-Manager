@@ -1,11 +1,13 @@
 const test = require('node:test');
+const { EventEmitter } = require('node:events');
 const assert = require('node:assert/strict');
 
 const {
     MAX_SESSION_DESCRIPTION_BYTES,
     MAX_ICE_CANDIDATE_BYTES,
     isValidSessionDescription,
-    isValidIceCandidate
+    isValidIceCandidate,
+    installSocketEventValidation
 } = require('../service/socketPayloadValidation');
 
 test('accepts bounded WebRTC offer and answer descriptions', () => {
@@ -44,4 +46,119 @@ test('rejects malformed and oversized ICE candidate fields', () => {
     assert.equal(isValidIceCandidate({ candidate: 'x', sdpMLineIndex: -1 }), false);
     assert.equal(isValidIceCandidate({ candidate: 'x', sdpMLineIndex: 1.5 }), false);
     assert.equal(isValidIceCandidate({ candidate: 'x', usernameFragment: 42 }), false);
+});
+
+test('normalizes malformed Socket.IO event payloads to an empty object', () => {
+    const { normalizeSocketPayload } = require('../service/socketPayloadValidation');
+    assert.deepEqual(normalizeSocketPayload(null), {});
+    assert.deepEqual(normalizeSocketPayload(undefined), {});
+    assert.deepEqual(normalizeSocketPayload('unexpected'), {});
+    assert.deepEqual(normalizeSocketPayload(42), {});
+    assert.deepEqual(normalizeSocketPayload([]), {});
+    const payload = { conversationId: 12 };
+    assert.equal(normalizeSocketPayload(payload), payload);
+});
+
+test('preserves Socket.IO acknowledgements when a client omits its payload', () => {
+    const { normalizeSocketEventArgs } = require('../service/socketPayloadValidation');
+    const acknowledge = () => {};
+    assert.deepEqual(normalizeSocketEventArgs(acknowledge), [{}, acknowledge]);
+    const payload = { messageId: 9 };
+    assert.deepEqual(normalizeSocketEventArgs(payload, acknowledge), [payload, acknowledge]);
+    assert.deepEqual(normalizeSocketEventArgs(null, acknowledge), [{}, acknowledge]);
+});
+
+
+test('wrapped Socket.IO listeners preserve their receiver and acknowledgement arguments', () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const receiver = { marker: 'socket' };
+    let received;
+    const listener = function (payload, acknowledge) {
+        received = { receiver: this, payload, acknowledge };
+    };
+    const acknowledge = () => {};
+    wrapSocketEventListener(listener).call(receiver, null, acknowledge);
+    assert.equal(received.receiver, receiver);
+    assert.deepEqual(received.payload, {});
+    assert.equal(received.acknowledge, acknowledge);
+});
+
+
+test('wrapped async Socket.IO listener failures are reported without unhandled rejections', async () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const receiver = { marker: 'socket' };
+    const reported = [];
+    const listener = async function (payload, acknowledge) {
+        assert.equal(this, receiver);
+        assert.deepEqual(payload, {});
+        assert.equal(typeof acknowledge, 'function');
+        throw Object.assign(new Error('private database detail'), { code: 'DB_UNAVAILABLE' });
+    };
+    const wrapped = wrapSocketEventListener(listener, (error, socket) => {
+        reported.push({ code: error.code, socket });
+    });
+
+    await assert.doesNotReject(wrapped.call(receiver, null, () => {}));
+    assert.deepEqual(reported, [{ code: 'DB_UNAVAILABLE', socket: receiver }]);
+});
+
+test('wrapped synchronous Socket.IO listener failures use the same error callback', () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const receiver = { marker: 'socket' };
+    let reported;
+    const wrapped = wrapSocketEventListener(() => {
+        throw new Error('internal detail');
+    }, (error, socket) => {
+        reported = { message: error.message, socket };
+    });
+
+    assert.doesNotThrow(() => wrapped.call(receiver, {}));
+    assert.deepEqual(reported, { message: 'internal detail', socket: receiver });
+});
+
+test('wrapped Socket.IO listeners preserve normal return values without an error callback', () => {
+    const { wrapSocketEventListener } = require('../service/socketPayloadValidation');
+    const wrapped = wrapSocketEventListener(payload => payload.value);
+    assert.equal(wrapped({ value: 42 }), 42);
+});
+
+
+test('Socket.IO validation preserves once listener single-fire behavior', () => {
+    const socket = installSocketEventValidation(new EventEmitter(), () => {});
+    let calls = 0;
+    socket.once('sample:event', () => { calls += 1; });
+
+    socket.emit('sample:event', { value: 1 });
+    socket.emit('sample:event', { value: 2 });
+
+    assert.equal(calls, 1);
+    assert.equal(socket.listenerCount('sample:event'), 0);
+});
+
+test('Socket.IO validation preserves off and removeListener callback identity', () => {
+    const socket = installSocketEventValidation(new EventEmitter(), () => {});
+    let calls = 0;
+    const offListener = () => { calls += 1; };
+    const removeListener = () => { calls += 10; };
+
+    socket.on('off:event', offListener);
+    socket.on('remove:event', removeListener);
+    socket.off('off:event', offListener);
+    socket.removeListener('remove:event', removeListener);
+
+    socket.emit('off:event', {});
+    socket.emit('remove:event', {});
+
+    assert.equal(calls, 0);
+    assert.equal(socket.listenerCount('off:event'), 0);
+    assert.equal(socket.listenerCount('remove:event'), 0);
+});
+
+test('Socket.IO validation leaves reserved lifecycle listeners unwrapped', () => {
+    const socket = new EventEmitter();
+    const listener = () => {};
+    installSocketEventValidation(socket, () => {}, ['disconnect']);
+    socket.on('disconnect', listener);
+
+    assert.equal(socket.listeners('disconnect')[0], listener);
 });

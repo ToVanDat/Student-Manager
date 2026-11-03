@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, LoaderCircle, RefreshCw, Save, ShieldAlert, ShieldCheck, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/api/client.js';
@@ -15,12 +15,15 @@ export default function PermissionsOverview() {
   const [loadError, setLoadError] = useState('');
   const [savingRole, setSavingRole] = useState('');
   const [activeRole, setActiveRole] = useState('user');
+  const requestVersionRef = useRef(0);
 
   const load = useCallback(async () => {
+    const requestVersion = ++requestVersionRef.current;
     setLoading(true);
     setLoadError('');
     try {
       const response = await apiClient.get('/api/permissions');
+      if (requestVersion !== requestVersionRef.current) return;
       const rows = Array.isArray(response.data?.data) ? response.data.data : [];
       setPermissions(rows);
       setDrafts({
@@ -28,13 +31,17 @@ export default function PermissionsOverview() {
         user: Object.fromEntries(rows.map(item => [item.permission_key, Boolean(item.user_allowed)])),
       });
     } catch (error) {
+      if (requestVersion !== requestVersionRef.current) return;
       setLoadError(error?.response?.data?.message || (en ? 'Could not load permissions. Apply the database migration and try again.' : 'Không thể tải quyền. Hãy áp dụng migration cơ sở dữ liệu rồi thử lại.'));
     } finally {
-      setLoading(false);
+      if (requestVersion === requestVersionRef.current) setLoading(false);
     }
   }, [en]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return () => { requestVersionRef.current += 1; };
+  }, [load]);
 
   const grouped = useMemo(() => MODULE_ORDER.map(moduleKey => ({
     moduleKey,

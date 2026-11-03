@@ -49,3 +49,68 @@ test('account access validation forwards supported payloads to the repository', 
         userRepository.updateUserAccess = original;
     }
 });
+
+
+test('role or account-status changes clear access-token indexes for every revoked session', async () => {
+    const accessTokenStore = require('../service/accessTokenStore');
+    const socketModule = require('../src/socket/socket');
+    const originalRepository = userRepository.updateUserAccess;
+    const originalCleanup = accessTokenStore.removeAccessTokensForSession;
+    const originalEmit = socketModule.emitSessionRevoked;
+    const cleanupCalls = [];
+    const socketCalls = [];
+
+    userRepository.updateUserAccess = async () => ({
+        kind: 'ok',
+        user: { id: 2, role: 'user', is_active: false },
+        revokedSessionIds: ['session-a', 'session-b']
+    });
+    accessTokenStore.removeAccessTokensForSession = async (id) => cleanupCalls.push(id);
+    socketModule.emitSessionRevoked = (id, reason) => socketCalls.push([id, reason]);
+
+    try {
+        const result = await userService.updateUserAccess(
+            2,
+            { role: 'user', is_active: false },
+            1
+        );
+
+        assert.equal(result.kind, 'ok');
+        assert.deepEqual(cleanupCalls, ['session-a', 'session-b']);
+        assert.deepEqual(socketCalls, [
+            ['session-a', 'ACCOUNT_ACCESS_CHANGED'],
+            ['session-b', 'ACCOUNT_ACCESS_CHANGED']
+        ]);
+    } finally {
+        userRepository.updateUserAccess = originalRepository;
+        accessTokenStore.removeAccessTokensForSession = originalCleanup;
+        socketModule.emitSessionRevoked = originalEmit;
+    }
+});
+
+test('unchanged account access does not trigger session cleanup', async () => {
+    const accessTokenStore = require('../service/accessTokenStore');
+    const originalRepository = userRepository.updateUserAccess;
+    const originalCleanup = accessTokenStore.removeAccessTokensForSession;
+    let cleanupCalls = 0;
+
+    userRepository.updateUserAccess = async () => ({
+        kind: 'ok',
+        user: { id: 2, role: 'user', is_active: true },
+        revokedSessionIds: []
+    });
+    accessTokenStore.removeAccessTokensForSession = async () => { cleanupCalls += 1; };
+
+    try {
+        const result = await userService.updateUserAccess(
+            2,
+            { role: 'user', is_active: true },
+            1
+        );
+        assert.equal(result.kind, 'ok');
+        assert.equal(cleanupCalls, 0);
+    } finally {
+        userRepository.updateUserAccess = originalRepository;
+        accessTokenStore.removeAccessTokensForSession = originalCleanup;
+    }
+});

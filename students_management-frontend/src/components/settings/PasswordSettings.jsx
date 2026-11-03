@@ -1,4 +1,5 @@
-import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
+import { useState } from 'react';
+import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 const fields = [
@@ -9,6 +10,7 @@ const fields = [
 
 function PasswordSettings({ form, onChange, onSubmit, saving, message, error }) {
     const { t } = useLanguage();
+    const [visibleFields, setVisibleFields] = useState({});
 
     return (
         <div className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
@@ -40,7 +42,7 @@ function PasswordSettings({ form, onChange, onSubmit, saving, message, error }) 
                                 {t(label)}
                             </label>
 
-                            <div className="flex min-h-[46px] items-center gap-2.5 rounded-lg border border-line bg-slate-50 px-3 transition focus-within:border-brand-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-950">
+                            <div className="flex min-h-[46px] items-center gap-2.5 rounded-xl border border-line bg-slate-50 px-3 transition focus-within:border-brand-500 focus-within:bg-white focus-within:ring-4 focus-within:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-950">
                                 <KeyRound
                                     size={17}
                                     className="shrink-0 text-slate-400"
@@ -49,7 +51,7 @@ function PasswordSettings({ form, onChange, onSubmit, saving, message, error }) 
                                 <input
                                     id={inputId}
                                     className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
-                                    type="password"
+                                    type={visibleFields[name] ? "text" : "password"}
                                     value={form[name] || ''}
                                     onChange={(event) =>
                                         onChange({
@@ -59,7 +61,17 @@ function PasswordSettings({ form, onChange, onSubmit, saving, message, error }) 
                                     }
                                     autoComplete={autoComplete}
                                     required
+                                    aria-label={t(label)}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setVisibleFields(previous => ({ ...previous, [name]: !previous[name] }))}
+                                    aria-label={visibleFields[name] ? t('hidePassword') : t('showPassword')}
+                                    aria-pressed={Boolean(visibleFields[name])}
+                                    className="flex size-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-200 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+                                >
+                                    {visibleFields[name] ? <EyeOff size={17} /> : <Eye size={17} />}
+                                </button>
                             </div>
                         </div>
                     );

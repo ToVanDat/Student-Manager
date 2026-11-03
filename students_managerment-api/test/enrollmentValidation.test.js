@@ -47,3 +47,20 @@ test('rejects boolean identifiers rather than coercing true to ID 1', () => {
     assert.equal(result.valid, false);
     assert.ok(result.errors.student_id);
 });
+
+
+test('rejects scores outside the academic 0–10 scale', () => {
+    for (const score of [-0.01, 10.01, 11, -1]) {
+        const result = validateEnrollment({ final_score: score }, { partial: true });
+        assert.equal(result.valid, false, `score ${score} must be rejected`);
+        assert.ok(result.errors.final_score);
+    }
+});
+
+test('accepts boundary scores 0 and 10', () => {
+    for (const score of [0, 10]) {
+        const result = validateEnrollment({ final_score: score }, { partial: true });
+        assert.equal(result.valid, true);
+        assert.equal(result.data.final_score, score);
+    }
+});

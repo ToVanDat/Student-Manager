@@ -21,6 +21,8 @@ export default function StudentDetailsDialog({ student, onClose, onEdit }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const requestSequenceRef = useRef(0);
+    const dialogRef = useRef(null);
+    const closeButtonRef = useRef(null);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
 
@@ -51,13 +53,43 @@ export default function StudentDetailsDialog({ student, onClose, onEdit }) {
 
     useEffect(() => {
         void loadDetails();
+        const previouslyFocused = document.activeElement;
+        closeButtonRef.current?.focus();
+
         const handleKeyDown = event => {
-            if (event.key === 'Escape') onCloseRef.current?.();
+            if (event.key === 'Escape') {
+                onCloseRef.current?.();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+
+            const focusable = dialogRef.current?.querySelectorAll(
+                'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            );
+            if (!focusable?.length) {
+                event.preventDefault();
+                dialogRef.current?.focus();
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         };
+
         window.addEventListener('keydown', handleKeyDown);
         return () => {
             ++requestSequenceRef.current;
             window.removeEventListener('keydown', handleKeyDown);
+            if (previouslyFocused instanceof HTMLElement && previouslyFocused.isConnected) {
+                previouslyFocused.focus();
+            }
         };
     }, [loadDetails]);
 
@@ -74,6 +106,8 @@ export default function StudentDetailsDialog({ student, onClose, onEdit }) {
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="student-details-title"
+                ref={dialogRef}
+                tabIndex={-1}
                 className="max-h-[min(90vh,760px)] w-full max-w-2xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900"
             >
                 <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 dark:border-slate-800 sm:px-6">
@@ -85,7 +119,7 @@ export default function StudentDetailsDialog({ student, onClose, onEdit }) {
                             <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{display.student_code || '—'} · {fullName}</p>
                         </div>
                     </div>
-                    <button type="button" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={t('close')} title={t('close')}><X size={18} /></button>
+                    <button ref={closeButtonRef} type="button" onClick={onClose} className="flex size-9 shrink-0 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={t('close')} title={t('close')}><X size={18} /></button>
                 </header>
 
                 <div className="max-h-[calc(90vh-145px)] overflow-y-auto px-5 py-4 sm:px-6">

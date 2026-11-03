@@ -10,6 +10,14 @@ const authMiddleware =
 
 const authRateLimiter =
     require('../middleware/authRateLimiter.js');
+const biometricAuthRateLimiter =
+    require('../middleware/biometricAuthRateLimiter.js');
+const faceAuthRateLimiter =
+    require('../middleware/faceAuthRateLimiter.js');
+const loginRateLimiter =
+    require('../middleware/loginRateLimiter.js');
+const passwordLoginProtection =
+    require('../middleware/passwordLoginProtection.js');
 
 const requireTrustedOrigin =
     require('../middleware/requireTrustedOrigin.js');
@@ -19,7 +27,23 @@ const uploadAvatarFile = require('../middleware/avatarUploadMiddleware');
 const avatarController = require('../controller/avatarController');
 const userPreferencesController = require('../controller/userPreferencesController.js');
 const advancedAuthController = require('../controller/advancedAuthController.js');
+const faceAuthController = require('../controller/faceAuthController.js');
+const faceFrameUpload = require('../middleware/faceFrameUploadMiddleware.js');
+const faceFrameRateLimiter = require('../middleware/faceFrameRateLimiter.js');
 
+
+
+// Application-managed Face Login is separate from Passkey/WebAuthn.
+// Login and enrollment remain fail-closed until server-side model inference/PAD is deployed.
+router.get('/face/status', authMiddleware, faceAuthController.status);
+router.post('/face/enrollment/options', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
+router.post('/face/enrollment/frame', requireTrustedOrigin, authMiddleware, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureEnrollmentFrame);
+router.post('/face/enrollment/verify', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.finishEnrollment);
+router.delete('/face/enrollment/challenge', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.cancelEnrollment);
+router.delete('/face/credential', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.disable);
+router.post('/face/login/options', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.beginLogin);
+router.post('/face/login/frame', requireTrustedOrigin, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureLoginFrame);
+router.post('/face/login/verify', requireTrustedOrigin, faceAuthRateLimiter, faceAuthController.finishLogin);
 
 // Advanced account authentication. These routes reuse the existing JWT/session middleware.
 router.post('/google/login', requireTrustedOrigin, authRateLimiter, advancedAuthController.loginGoogle);
@@ -36,6 +60,11 @@ router.get('/passkeys', authMiddleware, advancedAuthController.listPasskeys);
 router.delete('/passkeys/:id', authMiddleware, authRateLimiter, advancedAuthController.deletePasskey);
 router.post('/passkeys/login/options', authRateLimiter, advancedAuthController.beginPasskeyLogin);
 router.post('/passkeys/login/verify', requireTrustedOrigin, authRateLimiter, advancedAuthController.finishPasskeyLogin);
+ // Device biometric login (Face ID / Windows Hello when supported) uses WebAuthn.
+ // The server verifies an assertion and never receives biometric samples.
+ router.get('/biometric-login/status', authMiddleware, advancedAuthController.getBiometricLoginStatus);
+ router.post('/biometric-login/options', requireTrustedOrigin, biometricAuthRateLimiter, advancedAuthController.beginBiometricLogin);
+ router.post('/biometric-login/verify', requireTrustedOrigin, biometricAuthRateLimiter, advancedAuthController.finishBiometricLogin);
 
 router.post('/qr-login', authRateLimiter, advancedAuthController.createQrLogin);
 router.post('/qr-login/approve', authMiddleware, authRateLimiter, advancedAuthController.approveQrLogin);
@@ -46,7 +75,9 @@ router.post('/qr-login/poll', requireTrustedOrigin, authRateLimiter, advancedAut
 router.post('/register', authRateLimiter, authController.register);
 
 // LOGIN
-router.post('/login', requireTrustedOrigin, authRateLimiter, authController.login);
+// Count cooldown rejections against the IP safety quota as well, so repeatedly
+// probing a cooling-down account cannot bypass the network-level limiter.
+router.post('/login', requireTrustedOrigin, loginRateLimiter, passwordLoginProtection, authController.login);
 
 // REFRESH
 router.post('/refresh', requireTrustedOrigin, authRateLimiter, authController.refresh);

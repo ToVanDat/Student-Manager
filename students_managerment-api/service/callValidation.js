@@ -6,4 +6,17 @@ const isValidCallId = (value) =>
 const isValidCallType = (value) =>
     value === 'voice' || value === 'video';
 
-module.exports = { isValidCallId, isValidCallType };
+const CALL_FAILURE_REASONS = new Set([
+    'connection-timeout',
+    'ice-failed',
+    'peer-connection-failed',
+    'media-error',
+    'network-error'
+]);
+
+const normalizeCallFailureReason = (value) =>
+    typeof value === 'string' && CALL_FAILURE_REASONS.has(value)
+        ? value
+        : 'connection-failed';
+
+module.exports = { isValidCallId, isValidCallType, normalizeCallFailureReason };

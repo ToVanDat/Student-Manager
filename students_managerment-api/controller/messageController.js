@@ -6,6 +6,36 @@ const webPushService = require('../service/webPushService');
 const notificationDeliveryService = require('../service/notificationDeliveryService');
 const userRepository = require('../repository/userRepository');
 const e2eeRepository = require('../repository/e2eeRepository');
+const { toSafeHttpError } = require('../service/toSafeHttpError');
+
+const emitMessageRealtimeBestEffort = (room, event, payload) => {
+    try {
+        getIO().to(room).emit(event, payload);
+    } catch (error) {
+        console.warn('[MESSAGE] Realtime delivery failed:', {
+            event,
+            code: error?.code || 'REALTIME_DELIVERY_FAILED'
+        });
+    }
+};
+
+const publishReactionUpdateBestEffort = async (messageId, action, reaction, userId, emoji) => {
+    try {
+        const target = await messageRepository.getMessageById(messageId);
+        if (!target?.conversation_id) return;
+        emitMessageRealtimeBestEffort('conversation:' + target.conversation_id, 'message:reaction:updated', {
+            messageId,
+            conversationId: target.conversation_id,
+            action,
+            reaction: reaction || { message_id: messageId, user_id: userId, emoji }
+        });
+    } catch (error) {
+        console.warn('[MESSAGE] Reaction realtime lookup failed:', {
+            messageId,
+            code: error?.code || 'REACTION_REALTIME_FAILED'
+        });
+    }
+};
 
 /**
  * Gửi message
@@ -63,33 +93,46 @@ const createMessage = async (req, res) => {
                 replyToMessageId
             );
 
-        await conversationRepository.unhideConversationForMembers(
-            conversationId,
-            senderId
-        );
-
-        // REST fallback cũng đồng bộ realtime cho các client đang trong conversation.
-        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
-
-        const memberIds = await conversationRepository.getConversationMemberIds(conversationId);
-        for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+        try {
+            await conversationRepository.unhideConversationForMembers(
                 conversationId,
-                lastMessage: message,
-                senderId,
-                updatedAt: message.created_at
+                senderId
+            );
+        } catch (sideEffectError) {
+            // Message persistence is already committed. A visibility-refresh
+            // failure must not tell the sender that the message itself failed.
+            console.error('[MESSAGE] Conversation visibility refresh failed:', {
+                conversationId,
+                code: sideEffectError?.code || 'CONVERSATION_VISIBILITY_REFRESH_FAILED'
             });
         }
 
-        // Notification delivery is best-effort: message persistence succeeds even if a push provider fails.
-        const sender = await userRepository.findActiveUserById(senderId);
+        // Persistence has completed. Realtime fan-out and push delivery are
+        // best-effort and must not turn a committed message into an HTTP failure.
         try {
+            const io = getIO();
+            io.to(`conversation:${conversationId}`).emit('message:new', message);
+
+            const memberIds = await conversationRepository.getConversationMemberIds(conversationId);
+            for (const memberId of memberIds) {
+                io.to(`user:${memberId}`).emit('conversation:updated', {
+                    conversationId,
+                    lastMessage: message,
+                    senderId,
+                    updatedAt: message.created_at
+                });
+            }
+
+            const sender = await userRepository.findActiveUserById(senderId);
             await notificationDeliveryService.notifyMessageRecipients({
-                io: getIO(), conversationId, senderId,
+                io, conversationId, senderId,
                 senderName: sender?.username || 'Tin nhắn mới', message
             });
         } catch (notificationError) {
-            console.error('[NOTIFICATION] REST delivery failed:', notificationError.message);
+            console.error('[MESSAGE] Post-commit delivery failed:', {
+                conversationId,
+                message: notificationError?.message
+            });
         }
 
         return res.status(201).json({
@@ -103,8 +146,11 @@ const createMessage = async (req, res) => {
             error
         );
 
-        if (error.statusCode === 409 || error.statusCode === 403) {
-            return res.status(error.statusCode).json({ message: error.message, code: error.statusCode === 409 ? 'E2EE_REQUIRED' : undefined });
+        if ([400, 403, 404, 409].includes(error.statusCode)) {
+            return res.status(error.statusCode).json({
+                message: error.message,
+                ...(error.code === 'E2EE_REQUIRED' ? { code: error.code } : {})
+            });
         }
 
         if (
@@ -126,9 +172,7 @@ const createMessage = async (req, res) => {
         }
 
         return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể gửi message'
+            message: 'Không thể gửi message'
         });
     }
 };
@@ -183,20 +227,8 @@ const getMessagesByConversation = async (req, res) => {
             error
         );
 
-        if (
-            error.message ===
-            'Bạn không thuộc conversation này'
-        ) {
-            return res.status(403).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể lấy messages'
-        });
+        const failure = toSafeHttpError(error, 'Không thể lấy messages');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -223,9 +255,8 @@ const searchMessages = async (req, res) => {
 
         return res.status(200).json({ data });
     } catch (error) {
-        return res.status(error.statusCode || 500).json({
-            message: error.message || 'Không thể tìm kiếm message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể tìm kiếm message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -263,10 +294,7 @@ const updateMessage = async (req, res) => {
                 content
             );
 
-        getIO().to(`conversation:${message.conversation_id}`).emit(
-            'message:updated',
-            message
-        );
+        emitMessageRealtimeBestEffort('conversation:' + message.conversation_id, 'message:updated', message);
 
         return res.status(200).json({
             message: 'Chỉnh sửa message thành công',
@@ -279,17 +307,8 @@ const updateMessage = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể chỉnh sửa message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể chỉnh sửa message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -319,10 +338,7 @@ const recallMessage = async (req, res) => {
                 userId
             );
 
-        getIO().to(`conversation:${message.conversation_id}`).emit(
-            'message:recalled',
-            message
-        );
+        emitMessageRealtimeBestEffort('conversation:' + message.conversation_id, 'message:recalled', message);
 
         return res.status(200).json({
             message: 'Thu hồi message thành công',
@@ -334,17 +350,8 @@ const recallMessage = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể thu hồi message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể thu hồi message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -374,14 +381,11 @@ const deleteMessageForMe = async (req, res) => {
                 userId
             );
 
-        getIO().to(`user:${userId}`).emit(
-            'message:deleted:me',
-            {
-                messageId,
-                conversationId: deletion.conversation_id,
-                deletion
-            }
-        );
+        emitMessageRealtimeBestEffort('user:' + userId, 'message:deleted:me', {
+            messageId,
+            conversationId: deletion.conversation_id,
+            deletion
+        });
 
         return res.status(200).json({
             message: 'Xoá message cho tôi thành công',
@@ -393,17 +397,8 @@ const deleteMessageForMe = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể xoá message'
-        });
+        const failure = toSafeHttpError(error, 'Không thể xoá message');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -433,10 +428,7 @@ const deleteMessageForEveryone = async (req, res) => {
                 userId
             );
 
-        getIO().to(`conversation:${message.conversation_id}`).emit(
-            'message:deleted:everyone',
-            message
-        );
+        emitMessageRealtimeBestEffort('conversation:' + message.conversation_id, 'message:deleted:everyone', message);
 
         return res.status(200).json({
             message: 'Xoá message cho tất cả thành công',
@@ -448,17 +440,8 @@ const deleteMessageForEveryone = async (req, res) => {
             error
         );
 
-        if (error.statusCode) {
-            return res.status(error.statusCode).json({
-                message: error.message
-            });
-        }
-
-        return res.status(500).json({
-            message:
-                error.message ||
-                'Không thể xoá message cho tất cả'
-        });
+        const failure = toSafeHttpError(error, 'Không thể xoá message cho tất cả');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -474,18 +457,11 @@ const addReaction = async (req, res) => {
         }
 
         const reaction = await messageService.addReaction(messageId, userId, emoji);
-        const io = getIO();
-        const target = await messageRepository.getMessageById(messageId);
-        io.to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
-            messageId,
-            conversationId: target.conversation_id,
-            action: 'add',
-            reaction
-        });
-
+        await publishReactionUpdateBestEffort(messageId, 'add', reaction, userId, emoji);
         return res.status(201).json({ data: reaction });
     } catch (error) {
-        return res.status(error.statusCode || 500).json({ message: error.message || 'Không thể thêm reaction' });
+        const failure = toSafeHttpError(error, 'Không thể thêm reaction');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 
@@ -499,22 +475,18 @@ const removeReaction = async (req, res) => {
             return res.status(400).json({ message: 'messageId không hợp lệ' });
         }
 
-        const reaction = await messageService.removeReaction(messageId, userId, decodeURIComponent(emoji));
-        const target = await messageRepository.getMessageById(messageId);
-        getIO().to(`conversation:${target.conversation_id}`).emit('message:reaction:updated', {
-            messageId,
-            conversationId: target.conversation_id,
-            action: 'remove',
-            reaction: reaction || {
-                message_id: messageId,
-                user_id: userId,
-                emoji: decodeURIComponent(emoji)
-            }
-        });
-
+        let normalizedEmoji;
+        try {
+            normalizedEmoji = decodeURIComponent(emoji);
+        } catch {
+            return res.status(400).json({ message: 'Emoji không hợp lệ' });
+        }
+        const reaction = await messageService.removeReaction(messageId, userId, normalizedEmoji);
+        await publishReactionUpdateBestEffort(messageId, 'remove', reaction, userId, normalizedEmoji);
         return res.json({ data: reaction });
     } catch (error) {
-        return res.status(error.statusCode || 500).json({ message: error.message || 'Không thể xoá reaction' });
+        const failure = toSafeHttpError(error, 'Không thể xoá reaction');
+        return res.status(failure.statusCode).json({ message: failure.message });
     }
 };
 

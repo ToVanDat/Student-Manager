@@ -1,56 +1,23 @@
-import axios from "axios";
+import { apiClient } from '@/api/client.js';
 
-import { API_BASE_URL } from '@/utils/constants.js';
-
-
-const getAuthConfig = () => {
-  const accessToken = localStorage.getItem("accessToken");
-
-  return {
-    withCredentials: true,
-
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  };
-};
-
-// ======================================================
-// GET SESSIONS
-// ======================================================
+// Access tokens are memory-only in AuthContext/apiClient. Do not read them
+// from localStorage or create a second Axios client: that sends "Bearer null"
+// and bypasses the shared refresh/interceptor lifecycle.
+const SESSIONS_ENDPOINT = '/api/auth/sessions';
 
 export const getSessionsApi = async () => {
-  const response = await axios.get(
-    `${API_BASE_URL}/api/auth/sessions`,
-    getAuthConfig(),
-  );
-
+  const response = await apiClient.get(SESSIONS_ENDPOINT);
   return response.data;
 };
-
-// ======================================================
-// REVOKE 1 SESSION
-// ======================================================
 
 export const revokeSessionApi = async (sessionId) => {
-  const response = await axios.delete(
-    `${API_BASE_URL}/api/auth/sessions/${sessionId}`,
-    getAuthConfig(),
+  const response = await apiClient.delete(
+    `${SESSIONS_ENDPOINT}/${encodeURIComponent(sessionId)}`,
   );
-
   return response.data;
 };
 
-// ======================================================
-// REVOKE OTHER SESSIONS
-// ======================================================
-
 export const revokeOtherSessionsApi = async () => {
-  const response = await axios.post(
-    `${API_BASE_URL}/api/auth/sessions/revoke-others`,
-    {},
-    getAuthConfig(),
-  );
-
+  const response = await apiClient.post(`${SESSIONS_ENDPOINT}/revoke-others`);
   return response.data;
 };

@@ -61,8 +61,19 @@ exports.chatStream = async (req, res) => {
     } catch (error) {
         if (!clientAbortController.signal.aborted && !res.destroyed && !res.writableEnded) {
             const status = Number.isInteger(error.status) ? error.status : 500;
-            if (status >= 500) console.error('[CHATBOT][stream] Request failed', { name: error?.name, status, message: error?.message });
+            if (status >= 500) console.error('[CHATBOT][stream] Request failed', {
+                name: error?.name,
+                status,
+                code: error?.code || null,
+                message: error?.message,
+                causeName: error?.cause?.name || null,
+                causeMessage: error?.cause?.message || null,
+                causeCode: error?.cause?.code || null,
+                clientAborted: clientAbortController.signal.aborted
+            });
             send('error', {
+                status,
+                code: error?.code || 'CHATBOT_REQUEST_FAILED',
                 message: status === 500 ? 'Trợ lý AI gặp lỗi nội bộ. Vui lòng thử lại.' : error.message
             });
         }

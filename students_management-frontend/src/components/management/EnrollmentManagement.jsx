@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BookOpen, Pencil, Plus, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/api/client.js';
@@ -21,8 +21,10 @@ export default function EnrollmentManagement({ view = 'enrollments' }) {
     const [formOpen, setFormOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formError, setFormError] = useState('');
+    const requestVersionRef = useRef(0);
 
     const loadData = useCallback(async () => {
+        const requestVersion = ++requestVersionRef.current;
         setLoading(true);
         setError('');
         try {
@@ -32,18 +34,23 @@ export default function EnrollmentManagement({ view = 'enrollments' }) {
                 apiClient.get('/api/subjects'),
                 apiClient.get('/api/semesters')
             ]);
+            if (requestVersion !== requestVersionRef.current) return;
             setItems(Array.isArray(enrollmentResult.data) ? enrollmentResult.data : []);
             setStudents(Array.isArray(studentResult.data) ? studentResult.data : []);
             setSubjects(Array.isArray(subjectResult.data) ? subjectResult.data : []);
             setSemesters(Array.isArray(semesterResult.data) ? semesterResult.data : []);
         } catch (err) {
+            if (requestVersion !== requestVersionRef.current) return;
             setError(err?.response?.data?.message || t('enrollmentLoadFailed'));
         } finally {
-            setLoading(false);
+            if (requestVersion === requestVersionRef.current) setLoading(false);
         }
     }, [t]);
 
-    useEffect(() => { void loadData(); }, [loadData]);
+    useEffect(() => {
+        void loadData();
+        return () => { requestVersionRef.current += 1; };
+    }, [loadData]);
 
     const visibleItems = useMemo(() => {
         const term = query.trim().toLocaleLowerCase();

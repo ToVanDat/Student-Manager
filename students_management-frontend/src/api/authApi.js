@@ -119,6 +119,19 @@ export const finishPasskeyLoginApi = async (challengeId, responsePayload) => {
   const response = await axios.post(`${API_BASE_URL}/api/auth/passkeys/login/verify`, { challengeId, response: responsePayload }, { withCredentials: true });
   return response.data;
 };
+ 
+export const beginBiometricLoginApi = async username => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/biometric-login/options`, { username }, { withCredentials: true });
+  return response.data;
+};
+export const finishBiometricLoginApi = async (challengeId, responsePayload) => {
+  const response = await axios.post(`${API_BASE_URL}/api/auth/biometric-login/verify`, { challengeId, response: responsePayload }, { withCredentials: true });
+  return response.data;
+};
+export const getBiometricLoginStatusApi = async () => {
+  const response = await apiClient.get('/api/auth/biometric-login/status');
+  return response.data;
+};
 
 // Authenticated endpoints use the shared client so expired ATs follow the
 // application's common refresh-and-retry flow.
@@ -168,3 +181,26 @@ export const finishSensitiveReauthApi = async (challengeId, responsePayload, pur
   const response = await apiClient.post('/api/auth/passkeys/reauth/verify', { challengeId, response: responsePayload, purpose });
   return response.data;
 };
+
+
+export const getFaceLoginStatusApi = async () => (await apiClient.get('/api/auth/face/status')).data;
+export const beginFaceEnrollmentApi = async (verificationToken, currentPassword) => (await apiClient.post('/api/auth/face/enrollment/options', { verificationToken, currentPassword })).data;
+export const finishFaceEnrollmentApi = async challengeId => (await apiClient.post('/api/auth/face/enrollment/verify', { challengeId })).data;
+export const cancelFaceEnrollmentApi = async challengeId => (await apiClient.delete('/api/auth/face/enrollment/challenge', { data: { challengeId } })).data;
+export const captureFaceEnrollmentFrameApi = async (challengeId, livenessNonce, frame) => {
+  const body = new FormData();
+  body.append('challengeId', challengeId);
+  body.append('livenessNonce', livenessNonce);
+  body.append('frame', frame, 'face-frame.jpg');
+  return (await apiClient.post('/api/auth/face/enrollment/frame', body, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+};
+export const disableFaceLoginApi = async (currentPassword, verificationToken) => (await apiClient.delete('/api/auth/face/credential', { data: { currentPassword, verificationToken } })).data;
+export const beginFaceLoginApi = async username => (await axios.post(`${API_BASE_URL}/api/auth/face/login/options`, { username }, { withCredentials: true })).data;
+export const captureFaceLoginFrameApi = async (challengeId, livenessNonce, frame) => {
+  const body = new FormData();
+  body.append('challengeId', challengeId);
+  body.append('livenessNonce', livenessNonce);
+  body.append('frame', frame, 'face-frame.jpg');
+  return (await axios.post(`${API_BASE_URL}/api/auth/face/login/frame`, body, { withCredentials: true })).data;
+};
+export const finishFaceLoginApi = async challengeId => (await axios.post(`${API_BASE_URL}/api/auth/face/login/verify`, { challengeId }, { withCredentials: true })).data;

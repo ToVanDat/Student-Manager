@@ -1,5 +1,6 @@
 const authRepository =
     require('../repository/authRepository.js');
+const accessTokenStore = require('./accessTokenStore.js');
 
 
 // ======================================================
@@ -21,88 +22,32 @@ const getUserSessions = async (userId) => {
 // REVOKE 1 SESSION
 // ======================================================
 
-const revokeSession = async (
-    sessionId,
-    userId
-) => {
-
-    // ==============================================
-    // KIỂM TRA SESSION CÓ THUỘC USER KHÔNG
-    // ==============================================
-
-    const session =
-        await authRepository.findSessionByIdAndUserId(
-            sessionId,
-            userId
-        );
-
-
-    if (!session) {
-
-        throw new Error(
-            'Session không tồn tại'
-        );
+const revokeSession = async (sessionId, userId) => {
+    const existing = await authRepository.findSessionByIdAndUserId(sessionId, userId);
+    if (!existing) throw new Error('Session không tồn tại');
+    if (existing.revoked_at !== null) {
+        return { alreadyRevoked: true, session: existing };
     }
 
-
-    // ==============================================
-    // SESSION ĐÃ REVOKE
-    // ==============================================
-
-    if (session.revoked_at !== null) {
-
-        return {
-            alreadyRevoked: true,
-            session
-        };
+    const revokedSession = await authRepository.revokeSessionForUserAndRefreshTokens(sessionId, userId);
+    if (!revokedSession) {
+        const latest = await authRepository.findSessionByIdAndUserId(sessionId, userId);
+        if (!latest) throw new Error('Session không tồn tại');
+        return { alreadyRevoked: true, session: latest };
     }
 
-
-    // ==============================================
-    // REVOKE SESSION
-    // ==============================================
-
-    const revokedSession =
-        await authRepository.revokeSession(
-            sessionId
-        );
-
-
-    // ==============================================
-    // REVOKE TOÀN BỘ REFRESH TOKEN
-    // CỦA SESSION
-    // ==============================================
-
-    await authRepository.revokeRefreshTokensBySessionId(
-        sessionId
-    );
-
-
-    // ==============================================
-    // SOCKET NOTIFICATION
-    // ==============================================
-
+    try {
+        await accessTokenStore.removeAccessTokensForSession(sessionId);
+    } catch (error) {
+        console.warn('[SESSION] Could not clear revoked access tokens:', error.message);
+    }
     try {
         const { emitSessionRevoked } = require('../src/socket/socket.js');
         emitSessionRevoked(sessionId, 'SESSION_REVOKED');
     } catch (error) {
-
-        /*
-            Socket notification thất bại
-            không được làm revoke thất bại.
-        */
-
-        console.error(
-            'Socket notification error:',
-            error.message
-        );
+        console.error('Socket notification error:', error.message);
     }
-
-
-    return {
-        alreadyRevoked: false,
-        session: revokedSession
-    };
+    return { alreadyRevoked: false, session: revokedSession };
 };
 
 
@@ -111,92 +56,29 @@ const revokeSession = async (
 // GIỮ LẠI SESSION HIỆN TẠI
 // ======================================================
 
-const revokeOtherSessions = async (
-    userId,
-    currentSessionId
-) => {
+const revokeOtherSessions = async (userId, currentSessionId) => {
+    const revokedSessions = await authRepository.revokeOtherSessionsAndRefreshTokens(
+        userId,
+        currentSessionId
+    );
 
-    // ==============================================
-    // LẤY TẤT CẢ SESSION CỦA USER
-    // ==============================================
-
-    const sessions =
-        await authRepository.findSessionsByUserId(
-            userId
-        );
-
-
-    // ==============================================
-    // CHỈ LẤY SESSION ACTIVE
-    // VÀ KHÔNG PHẢI SESSION HIỆN TẠI
-    // ==============================================
-
-    const otherSessions =
-        sessions.filter(
-            (session) =>
-                session.revoked_at === null &&
-                session.id !== currentSessionId
-        );
-
-
-    // ==============================================
-    // REVOKE TỪNG SESSION
-    // ==============================================
-
-    for (
-        const session
-        of otherSessions
-    ) {
-
-        // ==========================================
-        // REVOKE SESSION
-        // ==========================================
-
-        await authRepository.revokeSession(
-            session.id
-        );
-
-
-        // ==========================================
-        // REVOKE REFRESH TOKEN
-        // ==========================================
-
-        await authRepository.revokeRefreshTokensBySessionId(
-            session.id
-        );
-
-
-        // ==========================================
-        // SOCKET NOTIFICATION
-        // ==========================================
-
+    // Database revocation is atomic; Redis and Socket.IO are follow-up operations.
+    for (const session of revokedSessions) {
+        try {
+            await accessTokenStore.removeAccessTokensForSession(session.id);
+        } catch (error) {
+            console.warn('[SESSION] Could not clear revoked access tokens:', error.message);
+        }
         try {
             const { emitSessionRevoked } = require('../src/socket/socket.js');
             emitSessionRevoked(session.id, 'OTHER_SESSIONS_REVOKED');
         } catch (error) {
-
-            console.error(
-                'Socket notification error:',
-                error.message
-            );
+            console.error('Socket notification error:', error.message);
         }
     }
-
-
-    // ==============================================
-    // RETURN
-    // ==============================================
-
-    return {
-        revokedCount:
-            otherSessions.length
-    };
+    return { revokedCount: revokedSessions.length };
 };
 
-
-// ======================================================
-// EXPORT
-// ======================================================
 
 module.exports = {
 

@@ -50,8 +50,13 @@ function validateEnrollment(body, { partial = false } = {}) {
             continue;
         }
         const result = normalizeScore(body[field]);
-        if (!result.valid) errors[field] = 'Điểm phải là số hữu hạn hoặc để trống';
-        else data[field] = result.value;
+        if (!result.valid) {
+            errors[field] = 'Điểm phải là số hữu hạn hoặc để trống';
+        } else if (result.value !== null && (result.value < 0 || result.value > 10)) {
+            errors[field] = 'Điểm phải nằm trong khoảng từ 0 đến 10';
+        } else {
+            data[field] = result.value;
+        }
     }
 
     return { valid: Object.keys(errors).length === 0, errors, data };

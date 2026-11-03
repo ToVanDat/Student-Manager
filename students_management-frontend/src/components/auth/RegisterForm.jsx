@@ -22,7 +22,7 @@ function RegisterForm({
 }) {
     const { t } = useLanguage();
     return (
-        <form className="flex w-full flex-col gap-4 min-[451px]:gap-[18px]" onSubmit={onSubmit}>
+        <form className="auth-form-content flex w-full flex-col gap-4 min-[451px]:gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
                 <label htmlFor="register-username" className="text-xs leading-[1.4] font-semibold text-slate-700">{t('username')}</label>
                 <input className="h-[46px] w-full rounded-lg border border-line bg-slate-50 px-3.5 text-[13px] text-ink outline-none transition placeholder:text-slate-400 hover:border-slate-300 hover:bg-white focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10" id="register-username" name="username" type="text" required autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => onUsernameChange(event.target.value)} placeholder={t("enterUsernamePlaceholder")} autoComplete="username" />

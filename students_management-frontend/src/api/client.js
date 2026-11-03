@@ -51,8 +51,31 @@ export const getAccessToken = () => {
 // ==========================================
 
 apiClient.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // Keep the in-memory token in sync with the token updated by login,
+    // refresh, or another app module. This also avoids sending an empty
+    // Authorization header when the module was loaded before auth completed.
+    if (!accessToken && typeof localStorage !== 'undefined') {
+      accessToken = localStorage.getItem('accessToken');
+    }
+
+    const isE2EERelayRequest = String(config.url || '').includes('/api/e2ee/relay');
+    const isAuthBootstrapRequest = /\/api\/auth\/(login|register|refresh)(?:\?|$)/.test(String(config.url || ''));
+
+    // The relay is always protected by authMiddleware. If its first request
+    // happens before AuthContext has restored the access token, refresh using
+    // the existing HttpOnly refresh cookie instead of sending an anonymous
+    // request that can only receive "Không có Access Token".
+    if (isE2EERelayRequest && !accessToken && !isAuthBootstrapRequest) {
+      try {
+        accessToken = await refreshAccessToken();
+      } catch (error) {
+        return Promise.reject(error);
+      }
+    }
+
     if (accessToken) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${accessToken}`;
     } else {
       // Never let a caller-supplied/stale bearer survive after logout or expiry.
@@ -62,9 +85,7 @@ apiClient.interceptors.request.use(
     return config;
   },
 
-  (error) => {
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );
 
 // ==========================================

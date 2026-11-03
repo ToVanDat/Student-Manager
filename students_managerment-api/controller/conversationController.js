@@ -3,6 +3,20 @@ const messageRepository = require('../repository/messageRepository');
 const callRepository = require('../repository/callRepository');
 const userRepository = require('../repository/userRepository');
 const { getIO, publishRealtimeEvent } = require('../src/socket/socket');
+const { publishRealtimeBestEffort } = require('../service/realtimeDelivery');
+const { evictUserFromConversation } = require('../service/socketRoomAccess');
+
+const emitConversationEventBestEffort = (conversationId, event, payload) =>
+    publishRealtimeBestEffort(
+        () => getIO().to(`conversation:${conversationId}`).emit(event, payload),
+        { event, conversationId: Number(conversationId) }
+    );
+
+const emitUserEventBestEffort = (userId, event, payload) =>
+    publishRealtimeBestEffort(
+        () => getIO().to(`user:${userId}`).emit(event, payload),
+        { event, userId: Number(userId) }
+    );
 
 const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
     try {
@@ -11,7 +25,7 @@ const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
             actorId,
             content
         );
-        getIO().to(`conversation:${conversationId}`).emit('message:new', message);
+        emitConversationEventBestEffort(conversationId, 'message:new', message);
         return message;
     } catch (error) {
         // Group membership changes must not fail just because the optional
@@ -22,24 +36,55 @@ const createAndEmitSystemMessage = async (conversationId, actorId, content) => {
 };
 
 const getUsername = async (userId) => {
-    const user = await userRepository.findActiveUserById(Number(userId));
-    return user?.username || 'Người dùng';
+    try {
+        const user = await userRepository.findActiveUserById(Number(userId));
+        return user?.username || 'Người dùng';
+    } catch (error) {
+        // A committed group mutation must not be reported as failed only
+        // because an optional display-name lookup is temporarily unavailable.
+        console.error('[CHAT][group notification username lookup failed]', {
+            userId: Number(userId),
+            message: error?.message
+        });
+        return 'Người dùng';
+    }
 };
 
-const createDirectConversation = async (req, res) => {
+const getMemberIdsForNotification = async (conversationId) => {
     try {
+        return await require('../repository/conversationRepository')
+            .getConversationMemberIds(conversationId);
+    } catch (error) {
+        // Realtime notifications are best-effort; clients can reconcile from
+        // the authenticated conversation list after reconnect/refetch.
+        console.error('[CHAT][group notification member lookup failed]', {
+            conversationId: Number(conversationId),
+            message: error?.message
+        });
+        return [];
+    }
+};
+
+const createDirectConversation = async (req, res, next) => {
+    try {
+        const targetUserId = Number(req.body?.userId);
+        if (!Number.isSafeInteger(targetUserId) || targetUserId <= 0) {
+            return res.status(400).json({ message: 'userId không hợp lệ' });
+        }
         const conversation = await conversationService.getOrCreateDirectConversation(
             Number(req.user.id),
-            Number(req.body.userId)
+            targetUserId
         );
         return res.status(200).json({ message: 'Conversation đã sẵn sàng', data: conversation });
     } catch (error) {
         const map = {
-            'Không thể tạo conversation với chính mình': 400,
-            'Người dùng không tồn tại hoặc đã bị khóa': 404,
-            'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn': 403
+            'Không thể tạo conversation với chính mình': [400, 'Không thể tạo conversation với chính mình'],
+            'Người dùng không tồn tại hoặc đã bị khóa': [404, 'Người dùng không tồn tại hoặc đã bị khóa'],
+            'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn': [403, 'Không thể bắt đầu cuộc trò chuyện với người dùng đã bị chặn']
         };
-        return res.status(map[error.message] || 500).json({ message: error.message || 'Không thể tạo conversation' });
+        const knownError = map[error.message];
+        if (knownError) return res.status(knownError[0]).json({ message: knownError[1] });
+        return next(error);
     }
 };
 
@@ -67,8 +112,8 @@ const getConversationMembers = async (req, res, next) => {
             )
         });
     } catch (error) {
-        if (error.message === 'Bạn không thuộc conversation này') {
-            return res.status(403).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) {
+            return res.status(error.statusCode).json({ message: error.message });
         }
         next(error);
     }
@@ -104,7 +149,7 @@ const clearConversationMessagesForUser = async (req, res, next) => {
 
         const data = await conversationService.clearConversationMessagesForUser(conversationId, userId);
         await callRepository.hideConversationCallHistoryForUser(userId, conversationId);
-        getIO().to(`user:${userId}`).emit('conversation:history-cleared', {
+        emitUserEventBestEffort(userId, 'conversation:history-cleared', {
             conversationId,
             deletedCount: data.deleted_count
         });
@@ -165,12 +210,21 @@ const updateConversationChatTheme = async (req, res, next) => {
         }
         const data = await repository.setConversationChatTheme(conversationId, theme);
         if (!data) return res.status(404).json({ message: 'Conversation không tồn tại' });
-        await publishRealtimeEvent('conversation:theme-updated', {
-            conversationId,
-            theme: data.chat_theme,
-            updatedBy: userId,
-            updatedAt: new Date().toISOString()
-        });
+        try {
+            await publishRealtimeEvent('conversation:theme-updated', {
+                conversationId,
+                theme: data.chat_theme,
+                updatedBy: userId,
+                updatedAt: new Date().toISOString()
+            });
+        } catch (notificationError) {
+            // The theme has already been persisted. Realtime fan-out is
+            // best-effort; clients can reconcile through the theme GET route.
+            console.error('[CHAT][theme realtime notification failed]', {
+                conversationId,
+                message: notificationError?.message
+            });
+        }
         return res.status(200).json({ message: 'Đã cập nhật chủ đề cho cả cuộc trò chuyện', data: { theme: data.chat_theme } });
     } catch (error) {
         if (error?.code === '42703' && /chat_theme/i.test(error.message || '')) {
@@ -258,7 +312,7 @@ const reportConversation = async (req, res, next) => {
     }
 };
 
-const createGroup = async (req, res) => {
+const createGroup = async (req, res, next) => {
     try {
         const data = await conversationService.createGroupConversation(
             Number(req.user.id),
@@ -268,7 +322,7 @@ const createGroup = async (req, res) => {
         );
         const memberIds = [...new Set([Number(req.user.id), ...(Array.isArray(req.body.memberIds) ? req.body.memberIds.map(Number) : [])])];
         for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:created', { conversation: data });
+            emitUserEventBestEffort(memberId, 'conversation:created', { conversation: data });
         }
 
         const actorName = await getUsername(Number(req.user.id));
@@ -280,20 +334,17 @@ const createGroup = async (req, res) => {
 
         return res.status(201).json({ message: 'Tạo group thành công', data });
     } catch (error) {
-        const status = /ít nhất|không hợp lệ/.test(error.message) ? 400 : 404;
-        return res.status(status).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const updateGroup = async (req, res) => {
+const updateGroup = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         if (!Number.isInteger(conversationId) || conversationId <= 0) {
             return res.status(400).json({ message: 'conversationId không hợp lệ' });
         }
-
-        const oldConversation = await require('../repository/conversationRepository')
-            .getConversationInfo(conversationId);
 
         const data = await conversationService.updateGroupConversation(
             conversationId,
@@ -302,11 +353,10 @@ const updateGroup = async (req, res) => {
             req.body.avatarUrl || null
         );
 
-        const memberIds = await require('../repository/conversationRepository')
-            .getConversationMemberIds(conversationId);
+        const memberIds = await getMemberIdsForNotification(conversationId);
 
         for (const memberId of memberIds) {
-            getIO().to(`user:${memberId}`).emit('conversation:updated', {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 conversation: data
             });
@@ -321,12 +371,12 @@ const updateGroup = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã cập nhật thông tin nhóm', data });
     } catch (error) {
-        const status = /quyền|group|không hợp lệ/.test(error.message) ? 403 : 400;
-        return res.status(status).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const addGroupMember = async (req, res) => {
+const addGroupMember = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.body.userId);
@@ -343,15 +393,13 @@ const addGroupMember = async (req, res) => {
         const actorId = Number(req.user.id);
         const addedName = await getUsername(Number(data.user_id));
         const actorName = await getUsername(actorId);
-        const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
-        const io = getIO();
-
+        const memberIds = await getMemberIdsForNotification(conversationId);
         for (const memberId of memberIds) {
-            io.to(`user:${memberId}`).emit('member:added', {
+            emitUserEventBestEffort(memberId, 'member:added', {
                 conversationId,
                 member: data
             });
-            io.to(`user:${memberId}`).emit('conversation:updated', {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 action: 'member-added',
                 member: data
@@ -362,7 +410,7 @@ const addGroupMember = async (req, res) => {
         // contact list của các thành viên hiện tại.
         if (require('../src/socket/socket').isUserOnline(Number(data.user_id))) {
             for (const memberId of memberIds) {
-                io.to(`user:${memberId}`).emit('presence:online', {
+                emitUserEventBestEffort(memberId, 'presence:online', {
                     userId: Number(data.user_id)
                 });
             }
@@ -376,12 +424,12 @@ const addGroupMember = async (req, res) => {
 
         return res.status(201).json({ message: 'Đã thêm thành viên', data });
     } catch (error) {
-        const status = /quyền|role|group|không tồn tại/.test(error.message) ? 403 : 400;
-        return res.status(status).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const removeGroupMember = async (req, res) => {
+const removeGroupMember = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
@@ -389,32 +437,32 @@ const removeGroupMember = async (req, res) => {
             !Number.isInteger(targetUserId) || targetUserId <= 0) {
             return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
         }
-        const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
-        const targetName = await getUsername(targetUserId);
-        const actorName = await getUsername(Number(req.user.id));
+        // Authorize and perform the membership change before reading group metadata.
+        // This prevents non-members from probing member IDs or usernames.
         const data = await conversationService.removeGroupMember(
             conversationId,
             Number(req.user.id),
             targetUserId
         );
-        const io = getIO();
         const removedUserId = Number(data.user_id);
 
-        io.to(`user:${removedUserId}`).emit('member:removed', {
+        // Enforce room eviction immediately after the committed membership
+        // change, before optional notification metadata lookups. If the
+        // adapter cannot remove room membership, disconnect the user's sockets.
+        await evictUserFromConversation(getIO(), removedUserId, conversationId);
+
+        const memberIdsAfter = await getMemberIdsForNotification(conversationId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
+
+        emitUserEventBestEffort(removedUserId, 'member:removed', {
             conversationId,
             member: data,
             message: 'Bạn đã bị xóa khỏi nhóm'
         });
 
-        // A removed member may have multiple tabs/devices still joined to this
-        // Socket.IO room. Remove every socket for that user immediately so they
-        // cannot keep receiving messages, reactions, typing, or call events from
-        // a group they no longer belong to.
-        io.in(`user:${removedUserId}`).socketsLeave(`conversation:${conversationId}`);
-
-        for (const memberId of memberIdsBefore) {
-            if (Number(memberId) === removedUserId) continue;
-            io.to(`user:${memberId}`).emit('conversation:updated', {
+        for (const memberId of memberIdsAfter) {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 action: 'member-removed',
                 member: data
@@ -428,41 +476,42 @@ const removeGroupMember = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã xoá thành viên', data });
     } catch (error) {
-        return res.status(403).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const leaveGroup = async (req, res) => {
+const leaveGroup = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         if (!Number.isInteger(conversationId) || conversationId <= 0) {
             return res.status(400).json({ message: 'conversationId không hợp lệ' });
         }
-        const leavingName = await getUsername(Number(req.user.id));
-        const memberIdsBefore = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
         const data = await conversationService.leaveGroup(
             conversationId,
             Number(req.user.id)
         );
-        const io = getIO();
         const leavingUserId = Number(data.user_id);
 
-        for (const memberId of memberIdsBefore) {
-            io.to(`user:${memberId}`).emit('conversation:updated', {
+        // Evict all tabs immediately after the membership mutation commits.
+        await evictUserFromConversation(getIO(), leavingUserId, conversationId);
+
+        const memberIdsAfter = await getMemberIdsForNotification(conversationId);
+        const leavingName = await getUsername(Number(req.user.id));
+
+        for (const memberId of memberIdsAfter) {
+            emitUserEventBestEffort(memberId, 'conversation:updated', {
                 conversationId,
                 action: 'member-left',
                 member: data
             });
         }
 
-        io.to(`user:${leavingUserId}`).emit('member:left', {
+        emitUserEventBestEffort(leavingUserId, 'member:left', {
             conversationId,
             member: data,
             message: 'Bạn đã rời nhóm'
         });
-
-        // Leave all tabs/devices out of the conversation room immediately.
-        io.in(`user:${leavingUserId}`).socketsLeave(`conversation:${conversationId}`);
 
         await createAndEmitSystemMessage(
             conversationId,
@@ -472,11 +521,12 @@ const leaveGroup = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã rời nhóm', data });
     } catch (error) {
-        return res.status(400).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 
-const updateGroupMemberRole = async (req, res) => {
+const updateGroupMemberRole = async (req, res, next) => {
     try {
         const conversationId = Number(req.params.conversationId);
         const targetUserId = Number(req.params.userId);
@@ -484,27 +534,26 @@ const updateGroupMemberRole = async (req, res) => {
             !Number.isInteger(targetUserId) || targetUserId <= 0) {
             return res.status(400).json({ message: 'conversationId hoặc userId không hợp lệ' });
         }
-        const targetName = await getUsername(targetUserId);
-        const actorName = await getUsername(Number(req.user.id));
-        const memberIds = await require('../repository/conversationRepository').getConversationMemberIds(conversationId);
+        // Perform authorization before reading member IDs or account names.
         const data = await conversationService.updateGroupMemberRole(
             conversationId,
             Number(req.user.id),
             targetUserId,
             req.body.role
         );
-
-        const io = getIO();
+        const memberIds = await getMemberIdsForNotification(conversationId);
+        const targetName = await getUsername(targetUserId);
+        const actorName = await getUsername(Number(req.user.id));
 
         if (req.body.role === 'owner') {
             // Ownership transfer is atomic in the repository. Only emit after COMMIT.
             for (const memberId of memberIds) {
-                io.to(`user:${memberId}`).emit('conversation:updated', {
+                emitUserEventBestEffort(memberId, 'conversation:updated', {
                     conversationId,
                     action: 'member-role-updated',
                     member: data.previousOwner
                 });
-                io.to(`user:${memberId}`).emit('conversation:updated', {
+                emitUserEventBestEffort(memberId, 'conversation:updated', {
                     conversationId,
                     action: 'member-role-updated',
                     member: data.newOwner
@@ -512,7 +561,7 @@ const updateGroupMemberRole = async (req, res) => {
             }
         } else {
             for (const memberId of memberIds) {
-                io.to(`user:${memberId}`).emit('conversation:updated', {
+                emitUserEventBestEffort(memberId, 'conversation:updated', {
                     conversationId,
                     action: 'member-role-updated',
                     member: data
@@ -529,7 +578,8 @@ const updateGroupMemberRole = async (req, res) => {
 
         return res.status(200).json({ message: 'Đã cập nhật role', data });
     } catch (error) {
-        return res.status(403).json({ message: error.message });
+        if (Number.isInteger(error.statusCode)) return res.status(error.statusCode).json({ message: error.message });
+        return next(error);
     }
 };
 

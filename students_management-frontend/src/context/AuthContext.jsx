@@ -43,8 +43,23 @@ export const AuthProvider = ({ children }) => {
     // sibling tabs even if their Socket.IO connection was temporarily asleep.
     useEffect(() => {
         const handleStorage = (event) => {
-            if (event.key !== 'user' || event.newValue !== null) return;
+            if (event.key !== 'user') return;
             if (sessionStorage.getItem('auth:login-in-progress') === 'true') return;
+
+            if (event.newValue !== null) {
+                try {
+                    const nextUser = JSON.parse(event.newValue);
+                    setUser(previous => {
+                        // Profile changes sync across tabs, but a different
+                        // account must never replace the active tab's identity.
+                        if (!previous || Number(previous.id) !== Number(nextUser?.id)) return previous;
+                        return { ...previous, ...nextUser };
+                    });
+                } catch {
+                    // Ignore malformed cross-tab profile payloads.
+                }
+                return;
+            }
 
             void shutdownE2EEClient().catch(() => {});
             setApiAccessToken(null);

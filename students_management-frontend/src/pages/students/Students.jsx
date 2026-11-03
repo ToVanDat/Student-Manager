@@ -411,6 +411,7 @@ function Students() {
     setAccountForm,
     accountSaving,
     accountMessage,
+    accountError,
     passwordForm,
     setPasswordForm,
     passwordSaving,
@@ -423,7 +424,7 @@ function Students() {
     handleChangePassword,
     formatSessionDate,
     getSessionIcon,
-  } = useStudentSettings(user);
+  } = useStudentSettings(user, updateUser);
 
   // =====================================================
   // OPEN SETTINGS
@@ -555,6 +556,7 @@ function Students() {
             ? "Cập nhật sinh viên thất bại"
             : "Thêm sinh viên thất bại")
       );
+      throw error;
     }
   };
 
@@ -871,6 +873,7 @@ function Students() {
                     message={
                       accountMessage
                     }
+                    error={accountError}
                     onAvatarUpdated={updateUser}
                   />
                 )}
@@ -886,11 +889,7 @@ function Students() {
 
                 {settingsTab === "security" && (
                   <SecuritySettings
-                    onOpenSessions={() =>
-                      setSettingsTab(
-                        "sessions"
-                      )
-                    }
+                    onOpenSessions={() => openSettings("sessions")}
                   />
                 )}
 

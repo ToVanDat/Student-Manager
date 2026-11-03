@@ -9,7 +9,7 @@ function StudentStats({ user, statistics, filteredCount }) {
                 <div>
                     <div className="flex items-center gap-2.5">
                         <span className="text-[27px]">👋</span>
-                        <h1 className="m-0 font-display text-[27px] font-bold text-ink dark:text-white">{t('hello')}, {user?.username || t('user')}!</h1>
+                        <h1 className="m-0 font-display text-[27px] font-bold text-ink dark:text-white">{t('hello')}, {user?.full_name || user?.username || t('user')}!</h1>
                     </div>
                     <p className="mt-1.5 mb-3 text-[13px] text-muted">{t('dailyGreeting')}</p>
                     <div className="inline-flex items-center gap-2 rounded-full border border-line bg-white/80 px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">

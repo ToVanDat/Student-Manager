@@ -32,6 +32,16 @@ The refresh cookie is HttpOnly and scoped to `/api/auth`. Verify that the fronte
 
 Passkey endpoints return `503 ADVANCED_AUTH_SCHEMA_NOT_READY` when the required advanced-auth table/column is absent, rather than exposing PostgreSQL details as a generic authentication failure. Confirm `user_webauthn_credentials` exists and that its `user_id` type matches `users.id` before applying the migration. A `503 WEBAUTHN_CONFIG_NOT_READY` indicates an invalid/missing origin or RP ID configuration. `WEBAUTHN_ORIGIN` must match the browser origin (HTTPS in production; localhost is permitted for local development), and `WEBAUTHN_RP_ID` must be the origin host or a valid parent domain. These checks do not apply migrations or modify database data.
 
+## Face Login API integration
+
+The application exposes device-biometric WebAuthn endpoints under `/api/auth/biometric-login`:
+
+- `GET /status` (authenticated): returns whether the account has at least one registered WebAuthn credential and the credential count.
+- `POST /options` (public, rate-limited, trusted-origin): accepts `{ "username": "..." }` and returns a one-time challenge plus WebAuthn authentication options.
+- `POST /verify` (public, rate-limited, trusted-origin): accepts `{ "challengeId": "...", "response": { ...WebAuthn assertion... } }`; on successful signature, origin, RP ID, challenge, and user-verification checks, it creates the normal application session and HttpOnly refresh cookie.
+
+These routes reuse the existing passkey verifier and `user_webauthn_credentials` table; they do not create a separate face-template database. The client login form calls these endpoints, and Security Settings lets the user register and revoke credentials. The UI describes this as Face Login/device biometric login, but the authenticator chooses the actual local verification method. A user may be asked for Windows Hello face, fingerprint, device PIN, or another platform method. A registered credential does not prove that face recognition is available on every device.
+
 ## Face login decision
 
 The repository already has WebAuthn/passkey registration and login. The server requires user verification during both registration and authentication and stores the credential public key, not the device's biometric data. On supported devices, the platform authenticator may verify the user with Windows Hello face recognition, Apple Face ID, fingerprint, or the device PIN.

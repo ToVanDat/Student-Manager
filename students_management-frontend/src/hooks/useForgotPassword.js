@@ -156,6 +156,12 @@ export function useForgotPassword({ onLogin, setError, setSuccess }) {
         }
     };
 
+    const handleBackToOtp = () => {
+        if (loading || !resetToken) return;
+        clearMessages();
+        setStep('otp');
+    };
+
     const handleBackToEmail = () => {
         clearMessages();
         setOtp('');
@@ -181,5 +187,6 @@ export function useForgotPassword({ onLogin, setError, setSuccess }) {
         handleResendOtp,
         handleResetPassword,
         handleBackToEmail,
+        handleBackToOtp,
     };
 }

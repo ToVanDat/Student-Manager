@@ -21,3 +21,14 @@ test('callType only accepts voice and video', () => {
         assert.equal(isValidCallType(value), false);
     }
 });
+
+
+test('call failure reasons are restricted to known server values', () => {
+    const { normalizeCallFailureReason } = require('../service/callValidation');
+    for (const value of ['connection-timeout', 'ice-failed', 'peer-connection-failed', 'media-error', 'network-error']) {
+        assert.equal(normalizeCallFailureReason(value), value);
+    }
+    for (const value of ['DROP TABLE calls', '<script>', 'x'.repeat(10000), null, {}, 123]) {
+        assert.equal(normalizeCallFailureReason(value), 'connection-failed');
+    }
+});

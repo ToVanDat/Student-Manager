@@ -39,12 +39,16 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                     callbacksRef.current.onLoading(true);
                     callbacksRef.current.onError('');
 
+                    // Keep stale-session socket events from clearing the new
+                    // Google session while the server replaces the old one.
+                    sessionStorage.setItem('auth:login-in-progress', 'true');
                     try {
                         const data = await googleLoginApi(result.credential);
                         callbacksRef.current.onLogin(data);
                     } catch (error) {
                         callbacksRef.current.onError(error.response?.data?.message || t('googleLoginFailed'));
                     } finally {
+                        sessionStorage.removeItem('auth:login-in-progress');
                         setBusy(false);
                         callbacksRef.current.onLoading(false);
                     }
@@ -92,7 +96,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     }, []);
 
     return (
-        <div className="mt-4 space-y-3">
+        <div className="auth-methods-content mt-4 space-y-3">
             <div className="relative flex items-center gap-3 text-xs text-slate-400">
                 <span className="h-px flex-1 bg-slate-200" />
                 <span className="whitespace-nowrap">Hoặc tiếp tục bằng</span>
@@ -117,7 +121,6 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
             {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                 <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
             )}
-            <p className="text-center text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">Google chỉ đăng nhập vào tài khoản Student Manager đã liên kết trước đó. Nếu chưa liên kết, hãy đăng nhập bằng username/password rồi liên kết Google trong Cài đặt bảo mật.</p>
         </div>
     );
 }

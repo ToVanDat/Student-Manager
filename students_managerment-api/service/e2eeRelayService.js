@@ -46,6 +46,12 @@ const getActiveDevices = async (requesterId, targetUserId) => {
     await assertDeviceInventoryAccess(requesterId, targetUserId);
     return relayRepository.getActiveDevices(targetUserId);
 };
+
+const getIdentityKey = async (requesterId, targetUserId, identityType = 'aci') => {
+    await assertDeviceInventoryAccess(requesterId, targetUserId);
+    if (!['aci', 'pni'].includes(identityType)) throw fail(400, 'identityType không hợp lệ');
+    return relayRepository.getIdentityKey(targetUserId, identityType);
+};
 const removeDevice = (userId, deviceId) => relayRepository.removeDevice(userId, integer(deviceId, 'deviceId', 1, 5));
 
 const provisionIdentity = async (userId, deviceId, body = {}) => {
@@ -300,7 +306,7 @@ const markDelivered = async (userId, deviceId, envelopeId) => {
 };
 
 module.exports = {
-    registerDevice, getDevices, getActiveDevices, removeDevice, provisionIdentity, rotateIdentityKey,
+    registerDevice, getDevices, getActiveDevices, getIdentityKey, removeDevice, provisionIdentity, rotateIdentityKey,
     createProvisioningSession, connectNewDevice, sendProvisioningMessage, getProvisioningMessage,
     completeProvisioning, acknowledgeProvisioning, rollbackProvisioning, abortProvisioningSession, deleteProvisioningSession, uploadPreKeys,
     fetchPreKeyBundle, getPreKeyCount, getPreKeyInventory, clearStaleKemPreKeys, getConversationE2EEStatus, pauseConversationE2EE, enableConversationE2EE, sendEnvelope, sendDirectEnvelope,

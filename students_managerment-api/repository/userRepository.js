@@ -106,8 +106,34 @@ const updateUserAccess = async (userId, role, isActive, actorId) => {
              RETURNING id, username, email, role, is_active, created_at, updated_at`,
             [role, isActive, userId]
         );
+
+        // Any role or account-status change invalidates every existing login.
+        // Revoke DB sessions and refresh tokens in the same transaction as the
+        // permission update, so a later Redis/Socket.IO outage cannot preserve
+        // an authorization path.
+        const accessChanged = role !== current.role || isActive !== current.is_active;
+        let revokedSessionIds = [];
+        if (accessChanged) {
+            const revokedSessions = await client.query(
+                `UPDATE sessions
+                 SET revoked_at = CURRENT_TIMESTAMP
+                 WHERE user_id = $1
+                   AND revoked_at IS NULL
+                 RETURNING id`,
+                [userId]
+            );
+            await client.query(
+                `UPDATE refresh_tokens
+                 SET revoked_at = CURRENT_TIMESTAMP
+                 WHERE user_id = $1
+                   AND revoked_at IS NULL`,
+                [userId]
+            );
+            revokedSessionIds = revokedSessions.rows.map((row) => row.id);
+        }
+
         await client.query('COMMIT');
-        return { kind: 'ok', user: updated.rows[0] };
+        return { kind: 'ok', user: updated.rows[0], revokedSessionIds };
     } catch (error) {
         await client.query('ROLLBACK');
         throw error;

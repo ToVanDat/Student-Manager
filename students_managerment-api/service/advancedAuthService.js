@@ -11,6 +11,7 @@ const {
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const authRepository = require('../repository/authRepository.js');
+const { saveAccessTokenToRedis, removeAccessTokenFromRedis } = require('./accessTokenStore.js');
 
 const googleClient = new OAuth2Client();
 const CHALLENGE_TTL_SECONDS = 300;
@@ -61,10 +62,17 @@ async function consumeChallenge(kind, id) {
     try { return JSON.parse(raw); } catch { return null; }
 }
 function publicUser(user) {
-    return { id: user.id, username: user.username, email: user.email, role: user.role, avatar_url: user.avatar_url || null };
+    return {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name || '',
+        email: user.email,
+        role: user.role,
+        avatar_url: user.avatar_url || null
+    };
 }
 
-async function issueSession(user, req) {
+async function issueSession(user, req, options = {}) {
     if (!user || !user.is_active) throw new Error('Tài khoản đã bị khóa hoặc không tồn tại');
 
     // sessions.device_name is VARCHAR(100), while user_agent is TEXT.
@@ -76,12 +84,21 @@ async function issueSession(user, req) {
     let accessToken = null;
 
     try {
-        session = await authRepository.createSession(
+        const createSession = options.requireFaceCredential
+            ? authRepository.createSessionForActiveFaceUser
+            : authRepository.createSessionForActiveUser;
+        session = await createSession(
             user.id,
             deviceName,
             userAgent,
-            req.ip || null
+            req.ip || null,
+            options.requireFaceCredential ? options.faceCredential : undefined
         );
+        if (!session) {
+            const inactiveError = new Error('Tài khoản đã bị khóa hoặc không tồn tại');
+            inactiveError.code = 'ACCOUNT_INACTIVE';
+            throw inactiveError;
+        }
         accessToken = jwt.sign({
             sub: user.id, username: user.username, role: user.role, sessionId: session.id
         }, process.env.JWT_SECRET, {
@@ -91,8 +108,7 @@ async function issueSession(user, req) {
             algorithm: 'HS256'
         });
 
-        const accessHash = hash(accessToken);
-        await redisClient.set(`access_token:${accessHash}`, String(user.id), { EX: ACCESS_TTL_SECONDS });
+        await saveAccessTokenToRedis(accessToken, user.id);
 
         const refreshToken = randomToken(64);
         await authRepository.saveRefreshToken(
@@ -106,7 +122,7 @@ async function issueSession(user, req) {
         // active session or a usable access-token entry behind.
         if (accessToken) {
             try {
-                await redisClient.del(`access_token:${hash(accessToken)}`);
+                await removeAccessTokenFromRedis(accessToken);
             } catch (cleanupError) {
                 console.error('[AdvancedAuth] Failed to clean partial access token', {
                     code: cleanupError.code || 'ACCESS_TOKEN_CLEANUP_FAILED'
@@ -169,7 +185,7 @@ async function verifySensitiveAction(userId, currentPassword, verificationToken,
 }
 
 async function beginSensitiveReauth(userId, purpose) {
-    if (!['google-link', 'google-unlink'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
+    if (!['google-link', 'google-unlink', 'face-enroll', 'face-disable'].includes(purpose)) throw new Error('Mục đích xác minh không hợp lệ');
     const userResult = await pool.query('SELECT id, is_active FROM users WHERE id = $1', [userId]);
     if (!userResult.rows[0]?.is_active) throw new Error('Tài khoản không hoạt động');
     const rows = await pool.query('SELECT credential_id, transports FROM user_webauthn_credentials WHERE user_id = $1', [userId]);
@@ -488,5 +504,7 @@ module.exports = {
     beginSensitiveReauth, finishSensitiveReauth,
     beginPasskeyRegistration, finishPasskeyRegistration,
     beginPasskeyLogin, finishPasskeyLogin, listPasskeys, deletePasskey,
-    createQrLogin, approveQrLogin, denyQrLogin, pollQrLogin
+    createQrLogin, approveQrLogin, denyQrLogin, pollQrLogin,
+    // Reused only by trusted server-side authentication flows; never expose directly as an HTTP endpoint.
+    issueSession, verifySensitiveAction
 };

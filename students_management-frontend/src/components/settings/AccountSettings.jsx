@@ -12,6 +12,7 @@ function AccountSettings({
     onSubmit,
     saving,
     message,
+    error,
     onAvatarUpdated,
 }) {
     const { t } = useLanguage();
@@ -82,7 +83,7 @@ function AccountSettings({
                     />
                 ) : (
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700 dark:bg-blue-950 dark:text-blue-200">
-                        {(user?.username || 'U').slice(0, 1).toUpperCase()}
+                        {(user?.full_name || user?.username || 'U').slice(0, 1).toUpperCase()}
                     </div>
                 )}
 
@@ -120,7 +121,7 @@ function AccountSettings({
                 </div>
             </div>
 
-            <form className="grid gap-4" onSubmit={onSubmit}>
+            <form className="grid gap-4" onSubmit={onSubmit} noValidate>
                 <div className="grid gap-2">
                     <label
                         htmlFor="account-username"
@@ -133,15 +134,42 @@ function AccountSettings({
                         <User size={17} className="shrink-0 text-slate-400" />
                         <input
                             id="account-username"
+                            className="min-w-0 flex-1 cursor-not-allowed border-0 bg-transparent text-sm text-slate-500 outline-none dark:text-slate-400"
+                            type="text"
+                            value={form.username || ''}
+                            readOnly
+                            aria-describedby="account-username-help"
+                        />
+                    </div>
+                    <p id="account-username-help" className="m-0 text-xs text-slate-500 dark:text-slate-400">
+                        Username là định danh đăng nhập và không thể đổi tại mục thông tin cá nhân.
+                    </p>
+                </div>
+
+                <div className="grid gap-2">
+                    <label
+                        htmlFor="account-full-name"
+                        className="text-xs font-semibold text-slate-700 dark:text-slate-300"
+                    >
+                        Tên hiển thị
+                    </label>
+                    <div className="flex min-h-[46px] items-center gap-2.5 rounded-lg border border-line bg-white px-3 transition focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-950">
+                        <User size={17} className="shrink-0 text-slate-400" />
+                        <input
+                            id="account-full-name"
                             className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
                             type="text"
-                            value={form.username}
-                            onChange={(event) =>
-                                onChange({ ...form, username: event.target.value })
-                            }
+                            autoComplete="name"
+                            maxLength={120}
+                            aria-invalid={Boolean(error)}
+                            value={form.full_name || ''}
+                            onChange={(event) => onChange({ ...form, full_name: event.target.value })}
                             required
                         />
                     </div>
+                    <p className="m-0 text-xs text-slate-500 dark:text-slate-400">
+                        Tên hiển thị không làm thay đổi username dùng để đăng nhập.
+                    </p>
                 </div>
 
                 <div className="grid gap-2">
@@ -158,6 +186,9 @@ function AccountSettings({
                             id="account-email"
                             className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-800 outline-none dark:text-slate-100"
                             type="email"
+                            autoComplete="email"
+                            aria-invalid={Boolean(error)}
+                            maxLength={254}
                             value={form.email}
                             onChange={(event) =>
                                 onChange({ ...form, email: event.target.value })
@@ -186,6 +217,12 @@ function AccountSettings({
                         </strong>
                     </div>
                 </div>
+
+                {error && (
+                    <div role="alert" aria-live="polite" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-sm text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+                        {error}
+                    </div>
+                )}
 
                 {message && (
                     <div

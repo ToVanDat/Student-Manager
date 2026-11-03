@@ -1,12 +1,11 @@
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 
 COPY package*.json ./
 
-# This repository currently does not track a package-lock.json, so npm ci would fail.
-# Prefer adding and committing a lockfile, then switch back to npm ci for reproducible builds.
-RUN npm install --omit=dev
+# The API package-lock.json is committed; use npm ci for reproducible image builds.
+RUN npm ci --omit=dev
 
 COPY . .
 
