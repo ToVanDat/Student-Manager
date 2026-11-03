@@ -302,3 +302,45 @@ dialog {
     gap: .875rem;
   }
 }
+
+/* Student portal: give the landing header and academic panels a consistent hierarchy. */
+.student-portal-page {
+  min-width: 0;
+}
+.student-portal-page > header {
+  min-height: 7rem;
+  padding: clamp(1rem, 2.2vw, 1.5rem);
+  border: 1px solid var(--ui-line);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(ellipse at 92% 0%, color-mix(in srgb, var(--ui-brand) 10%, transparent), transparent 48%),
+    var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+.student-portal-page .app-panel {
+  min-width: 0;
+  border-color: var(--ui-line);
+  box-shadow: var(--ui-shadow);
+}
+.student-portal-page :is(input, select, textarea) {
+  max-width: 100%;
+}
+.student-portal-page ul > li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.student-portal-page button {
+  touch-action: manipulation;
+}
+@media (max-width: 639px) {
+  .student-portal-page {
+    gap: 1rem;
+  }
+  .student-portal-page > header {
+    align-items: flex-start;
+    border-radius: 1rem;
+  }
+  .student-portal-page > header > div:last-child {
+    max-width: 100%;
+  }
+}
