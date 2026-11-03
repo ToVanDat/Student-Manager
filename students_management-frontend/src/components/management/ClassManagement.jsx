@@ -119,7 +119,7 @@ export default function ClassManagement() {
     };
 
     return (
-        <section className="mx-auto max-w-[1500px] space-y-6 pb-8">
+        <section data-ui-page="admin-management" aria-busy={loading} className="admin-management-page mx-auto max-w-[1500px] space-y-6 pb-8">
             <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <div>
                     <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-200"><Layers size={14} />{t('trainingGroup')}</p>
