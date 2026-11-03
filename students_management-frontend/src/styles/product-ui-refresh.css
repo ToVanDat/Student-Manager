@@ -180,3 +180,134 @@ hr { border-color: var(--ui-line); }
     transition-duration: .01ms !important;
   }
 }
+
+
+/* -------------------------------------------------------------------------
+   System-wide UI refinement — visual consistency, accessible focus and
+   dark-mode coverage. Additive CSS only; does not alter component behavior.
+   ------------------------------------------------------------------------- */
+:root {
+  --sm-control-height: 2.65rem;
+  --sm-control-radius: .72rem;
+  --sm-focus-ring: color-mix(in srgb, var(--ui-accent, #4263d8) 24%, transparent);
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+:where(button, a, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--ui-accent, #4263d8);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px var(--sm-focus-ring);
+}
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select, textarea) {
+  min-width: 0;
+  border-radius: var(--sm-control-radius);
+}
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select) {
+  min-height: var(--sm-control-height);
+}
+:where(input[type="checkbox"], input[type="radio"]) {
+  accent-color: var(--ui-accent, #4263d8);
+}
+:where(input, select, textarea):disabled {
+  cursor: not-allowed;
+  opacity: .68;
+}
+:where(button, [role="button"]):disabled {
+  cursor: not-allowed;
+  opacity: .58;
+  transform: none !important;
+}
+:where(label) {
+  color: var(--ui-ink, #18243a);
+}
+:where(a) {
+  text-decoration-thickness: .08em;
+}
+:where(.app-card, .dashboard-surface, .feature-surface) {
+  border-color: var(--ui-line, #e5eaf2);
+  background-color: var(--ui-surface, #fff);
+  box-shadow: var(--ui-shadow, 0 4px 18px rgba(23, 35, 60, .045));
+}
+:where(table) {
+  font-variant-numeric: tabular-nums;
+}
+:where(table thead th) {
+  padding-block: .8rem;
+  padding-inline: .9rem;
+}
+:where(table tbody td) {
+  padding-block: .72rem;
+  padding-inline: .9rem;
+}
+:where(table tbody tr:last-child td) {
+  border-bottom-color: transparent;
+}
+:where(.overflow-x-auto, .overflow-auto) {
+  overscroll-behavior-inline: contain;
+}
+:where(.chat-shell, [data-chat-shell]) :is(button, a, input, textarea, select):focus-visible {
+  outline-offset: 2px;
+}
+.auth-login-page {
+  background-color: var(--ui-canvas, #f5f7fb);
+}
+.auth-login-card {
+  border-color: var(--ui-line, #e5eaf2);
+  box-shadow: 0 20px 64px -38px rgba(15, 23, 42, .34);
+}
+.dark .auth-login-page {
+  background-color: var(--ui-canvas, #0b1120);
+  color: var(--ui-ink, #e6edf8);
+}
+.dark .auth-login-card {
+  border-color: var(--ui-line, #27344a);
+  background-color: var(--ui-surface, #111a2b);
+  color: var(--ui-ink, #e6edf8);
+  box-shadow: 0 24px 72px -42px rgba(0, 0, 0, .72);
+}
+.dark .auth-login-card :is(h1, h2, strong) {
+  color: var(--ui-ink, #e6edf8);
+}
+.dark .auth-login-card :is(.border-slate-100, .border-slate-200, .border-slate-300) {
+  border-color: var(--ui-line, #27344a);
+}
+.dark .auth-login-card :is(.text-slate-900, .text-slate-950, .text-slate-800, .text-slate-700) {
+  color: var(--ui-ink, #e6edf8);
+}
+.dark .auth-login-card :is(.text-slate-500, .text-slate-400) {
+  color: var(--ui-muted, #9aa9bf);
+}
+.dark .auth-login-card :is(.bg-white, .bg-slate-50) {
+  background-color: var(--ui-surface, #111a2b);
+}
+@media (max-width: 640px) {
+  :where(table thead th, table tbody td) {
+    padding-inline: .65rem;
+  }
+  .auth-login-card {
+    border-radius: 1.25rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(*, *::before, *::after) {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+@media (forced-colors: active) {
+  :where(button, a, input, select, textarea, [role="button"]):focus-visible {
+    outline: 2px solid Highlight;
+    box-shadow: none;
+  }
+}
