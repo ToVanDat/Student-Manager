@@ -122,8 +122,6 @@ export default function useWebRTCCall() {
         pendingCandidatesRef.current = [];
         activeNegotiationIdRef.current = null;
         lastRemoteNegotiationIdRef.current = null;
-        activeNegotiationIdRef.current = null;
-        lastRemoteNegotiationIdRef.current = null;
         callRef.current = null;
         setRemoteStream(null);
         setCall(null);
@@ -272,10 +270,22 @@ export default function useWebRTCCall() {
                 const refreshed = await applyFreshIceConfiguration(pc, callId);
                 scheduleIceCredentialRefresh(pc, callId, refreshed.credentialExpiresAt);
             } catch (refreshError) {
-                console.warn('[WebRTC] TURN credential refresh failed; a fresh credential will be requested before ICE restart.', {
+                console.warn('[WebRTC] TURN credential refresh failed; retrying while the call remains active.', {
                     status: refreshError?.response?.status,
                     code: refreshError?.response?.data?.code
                 });
+
+                // Do not silently abandon refresh after a transient API/network
+                // failure. Retry at a bounded interval; the next ICE restart also
+                // requests fresh credentials synchronously before renegotiation.
+                if (
+                    callRef.current?.callId === callId &&
+                    peerRef.current === pc &&
+                    pc.signalingState !== 'closed'
+                ) {
+                    const retryAt = Math.floor(Date.now() / 1000) + 45;
+                    scheduleIceCredentialRefresh(pc, callId, retryAt);
+                }
             }
         }, refreshInMs);
     };
