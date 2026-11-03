@@ -116,7 +116,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
         return matchesSearch && matchesFilter;
     });
 
-    return <div className="mx-auto max-w-[1500px] space-y-6 pb-8">
+    return <div className="student-portal-page mx-auto max-w-[1500px] space-y-6 pb-8" data-ui-page="student-portal" aria-busy={loading}>
         <header className="flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0"><p className="mb-2 text-xs font-semibold uppercase tracking-[.14em] text-blue-700 dark:text-blue-300">{t('studentPortalEyebrow')}</p><h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">{t('studentWelcome', { name: displayName })}</h1><p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{t('studentPortalDescription')}</p></div>
             <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs capitalize text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"><CalendarDays size={15} className="text-blue-600 dark:text-blue-300" aria-hidden="true" />{date}</div>
