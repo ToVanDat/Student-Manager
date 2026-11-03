@@ -645,13 +645,17 @@ export default function ChatWindow({
             setShowSearchPanel(false);
         };
         const handleSearchKeyDown = event => {
-            if (event.key === 'Escape') setShowSearchPanel(false);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setShowSearchPanel(false);
+            }
         };
         document.addEventListener('mousedown', handleSearchOutside);
         document.addEventListener('keydown', handleSearchKeyDown);
         return () => {
             document.removeEventListener('mousedown', handleSearchOutside);
             document.removeEventListener('keydown', handleSearchKeyDown);
+            searchTriggerRef.current?.focus?.();
         };
     }, [showSearchPanel]);
 
