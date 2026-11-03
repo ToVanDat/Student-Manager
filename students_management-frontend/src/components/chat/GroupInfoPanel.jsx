@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Crown,
     Shield,
@@ -45,10 +45,48 @@ export default function GroupInfoPanel({
     const [savingGroup, setSavingGroup] = useState(false);
     const [pendingConfirmation, setPendingConfirmation] = useState(null);
     const [confirmationBusy, setConfirmationBusy] = useState(false);
+    const confirmationDialogRef = useRef(null);
 
     useEffect(() => {
         if (!editingGroup) setGroupName(conversation?.name || '');
     }, [conversation?.name, editingGroup]);
+
+    useEffect(() => {
+        if (!pendingConfirmation || !confirmationDialogRef.current) return undefined;
+        const previouslyFocused = document.activeElement;
+        const dialog = confirmationDialogRef.current;
+        const selector = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...dialog.querySelectorAll(selector)];
+        (focusable[0] || dialog).focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape' && !confirmationBusy) {
+                event.preventDefault();
+                setPendingConfirmation(null);
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...dialog.querySelectorAll(selector)];
+            if (!items.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (event.target === first || !dialog.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !dialog.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [pendingConfirmation, confirmationBusy]);
 
     const currentMember = members.find(
         member => Number(member.user_id) === Number(currentUserId)
@@ -435,6 +473,8 @@ export default function GroupInfoPanel({
             {pendingConfirmation && (
                 <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !confirmationBusy) setPendingConfirmation(null); }}>
                     <section
+                        ref={confirmationDialogRef}
+                        tabIndex={-1}
                         role="alertdialog"
                         aria-modal="true"
                         aria-labelledby="group-action-confirm-title"
