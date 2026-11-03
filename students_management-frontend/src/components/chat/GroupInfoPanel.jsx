@@ -47,6 +47,8 @@ export default function GroupInfoPanel({
     const [confirmationBusy, setConfirmationBusy] = useState(false);
     const confirmationDialogRef = useRef(null);
     const groupPanelRef = useRef(null);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
 
     useEffect(() => {
         if (!editingGroup) setGroupName(conversation?.name || '');
@@ -62,7 +64,7 @@ export default function GroupInfoPanel({
         const handleKeyDown = event => {
             if (event.key === 'Escape') {
                 event.preventDefault();
-                onClose?.();
+                onCloseRef.current?.();
                 return;
             }
             if (event.key !== 'Tab') return;
@@ -87,7 +89,7 @@ export default function GroupInfoPanel({
             document.removeEventListener('keydown', handleKeyDown);
             previouslyFocused?.focus?.();
         };
-    }, [open, pendingConfirmation, onClose]);
+    }, [open, pendingConfirmation]);
 
     useEffect(() => {
         if (!pendingConfirmation || !confirmationDialogRef.current) return undefined;
