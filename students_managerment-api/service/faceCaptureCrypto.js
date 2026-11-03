@@ -39,7 +39,7 @@ function encryptCaptureEmbedding({ kind, challengeId, embedding, modelId, modelV
 }
 
 function decodeBase64(value, expectedLength, label) {
-    if (typeof value !== 'string' || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
+    if (typeof value !== 'string' || value.length === 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value)) {
         const error = new Error('Encrypted face capture ' + label + ' is malformed.');
         error.code = 'FACE_CAPTURE_ENVELOPE_INVALID';
         throw error;
@@ -62,15 +62,24 @@ function decryptCaptureEmbedding({ kind, challengeId, envelope }) {
         throw error;
     }
 
-    return decryptFaceTemplate({
-        userId: bindingIdentity(kind, challengeId),
-        ciphertext: decodeBase64(envelope.ciphertext, null, 'ciphertext'),
-        nonce: decodeBase64(envelope.nonce, 12, 'nonce'),
-        authTag: decodeBase64(envelope.authTag, 16, 'authentication tag'),
-        keyVersion: envelope.keyVersion,
-        modelId: envelope.modelId,
-        modelVersion: envelope.modelVersion
-    });
+    try {
+        return decryptFaceTemplate({
+            userId: bindingIdentity(kind, challengeId),
+            ciphertext: decodeBase64(envelope.ciphertext, null, 'ciphertext'),
+            nonce: decodeBase64(envelope.nonce, 12, 'nonce'),
+            authTag: decodeBase64(envelope.authTag, 16, 'authentication tag'),
+            keyVersion: envelope.keyVersion,
+            modelId: envelope.modelId,
+            modelVersion: envelope.modelVersion
+        });
+    } catch (error) {
+        if (error?.code === 'FACE_AUTH_CONFIG_NOT_READY' || error?.code === 'FACE_AUTH_CONFIG_INVALID') {
+            throw error;
+        }
+        const invalid = new Error('Encrypted face capture could not be authenticated.');
+        invalid.code = 'FACE_CAPTURE_ENVELOPE_INVALID';
+        throw invalid;
+    }
 }
 
 module.exports = { encryptCaptureEmbedding, decryptCaptureEmbedding };
