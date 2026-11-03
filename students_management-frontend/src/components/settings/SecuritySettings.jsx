@@ -7,7 +7,7 @@ function SecuritySettings({ onOpenSessions }) {
     const { t } = useLanguage();
 
     return (
-        <div className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+        <section data-ui-region="security-settings" className="settings-panel min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-5 flex items-center gap-3 border-b border-slate-100 pb-5 dark:border-slate-800">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-blue-950 dark:text-blue-300">
                     <ShieldCheck size={20} />
@@ -24,7 +24,7 @@ function SecuritySettings({ onOpenSessions }) {
             </div>
 
             <div className="grid gap-2.5">
-                <div className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
+                <div className="settings-security-row grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
                     <div className="flex size-10 items-center justify-center rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                         <ShieldCheck size={20} />
                     </div>
@@ -101,7 +101,7 @@ function SecuritySettings({ onOpenSessions }) {
             </div>
             <AdvancedSecurityMethods />
             <QrLoginPanel allowApprove approvalOnly />
-        </div>
+        </section>
     );
 }
 
