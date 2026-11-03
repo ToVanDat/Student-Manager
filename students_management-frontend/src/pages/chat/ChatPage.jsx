@@ -446,8 +446,8 @@ function ChatPageContent() {
                 onMarkNotificationRead={markCallNotificationRead}
             />
 
-            <main className="chat-workspace min-h-0 flex-1 overflow-hidden p-0 sm:p-3 lg:p-4">
-                <div className="chat-shell h-full min-h-0 overflow-hidden rounded-none border-0 bg-white shadow-panel dark:bg-slate-900 sm:rounded-xl sm:border sm:border-slate-200 dark:sm:border-slate-700">
+            <main data-ui-page="chat-workspace" className="chat-workspace min-h-0 flex-1 overflow-hidden p-0 sm:p-3 lg:p-4">
+                <div data-chat-workspace="true" className="chat-shell h-full min-h-0 overflow-hidden rounded-none border-0 bg-white shadow-panel dark:bg-slate-900 sm:rounded-xl sm:border sm:border-slate-200 dark:sm:border-slate-700">
                     <div className="flex h-full min-h-0 min-w-0">
                         <aside className={`hidden shrink-0 flex-col border-r border-slate-200 bg-[#f8faff] py-5 text-[#263852] transition-[width,padding] duration-200 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 lg:flex ${chatNavCollapsed ? "w-[68px] px-2" : "w-[200px] px-3"}`}>
                             <div className={`mb-5 flex items-center gap-2 px-2 ${chatNavCollapsed ? "justify-center px-0" : ""}`}>
