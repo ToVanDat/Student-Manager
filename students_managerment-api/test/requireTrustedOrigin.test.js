@@ -93,3 +93,30 @@ test('rejects an untrusted Origin even if Referer is trusted', () => {
         else process.env.FRONT_URL = previous;
     }
 });
+
+test('supports multiple exact production frontend origins without localhost fallback', () => {
+    const previous = {
+        NODE_ENV: process.env.NODE_ENV,
+        FRONTEND_URL: process.env.FRONTEND_URL,
+        FRONTEND_URLS: process.env.FRONTEND_URLS
+    };
+    process.env.NODE_ENV = 'production';
+    delete process.env.FRONTEND_URL;
+    process.env.FRONTEND_URLS = 'https://app.example.test,https://admin.example.test';
+    try {
+        for (const allowed of ['https://app.example.test', 'https://admin.example.test']) {
+            const { nextCalled } = invoke({ origin: allowed });
+            assert.equal(nextCalled, true, allowed);
+        }
+        for (const denied of ['http://localhost:5173', 'https://app.example.test.attacker.invalid']) {
+            const { nextCalled, res } = invoke({ origin: denied });
+            assert.equal(nextCalled, false, denied);
+            assert.equal(res.statusCode, 403, denied);
+        }
+    } finally {
+        for (const [key, value] of Object.entries(previous)) {
+            if (value === undefined) delete process.env[key];
+            else process.env[key] = value;
+        }
+    }
+});
