@@ -926,7 +926,7 @@ export default function ChatWindow({
     }, []);
 
     return (
-    <section data-chat-theme={chatTheme} className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950" style={chatThemeStyles}>
+    <section data-chat-theme={chatTheme} data-chat-region="conversation" className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950" style={chatThemeStyles}>
         <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900" style={{ backgroundColor: 'var(--chat-theme-surface)' }}>
 
             {pendingAttachment && (
@@ -1056,7 +1056,7 @@ export default function ChatWindow({
 
             {/* ================= HEADER ================= */}
 
-            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
+            <header data-chat-region="conversation-header" className="min-h-[76px] px-3 sm:px-5 flex flex-wrap items-center justify-between gap-y-2 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
 
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                     <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
@@ -1093,7 +1093,7 @@ export default function ChatWindow({
 
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
+                <div data-chat-region="conversation-actions" className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1 text-slate-500 dark:text-slate-400">
                     {activeConversation.type === 'direct' && e2eeStatus?.available && (
                         e2eeStatus.enabled && e2eeStatus.mode !== 'paused' ? (
                             <>
@@ -1510,6 +1510,7 @@ export default function ChatWindow({
                 )}
 
                 <div
+                data-chat-region="message-timeline"
                 ref={messagesContainerRef}
                 onScroll={(event) => {
                     const container = event.currentTarget;
@@ -1672,6 +1673,8 @@ export default function ChatWindow({
             )}
 
             <form
+                data-chat-region="message-composer"
+                aria-label="Soạn tin nhắn"
                 onSubmit={handleSend}
                 className="min-h-[78px] border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
                 style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}
@@ -1691,6 +1694,7 @@ export default function ChatWindow({
                 <button
                     type="button"
                     title="Đính kèm tệp"
+                    aria-label="Đính kèm tệp"
                     disabled={isUploading}
                     className="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full disabled:opacity-50"
                     onClick={handleAttachmentClick}
@@ -1701,6 +1705,7 @@ export default function ChatWindow({
                 <button
                     type="button"
                     title={recordingVoice ? 'Dừng ghi âm' : 'Ghi âm'}
+                    aria-label={recordingVoice ? 'Dừng ghi âm' : 'Ghi âm'}
                     disabled={isUploading}
                     onClick={() => recordingVoice ? stopVoiceRecording() : startVoiceRecording()}
                     className={`flex items-center gap-1 rounded-full p-2 ${recordingVoice ? 'bg-red-50 text-red-600' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600'} disabled:opacity-50`}
@@ -1726,6 +1731,7 @@ export default function ChatWindow({
                     <button
                         type="button"
                         title="Emoji"
+                        aria-label="Mở bảng emoji"
                         onClick={() =>
                             setShowEmojiPicker(
                                 (prev) => !prev
