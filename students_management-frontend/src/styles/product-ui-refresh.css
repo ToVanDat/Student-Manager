@@ -388,3 +388,40 @@ dialog {
     padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
   }
 }
+
+
+/* Student Portal: make academic regions resilient without implying unavailable data exists. */
+[data-ui-page="student-portal"] [data-ui-region] {
+  min-width: 0;
+}
+[data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid {
+  align-items: stretch;
+}
+[data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid > section {
+  min-width: 0;
+  height: 100%;
+}
+[data-ui-page="student-portal"] [data-ui-region="enrollments"] ul,
+[data-ui-page="student-portal"] [data-ui-region="results"] ul {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-line) transparent;
+  overscroll-behavior: contain;
+}
+[data-ui-page="student-portal"] [data-ui-region="notifications"] li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-ui-page="student-portal"] [data-ui-region="student-profile"] p {
+  overflow-wrap: anywhere;
+}
+[data-ui-page="student-portal"] [data-ui-region="timetable"] [data-ui-state="unavailable"] {
+  min-width: 0;
+}
+@media (max-width: 639px) {
+  [data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-ui-page="student-portal"] [data-ui-region="quick-access"] button {
+    min-height: 3.75rem;
+  }
+}
