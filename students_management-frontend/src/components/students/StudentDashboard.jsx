@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, GraduationCap, Plus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportStudentsCsv } from '@/api/studentApi.js';
@@ -76,6 +76,7 @@ function StudentDashboard({
 
     const [exporting, setExporting] = useState(false);
     const [showCsvImport, setShowCsvImport] = useState(false);
+    const studentFormDialogRef = useRef(null);
 
     const handleExport = async () => {
         if (!isAdmin || exporting) return;
@@ -113,18 +114,44 @@ function StudentDashboard({
 
 
     useEffect(() => {
-        if (!isAdmin || !showForm) return undefined;
+        if (!isAdmin || !showForm || !studentFormDialogRef.current) return undefined;
 
         const previousOverflow = document.body.style.overflow;
+        const previouslyFocused = document.activeElement;
+        const dialog = studentFormDialogRef.current;
         document.body.style.overflow = 'hidden';
+        const selector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...dialog.querySelectorAll(selector)];
+        (focusable[0] || dialog).focus();
         const handleKeyDown = event => {
-            if (event.key === 'Escape') onCloseForm?.();
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onCloseForm?.();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...dialog.querySelectorAll(selector)];
+            if (!items.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (event.target === first || !dialog.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !dialog.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
         };
-        window.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             document.body.style.overflow = previousOverflow;
-            window.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
         };
     }, [isAdmin, showForm, onCloseForm]);
 
@@ -280,7 +307,7 @@ function StudentDashboard({
             )}
             {isAdmin && showForm && (
                 <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
-                    <div role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <div ref={studentFormDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
                             <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 id="student-form-dialog-title" className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
                             <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
