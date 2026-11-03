@@ -130,14 +130,26 @@ export default function EnrollmentManagement({ view = 'enrollments' }) {
         }
     };
 
-    const remove = async item => {
-        if (!window.confirm(t('confirmDeleteEnrollment', { name: item.student_name || item.student_code, subject: item.subject_name || item.subject_code }))) return;
+    const [deleteTarget, setDeleteTarget] = useState(null);
+
+    const remove = item => setDeleteTarget({
+        item,
+        message: t('confirmDeleteEnrollment', { name: item.student_name || item.student_code, subject: item.subject_name || item.subject_code })
+    });
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
+        const item = deleteTarget.item;
+        setDeleteTarget(null);
+        setSaving(true);
         try {
             await apiClient.delete(`/api/enrollments/${item.id}`);
             toast.success(t('enrollmentDeleted'));
             await loadData();
         } catch (err) {
             toast.error(err?.response?.data?.message || t('enrollmentDeleteFailed'));
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -158,6 +170,17 @@ export default function EnrollmentManagement({ view = 'enrollments' }) {
                             : <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800 dark:text-slate-300"><tr>{['studentLabel', 'subjectLabel', 'semesterLabel', 'midtermScoreLabel', 'finalScoreLabel', 'totalScoreLabel'].map(key => <th key={key} className="px-4 py-3">{t(key)}</th>)}<th className="px-4 py-3 text-right">{t('actions')}</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-800">{visibleItems.map(item => <tr key={item.id} className="transition-colors hover:bg-blue-50/60 dark:hover:bg-slate-800/60"><td className="px-4 py-4"><div className="font-medium text-slate-900 dark:text-white">{item.student_name || '—'}</div><div className="mt-1 text-xs text-slate-400">{item.student_code || '—'}</div></td><td className="px-4 py-4"><div className="font-medium text-slate-800 dark:text-slate-100">{item.subject_name || '—'}</div><div className="mt-1 text-xs text-slate-400">{item.subject_code || '—'}</div></td><td className="px-4 py-4">{item.semester_name || '—'}<div className="mt-1 text-xs text-slate-400">{item.academic_year || ''}</div></td>{SCORE_FIELDS.map(field => <td key={field} className="px-4 py-4 tabular-nums">{item[field] ?? '—'}</td>)}<td className="px-4 py-4"><div className="flex justify-end gap-2"><button type="button" onClick={() => startForm(item)} aria-label={t('update')} title={t('update')} className="rounded-lg border p-2 text-slate-600 hover:bg-blue-50 dark:border-slate-700 dark:text-slate-300"><Pencil size={15} /></button><button type="button" onClick={() => void remove(item)} aria-label={t('delete')} title={t('delete')} className="rounded-lg border p-2 text-rose-600 hover:bg-rose-50 dark:border-slate-700 dark:text-rose-300"><Trash2 size={15} /></button></div></td></tr>)}</tbody></table></div>}
             </div>
             {formOpen && <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/50 p-3" onMouseDown={event => { if (event.target === event.currentTarget) closeForm(); }}><section role="dialog" aria-modal="true" aria-labelledby="enrollment-form-title" className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900"><header className="flex items-start justify-between border-b p-5 dark:border-slate-800"><div><h2 id="enrollment-form-title" className="font-bold text-slate-900 dark:text-white">{editing ? t('editEnrollment') : t('addEnrollment')}</h2><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('enrollmentFormDescription')}</p></div><button type="button" onClick={closeForm} disabled={saving} aria-label={t('close')}><X size={18} /></button></header><form onSubmit={submit} className="space-y-4 p-5">{[{name:'student_id',label:'studentLabel',placeholder:'selectStudent',options:students.map(item=>({id:item.id,label:`${item.student_code} — ${item.name}`}))},{name:'subject_id',label:'subjectLabel',placeholder:'selectSubject',options:subjects.map(item=>({id:item.id,label:`${item.subject_code} — ${item.subject_name}`}))},{name:'semester_id',label:'semesterLabel',placeholder:'selectSemester',options:semesters.map(item=>({id:item.id,label:`${item.semester_name} — ${item.academic_year}`}))}].map(field=><div key={field.name}><label htmlFor={`enrollment-${field.name}`} className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-200">{t(field.label)}</label><select id={`enrollment-${field.name}`} required value={form[field.name]} onChange={event=>setForm(previous=>({...previous,[field.name]:event.target.value}))} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white"><option value="">{t(field.placeholder)}</option>{field.options.map(option=><option key={option.id} value={option.id}>{option.label}</option>)}</select></div>)}<div className="grid gap-3 sm:grid-cols-3">{SCORE_FIELDS.map((field,index)=><div key={field}><label htmlFor={field} className="mb-1 block text-xs font-semibold text-slate-700 dark:text-slate-200">{t(['midtermScoreLabel','finalScoreLabel','totalScoreLabel'][index])}</label><input id={field} type="number" step="any" value={form[field]} onChange={event=>setForm(previous=>({...previous,[field]:event.target.value}))} className="w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-white" /></div>)}</div>{formError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-200">{formError}</p>}<div className="flex justify-end gap-2 border-t pt-4 dark:border-slate-800"><button type="button" onClick={closeForm} disabled={saving} className="rounded-lg border px-4 py-2 text-sm dark:border-slate-700">{t('cancel')}</button><button type="submit" disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? t('saving') : t('save')}</button></div></form></section></div>}
+            {deleteTarget && <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setDeleteTarget(null); }}>
+                <section role="alertdialog" aria-modal="true" aria-labelledby="admin-delete-title" aria-describedby="admin-delete-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <h2 id="admin-delete-title" className="text-base font-bold text-slate-900 dark:text-white">Xác nhận xóa dữ liệu?</h2>
+                    <p id="admin-delete-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{deleteTarget.message}</p>
+                    <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">Thao tác này không thể hoàn tác.</p>
+                    <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                        <button type="button" autoFocus disabled={saving} onClick={() => setDeleteTarget(null)} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                        <button type="button" disabled={saving} onClick={() => void confirmDelete()} className="min-h-10 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50">{saving ? 'Đang xóa…' : 'Xác nhận xóa'}</button>
+                    </div>
+                </section>
+            </div>}
         </section>
     );
 }
