@@ -85,13 +85,14 @@ test('localhost development origins are not implicitly trusted in production', (
     assert.equal(result.response.statusCode, 403);
 });
 
-test('configured frontend origins are normalized to URL origins, not arbitrary paths', () => {
+test('frontend allowlist entries containing paths do not match a browser Origin', () => {
     const middleware = loadMiddleware({
         NODE_ENV: 'production',
         FRONTEND_URL: 'https://app.example.com/path'
     });
     const result = invoke(middleware, { origin: 'https://app.example.com' });
-    assert.equal(result.nextCalled, true);
+    assert.equal(result.nextCalled, false);
+    assert.equal(result.response.statusCode, 403);
 });
 
 test.after(() => {
