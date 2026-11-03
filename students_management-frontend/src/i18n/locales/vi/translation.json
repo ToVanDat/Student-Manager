@@ -655,5 +655,14 @@
   "studentImportFailed": "Không thể nhập CSV. Vui lòng kiểm tra tệp và thử lại.",
   "chatComposerPlaceholder": "Nhập tin nhắn...",
   "chatComposerLabel": "Soạn tin nhắn",
-  "loginSecurityNote": "Thông tin đăng nhập được bảo vệ bằng phiên xác thực an toàn."
+  "loginSecurityNote": "Thông tin đăng nhập được bảo vệ bằng phiên xác thực an toàn.",
+  "registerStepAccount": "Thông tin tài khoản",
+  "registerStepSecurity": "Bảo mật",
+  "registerAccountStepTitle": "Bắt đầu với thông tin tài khoản",
+  "registerAccountStepDescription": "Nhập tên đăng nhập và email bạn muốn liên kết với tài khoản.",
+  "registerEmailHint": "Sử dụng email bạn có thể truy cập để nhận thông báo tài khoản.",
+  "registerSecurityStepTitle": "Thiết lập mật khẩu",
+  "registerSecurityStepDescription": "Tạo mật khẩu và xác nhận để hoàn tất đăng ký.",
+  "continue": "Tiếp tục",
+  "backToAccountDetails": "Quay lại thông tin"
 }
