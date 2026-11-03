@@ -338,9 +338,51 @@ export default function ChatWindow({
     const [showReportDialog, setShowReportDialog] = useState(false);
     const [showContactInfo, setShowContactInfo] = useState(false);
     const [showMediaPanel, setShowMediaPanel] = useState(false);
+    const chatModalRef = useRef(null);
     const [mediaPanelFilter, setMediaPanelFilter] = useState('all');
     const [reportReason, setReportReason] = useState('spam');
     const [showSearchPanel, setShowSearchPanel] = useState(false);
+
+    useEffect(() => {
+        const activeModal = showChatThemePicker || showContactInfo || showMediaPanel || showReportDialog;
+        if (!activeModal || !chatModalRef.current) return undefined;
+        const previouslyFocused = document.activeElement;
+        const modal = chatModalRef.current;
+        const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...modal.querySelectorAll(focusableSelector)];
+        (focusable[0] || modal).focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                if (showChatThemePicker) setShowChatThemePicker(false);
+                else if (showReportDialog) setShowReportDialog(false);
+                else if (showMediaPanel) setShowMediaPanel(false);
+                else setShowContactInfo(false);
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...modal.querySelectorAll(focusableSelector)];
+            if (!items.length) {
+                event.preventDefault();
+                modal.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [showChatThemePicker, showContactInfo, showMediaPanel, showReportDialog]);
     const [searchQuery, setSearchQuery] = useState('');
     const [messageSearchResults, setMessageSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
@@ -1185,7 +1227,7 @@ export default function ChatWindow({
                         </button>
                         {showChatThemePicker && createPortal(
                             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]" onMouseDown={event => { if (event.target === event.currentTarget) setShowChatThemePicker(false); }}>
-                                <section role="dialog" aria-modal="true" aria-label={t('chatTheme')} className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" style={{ maxHeight: 'min(620px, calc(100dvh - 32px))' }}>
+                                <section ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('chatTheme')} className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900" style={{ maxHeight: 'min(620px, calc(100dvh - 32px))' }}>
                                     <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                                         <div className="min-w-0">
                                             <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('chatTheme')}</h2>
@@ -1408,9 +1450,9 @@ export default function ChatWindow({
 
             {showContactInfo && (
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
+                    <div ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="chat-contact-dialog-title" className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl outline-none">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Thông tin người dùng</h4>
+                            <h4 id="chat-contact-dialog-title" className="font-bold text-slate-900 dark:text-slate-100">Thông tin người dùng</h4>
                             <button type="button" onClick={() => setShowContactInfo(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-5 flex flex-col items-center text-center">
@@ -1432,9 +1474,9 @@ export default function ChatWindow({
 
             {showMediaPanel && (
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
+                    <div ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="chat-media-dialog-title" className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl outline-none">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">{t("mediaAndFiles")}</h4>
+                            <h4 id="chat-media-dialog-title" className="font-bold text-slate-900 dark:text-slate-100">{t("mediaAndFiles")}</h4>
                             <button type="button" onClick={() => setShowMediaPanel(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
@@ -1466,9 +1508,9 @@ export default function ChatWindow({
 
             {showReportDialog && (
                 <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl">
+                    <div ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="chat-report-dialog-title" className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl outline-none">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Báo cáo người dùng</h4>
+                            <h4 id="chat-report-dialog-title" className="font-bold text-slate-900 dark:text-slate-100">Báo cáo người dùng</h4>
                             <button type="button" onClick={() => setShowReportDialog(false)}><X size={18} /></button>
                         </div>
                         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Chọn lý do để gửi báo cáo.</p>
