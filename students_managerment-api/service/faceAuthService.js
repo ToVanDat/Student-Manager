@@ -46,6 +46,9 @@ function requirePipelineConfig() {
     try {
         if (process.env.FACE_TEMPLATE_ENCRYPTION_KEYS) {
             const keyring = JSON.parse(process.env.FACE_TEMPLATE_ENCRYPTION_KEYS);
+            if (!keyring || typeof keyring !== 'object' || Array.isArray(keyring)) {
+                throw new TypeError('FACE_TEMPLATE_ENCRYPTION_KEYS must be a version-to-key object');
+            }
             templateKey = keyring?.[String(Number(process.env.FACE_TEMPLATE_KEY_VERSION || 1))];
         } else {
             templateKey = process.env.FACE_TEMPLATE_ENCRYPTION_KEY;
@@ -53,8 +56,12 @@ function requirePipelineConfig() {
     } catch {
         throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'FACE_TEMPLATE_ENCRYPTION_KEYS không hợp lệ.');
     }
-    if (typeof templateKey !== 'string' || Buffer.from(templateKey, 'base64').length !== 32) {
-        throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'Thiếu khóa AES-256-GCM hợp lệ cho face template.');
+    const templateKeyBytes = typeof templateKey === 'string'
+        ? Buffer.from(templateKey, 'base64')
+        : null;
+    if (!templateKeyBytes || templateKeyBytes.length !== 32 ||
+        templateKeyBytes.toString('base64') !== templateKey) {
+        throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'Thiếu khóa AES-256-GCM Base64 hợp lệ cho face template.');
     }
     if (![padThreshold, consistencyThreshold, matchThreshold].every(Number.isFinite) ||
         padThreshold <= 0 || padThreshold > 1 ||
