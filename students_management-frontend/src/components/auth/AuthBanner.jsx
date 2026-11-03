@@ -154,6 +154,10 @@ function AuthBanner() {
     return (
         <div
             ref={bannerRef}
+            data-ui-region="auth-hero"
+            role="region"
+            aria-roledescription="carousel"
+            aria-label={t("authBannerCarousel")}
             onPointerMove={handlePointerMove}
             onPointerLeave={resetParallax}
             onPointerCancel={resetParallax}
@@ -243,7 +247,7 @@ function AuthBanner() {
             <button type="button" className="absolute right-2.5 top-1/2 z-[5] flex size-[34px] -translate-y-1/2 items-center justify-center rounded-full border border-white/25 bg-slate-950/30 text-white opacity-100 backdrop-blur transition hover:scale-105 hover:bg-white/15 min-[451px]:right-[15px] min-[451px]:size-[38px] min-[451px]:size-[38px] min-[801px]:right-[25px] min-[801px]:size-[46px] min-[801px]:opacity-0 min-[801px]:hover:opacity-100" onClick={goNext} aria-label={t("nextBanner")}><ChevronRight size={24} /></button>
             <div className="absolute bottom-[13px] left-1/2 z-[6] flex -translate-x-1/2 items-center gap-2 min-[601px]:bottom-8">
                 {banners.map((item, index) => (
-                    <button key={item.id} type="button" className={`h-[3px] rounded-full bg-white/35 transition-all hover:bg-white/70 min-[601px]:h-1 ${index === currentIndex ? 'w-[34px] bg-white min-[601px]:w-12' : 'w-[18px] min-[601px]:w-6'}`} onClick={() => setCurrentIndex(index)} aria-label={t("goToBanner", { number: index + 1 })} />
+                    <button key={item.id} type="button" className={`h-[3px] rounded-full bg-white/35 transition-all hover:bg-white/70 min-[601px]:h-1 ${index === currentIndex ? 'w-[34px] bg-white min-[601px]:w-12' : 'w-[18px] min-[601px]:w-6'}`} onClick={() => setCurrentIndex(index)} aria-label={t("goToBanner", { number: index + 1 })} aria-current={index === currentIndex ? "true" : undefined} />
                 ))}
             </div>
             <div className="pointer-events-none absolute right-7 bottom-7 z-[5] hidden text-[10px] text-white/45 min-[801px]:block">{t("swipeToChange")}</div>
