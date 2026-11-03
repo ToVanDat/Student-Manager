@@ -667,5 +667,6 @@
   "backToAccountDetails": "Quay lại thông tin",
   "authModeLogin": "CỔNG SINH VIÊN",
   "authModeRegister": "TẠO TÀI KHOẢN",
-  "authModeRecovery": "KHÔI PHỤC TÀI KHOẢN"
+  "authModeRecovery": "KHÔI PHỤC TÀI KHOẢN",
+  "authBannerCarousel": "Giới thiệu Student Manager"
 }
