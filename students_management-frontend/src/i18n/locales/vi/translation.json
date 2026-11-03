@@ -668,5 +668,6 @@
   "authModeLogin": "CỔNG SINH VIÊN",
   "authModeRegister": "TẠO TÀI KHOẢN",
   "authModeRecovery": "KHÔI PHỤC TÀI KHOẢN",
-  "authBannerCarousel": "Giới thiệu Student Manager"
+  "authBannerCarousel": "Giới thiệu Student Manager",
+  "passwordMinimumHint": "Mật khẩu mới cần có ít nhất 8 ký tự."
 }
