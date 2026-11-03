@@ -89,7 +89,7 @@ export default function PermissionsOverview() {
     }
   };
 
-  return <section className="mx-auto max-w-6xl space-y-6">
+  return <section data-ui-page="admin-management" aria-busy={loading} className="admin-management-page mx-auto max-w-6xl space-y-6">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200"><ShieldCheck size={14}/>{en ? 'ACCESS CONTROL' : 'KIỂM SOÁT TRUY CẬP'}</p>
