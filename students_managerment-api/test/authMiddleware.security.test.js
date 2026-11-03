@@ -186,3 +186,66 @@ test('forwards Redis infrastructure errors instead of misreporting them as inval
         assert.equal(result.res.statusCode, null);
     });
 });
+
+
+test('rejects a missing Authorization header before touching Redis', async () => {
+    await withOverrides({ redis: { isReady: true, get: async () => {
+        throw new Error('Redis must not be queried without a token');
+    } } }, async () => {
+        const result = await invoke(null);
+        assert.equal(result.res.statusCode, 401);
+        assert.equal(result.nextCalled, false);
+    });
+});
+
+test('rejects a Redis token binding that belongs to a different user', async () => {
+    const token = makeToken();
+    await withOverrides({
+        redis: { isReady: true, get: async () => '999' }
+    }, async () => {
+        const result = await invoke(token);
+        assert.equal(result.res.statusCode, 401);
+        assert.equal(result.nextCalled, false);
+    });
+});
+
+test('rejects a session that no longer exists', async () => {
+    await withOverrides({
+        redis: { isReady: true, get: async () => '42' },
+        repository: {
+            findSessionByIdAndUserId: async () => null
+        }
+    }, async () => {
+        const result = await invoke(makeToken());
+        assert.equal(result.res.statusCode, 401);
+        assert.equal(result.nextCalled, false);
+    });
+});
+
+test('rejects a user deleted after the access token was issued', async () => {
+    await withOverrides({
+        redis: { isReady: true, get: async () => '42' },
+        repository: {
+            findSessionByIdAndUserId: async () => ({
+                id: 'session-42',
+                revoked_at: null,
+                last_used_at: new Date()
+            }),
+            findUserById: async () => null
+        }
+    }, async () => {
+        const result = await invoke(makeToken());
+        assert.equal(result.res.statusCode, 401);
+        assert.equal(result.nextCalled, false);
+    });
+});
+
+test('rejects malformed Bearer authorization without querying Redis', async () => {
+    await withOverrides({ redis: { isReady: true, get: async () => {
+        throw new Error('Redis must not be queried for malformed credentials');
+    } } }, async () => {
+        const result = await invoke('not-a-jwt');
+        assert.equal(result.res.statusCode, 401);
+        assert.equal(result.nextCalled, false);
+    });
+});
