@@ -33,7 +33,7 @@ function StudentTable({
             <button
                 type="button"
                 onClick={() => onSortChange?.(column)}
-                className="inline-flex max-w-full items-center gap-1.5 text-left hover:text-brand-700 dark:hover:text-blue-300"
+                className="inline-flex min-h-10 max-w-full items-center gap-1.5 rounded-md text-left hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:text-blue-300"
                 aria-label={`${t('sortBy')} ${label}`}
             >
                 <span className="truncate">{label}</span>
@@ -57,7 +57,7 @@ function StudentTable({
                 <button
                     type="button"
                     onClick={() => onSortChange?.(sortBy)}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
                     title={sortOrder === 'asc' ? t('sortDescending') : t('sortAscending')}
                     aria-label={sortOrder === 'asc' ? t('sortDescending') : t('sortAscending')}
                 >
@@ -83,17 +83,17 @@ function StudentTable({
                             <div><dt className="text-[10px] text-slate-400">{t('gender')}</dt><dd className="mt-1 text-slate-700 dark:text-slate-300">{student.gender || '-'}</dd></div>
                             <div className="min-w-0"><dt className="text-[10px] text-slate-400">{t('className')}</dt><dd className="mt-1 break-words text-slate-700 dark:text-slate-300">{student.class_code ? student.class_code + ' - ' + student.class_name : (student.class_id || '-')}</dd></div>
                         </dl>
-                        {onView && <button type="button" className="mt-4 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" onClick={() => onView(student)}><Eye size={14} />{t('viewDetails')}</button>}
+                        {onView && <button type="button" className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800" onClick={() => onView(student)}><Eye size={14} />{t('viewDetails')}</button>}
                         {canManage && <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
-                            <button type="button" className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-800 hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50" onClick={() => onEdit(student)}><Pencil size={14} />{t('edit')}</button>
-                            <button type="button" className="inline-flex min-h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50" onClick={() => onDelete(student.id)}><Trash2 size={14} />{t('delete')}</button>
+                            <button type="button" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-blue-200 px-3 text-xs font-semibold text-blue-800 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50" onClick={() => onEdit(student)}><Pencil size={14} />{t('edit')}</button>
+                            <button type="button" className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50" onClick={() => onDelete(student.id)}><Trash2 size={14} />{t('delete')}</button>
                         </div>}
                     </article>
                 ))}
             </div>
 
             <div className="hidden w-full min-w-0 overflow-x-auto lg:block">
-                <table className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
+                <table aria-label={t('studentManagement')} className="w-full min-w-[920px] table-fixed border-collapse text-left text-xs">
                     <thead className="bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
                         <tr>
                             {renderSortHeader('id', t('studentNumber'), 'w-12')}
@@ -122,9 +122,9 @@ function StudentTable({
                                 <td className="truncate px-3 py-3.5 text-slate-500" title={student.class_code ? student.class_code + ' - ' + student.class_name : String(student.class_id)}>{student.class_code ? student.class_code + ' - ' + student.class_name : student.class_id}</td>
                                 {(canManage || onView) && <td className="px-3 py-3">
                                     <div className="flex items-center gap-1.5">
-                                        {onView && <button type="button" title={t('viewDetails')} aria-label={t('viewDetails') + ' ' + (student.name || '')} className="inline-flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => onView(student)}><Eye size={14} /></button>}
-                                        {canManage && <button type="button" title={t('edit')} aria-label={t('edit') + ' ' + (student.name || '')} className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-50 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50" onClick={() => onEdit(student)}><Pencil size={12} />{t('edit')}</button>}
-                                        {canManage && <button type="button" title={t('delete')} aria-label={t('delete') + ' ' + (student.name || '')} className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50" onClick={() => onDelete(student.id)}><Trash2 size={12} />{t('delete')}</button>}
+                                        {onView && <button type="button" title={t('viewDetails')} aria-label={t('viewDetails') + ' ' + (student.name || '')} className="inline-flex size-10 items-center justify-center rounded-md border border-slate-200 text-slate-600 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => onView(student)}><Eye size={14} /></button>}
+                                        {canManage && <button type="button" title={t('edit')} aria-label={t('edit') + ' ' + (student.name || '')} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-blue-200 px-2.5 py-1.5 text-[11px] font-semibold text-blue-800 transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-blue-900 dark:text-blue-300 dark:hover:bg-blue-950/50" onClick={() => onEdit(student)}><Pencil size={12} />{t('edit')}</button>}
+                                        {canManage && <button type="button" title={t('delete')} aria-label={t('delete') + ' ' + (student.name || '')} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-[11px] font-semibold text-rose-700 transition hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/50" onClick={() => onDelete(student.id)}><Trash2 size={12} />{t('delete')}</button>}
                                     </div>
                                 </td>}
                             </tr>
