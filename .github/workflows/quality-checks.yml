@@ -59,6 +59,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Run Signal Protocol encryption/decryption round-trip
         run: npm run test:e2ee
+      - name: Run WebRTC ICE configuration tests
+        run: npm run test:webrtc
       - name: Run lint
         run: npm run lint
       - name: Build production bundle
@@ -83,3 +85,17 @@ jobs:
         run: python -m pip install -r requirements.txt
       - name: Run landmark extraction unit tests
         run: python -m unittest -v test_landmarks.py
+  coturn-shell-checks:
+    name: Coturn shell syntax and lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+      - name: Validate Bash syntax
+        run: bash -n deploy/coturn/*.sh
+      - name: Run ShellCheck
+        run: shellcheck --severity=warning deploy/coturn/*.sh

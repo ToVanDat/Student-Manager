@@ -15,10 +15,18 @@ test('MobileFaceNet rejects wrong dimensions and non-finite outputs', () => {
   assert.throws(() => l2Normalize(invalid), /hữu hạn/);
 });
 
-test('MiniFASNet class mapping remains fail-closed while published sources conflict', () => {
-  assert.equal(PAD_MODEL_CONTRACT.output.verified, false);
-  assert.equal(PAD_MODEL_CONTRACT.output.classOrder, null);
-  assert.throws(() => classProbabilities([0.1, 0.8, 0.1]), /class mapping\/output semantics chưa được xác minh/);
+test('MiniFASNet class mapping matches the hash-pinned upstream PyTorch parity report', () => {
+  assert.equal(PAD_MODEL_CONTRACT.output.verified, true);
+  assert.equal(PAD_MODEL_CONTRACT.output.semantics, 'logits');
+  assert.equal(PAD_MODEL_CONTRACT.output.bonaFideIndex, 1);
+  assert.deepEqual(PAD_MODEL_CONTRACT.output.attackIndices, [0, 2]);
+  assert.deepEqual(PAD_MODEL_CONTRACT.output.classOrder, ['attack', 'bona_fide', 'attack']);
+  assert.equal(PAD_MODEL_CONTRACT.output.evidence.parityStatus, 'PARITY_OK');
+  assert.ok(PAD_MODEL_CONTRACT.output.evidence.maxAbsDifferenceVsLogits <= PAD_MODEL_CONTRACT.output.evidence.absoluteTolerance,
+    'Recorded ONNX/PyTorch max difference must remain within the declared absolute tolerance');
+  const decoded = decodePadOutput([0, 8, 0]);
+  assert.ok(decoded.bonaFideProbability > 0.99);
+  assert.ok(decoded.attackProbability < 0.01);
 });
 
 test('MiniFASNet rejects non-finite output and wrong class count before mapping', () => {

@@ -1,11 +1,55 @@
 'use strict';
 
+const net = require('node:net');
+
 const DEFAULT_URL = 'http://127.0.0.1:3010';
 
 function serviceError(message, code = 'FACE_LANDMARK_SERVICE_UNAVAILABLE') {
     const error = new Error(message);
     error.code = code;
     return error;
+}
+
+function isPrivateHttpHost(hostname) {
+    const rawHost = String(hostname || '').toLowerCase();
+    const host = rawHost.startsWith('[') && rawHost.endsWith(']') ? rawHost.slice(1, -1) : rawHost;
+    if (host === 'face-landmark') return true;
+
+    const family = net.isIP(host);
+    if (family === 4) {
+        const [a, b] = host.split('.').map(Number);
+        return a === 10 ||
+            (a === 172 && b >= 16 && b <= 31) ||
+            (a === 192 && b === 168);
+    }
+    if (family === 6) return host === '::1' || host.startsWith('fc') || host.startsWith('fd');
+    return false;
+}
+
+function validateLandmarkServiceUrl(value, env = process.env) {
+    let url;
+    try { url = new URL(value); }
+    catch { throw serviceError('FACE_LANDMARK_SERVICE_URL không hợp lệ', 'FACE_AUTH_CONFIG_INVALID'); }
+
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
+    }
+
+    const rawHost = url.hostname.toLowerCase();
+    const host = rawHost.startsWith('[') && rawHost.endsWith(']') ? rawHost.slice(1, -1) : rawHost;
+    const loopback = ['127.0.0.1', 'localhost', '::1'].includes(host);
+    if (
+        url.protocol === 'http:' &&
+        env.NODE_ENV === 'production' &&
+        !loopback &&
+        !(env.FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP === 'true' && isPrivateHttpHost(host))
+    ) {
+        throw serviceError(
+            'Production landmark service phải dùng HTTPS hoặc một host/IP private được cho phép',
+            'FACE_AUTH_CONFIG_INVALID'
+        );
+    }
+    return url;
 }
 
 async function detectFaceLandmarks(imageBuffer) {
@@ -16,16 +60,7 @@ async function detectFaceLandmarks(imageBuffer) {
     if (!token) throw serviceError('Thiếu FACE_LANDMARK_SERVICE_TOKEN', 'FACE_AUTH_CONFIG_NOT_READY');
 
     const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\/$/, '');
-    let url;
-    try { url = new URL(baseUrl); }
-    catch { throw serviceError('FACE_LANDMARK_SERVICE_URL không hợp lệ', 'FACE_AUTH_CONFIG_INVALID'); }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
-    }
-    if (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '::1'].includes(url.hostname) &&
-        process.env.NODE_ENV === 'production' && process.env.FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP !== 'true') {
-        throw serviceError('Production landmark service phải dùng HTTPS hoặc private loopback network', 'FACE_AUTH_CONFIG_INVALID');
-    }
+    const url = validateLandmarkServiceUrl(baseUrl);
 
     let response;
     try {
@@ -73,17 +108,8 @@ async function detectFaceLandmarks(imageBuffer) {
 async function ensureLandmarkServiceReady() {
     const token = process.env.FACE_LANDMARK_SERVICE_TOKEN;
     if (!token) throw serviceError('Thiếu FACE_LANDMARK_SERVICE_TOKEN', 'FACE_AUTH_CONFIG_NOT_READY');
-    const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\/$/, '')
-    let url;
-    try { url = new URL(baseUrl); }
-    catch { throw serviceError('FACE_LANDMARK_SERVICE_URL không hợp lệ', 'FACE_AUTH_CONFIG_INVALID'); }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
-    }
-    if (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '::1'].includes(url.hostname) &&
-        process.env.NODE_ENV === 'production' && process.env.FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP !== 'true') {
-        throw serviceError('Production landmark service phải dùng HTTPS hoặc private loopback network', 'FACE_AUTH_CONFIG_INVALID');
-    }
+    const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\/$/, '');
+    const url = validateLandmarkServiceUrl(baseUrl);
     try {
         const response = await fetch(url.toString() + '/health', {
             headers: { authorization: 'Bearer ' + token },
@@ -98,4 +124,4 @@ async function ensureLandmarkServiceReady() {
     }
 }
 
-module.exports = { detectFaceLandmarks, ensureLandmarkServiceReady };
+module.exports = { detectFaceLandmarks, ensureLandmarkServiceReady, isPrivateHttpHost, validateLandmarkServiceUrl };

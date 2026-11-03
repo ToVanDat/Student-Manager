@@ -27,8 +27,8 @@ function getKey(version = getKeyVersion()) {
         throw error;
     }
     const key = Buffer.from(encoded, 'base64');
-    if (key.length !== KEY_BYTES) {
-        const error = new Error(`FACE template key version ${version} phải là base64 của đúng 32 byte`);
+    if (key.length !== KEY_BYTES || key.toString('base64') !== encoded) {
+        const error = new Error(`FACE template key version ${version} phải là Base64 chuẩn của đúng 32 byte`);
         error.code = 'FACE_AUTH_CONFIG_INVALID';
         throw error;
     }
@@ -36,7 +36,13 @@ function getKey(version = getKeyVersion()) {
 }
 
 function getKeyVersion() {
-    const version = Number.parseInt(process.env.FACE_TEMPLATE_KEY_VERSION || '1', 10);
+    const rawVersion = process.env.FACE_TEMPLATE_KEY_VERSION || '1';
+    if (typeof rawVersion !== 'string' || !/^[1-9]\d*$/.test(rawVersion)) {
+        const error = new Error('FACE_TEMPLATE_KEY_VERSION không hợp lệ');
+        error.code = 'FACE_AUTH_CONFIG_INVALID';
+        throw error;
+    }
+    const version = Number(rawVersion);
     if (!Number.isSafeInteger(version) || version < 1 || version > 32767) {
         const error = new Error('FACE_TEMPLATE_KEY_VERSION không hợp lệ');
         error.code = 'FACE_AUTH_CONFIG_INVALID';

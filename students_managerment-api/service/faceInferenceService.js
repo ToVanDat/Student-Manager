@@ -11,20 +11,31 @@ const EXPECTED_HASHES = Object.freeze({
     'metadata.json': '2639a8261232328665a2a6204abc8e41805730f323feda1a1c147006685fe92e',
     'minifasnet-v2.onnx': 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b'
 });
-// The ONNX artifact is hash-pinned, but class semantics remain deliberately
-// unresolved until direct ONNX-vs-PyTorch parity passes. The parity verifier
-// uses upstream test.py semantics only after exact output equivalence is proven.
+// This contract is promoted only after the CI parity job compared the exact
+// hash-pinned ONNX artifact against the exact upstream MiniVision checkpoint.
+// The parity report verifies tensor semantics and class order, not PAD accuracy
+// or resistance to real-world presentation attacks.
 const PAD_MODEL_CONTRACT = Object.freeze({
     artifactSha256: 'd7b3cd9ba8a7ceb13baa8c4720902e27ca3112eff52f926c08804af6b6eecc7b',
     input: Object.freeze({ width: 80, height: 80, layout: 'BGR-NCHW', range: Object.freeze([0, 255]), source: 'MiniVision AntiSpoofPredict -> custom ToTensor -> functional.to_tensor (raw float conversion, no /255)' }),
     output: Object.freeze({
-        verified: false,
+        verified: true,
         classCount: 3,
-        semantics: null,
-        bonaFideIndex: null,
-        attackIndices: null,
-        classOrder: null,
-        reason: 'The published ONNX model card conflicts with upstream runtime class order and input scale. The exact ONNX/PyTorch parity verifier must pass before the API contract is promoted.'
+        semantics: 'logits',
+        bonaFideIndex: 1,
+        attackIndices: [0, 2],
+        classOrder: Object.freeze(['attack', 'bona_fide', 'attack']),
+        evidence: Object.freeze({
+            parityStatus: 'PARITY_OK',
+            checkpointSha256: 'a5eb02e1843f19b5386b953cc4c9f011c3f985d0ee2bb9819eea9a142099bec0',
+            upstreamSourceCommit: 'b6d5f04ad78778917853b25c778acef6d5626d15',
+            converterSourceCommit: '584d4421d7ac42c59e640796f46e886b0095367a',
+            maxAbsDifferenceVsLogits: 9.149312973022461e-6,
+            absoluteTolerance: 1e-5,
+            relativeTolerance: 1e-4,
+            reportArtifact: 'minifasnet-reference-parity'
+        }),
+        reason: 'Tensor semantics and class mapping are verified by exact hash-pinned ONNX/PyTorch parity. PAD accuracy and attack resistance remain unvalidated.'
     }),
     upstreamInference: 'https://github.com/minivision-ai/Silent-Face-Anti-Spoofing/blob/master/src/anti_spoof_predict.py',
     upstreamConversion: 'https://github.com/QingHeYang/Silent-Face-Anti-Spoofing-onnx/blob/main/convert_minifasnet_to_onnx.py',

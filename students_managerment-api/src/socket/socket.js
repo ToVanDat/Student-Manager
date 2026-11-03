@@ -11,6 +11,7 @@ const userRepository = require('../../repository/userRepository.js');
 const e2eeRepository = require('../../repository/e2eeRepository.js');
 const callRepository = require('../../repository/callRepository.js');
 const { publishRealtimeBestEffort } = require('../../service/realtimeDelivery.js');
+const { registerCallSignalingHandlers } = require('../../service/callSignalingHandlers.js');
 const { isValidCallId, isValidCallType, normalizeCallFailureReason } = require('../../service/callValidation.js');
 const { isValidSessionDescription, isValidIceCandidate, installSocketEventValidation } = require('../../service/socketPayloadValidation.js');
 const { SOCKET_EVENT_LIMITS, consumeSocketRateLimit } = require('../../middleware/socketRateLimiter.js');
@@ -488,8 +489,43 @@ const initSocket = async (server) => {
             if (!await allowRealtimeEvent('call:sync-pending')) return;
             await syncPendingCalls();
         });
-        // Replay pending invitations after every authenticated reconnect.
+
+        const syncActiveCalls = async () => {
+            try {
+                const activeCalls = await callRepository.getActiveCallsForParticipant(userId);
+                socket.emit('call:active-snapshot', {
+                    serverNow: new Date().toISOString(),
+                    calls: activeCalls.map(activeCall => ({
+                        callId: activeCall.call_id,
+                        fromUserId: Number(activeCall.caller_id),
+                        toUserId: Number(activeCall.receiver_id),
+                        callType: activeCall.call_type,
+                        status: activeCall.status,
+                        expiresAt: activeCall.expires_at,
+                        answeredAt: activeCall.answered_at,
+                        isCaller: Number(activeCall.caller_id) === userId
+                    }))
+                });
+            } catch (error) {
+                console.error('[CALL][sync active failed]', {
+                    userId,
+                    code: error?.code || 'ACTIVE_CALL_SYNC_FAILED'
+                });
+                socket.emit('call:sync-active-error', {
+                    code: 'ACTIVE_CALL_SYNC_UNAVAILABLE',
+                    message: 'Không thể đồng bộ trạng thái cuộc gọi hiện tại.'
+                });
+            }
+        };
+
+        socket.on('call:sync-active', async () => {
+            if (!await allowRealtimeEvent('call:sync-active')) return;
+            await syncActiveCalls();
+        });
+
+        // Replay pending invitations and active call state after every authenticated reconnect.
         void syncPendingCalls();
+        void syncActiveCalls();
 
         socket.on('presence:heartbeat', async () => {
             try {
@@ -1322,38 +1358,14 @@ const initSocket = async (server) => {
             );
         });
 
-        socket.on('call:offer', async ({ callId, targetUserId, offer }) => {
-            if (!await allowRealtimeEvent('call:offer')) return;
-            const targetId = Number(targetUserId);
-                        const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !['connecting', 'connected'].includes(call.status)) return;
-            if (!isValidSessionDescription(offer, 'offer')) {
-                return socket.emit('call:error', {
-                    callId,
-                    code: 'INVALID_SIGNALING_PAYLOAD',
-                    message: 'Dữ liệu WebRTC offer không hợp lệ hoặc vượt quá giới hạn.'
-                });
-            }
-            io.to(`user:${targetId}`).emit('call:offer', {
-                callId, fromUserId: userId, toUserId: targetId, offer
-            });
-        });
-
-        socket.on('call:answer', async ({ callId, targetUserId, answer }) => {
-            if (!await allowRealtimeEvent('call:answer')) return;
-            const targetId = Number(targetUserId);
-                        const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !['connecting', 'connected'].includes(call.status)) return;
-            if (!isValidSessionDescription(answer, 'answer')) {
-                return socket.emit('call:error', {
-                    callId,
-                    code: 'INVALID_SIGNALING_PAYLOAD',
-                    message: 'Dữ liệu WebRTC answer không hợp lệ hoặc vượt quá giới hạn.'
-                });
-            }
-            io.to(`user:${targetId}`).emit('call:answer', {
-                callId, fromUserId: userId, toUserId: targetId, answer
-            });
+        registerCallSignalingHandlers({
+            socket,
+            io,
+            userId,
+            allowRealtimeEvent,
+            getAuthorizedCall,
+            isValidSessionDescription,
+            isValidIceCandidate
         });
 
         socket.on('call:reconnect-request', async ({ callId, targetUserId }) => {
@@ -1432,23 +1444,6 @@ const initSocket = async (server) => {
             emitCallEventBestEffort(`user:${userId}`, 'call:ended', payload);
             emitCallEventBestEffort(`user:${targetId}`, 'call:ended', payload);
             console.warn('[CALL][connection failed]', { callId, userId, targetId, reason: safeReason });
-        });
-
-        socket.on('call:ice-candidate', async ({ callId, targetUserId, candidate }) => {
-            if (!await allowRealtimeEvent('call:ice-candidate')) return;
-            const targetId = Number(targetUserId);
-                        const call = await getAuthorizedCall(callId, targetId);
-            if (!call || !['connecting', 'connected'].includes(call.status)) return;
-            if (!isValidIceCandidate(candidate)) {
-                return socket.emit('call:error', {
-                    callId,
-                    code: 'INVALID_SIGNALING_PAYLOAD',
-                    message: 'Dữ liệu ICE candidate không hợp lệ hoặc vượt quá giới hạn.'
-                });
-            }
-            io.to(`user:${targetId}`).emit('call:ice-candidate', {
-                callId, fromUserId: userId, toUserId: targetId, candidate
-            });
         });
 
         socket.on('call:end', async ({ callId, targetUserId, reason = 'ended' } = {}) => {

@@ -183,6 +183,7 @@ export const finishSensitiveReauthApi = async (challengeId, responsePayload, pur
 };
 
 
+export const getFaceLoginAvailabilityApi = async () => (await axios.get(`${API_BASE_URL}/api/auth/face/availability`, { withCredentials: true })).data;
 export const getFaceLoginStatusApi = async () => (await apiClient.get('/api/auth/face/status')).data;
 export const beginFaceEnrollmentApi = async (verificationToken, currentPassword) => (await apiClient.post('/api/auth/face/enrollment/options', { verificationToken, currentPassword })).data;
 export const finishFaceEnrollmentApi = async challengeId => (await apiClient.post('/api/auth/face/enrollment/verify', { challengeId })).data;

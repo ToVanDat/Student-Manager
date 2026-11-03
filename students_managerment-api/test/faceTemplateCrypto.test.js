@@ -64,6 +64,25 @@ test('associated data binds the encrypted template to its account', () => {
     assert.throws(() => decryptFaceTemplate({ userId: '43', ...envelope }));
 });
 
+test('rejects non-canonical Base64 keys and malformed key versions', () => {
+    process.env.FACE_TEMPLATE_ENCRYPTION_KEY = 'A'.repeat(43);
+    assert.throws(() => encryptFaceTemplate({
+        userId: '42',
+        embedding: Array.from({ length: 128 }, (_, index) => index + 1),
+        modelId: 'mobilefacenet',
+        modelVersion: 'test-v1'
+    }), error => error.code === 'FACE_AUTH_CONFIG_INVALID');
+
+    process.env.FACE_TEMPLATE_ENCRYPTION_KEY = crypto.randomBytes(32).toString('base64');
+    process.env.FACE_TEMPLATE_KEY_VERSION = '1abc';
+    assert.throws(() => encryptFaceTemplate({
+        userId: '42',
+        embedding: Array.from({ length: 128 }, (_, index) => index + 1),
+        modelId: 'mobilefacenet',
+        modelVersion: 'test-v1'
+    }), error => error.code === 'FACE_AUTH_CONFIG_INVALID');
+});
+
 test('invalid dimensions and non-finite values are rejected', () => {
     assert.throws(() => validateEmbedding([1, 2, 3]), /128/);
     const invalid = Array(128).fill(0);
