@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Phone, Video, PhoneMissed, Bell, X, CheckCheck, RefreshCw } from 'lucide-react';
 import { callApi } from '@/api/callApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -30,6 +30,9 @@ export default function CallCenterPanel({
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
     const [loadError, setLoadError] = useState('');
+    const onCloseRef = useRef(onClose);
+
+    useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
     const load = async () => {
         setLoading(true);
@@ -51,7 +54,7 @@ export default function CallCenterPanel({
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         const handleKeyDown = event => {
-            if (event.key === 'Escape') onClose?.();
+            if (event.key === 'Escape') onCloseRef.current?.();
         };
         window.addEventListener('keydown', handleKeyDown);
 
@@ -59,7 +62,7 @@ export default function CallCenterPanel({
             document.body.style.overflow = previousOverflow;
             window.removeEventListener('keydown', handleKeyDown);
         };
-    }, [open, onClose]);
+    }, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -164,7 +167,12 @@ export default function CallCenterPanel({
                     </button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div
+                    id={tab === 'history' ? 'call-history-panel' : 'call-notifications-panel'}
+                    role="tabpanel"
+                    aria-labelledby={tab === 'history' ? 'call-history-tab' : 'call-notifications-tab'}
+                    className="min-h-0 flex-1 overflow-y-auto p-3"
+                >
                     {loading && (
                         <p role="status" className="flex items-center justify-center gap-2 py-8 text-sm text-slate-400">
                             <RefreshCw size={15} className="animate-spin" />{t('loading')}
