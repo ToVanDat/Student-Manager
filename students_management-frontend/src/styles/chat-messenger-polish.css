@@ -216,3 +216,48 @@
     transform: none;
   }
 }
+
+
+/* Chat workspace refinement: keep conversation controls usable at narrow widths. */
+[data-ui-page="chat-workspace"] { min-width: 0; }
+.chat-shell [data-chat-region="conversation"] { min-width: 0; }
+.chat-shell [data-chat-region="conversation-header"] { flex-shrink: 0; }
+.chat-shell [data-chat-region="conversation-header"] > :first-child {
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+.chat-shell [data-chat-region="conversation-actions"] {
+  flex: 0 1 auto;
+}
+.chat-shell [data-chat-region="message-timeline"] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+.chat-shell [data-chat-region="message-composer"] {
+  min-width: 0;
+  padding-bottom: max(.75rem, env(safe-area-inset-bottom));
+}
+.chat-shell [data-chat-region="message-composer"] textarea {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .chat-shell [data-chat-region="conversation-header"] { padding-block: .5rem; }
+  .chat-shell [data-chat-region="conversation-header"] > :first-child { flex-basis: 100%; }
+  .chat-shell [data-chat-region="conversation-actions"] {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .chat-shell [data-chat-region="message-composer"] {
+    gap: .25rem;
+    padding-inline: .5rem;
+  }
+  .chat-shell [data-chat-region="message-composer"] > button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-shell [data-chat-region="message-timeline"] { scroll-behavior: auto; }
+}
