@@ -37,7 +37,7 @@ function getKey(version = getKeyVersion()) {
 
 function getKeyVersion() {
     const rawVersion = process.env.FACE_TEMPLATE_KEY_VERSION || '1';
-    if (typeof rawVersion !== 'string' || !/^[1-9]\\d*$/.test(rawVersion)) {
+    if (typeof rawVersion !== 'string' || !/^[1-9]\d*$/.test(rawVersion)) {
         const error = new Error('FACE_TEMPLATE_KEY_VERSION không hợp lệ');
         error.code = 'FACE_AUTH_CONFIG_INVALID';
         throw error;
