@@ -10,6 +10,7 @@ const fakeClient = {
     query: async (sql, values = []) => {
         const normalized = String(sql).trim();
         calls.push({ sql: normalized, values });
+        if (/^(BEGIN|COMMIT|ROLLBACK)$/i.test(normalized)) return { rows: [], rowCount: 0 };
         if (responses.length === 0) throw new Error('Unexpected database query in test');
         const next = responses.shift();
         if (next instanceof Error) throw next;
