@@ -11,7 +11,7 @@ export default function ConversationList({ conversations, activeId, onSelectConv
     }
 
     return (
-        <div data-ui-region="conversation-list" aria-label="Danh sách cuộc trò chuyện" className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+        <div data-ui-region="conversation-list" role="navigation" aria-label="Danh sách cuộc trò chuyện" className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
             {conversations.map((item) => (
                 <ConversationItem
                     key={item.id}
