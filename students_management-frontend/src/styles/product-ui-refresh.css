@@ -256,3 +256,49 @@ dialog {
     gap: .375rem;
   }
 }
+
+/* Settings workspace: preserve a clear hierarchy and make the tab rail usable on touch screens. */
+.settings-page {
+  min-width: 0;
+}
+.settings-page__header {
+  border-color: var(--ui-line);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  box-shadow: var(--ui-shadow);
+}
+.settings-page__layout {
+  min-width: 0;
+}
+.settings-page__layout > * {
+  min-width: 0;
+}
+.settings-page__navigation {
+  border-color: var(--ui-line);
+  border-radius: 1rem;
+  box-shadow: var(--ui-shadow);
+}
+.settings-page__navigation button {
+  min-height: 2.75rem;
+}
+@media (max-width: 900px) {
+  .settings-page__navigation {
+    position: sticky;
+    top: 4.5rem;
+    z-index: 20;
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+  .settings-page__navigation button {
+    flex: 0 0 auto;
+  }
+}
+@media (max-width: 640px) {
+  .settings-page__header {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  .settings-page__layout {
+    gap: .875rem;
+  }
+}
