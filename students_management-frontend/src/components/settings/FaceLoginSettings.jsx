@@ -172,12 +172,12 @@ export default function FaceLoginSettings() {
         setConfirmationError('');
     };
 
-    const closeConfirmation = () => {
+    const closeConfirmation = useCallback(() => {
         if (busy) return;
         setConfirmationAction(null);
         setConfirmationPassword('');
         setConfirmationError('');
-    };
+    }, [busy]);
 
     const submitConfirmation = event => {
         event.preventDefault();
@@ -201,7 +201,7 @@ export default function FaceLoginSettings() {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [confirmationAction, busy]);
+    }, [confirmationAction, busy, closeConfirmation]);
 
     const configured = Boolean(status?.configured);
     const available = Boolean(status?.enrollmentAvailable && status?.loginAvailable);
