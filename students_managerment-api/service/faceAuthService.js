@@ -43,13 +43,19 @@ function requirePipelineConfig() {
     const consistencyThreshold = Number(process.env.FACE_FRAME_CONSISTENCY_THRESHOLD);
     const matchThreshold = Number(process.env.FACE_MATCH_THRESHOLD);
     let templateKey;
+    const rawKeyVersion = process.env.FACE_TEMPLATE_KEY_VERSION || '1';
+    const keyVersion = Number(rawKeyVersion);
+    if (!/^[1-9]\\d*$/.test(rawKeyVersion) ||
+        !Number.isSafeInteger(keyVersion) || keyVersion < 1 || keyVersion > 32767) {
+        throw pipelineError('FACE_AUTH_CONFIG_NOT_READY', 'FACE_TEMPLATE_KEY_VERSION không hợp lệ.');
+    }
     try {
         if (process.env.FACE_TEMPLATE_ENCRYPTION_KEYS) {
             const keyring = JSON.parse(process.env.FACE_TEMPLATE_ENCRYPTION_KEYS);
             if (!keyring || typeof keyring !== 'object' || Array.isArray(keyring)) {
                 throw new TypeError('FACE_TEMPLATE_ENCRYPTION_KEYS must be a version-to-key object');
             }
-            templateKey = keyring?.[String(Number(process.env.FACE_TEMPLATE_KEY_VERSION || 1))];
+            templateKey = keyring?.[String(keyVersion)];
         } else {
             templateKey = process.env.FACE_TEMPLATE_ENCRYPTION_KEY;
         }
