@@ -84,3 +84,113 @@
     transform: none;
   }
 }
+
+
+/* Unified auth layout: consistent field rhythm, step transitions and restrained depth. */
+.auth-login-page {
+  isolation: isolate;
+}
+.auth-login-page > section {
+  min-width: 0;
+}
+.auth-login-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  backdrop-filter: blur(18px);
+}
+.auth-login-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 3px;
+  content: "";
+  background: linear-gradient(90deg, #2563eb, #60a5fa 52%, #14b8a6);
+  opacity: .9;
+}
+.auth-login-card .auth-heading {
+  max-width: 38rem;
+}
+.auth-login-card .auth-heading h2 {
+  line-height: 1.08;
+  text-wrap: balance;
+}
+.auth-login-card .auth-heading > p:last-child {
+  max-width: 34rem;
+}
+.auth-login-card .auth-form-content {
+  min-width: 0;
+}
+.auth-login-card .auth-form-content > div:has(> label) {
+  min-width: 0;
+}
+.auth-login-card .auth-form-content label {
+  letter-spacing: -.01em;
+}
+.auth-login-card .auth-form-content input:not([type="checkbox"]):not([type="radio"]) {
+  min-width: 0;
+}
+.auth-login-card .auth-stepper {
+  margin-bottom: 1.5rem;
+}
+.auth-login-card .auth-stepper ol li > span:last-child {
+  text-wrap: balance;
+}
+.auth-login-card [data-auth-step],
+.auth-login-card [data-ui-region="register-flow"] {
+  min-width: 0;
+}
+.auth-login-card .auth-step-input {
+  min-height: 3rem;
+}
+.auth-login-card .auth-mode-panel {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.auth-login-card [role="alert"],
+.auth-login-card [role="status"] {
+  overflow-wrap: anywhere;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .auth-login-card .auth-step-transition > * {
+    animation: auth-enter 420ms cubic-bezier(.2,.8,.2,1) both;
+  }
+  .auth-login-card .auth-step-transition > *:nth-child(2) { animation-delay: 45ms; }
+  .auth-login-card .auth-step-transition > *:nth-child(3) { animation-delay: 90ms; }
+  .auth-login-card .auth-step-transition > *:nth-child(4) { animation-delay: 135ms; }
+  .auth-login-card .auth-step-transition > *:nth-child(5) { animation-delay: 180ms; }
+  .auth-login-card .auth-step-transition > *:nth-child(6) { animation-delay: 225ms; }
+}
+@media (max-width: 800px) {
+  .auth-login-page > div:first-child {
+    min-height: 34svh;
+  }
+  .auth-login-page > section {
+    min-height: 66svh;
+    align-items: flex-start;
+    padding-top: 1.25rem;
+  }
+  .auth-login-card {
+    max-width: 34rem;
+    border-radius: 1.5rem;
+  }
+}
+@media (max-width: 480px) {
+  .auth-login-card {
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+  }
+  .auth-login-card .auth-heading h2 {
+    font-size: clamp(1.75rem, 8vw, 2.1rem);
+  }
+  .auth-login-card .auth-stepper {
+    margin-bottom: 1.25rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-login-card .auth-step-transition > * {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
