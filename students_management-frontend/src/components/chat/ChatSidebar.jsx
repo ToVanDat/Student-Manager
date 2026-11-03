@@ -28,6 +28,7 @@ export default function ChatSidebar({
     const [newChatError, setNewChatError] = useState('');
     const dialogRef = useRef(null);
     const searchInputRef = useRef(null);
+    const groupNameInputRef = useRef(null);
     const triggerRef = useRef(null);
 
     const unreadTotal = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
@@ -84,11 +85,11 @@ export default function ChatSidebar({
 
     useEffect(() => {
         if (showNewChat) {
-            searchInputRef.current?.focus();
+            (mode === 'group' ? groupNameInputRef.current : searchInputRef.current)?.focus();
             return;
         }
         triggerRef.current?.focus();
-    }, [showNewChat]);
+    }, [showNewChat, mode]);
 
     const getIsOnline = conversation => conversation.type === 'direct'
         && onlineUserIds.has(Number(conversation.userId));
@@ -205,7 +206,7 @@ export default function ChatSidebar({
 
                     {mode === 'group' && (
                         <input
-                            autoFocus
+                            ref={groupNameInputRef}
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder={t("groupNamePlaceholder")}
