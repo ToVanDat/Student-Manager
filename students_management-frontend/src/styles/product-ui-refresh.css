@@ -344,3 +344,47 @@ dialog {
     max-width: 100%;
   }
 }
+
+
+/* Admin CRUD workspace: consistent responsive tables and mobile-safe dialogs. */
+[data-ui-page="admin-management"] {
+  min-width: 0;
+}
+[data-ui-page="admin-management"] .overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+[data-ui-page="admin-management"] :is(input, select, textarea) {
+  max-width: 100%;
+}
+[data-ui-page="admin-management"] [role="dialog"],
+[data-ui-page="admin-management"] [role="alertdialog"] {
+  max-height: min(90dvh, 48rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-ui-page="admin-management"] [role="alert"] {
+  overflow-wrap: anywhere;
+}
+[data-ui-page="admin-management"] table {
+  width: 100%;
+}
+[data-ui-page="admin-management"] th {
+  white-space: nowrap;
+}
+@media (max-width: 639px) {
+  [data-ui-page="admin-management"] {
+    gap: 1rem;
+  }
+  [data-ui-page="admin-management"] > header {
+    align-items: stretch;
+  }
+  [data-ui-page="admin-management"] > header > button {
+    width: 100%;
+  }
+  [data-ui-page="admin-management"] [role="dialog"] > form,
+  [data-ui-page="admin-management"] [role="alertdialog"] {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+}
