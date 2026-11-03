@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Phone, Video, PhoneMissed, Bell, X, CheckCheck } from 'lucide-react';
 import { callApi } from '@/api/callApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -32,7 +32,7 @@ export default function CallCenterPanel({
     const [loadError, setLoadError] = useState('');
     const closeButtonRef = useRef(null);
 
-    const load = async () => {
+    const load = useCallback(async () => {
         setLoading(true);
         setLoadError('');
         try {
@@ -44,7 +44,7 @@ export default function CallCenterPanel({
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -76,7 +76,7 @@ export default function CallCenterPanel({
             document.removeEventListener('keydown', handleKeyDown);
             previouslyFocused?.focus?.();
         };
-    }, [open, onClose]);
+    }, [open, onClose, load]);
 
     const unreadCount = notifications.filter(item => !item.is_read).length;
 
