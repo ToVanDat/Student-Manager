@@ -56,7 +56,7 @@ export default function NotificationSettings() {
     };
 
     return (
-        <section className="box-border w-full min-w-0 max-w-2xl overflow-visible rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
+        <section data-ui-region="notification-settings" aria-busy={loading || Boolean(savingKey)} className="settings-panel box-border w-full min-w-0 max-w-2xl overflow-visible rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm sm:p-5">
             <div className="mb-5 min-w-0">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('notificationSettings')}</h2>
                 <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400">{t('notificationSettingsDescription')}</p>
