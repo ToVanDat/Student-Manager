@@ -68,7 +68,7 @@ test('empty enrollment result is represented as no_enrollments rather than inven
 
 
 test('admin student-code lookup compares trimmed case-insensitive values using a bound parameter', async () => {
-    setup([{ rows: [{ id: 9, student_code: 'SV009' }] }]);
+    setup([{ rows: [{ id: 9, student_code: 'SV009' }] }, { rows: [] }]);
     const student = await repository.getStudentPortalByCode(' sv009 ');
     assert.equal(student.status, 'no_enrollments');
     assert.match(calls[0].sql, /LOWER\(BTRIM\(s\.student_code\)\) = LOWER\(BTRIM\(\$1\)\)/);
