@@ -574,3 +574,13 @@ dialog {
     transition-duration: .01ms !important;
   }
 }
+
+/* Recovery flow and settings choice controls */
+[data-auth-step], .settings-choice-panel, .student-table-region { min-width: 0; }
+.auth-step-link { touch-action: manipulation; }
+.auth-step-link:focus-visible { outline: 2px solid var(--ui-focus, #2563eb); outline-offset: 2px; }
+.settings-choice-option { min-width: 0; overflow-wrap: anywhere; touch-action: manipulation; }
+@media (max-width: 639px) {
+  [data-auth-step] { gap: 1rem; }
+  .settings-choice-option { padding: .875rem; }
+}
