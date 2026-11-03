@@ -82,3 +82,50 @@
   .call-dialog { animation: none; }
   .call-local-video { transition: none; }
 }
+
+
+/* Call history/notification drawer: desktop side panel, mobile bottom sheet. */
+.call-center-overlay {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: max(5rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) 1rem;
+}
+.call-center-dialog {
+  min-height: 18rem;
+  max-height: calc(100dvh - 6rem - env(safe-area-inset-top));
+  overscroll-behavior: contain;
+  animation: call-center-enter 160ms ease-out both;
+}
+.call-center-dialog [role="tab"]:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -3px;
+}
+@keyframes call-center-enter {
+  from { opacity: 0; transform: translateY(-6px) translateX(8px); }
+  to { opacity: 1; transform: translateY(0) translateX(0); }
+}
+@media (max-width: 640px) {
+  .call-center-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .call-center-dialog {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    max-width: none;
+    max-height: min(82dvh, 46rem);
+    min-height: min(55dvh, 26rem);
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: call-center-sheet-enter 180ms ease-out both;
+  }
+}
+@keyframes call-center-sheet-enter {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .call-center-dialog { animation: none; }
+}
