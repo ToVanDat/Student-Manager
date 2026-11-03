@@ -1,6 +1,10 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const {
+    ACCESS_TOKEN_EXPIRES_IN,
+    REFRESH_TOKEN_EXPIRES_MS
+} = require('./authTokenPolicy.js');
 
 // Store only a one-way digest of refresh tokens in PostgreSQL.
 // Refresh tokens are generated from 64 random bytes, so SHA-256 is
@@ -25,10 +29,7 @@ const { retryRedisCleanup } = require('./redisCleanupRetry.js');
 // CONFIG
 // =====================================================
 
-const ACCESS_TOKEN_EXPIRES_IN = '30m';
 
-const REFRESH_TOKEN_EXPIRES_MS =
-    7 * 24 * 60 * 60 * 1000;
 
 const JWT_ISSUER =
     'student-management-api';

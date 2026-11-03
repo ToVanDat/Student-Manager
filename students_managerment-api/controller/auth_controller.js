@@ -1,5 +1,6 @@
 const authService =
     require('../service/authService.js');
+const { REFRESH_TOKEN_EXPIRES_MS } = require('../service/authTokenPolicy.js');
 const { recordFailure, clearAccountIpState } = require('../service/passwordLoginProtection.js');
 
 const { getDeviceInfo } =
@@ -579,12 +580,7 @@ const login = async (req, res) => {
 
                 sameSite: 'lax',
 
-                maxAge:
-                    7 *
-                    24 *
-                    60 *
-                    60 *
-                    1000,
+                maxAge: REFRESH_TOKEN_EXPIRES_MS,
 
                 path: '/api/auth'
 
@@ -714,12 +710,7 @@ const refresh = async (req, res) => {
 
                 sameSite: 'lax',
 
-                maxAge:
-                    7 *
-                    24 *
-                    60 *
-                    60 *
-                    1000,
+                maxAge: REFRESH_TOKEN_EXPIRES_MS,
 
                 path: '/api/auth'
 
