@@ -1878,7 +1878,32 @@ export default function ChatWindow({
 
         {pendingDestructiveAction && (
             <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !destructiveActionBusy) setPendingDestructiveAction(null); }}>
-                <section role="alertdialog" aria-modal="true" aria-labelledby="chat-action-confirm-title" aria-describedby="chat-action-confirm-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <section
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="chat-action-confirm-title"
+                    aria-describedby="chat-action-confirm-description"
+                    onKeyDown={event => {
+                        if (event.key === 'Escape' && !destructiveActionBusy) {
+                            event.preventDefault();
+                            setPendingDestructiveAction(null);
+                            return;
+                        }
+                        if (event.key !== 'Tab') return;
+                        const focusable = [...event.currentTarget.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+                        if (!focusable.length) return;
+                        const first = focusable[0];
+                        const last = focusable[focusable.length - 1];
+                        if (event.shiftKey && event.target === first) {
+                            event.preventDefault();
+                            last.focus();
+                        } else if (!event.shiftKey && event.target === last) {
+                            event.preventDefault();
+                            first.focus();
+                        }
+                    }}
+                    className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                >
                     <h3 id="chat-action-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">{pendingDestructiveAction === 'clear' ? 'Xóa nội dung cuộc trò chuyện?' : pendingDestructiveAction === 'hide' ? 'Ẩn cuộc trò chuyện?' : 'Chặn người dùng này?'}</h3>
                     <p id="chat-action-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{pendingDestructiveAction === 'clear' ? 'Tin nhắn và lịch sử cuộc gọi sẽ bị xóa chỉ ở phía bạn. Người còn lại vẫn giữ lịch sử.' : pendingDestructiveAction === 'hide' ? 'Cuộc trò chuyện sẽ biến mất khỏi danh sách của bạn. Tin nhắn không bị xóa và có thể xuất hiện lại khi có hoạt động mới.' : 'Bạn sẽ không thể tiếp tục nhắn tin hoặc gọi cho người này.'}</p>
                     <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
