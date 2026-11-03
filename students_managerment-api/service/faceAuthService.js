@@ -8,6 +8,7 @@ const { verifySensitiveAction, issueSession } = require('./advancedAuthService.j
 const { createLivenessChallenge, verifyLivenessSequence, MAX_FRAME_GAP_MS } = require('./faceLivenessChallenge.js');
 const { inferFaceImage, ensureFaceInferenceReady } = require('./faceInferenceService.js');
 const { verifyCapturePayload } = require('./faceCaptureValidation.js');
+const { encryptCaptureEmbedding, decryptCaptureEmbedding } = require('./faceCaptureCrypto.js');
 const { ensureLandmarkServiceReady } = require('./faceLandmarkClient.js');
 
 const CHALLENGE_TTL_SECONDS = 180;
@@ -184,7 +185,15 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
         receivedAt,
         liveness: inference.liveness,
         padScore: inference.pad.score,
-        embedding: inference.embedding
+        // Raw face embeddings are biometric data. Encrypt each transient frame
+        // before writing it to Redis; bind the envelope to this one-time challenge.
+        embeddingEnvelope: encryptCaptureEmbedding({
+            kind,
+            challengeId: id,
+            embedding: inference.embedding,
+            modelId: inference.model?.id,
+            modelVersion: inference.model?.version
+        })
     };
 
     const script = `
@@ -236,9 +245,23 @@ async function appendCaptureFrame(kind, id, livenessNonce, imageBuffer, expected
     return { accepted: true, frameCount: appended, remainingFrames: Math.max(0, MAX_CAPTURE_FRAMES - appended) };
 }
 
-function validateCapture(state) {
+function validateCapture(state, kind, challengeId) {
     const { padThreshold, consistencyThreshold } = requirePipelineConfig();
-    return verifyCapturePayload(state, { padThreshold, consistencyThreshold });
+    const decryptedState = {
+        ...state,
+        capture: {
+            ...state.capture,
+            frames: (state.capture?.frames || []).map(frame => ({
+                ...frame,
+                embedding: decryptCaptureEmbedding({
+                    kind,
+                    challengeId,
+                    envelope: frame.embeddingEnvelope
+                })
+            }))
+        }
+    };
+    return verifyCapturePayload(decryptedState, { padThreshold, consistencyThreshold });
 }
 
 function createCaptureState() {
@@ -424,7 +447,7 @@ async function finishEnrollment(userId, challengeId) {
         if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
             throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face enrollment challenge đã hết hạn hoặc đã được sử dụng');
         }
-        const embedding = validateCapture(state);
+        const embedding = validateCapture(state, 'enrollment', challengeId);
         const stored = await storeVerifiedTemplate(userId, embedding, 'mobilefacenet+minifasnet-v2', 'supplied-bundle-v1');
         return { enrolled: true, credentialId: stored.id, enrolledAt: stored.enrolled_at };
     } finally {
@@ -487,7 +510,7 @@ async function finishLogin(challengeId, req) {
     if (!state || Date.now() - state.createdAt > CHALLENGE_TTL_SECONDS * 1000) {
         throw pipelineError('FACE_CHALLENGE_EXPIRED', 'Face login challenge đã hết hạn hoặc đã được sử dụng');
     }
-    const embedding = validateCapture(state);
+    const embedding = validateCapture(state, 'login', challengeId);
     if (!state.userId) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
     const userResult = await pool.query(
         `SELECT id, username, email, role, avatar_url, is_active FROM users WHERE id = $1 LIMIT 1`,
