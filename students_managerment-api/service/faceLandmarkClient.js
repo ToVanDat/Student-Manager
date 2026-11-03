@@ -11,7 +11,8 @@ function serviceError(message, code = 'FACE_LANDMARK_SERVICE_UNAVAILABLE') {
 }
 
 function isPrivateHttpHost(hostname) {
-    const host = String(hostname || '').replace(/^\\[|\\]$/g, '').toLowerCase();
+    const rawHost = String(hostname || '').toLowerCase();
+    const host = rawHost.startsWith('[') && rawHost.endsWith(']') ? rawHost.slice(1, -1) : rawHost;
     if (host === 'face-landmark') return true;
 
     const family = net.isIP(host);
@@ -34,7 +35,8 @@ function validateLandmarkServiceUrl(value, env = process.env) {
         throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
     }
 
-    const host = url.hostname.replace(/^\\[|\\]$/g, '').toLowerCase();
+    const rawHost = url.hostname.toLowerCase();
+    const host = rawHost.startsWith('[') && rawHost.endsWith(']') ? rawHost.slice(1, -1) : rawHost;
     const loopback = ['127.0.0.1', 'localhost', '::1'].includes(host);
     if (
         url.protocol === 'http:' &&
