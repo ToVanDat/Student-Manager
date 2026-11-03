@@ -209,7 +209,7 @@ function StudentDashboard({
                             <label className="flex items-center gap-1.5">
                                 <span>{t('rows')}</span>
                                 <select
-                                    className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                                    className="min-h-10 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-600 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                     value={pageSize}
                                     onChange={(event) => onPageSizeChange(Number(event.target.value))}
                                     aria-label={t("studentsPerPage")}
@@ -222,7 +222,7 @@ function StudentDashboard({
                         </div>
                         <nav className="flex items-center gap-1" aria-label={t("studentPagination")}>
                             <button
-                                className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+                                className="flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                                 type="button"
                                 onClick={() => onPageChange(currentPage - 1)}
                                 disabled={currentPage <= 1}
@@ -235,7 +235,7 @@ function StudentDashboard({
                                     <span className="flex size-8 items-center justify-center text-slate-400" key={page} aria-hidden="true">…</span>
                                 ) : (
                                     <button
-                                        className={`flex size-8 items-center justify-center rounded-md text-[11px] font-semibold ${page === currentPage ? 'bg-brand-600 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                                        className={`flex size-10 items-center justify-center rounded-lg text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${page === currentPage ? 'bg-brand-600 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}
                                         key={page}
                                         type="button"
                                         onClick={() => onPageChange(page)}
@@ -247,7 +247,7 @@ function StudentDashboard({
                                 )
                             ))}
                             <button
-                                className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+                                className="flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                                 type="button"
                                 onClick={() => onPageChange(currentPage + 1)}
                                 disabled={currentPage >= pageCount}
