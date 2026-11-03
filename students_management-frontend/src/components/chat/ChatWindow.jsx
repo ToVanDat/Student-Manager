@@ -333,6 +333,8 @@ export default function ChatWindow({
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [pendingDestructiveAction, setPendingDestructiveAction] = useState(null);
+    const [destructiveActionBusy, setDestructiveActionBusy] = useState(false);
     const [showReportDialog, setShowReportDialog] = useState(false);
     const [showContactInfo, setShowContactInfo] = useState(false);
     const [showMediaPanel, setShowMediaPanel] = useState(false);
@@ -654,6 +656,26 @@ export default function ChatWindow({
             console.error('Không thể thực hiện thao tác cuộc trò chuyện:', error);
             toast.error(error?.response?.data?.message || error?.message || 'Thao tác thất bại. Vui lòng thử lại.', { duration: 8000 });
         }
+    };
+
+    const confirmDestructiveChatAction = async () => {
+        if (!pendingDestructiveAction || destructiveActionBusy) return;
+        const action = pendingDestructiveAction;
+        setPendingDestructiveAction(null);
+        setDestructiveActionBusy(true);
+        if (action === 'clear') {
+            await runMoreAction(async () => {
+                if (typeof onClearConversationMessages !== 'function') {
+                    throw new Error('Chức năng xóa nội dung cuộc trò chuyện chưa được kết nối.');
+                }
+                await onClearConversationMessages();
+            });
+        } else if (action === 'hide') {
+            await runMoreAction(() => updateConversationSetting('hide', true));
+        } else if (action === 'block') {
+            await runMoreAction(blockConversationUser);
+        }
+        setDestructiveActionBusy(false);
     };
 
     const updateConversationSetting = async (action, value) => {
@@ -1300,26 +1322,13 @@ export default function ChatWindow({
                                     <MailOpen size={16} /> {t('markUnread')}
                                 </button>
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                <button type="button" role="menuitem" onClick={() => {
-                                    if (window.confirm('Xóa toàn bộ tin nhắn và lịch sử cuộc gọi chỉ ở phía bạn? Người còn lại vẫn giữ lịch sử.')) {
-                                        void runMoreAction(async () => {
-                                            if (typeof onClearConversationMessages !== 'function') {
-                                                throw new Error('Chức năng xóa nội dung cuộc trò chuyện chưa được kết nối.');
-                                            }
-                                            await onClearConversationMessages();
-                                        });
-                                    } else setShowMoreMenu(false);
-                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                                <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('clear'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
                                     <Trash2 size={16} /> Xóa nội dung cuộc trò chuyện
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => {
-                                    if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách của bạn? Tin nhắn sẽ không bị xóa.')) {
-                                        void runMoreAction(() => updateConversationSetting('hide', true));
-                                    } else setShowMoreMenu(false);
-                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('hide'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <FolderOpen size={16} /> Ẩn cuộc trò chuyện
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) void runMoreAction(blockConversationUser); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                                <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('block'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
                                     <Ban size={16} /> {t('blockUser')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
@@ -1867,6 +1876,18 @@ export default function ChatWindow({
             </aside>
         )}
 
+        {pendingDestructiveAction && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !destructiveActionBusy) setPendingDestructiveAction(null); }}>
+                <section role="alertdialog" aria-modal="true" aria-labelledby="chat-action-confirm-title" aria-describedby="chat-action-confirm-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <h3 id="chat-action-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">{pendingDestructiveAction === 'clear' ? 'Xóa nội dung cuộc trò chuyện?' : pendingDestructiveAction === 'hide' ? 'Ẩn cuộc trò chuyện?' : 'Chặn người dùng này?'}</h3>
+                    <p id="chat-action-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{pendingDestructiveAction === 'clear' ? 'Tin nhắn và lịch sử cuộc gọi sẽ bị xóa chỉ ở phía bạn. Người còn lại vẫn giữ lịch sử.' : pendingDestructiveAction === 'hide' ? 'Cuộc trò chuyện sẽ biến mất khỏi danh sách của bạn. Tin nhắn không bị xóa và có thể xuất hiện lại khi có hoạt động mới.' : 'Bạn sẽ không thể tiếp tục nhắn tin hoặc gọi cho người này.'}</p>
+                    <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                        <button type="button" autoFocus disabled={destructiveActionBusy} onClick={() => setPendingDestructiveAction(null)} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                        <button type="button" disabled={destructiveActionBusy} onClick={() => void confirmDestructiveChatAction()} className="min-h-10 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50">{destructiveActionBusy ? 'Đang xử lý…' : 'Xác nhận'}</button>
+                    </div>
+                </section>
+            </div>
+        )}
         </section>
     );
 }
