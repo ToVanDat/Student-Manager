@@ -211,3 +211,48 @@ dialog {
     transition-duration: .01ms !important;
   }
 }
+
+/* Admin student-management page: shared page rhythm and resilient toolbar layout. */
+.student-management-page {
+  display: grid;
+  min-width: 0;
+  gap: 1.25rem;
+}
+.student-management-roster {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  box-shadow: var(--ui-shadow);
+}
+.student-management-toolbar {
+  min-width: 0;
+}
+.student-management-toolbar > div {
+  min-width: 0;
+}
+.student-management-toolbar button {
+  min-height: 2.5rem;
+}
+.student-management-page :is(select, input, textarea) {
+  max-width: 100%;
+}
+.student-management-page [role="alert"] {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .student-management-page {
+    gap: 1rem;
+  }
+  .student-management-toolbar {
+    align-items: stretch;
+  }
+  .student-management-toolbar > div:last-child {
+    width: 100%;
+  }
+  .student-management-toolbar > div:last-child button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .student-management-roster > :last-child {
+    gap: .375rem;
+  }
+}
