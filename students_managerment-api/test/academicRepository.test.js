@@ -65,3 +65,16 @@ test('empty enrollment result is represented as no_enrollments rather than inven
     assert.deepEqual(result.grades, []);
     assert.equal(calls.length, 2);
 });
+
+test('direct student lookup uses a parameterized normalized code and detects duplicates', async () => {
+    setup([{ rows: [{ id: 1 }, { id: 2 }] }]);
+
+    await assert.rejects(
+        repository.getStudentPortalByCode('SV-001'),
+        error => error.code === 'ACADEMIC_STUDENT_CODE_NOT_UNIQUE'
+    );
+
+    assert.match(calls[0].sql, /LOWER\(BTRIM\(s\.student_code\)\) = LOWER\(BTRIM\(\$1\)\)/);
+    assert.deepEqual(calls[0].values, ['SV-001']);
+    assert.equal(calls.length, 1, 'must not query grade rows for an ambiguous student code');
+});

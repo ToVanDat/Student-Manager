@@ -49,3 +49,38 @@ test('database integration audit checks identity, core features, extensions and 
         assert.ok(sql.includes(token), `audit is missing expected check: ${token}`);
     }
 });
+
+
+const coreAcademicAuditPath = path.join(__dirname, '..', 'sql', 'core_academic_readonly_audit.sql');
+
+test('core academic audit is explicitly read-only and never performs schema or data mutations', () => {
+    const sql = fs.readFileSync(coreAcademicAuditPath, 'utf8')
+        .replace(/--[^\n]*/g, '')
+        .trim();
+
+    assert.match(sql, /current_database\(\)/i);
+    assert.match(sql, /pg_class/i);
+    assert.match(sql, /information_schema\.columns/i);
+    assert.match(sql, /pg_indexes/i);
+    assert.match(sql, /schedule_change_logs/i);
+
+    // Procedural blocks are allowed only for guarded COUNT(*) checks and NOTICE output.
+    assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|MERGE|TRUNCATE|CREATE|ALTER|DROP|GRANT|REVOKE|COPY|VACUUM|ANALYZE)\b/i);
+    assert.match(sql, /EXECUTE\s+format\(\s*'SELECT COUNT\(\*\)/i);
+    assert.match(sql, /RAISE NOTICE/i);
+});
+
+test('core academic audit distinguishes timetable candidate objects from required academic tables', () => {
+    const sql = fs.readFileSync(coreAcademicAuditPath, 'utf8');
+
+    for (const token of [
+        "('students', 'student_records', 'required')",
+        "('enrollments', 'enrollment_and_grades', 'required')",
+        "('class_schedules', 'timetable', 'candidate')",
+        "('schedule_sessions', 'timetable', 'candidate')",
+        "('schedule_change_logs', 'timetable_history', 'candidate')",
+        'duplicate student/subject/semester groups'
+    ]) {
+        assert.ok(sql.includes(token), `core academic audit is missing expected check: ${token}`);
+    }
+});
