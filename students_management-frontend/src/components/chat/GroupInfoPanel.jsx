@@ -43,6 +43,8 @@ export default function GroupInfoPanel({
     const [editingGroup, setEditingGroup] = useState(false);
     const [groupName, setGroupName] = useState(conversation?.name || '');
     const [savingGroup, setSavingGroup] = useState(false);
+    const [pendingConfirmation, setPendingConfirmation] = useState(null);
+    const [confirmationBusy, setConfirmationBusy] = useState(false);
 
     useEffect(() => {
         if (!editingGroup) setGroupName(conversation?.name || '');
@@ -96,15 +98,8 @@ export default function GroupInfoPanel({
         }
     };
 
-    const handleRemove = async (userId) => {
-        if (!window.confirm(t('confirmRemoveGroupMember'))) return;
-
-        try {
-            setProcessingUserId(Number(userId));
-            await onRemoveMember?.(userId);
-        } finally {
-            setProcessingUserId(null);
-        }
+    const handleRemove = userId => {
+        setPendingConfirmation({ type: 'remove', userId });
     };
 
     const handleRole = async (userId, role) => {
@@ -117,14 +112,27 @@ export default function GroupInfoPanel({
         }
     };
 
-    const handleLeave = async () => {
+    const handleLeave = () => {
         if (currentRole === 'owner') return;
-        if (!window.confirm(t('confirmLeaveGroup'))) return;
+        setPendingConfirmation({ type: 'leave' });
+    };
 
+    const confirmPendingAction = async () => {
+        if (!pendingConfirmation || confirmationBusy) return;
+        const action = pendingConfirmation;
+        setConfirmationBusy(true);
         try {
-            await onLeaveGroup?.();
+            if (action.type === 'remove') {
+                setProcessingUserId(Number(action.userId));
+                await onRemoveMember?.(action.userId);
+            } else {
+                await onLeaveGroup?.();
+                onClose?.();
+            }
+            setPendingConfirmation(null);
         } finally {
-            onClose?.();
+            setProcessingUserId(null);
+            setConfirmationBusy(false);
         }
     };
 
@@ -424,6 +432,34 @@ export default function GroupInfoPanel({
                     </div>
                 </div>
             </div>
+            {pendingConfirmation && (
+                <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !confirmationBusy) setPendingConfirmation(null); }}>
+                    <section
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="group-action-confirm-title"
+                        aria-describedby="group-action-confirm-description"
+                        onKeyDown={event => {
+                            if (event.key === 'Escape' && !confirmationBusy) {
+                                event.preventDefault();
+                                setPendingConfirmation(null);
+                            }
+                        }}
+                        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    >
+                        <h3 id="group-action-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">
+                            {pendingConfirmation.type === 'remove' ? 'Xóa thành viên khỏi nhóm?' : 'Rời khỏi nhóm?'}
+                        </h3>
+                        <p id="group-action-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                            {pendingConfirmation.type === 'remove' ? t('confirmRemoveGroupMember') : t('confirmLeaveGroup')}
+                        </p>
+                        <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                            <button type="button" autoFocus disabled={confirmationBusy} onClick={() => setPendingConfirmation(null)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                            <button type="button" disabled={confirmationBusy} onClick={() => void confirmPendingAction()} className="min-h-11 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50">{confirmationBusy ? 'Đang xử lý…' : 'Xác nhận'}</button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }
