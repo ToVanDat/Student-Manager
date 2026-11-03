@@ -65,3 +65,22 @@ test('empty enrollment result is represented as no_enrollments rather than inven
     assert.deepEqual(result.grades, []);
     assert.equal(calls.length, 2);
 });
+
+
+test('admin student-code lookup compares trimmed case-insensitive values using a bound parameter', async () => {
+    setup([{ rows: [{ id: 9, student_code: 'SV009' }] }]);
+    const student = await repository.getStudentPortalByCode(' sv009 ');
+    assert.equal(student.status, 'no_enrollments');
+    assert.match(calls[0].sql, /LOWER\(BTRIM\(s\.student_code\)\) = LOWER\(BTRIM\(\$1\)\)/);
+    assert.deepEqual(calls[0].values, [' sv009 ']);
+    assert.equal(calls.length, 2);
+});
+
+test('admin student-code lookup refuses ambiguous duplicate matches before reading grades', async () => {
+    setup([{ rows: [{ id: 9 }, { id: 10 }] }]);
+    await assert.rejects(
+        repository.getStudentPortalByCode('SV009'),
+        error => error.code === 'ACADEMIC_STUDENT_CODE_NOT_UNIQUE'
+    );
+    assert.equal(calls.length, 1);
+});
