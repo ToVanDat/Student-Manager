@@ -53,6 +53,18 @@ export default function PermissionsOverview() {
     user: permissions.some(item => Boolean(drafts.user[item.permission_key]) !== Boolean(item.user_allowed)),
   }), [permissions, drafts]);
 
+  const handleRoleTabKeyDown = event => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight' && event.key !== 'Home' && event.key !== 'End') return;
+    event.preventDefault();
+    const roles = ['user', 'admin'];
+    const currentIndex = roles.indexOf(activeRole);
+    const nextRole = event.key === 'Home' ? roles[0]
+      : event.key === 'End' ? roles[roles.length - 1]
+        : roles[(currentIndex + (event.key === 'ArrowRight' ? 1 : roles.length - 1)) % roles.length];
+    setActiveRole(nextRole);
+    event.currentTarget.parentElement?.querySelector(`[data-role-tab="${nextRole}"]`)?.focus();
+  };
+
   const moduleName = key => ({
     students: en ? 'Student records' : 'Hồ sơ sinh viên',
     classes: en ? 'Classes' : 'Lớp học',
@@ -100,13 +112,13 @@ export default function PermissionsOverview() {
     </header>
 
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 dark:border-slate-800 dark:bg-slate-900" role="tablist" aria-label={en ? 'Select role' : 'Chọn vai trò'}>
-      {['user', 'admin'].map(role => <button key={role} type="button" role="tab" aria-selected={activeRole === role} onClick={() => setActiveRole(role)} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition ${activeRole === role ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{role === 'admin' ? <ShieldCheck size={16}/> : <Users size={16}/>} {role === 'admin' ? 'Admin' : (en ? 'User' : 'Người dùng')}</button>)}
+      {['user', 'admin'].map(role => <button key={role} id={`role-tab-${role}`} data-role-tab={role} type="button" role="tab" aria-selected={activeRole === role} aria-controls="role-permissions-panel" tabIndex={activeRole === role ? 0 : -1} onKeyDown={handleRoleTabKeyDown} onClick={() => setActiveRole(role)} className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${activeRole === role ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'}`}>{role === 'admin' ? <ShieldCheck size={16}/> : <Users size={16}/>} {role === 'admin' ? 'Admin' : (en ? 'User' : 'Người dùng')}</button>)}
       <span className="ml-auto px-2 text-xs text-slate-500 dark:text-slate-400">{permissions.length} {en ? 'permissions' : 'quyền'}</span>
     </div>
 
     {loading ? <div className="app-card flex items-center justify-center gap-3 p-12 text-sm text-slate-500" role="status"><LoaderCircle size={18} className="animate-spin"/>{en ? 'Loading permissions…' : 'Đang tải danh sách quyền…'}</div>
     : loadError ? <div className="app-card flex flex-col items-center p-8 text-center" role="alert"><ShieldAlert size={24} className="text-rose-500"/><p className="mt-3 max-w-xl text-sm text-slate-600 dark:text-slate-300">{loadError}</p><button type="button" onClick={() => void load()} className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white">{en ? 'Try again' : 'Thử lại'}</button></div>
-    : <div className="space-y-4">
+    : <div id="role-permissions-panel" role="tabpanel" aria-labelledby={`role-tab-${activeRole}`} tabIndex={0} className="space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 rounded-xl">
       {grouped.map(group => <section key={group.moduleKey} className="app-card overflow-hidden">
         <header className="border-b border-slate-100 px-5 py-4 dark:border-slate-800"><h2 className="font-semibold text-slate-900 dark:text-white">{moduleName(group.moduleKey)}</h2></header>
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
