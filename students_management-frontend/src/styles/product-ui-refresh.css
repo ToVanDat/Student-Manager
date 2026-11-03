@@ -486,3 +486,91 @@ dialog {
     transition-duration: .01ms !important;
   }
 }
+
+
+/* Authentication and security surfaces: consistent cards, responsive controls and clear status hierarchy. */
+:where(.auth-methods-content, .auth-qr-panel, .settings-advanced-security) {
+  min-width: 0;
+}
+.auth-methods-divider {
+  color: var(--ui-muted);
+}
+.auth-methods-divider > span:first-child,
+.auth-methods-divider > span:last-child {
+  background: var(--ui-line);
+}
+.auth-google-button {
+  align-items: center;
+  min-width: 0;
+}
+.auth-google-button > div {
+  max-width: 100%;
+}
+.auth-methods-hint,
+.auth-methods-loading {
+  max-width: 34rem;
+  margin-inline: auto;
+  line-height: 1.55;
+}
+.auth-qr-panel {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  box-shadow: var(--ui-shadow);
+}
+.auth-qr-stage {
+  border-color: var(--ui-line);
+  background: color-mix(in srgb, var(--ui-canvas) 78%, var(--ui-surface));
+}
+.auth-qr-stage > div:has(svg) {
+  max-width: 100%;
+}
+.auth-qr-camera {
+  border: 1px solid var(--ui-line);
+  aspect-ratio: 16 / 9;
+}
+.settings-advanced-security {
+  border-color: var(--ui-line);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+.settings-passkey-list > * {
+  min-width: 0;
+}
+.settings-google-link-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.settings-advanced-security :is(input, button) {
+  max-width: 100%;
+}
+.settings-advanced-security button,
+.auth-qr-panel button {
+  touch-action: manipulation;
+}
+@media (max-width: 639px) {
+  .auth-qr-panel {
+    padding: 1rem;
+  }
+  .auth-qr-stage {
+    min-height: 220px;
+    padding: .875rem;
+  }
+  .auth-qr-stage svg {
+    max-width: min(196px, calc(100vw - 96px));
+    height: auto;
+  }
+  .settings-advanced-security button {
+    min-height: 2.5rem;
+  }
+  .settings-google-link-card > button {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-methods-content *,
+  .auth-qr-panel *,
+  .settings-advanced-security * {
+    scroll-behavior: auto;
+    transition-duration: .01ms !important;
+  }
+}
