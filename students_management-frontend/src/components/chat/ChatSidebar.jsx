@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Search, X, Users, Check } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import ConversationItem from './ConversationItem';
@@ -26,6 +26,10 @@ export default function ChatSidebar({
     const [creatingGroup, setCreatingGroup] = useState(false);
     const [startingDirectId, setStartingDirectId] = useState(null);
     const [newChatError, setNewChatError] = useState('');
+    const dialogRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const groupNameInputRef = useRef(null);
+    const triggerRef = useRef(null);
 
     const unreadTotal = conversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
 
@@ -41,14 +45,36 @@ export default function ChatSidebar({
         const previousOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         const handleDialogKeyDown = event => {
-            if (event.key !== 'Escape' || creatingGroup || startingDirectId) return;
-            setShowNewChat(false);
-            setNewChatError('');
-            setStartingDirectId(null);
-            setMode('direct');
-            setUserSearch('');
-            setGroupName('');
-            setSelectedIds([]);
+            if (event.key === 'Escape') {
+                if (creatingGroup || startingDirectId) return;
+                setShowNewChat(false);
+                setNewChatError('');
+                setStartingDirectId(null);
+                setMode('direct');
+                setUserSearch('');
+                setGroupName('');
+                setSelectedIds([]);
+                return;
+            }
+
+            if (event.key !== 'Tab') return;
+            const focusable = Array.from(dialogRef.current?.querySelectorAll(
+                'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+            ) || []).filter(element => element.getClientRects().length > 0);
+            if (!focusable.length) {
+                event.preventDefault();
+                dialogRef.current?.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !dialogRef.current?.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !dialogRef.current?.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
         };
         window.addEventListener('keydown', handleDialogKeyDown);
         return () => {
@@ -56,6 +82,14 @@ export default function ChatSidebar({
             window.removeEventListener('keydown', handleDialogKeyDown);
         };
     }, [showNewChat, creatingGroup, startingDirectId]);
+
+    useEffect(() => {
+        if (showNewChat) {
+            (mode === 'group' ? groupNameInputRef.current : searchInputRef.current)?.focus();
+            return;
+        }
+        triggerRef.current?.focus();
+    }, [showNewChat, mode]);
 
     const getIsOnline = conversation => conversation.type === 'direct'
         && onlineUserIds.has(Number(conversation.userId));
@@ -66,7 +100,8 @@ export default function ChatSidebar({
             (filter === 'all' || item.unreadCount > 0);
     });
 
-    const closeNewChat = () => {
+    const closeNewChat = (force = false) => {
+        if (!force && (creatingGroup || startingDirectId)) return;
         setShowNewChat(false);
         setNewChatError('');
         setStartingDirectId(null);
@@ -96,7 +131,7 @@ export default function ChatSidebar({
                 throw new Error('Không nhận được conversation từ server');
             }
 
-            closeNewChat();
+            closeNewChat(true);
         } catch (error) {
             console.error('Không thể mở cuộc trò chuyện:', error);
             setNewChatError(
@@ -116,7 +151,7 @@ export default function ChatSidebar({
             setNewChatError('');
             setCreatingGroup(true);
             await onStartGroupConversation(groupName.trim(), selectedIds);
-            closeNewChat();
+            closeNewChat(true);
         } catch (error) {
             console.error('Không thể tạo group:', error);
             setNewChatError(error?.response?.data?.message || error?.message || 'Không thể tạo nhóm. Vui lòng thử lại.');
@@ -132,7 +167,7 @@ export default function ChatSidebar({
                 <div className="flex items-center gap-2">
                     <button
                         data-create-group
-                        onClick={() => { setShowNewChat(true); setMode('group'); }}
+                        onClick={event => { triggerRef.current = event.currentTarget; setShowNewChat(true); setMode('group'); }}
                         className="flex size-9 items-center justify-center rounded-lg border border-[#e3eaf4] bg-white text-[#60708a] transition hover:bg-slate-50 hover:text-blue-700 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                         title={t("createGroup")}
                         aria-label={t("createGroup")}
@@ -142,7 +177,7 @@ export default function ChatSidebar({
                     </button>
                     <button
                         data-new-chat
-                        onClick={() => { setShowNewChat(true); setMode('direct'); }}
+                        onClick={event => { triggerRef.current = event.currentTarget; setShowNewChat(true); setMode('direct'); }}
                         className="flex size-9 items-center justify-center rounded-lg bg-[#174a7e] text-white transition hover:bg-[#123b66]"
                         title={t("searchUsers")}
                         aria-label={t("searchUsers")}
@@ -158,7 +193,7 @@ export default function ChatSidebar({
                     className="fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto overscroll-contain bg-slate-950/40 p-3 backdrop-blur-[3px] sm:p-4"
                     onMouseDown={event => { if (event.target === event.currentTarget) closeNewChat(); }}
                 >
-                    <section role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" className="my-auto max-h-[min(680px,90dvh)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)] dark:border-slate-700 dark:bg-slate-900">
+                    <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="new-chat-dialog-title" tabIndex={-1} className="my-auto max-h-[min(680px,90dvh)] w-full max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,.24)] dark:border-slate-700 dark:bg-slate-900">
                     <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-5 py-4 sm:px-6">
                         <div className="min-w-0">
                             <h3 id="new-chat-dialog-title" className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -172,19 +207,21 @@ export default function ChatSidebar({
 
                     {mode === 'group' && (
                         <input
-                            autoFocus
+                            ref={groupNameInputRef}
                             value={groupName}
                             onChange={e => setGroupName(e.target.value)}
                             placeholder={t("groupNamePlaceholder")}
+                            aria-label={t("groupNamePlaceholder")}
                             className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                         />
                     )}
 
                     <input
-                        autoFocus={mode === 'direct'}
+                        ref={searchInputRef}
                         value={userSearch}
                         onChange={e => setUserSearch(e.target.value)}
                         placeholder={mode === 'group' ? t('findSelectMembers') : t('findUsernameEmail')}
+                        aria-label={mode === 'group' ? t('findSelectMembers') : t('findUsernameEmail')}
                         className="h-11 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3.5 text-sm text-slate-800 dark:text-slate-100 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-950/50"
                     />
 
