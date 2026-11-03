@@ -108,15 +108,6 @@ async function ensureLandmarkServiceReady() {
     if (!token) throw serviceError('Thiếu FACE_LANDMARK_SERVICE_TOKEN', 'FACE_AUTH_CONFIG_NOT_READY');
     const baseUrl = (process.env.FACE_LANDMARK_SERVICE_URL || DEFAULT_URL).replace(/\/$/, '');
     const url = validateLandmarkServiceUrl(baseUrl);
-    try { url = new URL(baseUrl); }
-    catch { throw serviceError('FACE_LANDMARK_SERVICE_URL không hợp lệ', 'FACE_AUTH_CONFIG_INVALID'); }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw serviceError('FACE_LANDMARK_SERVICE_URL phải dùng HTTP nội bộ hoặc HTTPS', 'FACE_AUTH_CONFIG_INVALID');
-    }
-    if (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '::1'].includes(url.hostname) &&
-        process.env.NODE_ENV === 'production' && process.env.FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP !== 'true') {
-        throw serviceError('Production landmark service phải dùng HTTPS hoặc private loopback network', 'FACE_AUTH_CONFIG_INVALID');
-    }
     try {
         const response = await fetch(url.toString() + '/health', {
             headers: { authorization: 'Bearer ' + token },
