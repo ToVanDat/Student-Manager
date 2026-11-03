@@ -31,7 +31,10 @@ const setup = (...nextResponses) => {
 };
 
 test('admin student-code lookup normalizes the code and parameterizes the query', async () => {
-    setup({ rows: [{ id: 9, student_code: 'SV009' }] });
+    setup(
+        { rows: [{ id: 9, student_code: 'SV009' }] },
+        { rows: [] }
+    );
 
     const result = await repository.getStudentPortalByCode(' sv009 ');
 
