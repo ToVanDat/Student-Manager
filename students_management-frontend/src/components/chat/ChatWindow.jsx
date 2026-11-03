@@ -1097,7 +1097,7 @@ export default function ChatWindow({
                     {activeConversation.type === 'direct' && e2eeStatus?.available && (
                         e2eeStatus.enabled && e2eeStatus.mode !== 'paused' ? (
                             <>
-                                <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
+                                <span data-chat-e2ee-state="enabled" role="status" aria-label="Mã hóa đầu cuối đang bật" className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
                                     <ShieldCheck size={16} /> E2EE
                                 </span>
                                 <button
@@ -1128,7 +1128,8 @@ export default function ChatWindow({
                             </>
                         ) : e2eeStatus.enabled && e2eeStatus.mode === 'paused' ? (
                             <span
-                                className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                data-chat-e2ee-state="paused"
+                                className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
                                 title="E2EE đã tạm dừng. Tin nhắn mới không được mã hóa đầu cuối; lịch sử E2EE cũ được giữ nguyên."
                                 role="status"
                             >
@@ -1136,7 +1137,8 @@ export default function ChatWindow({
                             </span>
                         ) : !e2eeStatus.activationEnabled ? (
                             <span
-                                className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                data-chat-e2ee-state="activation-paused"
+                                className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
                                 title="Tạm dừng bật E2EE cho cuộc trò chuyện mới. Các cuộc trò chuyện E2EE đã bật vẫn giữ nguyên."
                                 role="status"
                             >
