@@ -11,11 +11,20 @@ const JWT_SECRET = 'auth-middleware-test-secret';
 const originalSecret = process.env.JWT_SECRET;
 
 const withOverrides = async ({ redis = {}, repository = {} }, run) => {
-    const originalReady = redisClient.isReady;
+    const originalReadyDescriptor = Object.getOwnPropertyDescriptor(redisClient, 'isReady');
     const originalRedis = {};
     const originalRepository = {};
 
+    if (Object.prototype.hasOwnProperty.call(redis, 'isReady')) {
+        Object.defineProperty(redisClient, 'isReady', {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: redis.isReady
+        });
+    }
     for (const [key, value] of Object.entries(redis)) {
+        if (key === 'isReady') continue;
         originalRedis[key] = redisClient[key];
         redisClient[key] = value;
     }
@@ -28,7 +37,11 @@ const withOverrides = async ({ redis = {}, repository = {} }, run) => {
     try {
         await run();
     } finally {
-        redisClient.isReady = originalReady;
+        if (originalReadyDescriptor) {
+            Object.defineProperty(redisClient, 'isReady', originalReadyDescriptor);
+        } else {
+            delete redisClient.isReady;
+        }
         for (const [key, value] of Object.entries(originalRedis)) redisClient[key] = value;
         for (const [key, value] of Object.entries(originalRepository)) authRepository[key] = value;
         if (originalSecret === undefined) delete process.env.JWT_SECRET;
