@@ -19,6 +19,8 @@ export default function AdvancedSecurityMethods() {
     const [googleStatusError, setGoogleStatusError] = useState('');
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState('');
+    const [confirmation, setConfirmation] = useState(null);
+    const cancelConfirmationRef = useRef(null);
     const [googleLink, setGoogleLink] = useState(null);
     const [currentPassword, setCurrentPassword] = useState('');
     const [verificationToken, setVerificationToken] = useState('');
@@ -191,32 +193,46 @@ export default function AdvancedSecurityMethods() {
             setMessage('Hãy xác minh bằng mật khẩu Student Manager hoặc passkey trước khi gỡ liên kết Google.');
             return;
         }
-        if (!window.confirm('Gỡ liên kết Google khỏi tài khoản hiện tại?')) return;
+        setConfirmation({ type: 'unlink-google' });
+    };
+
+    const removePasskey = id => setConfirmation({ type: 'remove-passkey', id });
+
+    const confirmSensitiveAction = async () => {
+        if (!confirmation || busy) return;
+        const action = confirmation;
+        setConfirmation(null);
         setBusy(true);
         setMessage('');
         try {
-            await unlinkGoogleApi(currentPassword || undefined, verificationToken || undefined);
-            setCurrentPassword('');
-            setVerificationToken('');
-            setMessage('Đã gỡ liên kết Google.');
+            if (action.type === 'unlink-google') {
+                await unlinkGoogleApi(currentPassword || undefined, verificationToken || undefined);
+                setCurrentPassword('');
+                setVerificationToken('');
+                setMessage('Đã gỡ liên kết Google.');
+            } else if (action.type === 'remove-passkey') {
+                await deletePasskeyApi(action.id);
+                setMessage('Đã xóa passkey.');
+            }
             await refresh();
         } catch (error) {
-            setMessage(error.response?.data?.message || 'Không thể gỡ liên kết Google.');
+            setMessage(error.response?.data?.message || (action.type === 'unlink-google' ? 'Không thể gỡ liên kết Google.' : 'Không thể xóa passkey.'));
         } finally { setBusy(false); }
     };
 
-    const removePasskey = async id => {
-        if (!window.confirm('Xóa passkey này khỏi tài khoản?')) return;
-        setBusy(true);
-        setMessage('');
-        try {
-            await deletePasskeyApi(id);
-            setMessage('Đã xóa passkey.');
-            await refresh();
-        } catch (error) {
-            setMessage(error.response?.data?.message || 'Không thể xóa passkey.');
-        } finally { setBusy(false); }
-    };
+    useEffect(() => {
+        if (!confirmation) return undefined;
+        const previousFocus = document.activeElement;
+        cancelConfirmationRef.current?.focus();
+        const onKeyDown = event => {
+            if (event.key === 'Escape' && !busy) setConfirmation(null);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            previousFocus?.focus?.();
+        };
+    }, [confirmation, busy]);
 
     return (
         <section className="settings-advanced-security mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5" data-ui-region="advanced-security-methods" aria-busy={busy || passkeysLoading || googleStatusLoading}>
@@ -242,7 +258,7 @@ export default function AdvancedSecurityMethods() {
                             <p className="m-0 truncate text-sm font-medium text-slate-700 dark:text-slate-200">{item.device_name || 'Passkey'}</p>
                             <p className="m-0 mt-1 text-[11px] text-slate-400">Đăng ký: {new Date(item.created_at).toLocaleString()}</p>
                         </div>
-                        <button type="button" disabled={busy} onClick={() => removePasskey(item.id)} aria-label="Xóa passkey" className="rounded-lg p-2 text-rose-600 hover:bg-rose-50 disabled:opacity-50 dark:hover:bg-rose-950/30"><Trash2 size={16} /></button>
+                        <button type="button" disabled={busy} onClick={() => removePasskey(item.id)} aria-label={`Xóa passkey ${item.device_name || ''}`} className="min-h-10 min-w-10 rounded-lg p-2 text-rose-600 hover:bg-rose-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50 dark:hover:bg-rose-950/30"><Trash2 size={16} /></button>
                     </div>
                 ))}
                 {passkeysLoading && <p role="status" className="text-xs text-slate-500">Đang tải danh sách passkey…</p>}
@@ -272,7 +288,20 @@ export default function AdvancedSecurityMethods() {
                 </div>
             ) : null}
             {!googleStatusLoading && !googleStatusError && !googleLink && !import.meta.env.VITE_GOOGLE_CLIENT_ID && <p className="mt-2 text-xs text-slate-400">Cần cấu hình VITE_GOOGLE_CLIENT_ID trong môi trường frontend.</p>}
-            {message && <p role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message}</p>}
+            {message && <p role="status" aria-live="polite" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{message}</p>}
+            {confirmation && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setConfirmation(null); }}>
+                    <section role="alertdialog" aria-modal="true" aria-labelledby="security-confirm-title" aria-describedby="security-confirm-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <div className="mb-3 flex items-center gap-2 text-rose-600 dark:text-rose-400"><ShieldCheck size={19} /><span className="text-xs font-bold uppercase tracking-wide">Xác nhận thao tác bảo mật</span></div>
+                        <h4 id="security-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmation.type === 'unlink-google' ? 'Gỡ liên kết Google?' : 'Xóa Passkey này?'}</h4>
+                        <p id="security-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{confirmation.type === 'unlink-google' ? 'Bạn sẽ không thể dùng tài khoản Google đã liên kết để đăng nhập cho đến khi liên kết lại. Tài khoản Student Manager và mật khẩu hiện tại không bị xóa.' : 'Thiết bị này sẽ không còn dùng Passkey vừa chọn để xác minh tài khoản. Hãy đảm bảo bạn còn phương thức đăng nhập khác.'}</p>
+                        <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                            <button ref={cancelConfirmationRef} type="button" disabled={busy} onClick={() => setConfirmation(null)} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                            <button type="button" disabled={busy} onClick={confirmSensitiveAction} className="min-h-10 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50">{busy ? 'Đang xử lý…' : confirmation.type === 'unlink-google' ? 'Gỡ liên kết' : 'Xóa Passkey'}</button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </section>
     );
 }
