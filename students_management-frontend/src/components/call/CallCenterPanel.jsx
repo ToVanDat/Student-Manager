@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Phone, Video, PhoneMissed, Bell, X, CheckCheck } from 'lucide-react';
 import { callApi } from '@/api/callApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
@@ -29,21 +29,54 @@ export default function CallCenterPanel({
     const [tab, setTab] = useState('history');
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState('');
+    const closeButtonRef = useRef(null);
 
     const load = async () => {
         setLoading(true);
+        setLoadError('');
         try {
             const historyResponse = await callApi.getHistory();
             setHistory(historyResponse.data?.data || []);
+        } catch (error) {
+            setLoadError(error?.response?.data?.message || 'Không thể tải lịch sử cuộc gọi. Vui lòng thử lại.');
+            throw error;
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (!open) return;
+        if (!open) return undefined;
+        const previouslyFocused = document.activeElement;
+        closeButtonRef.current?.focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose?.();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const panel = closeButtonRef.current?.closest('[role="dialog"]');
+            const focusable = panel ? [...panel.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')] : [];
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
         load().catch(error => console.error('CALL CENTER LOAD ERROR:', error));
-    }, [open]);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [open, onClose]);
 
     const unreadCount = notifications.filter(item => !item.is_read).length;
 
@@ -58,30 +91,38 @@ export default function CallCenterPanel({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[180] bg-slate-950/30 backdrop-blur-[2px]">
-            <section className="absolute right-5 top-20 flex max-h-[calc(100vh-110px)] w-[420px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+        <div className="fixed inset-0 z-[180] bg-slate-950/30 backdrop-blur-[2px]" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+            <section role="dialog" aria-modal="true" aria-labelledby="call-center-title" aria-describedby="call-center-description" className="absolute inset-x-3 top-16 mx-auto flex max-h-[calc(100dvh-80px)] w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:right-5 sm:top-20 sm:max-h-[calc(100dvh-110px)] dark:border-slate-700 dark:bg-slate-900">
                 <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                     <div>
-                        <h2 className="font-semibold text-slate-900 dark:text-white">{t('calls')}</h2>
-                        <p className="text-xs text-slate-400">{t('callHistoryAndNotifications')}</p>
+                        <h2 id="call-center-title" className="font-semibold text-slate-900 dark:text-white">{t('calls')}</h2>
+                        <p id="call-center-description" className="text-xs text-slate-400">{t('callHistoryAndNotifications')}</p>
                     </div>
-                    <button type="button" onClick={onClose} className="rounded-full p-2 hover:bg-slate-100 dark:hover:bg-slate-800">
-                        <X size={18} />
+                    <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Đóng lịch sử cuộc gọi" className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800">
+                        <X size={18} aria-hidden="true" />
                     </button>
                 </header>
 
-                <div className="grid grid-cols-2 border-b border-slate-100 dark:border-slate-800">
+                <div role="tablist" aria-label="Nội dung cuộc gọi" className="grid grid-cols-2 border-b border-slate-100 dark:border-slate-800">
                     <button
                         type="button"
                         onClick={() => setTab('history')}
-                        className={`px-4 py-3 text-sm font-medium ${tab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}
+                        role="tab"
+                        id="call-history-tab"
+                        aria-selected={tab === 'history'}
+                        aria-controls="call-center-panel"
+                        className={`min-h-11 px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${tab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}
                     >
                         Lịch sử
                     </button>
                     <button
                         type="button"
                         onClick={() => setTab('notifications')}
-                        className={`relative px-4 py-3 text-sm font-medium ${tab === 'notifications' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}
+                        role="tab"
+                        id="call-notifications-tab"
+                        aria-selected={tab === 'notifications'}
+                        aria-controls="call-center-panel"
+                        className={`relative min-h-11 px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${tab === 'notifications' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}
                     >
                         Thông báo
                         {unreadCount > 0 && (
@@ -92,13 +133,14 @@ export default function CallCenterPanel({
                     </button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto p-3">
+                <div id="call-center-panel" role="tabpanel" aria-labelledby={tab === 'history' ? 'call-history-tab' : 'call-notifications-tab'} aria-busy={loading} className="min-h-0 flex-1 overflow-y-auto p-3">
+                    {loadError && !loading && <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"><p>{loadError}</p><button type="button" onClick={() => load().catch(error => console.error('CALL CENTER LOAD ERROR:', error))} className="mt-2 min-h-10 rounded-lg border border-rose-300 px-3 text-xs font-semibold hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-800 dark:hover:bg-rose-900/40">Thử tải lại</button></div>}
                     {loading && (
                         <p className="py-8 text-center text-sm text-slate-400">{t('loading')}</p>
                     )}
 
                     {!loading && tab === 'history' && history.length === 0 && (
-                        <p className="py-8 text-center text-sm text-slate-400">{t('noCallHistory')}</p>
+                        <p role="status" className="py-8 text-center text-sm text-slate-400">{t('noCallHistory')}</p>
                     )}
 
                     {!loading && tab === 'history' && history.map(item => {
@@ -125,7 +167,7 @@ export default function CallCenterPanel({
                     })}
 
                     {!loading && tab === 'notifications' && notifications.length === 0 && (
-                        <p className="py-8 text-center text-sm text-slate-400">{t('noNewNotifications')}</p>
+                        <p role="status" className="py-8 text-center text-sm text-slate-400">{t('noNewNotifications')}</p>
                     )}
 
                     {!loading && tab === 'notifications' && notifications.map(item => (
