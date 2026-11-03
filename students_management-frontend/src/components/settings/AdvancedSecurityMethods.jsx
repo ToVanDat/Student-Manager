@@ -219,7 +219,7 @@ export default function AdvancedSecurityMethods() {
     };
 
     return (
-        <section className="mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
+        <section className="settings-advanced-security mt-5 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5" data-ui-region="advanced-security-methods" aria-busy={busy || passkeysLoading || googleStatusLoading}>
             <FaceLoginSettings />
             <div className="mb-3 flex items-center gap-2">
                 <Fingerprint size={19} className="text-blue-600" />
@@ -235,7 +235,7 @@ export default function AdvancedSecurityMethods() {
             <button type="button" disabled={busy} onClick={registerPasskey} className="mb-4 inline-flex h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
                 <Fingerprint size={16} /> {credentials.length ? 'Thêm Passkey' : 'Đăng ký Passkey trên thiết bị'}
             </button>
-            <div className="mb-4 space-y-2">
+            <div className="settings-passkey-list mb-4 space-y-2" data-ui-region="passkey-list">
                 {credentials.map(item => (
                     <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3 dark:border-slate-800">
                         <div className="min-w-0">
@@ -261,7 +261,7 @@ export default function AdvancedSecurityMethods() {
                 <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-50' : ''} />
             </div>}
             {!googleStatusLoading && !googleStatusError && googleLink ? (
-                <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                <div className="settings-google-link-card space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">Đã liên kết Google</p>
                     <p className="m-0 text-xs text-slate-500 dark:text-slate-400">{googleLink.provider_email || 'Tài khoản Google đã liên kết'}</p>
                     <label className="block text-xs text-slate-600 dark:text-slate-300" htmlFor="unlink-google-password">Xác minh bằng mật khẩu Student Manager hoặc passkey</label>
