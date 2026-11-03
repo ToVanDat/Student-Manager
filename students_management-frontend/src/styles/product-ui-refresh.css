@@ -414,9 +414,6 @@ dialog {
 [data-ui-page="student-portal"] [data-ui-region="student-profile"] p {
   overflow-wrap: anywhere;
 }
-[data-ui-page="student-portal"] [data-ui-region="timetable"] [data-ui-state="unavailable"] {
-  min-width: 0;
-}
 @media (max-width: 639px) {
   [data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid {
     grid-template-columns: minmax(0, 1fr);
