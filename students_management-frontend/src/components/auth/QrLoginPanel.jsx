@@ -166,7 +166,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     }) : '';
 
     return (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Đăng nhập bằng mã QR">
+        <section className="auth-qr-panel rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Đăng nhập bằng mã QR" data-ui-region="qr-login" aria-busy={busy || scannerEnabled}>
             <div className="mb-4 flex items-start gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
                     <QrCode size={20} aria-hidden="true" />
@@ -196,7 +196,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                         </ol>
                     </div>
 
-                    <div className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                    <div className="auth-qr-stage flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
                         {request ? (
                             <>
                                 <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -237,7 +237,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                         Quét mã trên máy tính chỉ khi bạn tự yêu cầu đăng nhập. Kiểm tra yêu cầu trước khi cho phép.
                     </div>
                     {scannerEnabled ? (
-                        <video ref={videoRef} muted playsInline className="max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
+                        <video ref={videoRef} muted playsInline aria-label="Camera quét mã QR" className="auth-qr-camera max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
                     ) : (
                         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
                             <Camera size={24} className="text-slate-500" aria-hidden="true" />
