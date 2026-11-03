@@ -111,7 +111,7 @@ export default function UserManagement() {
   const activeCount = users.filter(user => Boolean(user.is_active)).length;
   const adminCount = users.filter(user => user.role === 'admin').length;
 
-  return <section className="mx-auto max-w-7xl space-y-6">
+  return <section data-ui-page="admin-management" aria-busy={loading} className="admin-management-page mx-auto max-w-7xl space-y-6">
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-200"><UserCog size={14}/>{en ? 'SYSTEM ADMINISTRATION' : 'QUẢN TRỊ HỆ THỐNG'}</p>
