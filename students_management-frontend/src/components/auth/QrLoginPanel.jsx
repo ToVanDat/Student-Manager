@@ -26,6 +26,9 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     const [cameraError, setCameraError] = useState('');
     const [pendingApproval, setPendingApproval] = useState(null);
     const cancelApprovalRef = useRef(null);
+    const approvalDialogRef = useRef(null);
+    const busyRef = useRef(busy);
+    busyRef.current = busy;
     const [scannerEnabled, setScannerEnabled] = useState(false);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
@@ -159,16 +162,37 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     useEffect(() => {
         if (!pendingApproval) return undefined;
         const previousFocus = document.activeElement;
+        const dialog = approvalDialogRef.current;
         cancelApprovalRef.current?.focus();
         const onKeyDown = event => {
-            if (event.key === 'Escape' && !busy) setPendingApproval(null);
+            if (event.key === 'Escape' && !busyRef.current) {
+                event.preventDefault();
+                setPendingApproval(null);
+                return;
+            }
+            if (event.key !== 'Tab' || !dialog) return;
+            const focusable = [...dialog.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+            if (!focusable.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && (event.target === first || !dialog.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !dialog.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
         };
         document.addEventListener('keydown', onKeyDown);
         return () => {
             document.removeEventListener('keydown', onKeyDown);
             previousFocus?.focus?.();
         };
-    }, [pendingApproval, busy]);
+    }, [pendingApproval]);
 
     const submitManual = async event => {
         event.preventDefault();
@@ -276,7 +300,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
             )}
             {pendingApproval && (
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setPendingApproval(null); }}>
-                    <section role="alertdialog" aria-modal="true" aria-labelledby="qr-approval-title" aria-describedby="qr-approval-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                    <section ref={approvalDialogRef} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="qr-approval-title" aria-describedby="qr-approval-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="mb-3 flex items-center gap-2 text-amber-600 dark:text-amber-400"><QrCode size={19} aria-hidden="true"/><span className="text-xs font-bold uppercase tracking-wide">Xác minh đăng nhập QR</span></div>
                         <h3 id="qr-approval-title" className="text-base font-bold text-slate-900 dark:text-white">Cho phép thiết bị đăng nhập?</h3>
                         <p id="qr-approval-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Chỉ tiếp tục nếu chính bạn vừa khởi tạo yêu cầu đăng nhập trên thiết bị kia. Nếu không nhận ra yêu cầu, hãy hủy ngay.</p>
