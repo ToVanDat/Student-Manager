@@ -61,6 +61,8 @@ test('schedules credential refresh before expiry with a bounded safety margin', 
     const now = 1_800_000_000_000;
     assert.equal(getIceCredentialRefreshDelay(1_800_000_060, now), 45_000);
     assert.equal(getIceCredentialRefreshDelay(1_800_086_400, now), 86_280_000);
+    // A transient refresh failure schedules the next attempt 30 seconds later.
+    assert.equal(getIceCredentialRefreshDelay(Math.floor(now / 1000) + 45, now), 30_000);
     assert.equal(getIceCredentialRefreshDelay(null, now), null);
 });
 
