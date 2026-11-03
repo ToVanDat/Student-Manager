@@ -43,7 +43,7 @@ function StudentTable({
     );
 
     return (
-        <div className="w-full min-w-0">
+        <div className="student-table-region w-full min-w-0" data-ui-region="student-table" aria-busy={loading}>
             <div className="flex items-center justify-end gap-2 px-4 pb-3 lg:hidden">
                 <label htmlFor="student-mobile-sort" className="text-xs text-slate-500 dark:text-slate-400">{t('sortBy')}</label>
                 <select
