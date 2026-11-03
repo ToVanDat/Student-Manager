@@ -598,7 +598,7 @@ function Login() {
                         </p>
                     </div>
 
-                    <div key={mode} className="auth-mode-panel">
+                    <div key={mode} id="auth-mode-panel" aria-live="polite" aria-busy={loading} className="auth-mode-panel">
                     {mode === 'login' && (
                         <>
                             {renderLogin()}
