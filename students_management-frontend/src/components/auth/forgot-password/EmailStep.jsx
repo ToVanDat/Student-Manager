@@ -3,11 +3,12 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 function EmailStep({ email, onEmailChange, onSubmit, onLogin, loading }) {
     const { t } = useLanguage();
     return (
-        <form className="auth-form-content auth-step-transition flex w-full flex-col gap-[18px]" onSubmit={onSubmit}>
+        <form data-auth-step="recovery-email" aria-busy={loading} className="auth-form-content auth-step-transition flex w-full flex-col gap-[18px]" onSubmit={onSubmit}>
             <div className="flex w-full flex-col gap-[7px]">
-                <label className="text-xs font-semibold text-slate-700">Email</label>
+                <label htmlFor="recovery-email" className="text-xs font-semibold text-slate-700 dark:text-slate-200">Email</label>
                 <input
-                    className="h-[46px] w-full rounded-[9px] border border-slate-200 bg-white px-3.5 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 disabled:opacity-60"
+                    className="h-[46px] w-full rounded-[9px] border border-slate-200 bg-white px-3.5 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    id="recovery-email"
                     type="email"
                     value={email}
                     onChange={(event) => onEmailChange(event.target.value)}
@@ -21,7 +22,7 @@ function EmailStep({ email, onEmailChange, onSubmit, onLogin, loading }) {
                 {loading ? t('sendingCode') : t('sendRequest')}
             </button>
             <div className="flex w-full items-center justify-center gap-2">
-                <button className="border-0 bg-transparent p-0 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400" type="button" onClick={onLogin} disabled={loading}>← {t('backToLogin')}</button>
+                <button className="auth-step-link min-h-9 border-0 bg-transparent px-2 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:text-slate-400" type="button" onClick={onLogin} disabled={loading}>← {t('backToLogin')}</button>
             </div>
         </form>
     );
