@@ -1418,7 +1418,7 @@ export const useChat = () => {
 
     const sendMessage = useCallback(async (content, replyToMessageId = null) => {
         const text = typeof content === 'string' ? content.trim() : '';
-        if (!activeId || !text) return;
+        if (!activeId || !text) return false;
 
         const tempId = `temp-message-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const optimisticMessage = {
@@ -1479,7 +1479,7 @@ export const useChat = () => {
                 setMessages(prev => prev.map(item => item.tempId === tempId
                     ? finalMessage
                     : item));
-                return;
+                return true;
             }
 
             // A missing migration returns available=false, preserving legacy chat.
@@ -1492,6 +1492,7 @@ export const useChat = () => {
             setMessages(prev => prev.map(item =>
                 item.tempId === tempId ? { ...saved, status: 'sent' } : item
             ));
+            return true;
         } catch (error) {
             let reconciledMessage = null;
             // A timed-out HTTP response does not prove the server failed to save
@@ -1535,6 +1536,7 @@ export const useChat = () => {
                 toast.error('Không thể xác nhận tin nhắn đã được gửi. Hãy kiểm tra kết nối trước khi gửi lại.', { duration: 8000 });
             }
             console.error('Không thể gửi message:', error);
+            return Boolean(reconciledMessage);
         }
     }, [activeId, currentUserId, conversations]);
 

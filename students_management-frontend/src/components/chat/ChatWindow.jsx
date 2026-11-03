@@ -101,6 +101,7 @@ export default function ChatWindow({
     const { isDarkMode } = useTheme();
     const activeConversationAvatar = activeConversation?.avatar_url || activeConversation?.avatarUrl || activeConversation?.avatar || activeConversation?.conversationAvatar || null;
     const [input, setInput] = useState('');
+    const [sendingMessage, setSendingMessage] = useState(false);
     const [showE2EEIdentityVerification, setShowE2EEIdentityVerification] = useState(false);
     const [chatTheme, setChatTheme] = useState('default');
     const [showChatThemePicker, setShowChatThemePicker] = useState(false);
@@ -687,16 +688,29 @@ export default function ChatWindow({
         }
     };
 
-    const handleSend = (e) => {
+    const handleSend = async (e) => {
         e.preventDefault();
 
-        if (!input.trim()) return;
+        const submittedText = input.trim();
+        if (!submittedText || sendingMessage || typeof onSendMessage !== 'function') return;
 
-        onSendMessage(input, replyTo?.id || null);
+        const submittedReplyId = replyTo?.id || null;
+        const submittedConversationId = activeConversation?.id;
+        setSendingMessage(true);
 
-        setInput('');
-        setReplyTo(null);
-        onTyping?.(false);
+        try {
+            const sent = await onSendMessage(submittedText, submittedReplyId);
+            if (sent !== true || String(activeConversationIdRef.current) !== String(submittedConversationId)) return;
+
+            setInput(current => current.trim() === submittedText ? '' : current);
+            setReplyTo(current => current?.id === submittedReplyId ? null : current);
+            onTyping?.(false);
+        } catch (error) {
+            console.error('Không thể gửi tin nhắn:', error);
+            toast.error(error?.message || 'Không thể gửi tin nhắn. Bản nháp vẫn được giữ lại.', { duration: 8000 });
+        } finally {
+            setSendingMessage(false);
+        }
     };
 
     const handleEmojiClick = (emojiData) => {
@@ -1673,6 +1687,7 @@ export default function ChatWindow({
 
             <form
                 onSubmit={handleSend}
+                aria-busy={sendingMessage}
                 className="min-h-[78px] border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
                 style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}
             >
@@ -1789,11 +1804,12 @@ export default function ChatWindow({
 
                 <button
                     type="submit"
-                    disabled={!input.trim()}
+                    disabled={!input.trim() || sendingMessage}
+                    aria-label={t("sendMessage")}
                     className="flex size-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                    title={t("sendMessage")}
+                    title={sendingMessage ? 'Đang gửi…' : t("sendMessage")}
                 >
-                    <Send size={18} />
+                    {sendingMessage ? <LoaderCircle size={18} className="animate-spin" /> : <Send size={18} />}
                 </button>
 
             </form>
