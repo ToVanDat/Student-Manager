@@ -667,5 +667,6 @@
   "backToAccountDetails": "Back to details",
   "authModeLogin": "STUDENT PORTAL",
   "authModeRegister": "CREATE ACCOUNT",
-  "authModeRecovery": "ACCOUNT RECOVERY"
+  "authModeRecovery": "ACCOUNT RECOVERY",
+  "authBannerCarousel": "Student Manager introduction"
 }
