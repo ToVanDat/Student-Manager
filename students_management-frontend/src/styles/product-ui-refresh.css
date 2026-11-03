@@ -422,3 +422,67 @@ dialog {
     min-height: 3.75rem;
   }
 }
+
+
+/* Settings sub-pages: consistent surfaces, responsive metadata and pending states. */
+.settings-panel {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+.settings-panel [role="alert"],
+.settings-panel [role="status"] {
+  overflow-wrap: anywhere;
+}
+.settings-panel :is(input, select, textarea, button) {
+  max-width: 100%;
+}
+.settings-panel button {
+  touch-action: manipulation;
+}
+.settings-session-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.settings-session-card:hover {
+  border-color: color-mix(in srgb, var(--ui-brand) 35%, var(--ui-line));
+}
+.settings-session-card :is(h3, strong, span) {
+  overflow-wrap: anywhere;
+}
+.settings-security-row {
+  min-width: 0;
+}
+.settings-security-row > :nth-child(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .settings-panel {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  .settings-session-card {
+    padding: .875rem;
+  }
+  .settings-session-card > :first-child {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .settings-security-row {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    align-items: start;
+  }
+  .settings-security-row > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-session-card,
+  .settings-panel button {
+    transition-duration: .01ms !important;
+  }
+}
