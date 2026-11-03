@@ -5,7 +5,7 @@ import { useLanguage } from '@/context/LanguageContext.jsx';
 function SettingsPage({ activeTab, onTabChange, activeSessions, loading, onRefresh, children }) {
     const { t } = useLanguage();
     return (
-        <div className="settings-page mx-auto w-full max-w-[1500px] space-y-1 pb-8" data-ui-page="settings">
+        <div className="settings-page mx-auto w-full max-w-[1500px] space-y-1 pb-8" data-ui-page="settings" aria-busy={loading}>
             <header className="settings-page__header mb-6 flex items-center justify-between gap-5 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 sm:p-6 max-[640px]:items-start max-[640px]:flex-col">
                 <div>
                     <span className="text-[10px] font-bold tracking-[.14em] text-brand-700 dark:text-blue-300">{t('accountSecurity')}</span>
