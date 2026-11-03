@@ -54,6 +54,7 @@ function decodeBase64(value, expectedLength, label) {
 }
 
 function decryptCaptureEmbedding({ kind, challengeId, envelope }) {
+    const userId = bindingIdentity(kind, challengeId);
     if (!envelope || !Number.isSafeInteger(envelope.keyVersion) ||
         envelope.keyVersion < 1 || typeof envelope.modelId !== 'string' ||
         typeof envelope.modelVersion !== 'string') {
@@ -64,7 +65,7 @@ function decryptCaptureEmbedding({ kind, challengeId, envelope }) {
 
     try {
         return decryptFaceTemplate({
-            userId: bindingIdentity(kind, challengeId),
+            userId,
             ciphertext: decodeBase64(envelope.ciphertext, null, 'ciphertext'),
             nonce: decodeBase64(envelope.nonce, 12, 'nonce'),
             authTag: decodeBase64(envelope.authTag, 16, 'authentication tag'),
