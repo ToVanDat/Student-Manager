@@ -702,7 +702,7 @@ export default function ChatWindow({
             const sent = await onSendMessage(submittedText, submittedReplyId);
             if (sent !== true || String(activeConversationIdRef.current) !== String(submittedConversationId)) return;
 
-            setInput(current => current === submittedText ? '' : current);
+            setInput(current => current.trim() === submittedText ? '' : current);
             setReplyTo(current => current?.id === submittedReplyId ? null : current);
             onTyping?.(false);
         } catch (error) {
