@@ -27,6 +27,7 @@ function ChatPageContent() {
     const e2eeClient = useE2EEClient();
     const [e2eeStatus, setE2eeStatus] = useState(null);
     const [enablingE2EE, setEnablingE2EE] = useState(false);
+    const [e2eeConfirmAction, setE2eeConfirmAction] = useState(null);
     const [callCenterOpen, setCallCenterOpen] = useState(() => new URLSearchParams(window.location.search).get('calls') === '1');
     const [accountMenuOpen, setAccountMenuOpen] = useState(false);
     const [chatNavCollapsed, setChatNavCollapsed] = useState(false);
@@ -316,22 +317,9 @@ function ChatPageContent() {
         return () => { cancelled = true; };
     }, [activeId, user?.id, e2eeClient.status, e2eeClient.relayState]);
 
-    const pauseActiveConversationE2EE = async () => {
+    const pauseActiveConversationE2EE = () => {
         if (!activeId || enablingE2EE || !e2eeStatus?.enabled || e2eeStatus?.mode === 'paused') return;
-        const confirmed = window.confirm(
-            'Tạm dừng E2EE cho cuộc trò chuyện này? Tin nhắn mới sẽ không được mã hóa đầu cuối và có thể được máy chủ đọc. Lịch sử E2EE cũ trên thiết bị sẽ được giữ nguyên. Thao tác này ảnh hưởng đến cả hai người.'
-        );
-        if (!confirmed) return;
-        setEnablingE2EE(true);
-        try {
-            const response = await e2eeRelayApi.pauseConversation(activeId);
-            setE2eeStatus(previous => ({ ...previous, ...(response.data?.data || {}), enabled: true, mode: 'paused' }));
-            toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.', { duration: 3000 });
-        } catch (error) {
-            toast.error(error?.response?.data?.message || 'Không thể tạm dừng E2EE.', { duration: 8000 });
-        } finally {
-            setEnablingE2EE(false);
-        }
+        setE2eeConfirmAction('pause');
     };
 
     useEffect(() => {
@@ -343,7 +331,7 @@ function ChatPageContent() {
         return () => socket.off('conversation:e2ee-mode-updated', handleE2EEModeUpdated);
     }, [activeId]);
 
-    const enableActiveConversationE2EE = async () => {
+    const enableActiveConversationE2EE = () => {
         if (!activeId || enablingE2EE) return;
         if (!e2eeClient.isLocalStoreReady || e2eeClient.relayState !== 'connected') {
             toast.error('Thiết bị này chưa sẵn sàng cho E2EE. Hãy kiểm tra kho khóa và kết nối relay.', { duration: 8000 });
@@ -353,17 +341,26 @@ function ChatPageContent() {
             toast.error('Cần đăng ký khóa cho tất cả thiết bị của cả hai người trước khi bật E2EE.', { duration: 8000 });
             return;
         }
-        const confirmed = window.confirm(
-            'Bật E2EE cho cuộc trò chuyện này? Tin nhắn cũ sẽ giữ nguyên; tin nhắn văn bản mới sẽ được mã hóa trên thiết bị. Tệp đính kèm E2EE chưa được hỗ trợ.'
-        );
-        if (!confirmed) return;
+        setE2eeConfirmAction('enable');
+    };
+
+    const confirmE2EEChange = async () => {
+        if (!activeId || !e2eeConfirmAction || enablingE2EE) return;
+        const action = e2eeConfirmAction;
         setEnablingE2EE(true);
         try {
-            const response = await e2eeRelayApi.enableConversation(activeId);
-            setE2eeStatus(response.data?.data || { ...e2eeStatus, enabled: true });
-            toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.', { duration: 3000 });
+            if (action === 'pause') {
+                const response = await e2eeRelayApi.pauseConversation(activeId);
+                setE2eeStatus(previous => ({ ...previous, ...(response.data?.data || {}), enabled: true, mode: 'paused' }));
+                toast.success('Đã tạm dừng E2EE. Tin nhắn mới sẽ không được mã hóa đầu cuối.', { duration: 3000 });
+            } else {
+                const response = await e2eeRelayApi.enableConversation(activeId);
+                setE2eeStatus(response.data?.data || { ...e2eeStatus, enabled: true });
+                toast.success('Đã bật E2EE cho cuộc trò chuyện 1-1.', { duration: 3000 });
+            }
+            setE2eeConfirmAction(null);
         } catch (error) {
-            toast.error(error?.response?.data?.message || 'Không thể bật E2EE.', { duration: 8000 });
+            toast.error(error?.response?.data?.message || (action === 'pause' ? 'Không thể tạm dừng E2EE.' : 'Không thể bật E2EE.'), { duration: 8000 });
         } finally {
             setEnablingE2EE(false);
         }
@@ -445,6 +442,32 @@ function ChatPageContent() {
                 notifications={callNotifications}
                 onMarkNotificationRead={markCallNotificationRead}
             />
+
+            {e2eeConfirmAction && (
+                <div className="fixed inset-0 z-[160] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !enablingE2EE) setE2eeConfirmAction(null); }}>
+                    <section
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="e2ee-confirm-title"
+                        aria-describedby="e2ee-confirm-description"
+                        onKeyDown={event => { if (event.key === 'Escape' && !enablingE2EE) { event.preventDefault(); setE2eeConfirmAction(null); } }}
+                        className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    >
+                        <h2 id="e2ee-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">
+                            {e2eeConfirmAction === 'pause' ? 'Tạm dừng mã hóa đầu cuối?' : 'Bật mã hóa đầu cuối?'}
+                        </h2>
+                        <p id="e2ee-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                            {e2eeConfirmAction === 'pause'
+                                ? 'Tin nhắn mới sẽ không còn được mã hóa đầu cuối và có thể được máy chủ đọc. Lịch sử E2EE cũ trên thiết bị được giữ nguyên. Thay đổi này ảnh hưởng đến cả hai người.'
+                                : 'Tin nhắn cũ được giữ nguyên; tin nhắn văn bản mới sẽ được mã hóa trên thiết bị. Tệp đính kèm E2EE hiện chưa được hỗ trợ.'}
+                        </p>
+                        <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                            <button type="button" autoFocus disabled={enablingE2EE} onClick={() => setE2eeConfirmAction(null)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                            <button type="button" disabled={enablingE2EE} onClick={() => void confirmE2EEChange()} className="min-h-11 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50">{enablingE2EE ? 'Đang xử lý…' : e2eeConfirmAction === 'pause' ? 'Tạm dừng E2EE' : 'Bật E2EE'}</button>
+                        </div>
+                    </section>
+                </div>
+            )}
 
             <main data-ui-page="chat-workspace" className="chat-workspace min-h-0 flex-1 overflow-hidden p-0 sm:p-3 lg:p-4">
                 <div data-chat-workspace="true" className="chat-shell h-full min-h-0 overflow-hidden rounded-none border-0 bg-white shadow-panel dark:bg-slate-900 sm:rounded-xl sm:border sm:border-slate-200 dark:sm:border-slate-700">
