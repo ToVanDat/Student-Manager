@@ -705,6 +705,9 @@ export default function ChatWindow({
             setInput(current => current === submittedText ? '' : current);
             setReplyTo(current => current?.id === submittedReplyId ? null : current);
             onTyping?.(false);
+        } catch (error) {
+            console.error('Không thể gửi tin nhắn:', error);
+            toast.error(error?.message || 'Không thể gửi tin nhắn. Bản nháp vẫn được giữ lại.', { duration: 8000 });
         } finally {
             setSendingMessage(false);
         }
@@ -1804,9 +1807,9 @@ export default function ChatWindow({
                     disabled={!input.trim() || sendingMessage}
                     aria-label={t("sendMessage")}
                     className="flex size-12 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
-                    title={t("sendMessage")}
+                    title={sendingMessage ? 'Đang gửi…' : t("sendMessage")}
                 >
-                    <Send size={18} />
+                    {sendingMessage ? <LoaderCircle size={18} className="animate-spin" /> : <Send size={18} />}
                 </button>
 
             </form>
