@@ -37,7 +37,7 @@ Exit criteria:
 ## Workstream 1 — PostgreSQL and migration governance
 
 1. Run `sql/core_academic_readonly_audit.sql` on the actual `Student_Management` database.
-2. Run `sql/pgvector_rag_readonly_preflight.sql` on the same intended database.
+2. Run `docs/sql/pgvector_rag_readonly_preflight.sql` on the same intended database.
 3. Export result grids and record database name, PostgreSQL version, current schema/search_path, installed/available extensions, relevant table definitions, constraints, indexes, role privileges, and migration ledger.
 4. Take a consistent backup and perform a restore test to an isolated database before any production migration.
 5. Build an explicit migration execution plan with prerequisites, exact order, rollback/forward-repair plan, lock/downtime expectations, and post-migration verification queries.
