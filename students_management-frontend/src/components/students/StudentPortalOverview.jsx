@@ -132,7 +132,7 @@ export default function StudentPortalOverview({ user, onOpenChat, onOpenSettings
             ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="app-panel flex min-w-0 items-center gap-3 p-4 sm:p-5">
                     <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><Icon size={20} aria-hidden="true" /></span>
-                    <div className="min-w-0"><p className="text-xs text-slate-500 dark:text-slate-400">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{loading || error ? '—' : value}</p></div>
+                    <div className="min-w-0"><p className="text-xs text-slate-500 dark:text-slate-400">{label}</p><p className="mt-1 text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{loading || error || !linked ? '—' : value}</p></div>
                 </div>
             ))}
         </section>
