@@ -46,10 +46,48 @@ export default function GroupInfoPanel({
     const [pendingConfirmation, setPendingConfirmation] = useState(null);
     const [confirmationBusy, setConfirmationBusy] = useState(false);
     const confirmationDialogRef = useRef(null);
+    const groupPanelRef = useRef(null);
 
     useEffect(() => {
         if (!editingGroup) setGroupName(conversation?.name || '');
     }, [conversation?.name, editingGroup]);
+
+    useEffect(() => {
+        if (!open || pendingConfirmation || !groupPanelRef.current) return undefined;
+        const previouslyFocused = document.activeElement;
+        const panel = groupPanelRef.current;
+        const selector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...panel.querySelectorAll(selector)];
+        (focusable[0] || panel).focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onClose?.();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...panel.querySelectorAll(selector)];
+            if (!items.length) {
+                event.preventDefault();
+                panel.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (event.target === first || !panel.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !panel.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [open, pendingConfirmation, onClose]);
 
     useEffect(() => {
         if (!pendingConfirmation || !confirmationDialogRef.current) return undefined;
@@ -179,11 +217,11 @@ export default function GroupInfoPanel({
     );
 
     return (
-        <div className="absolute inset-0 z-[100] flex justify-end bg-slate-950/20 backdrop-blur-[1px]">
-            <div className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+        <div className="absolute inset-0 z-[100] flex justify-end bg-slate-950/20 backdrop-blur-[1px]" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+            <div ref={groupPanelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="group-info-title" className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white text-slate-900 shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                 <div className="flex h-[72px] items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white px-5 dark:border-slate-800 dark:bg-slate-900">
                     <div>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        <h3 id="group-info-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
                             {t('groupInformation')}
                         </h3>
                         <p className="text-xs text-slate-400">
