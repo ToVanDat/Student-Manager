@@ -1536,7 +1536,7 @@ export const useChat = () => {
                 toast.error('Không thể xác nhận tin nhắn đã được gửi. Hãy kiểm tra kết nối trước khi gửi lại.', { duration: 8000 });
             }
             console.error('Không thể gửi message:', error);
-            return false;
+            return Boolean(reconciledMessage);
         }
     }, [activeId, currentUserId, conversations]);
 
