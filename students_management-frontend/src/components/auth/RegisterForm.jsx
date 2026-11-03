@@ -92,10 +92,9 @@ function RegisterForm({
                             </div>
                         </div>
                         {error && <div role="alert" aria-live="polite" className="w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm leading-relaxed text-red-700">{error}</div>}
-                        {success && <div role="status" aria-live="polite" className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-800">{success}</div>}
                         <div className="mt-1 grid grid-cols-2 gap-3">
                             <button className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60" type="button" onClick={() => setStep(0)} disabled={loading}>
-                                <ArrowLeft size={16} aria-hidden="true" /> {t('back')}
+                                <ArrowLeft size={16} aria-hidden="true" /> {t('backToAccountDetails')}
                             </button>
                             <button className="flex min-h-12 items-center justify-center rounded-xl bg-blue-700 px-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 transition hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>
                                 {loading ? t('loading') : t('registerNow')}
