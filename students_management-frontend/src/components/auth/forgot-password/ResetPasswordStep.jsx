@@ -7,9 +7,8 @@ function ResetPasswordStep({ newPassword, onNewPasswordChange, confirmPassword, 
             <div className="flex w-full flex-col gap-[7px]">
                 <label htmlFor="recovery-new-password" className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('newPassword')}</label>
                 <input
-                    className="h-[46px] w-full rounded-[9px] border border-slate-200 bg-white px-3.5 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 disabled:opacity-60"
+                    className="auth-step-input h-[46px] w-full rounded-[9px] border border-slate-200 bg-white px-3.5 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                     id="recovery-new-password"
-                    id="recovery-confirm-password"
                     type="password"
                     value={newPassword}
                     onChange={(event) => onNewPasswordChange(event.target.value)}
@@ -21,7 +20,8 @@ function ResetPasswordStep({ newPassword, onNewPasswordChange, confirmPassword, 
             <div className="flex w-full flex-col gap-[7px]">
                 <label htmlFor="recovery-confirm-password" className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('confirmPasswordLabel')}</label>
                 <input
-                    className="h-[46px] w-full rounded-[9px] border border-slate-200 bg-white px-3.5 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 disabled:opacity-60"
+                    className="auth-step-input h-[46px] w-full rounded-[9px] border border-slate-200 bg-white px-3.5 text-[13px] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-[3px] focus:ring-blue-600/10 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    id="recovery-confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(event) => onConfirmPasswordChange(event.target.value)}
