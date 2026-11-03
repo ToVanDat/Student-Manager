@@ -343,8 +343,10 @@ async function getStatus(userId) {
         [userId]
     );
     const credential = result.rows[0] || null;
+    const releaseGatesOpen = process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' &&
+        process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true';
     let pipelineReady = false;
-    if (process.env.FACE_AUTH_PIPELINE_ENABLED === 'true' && process.env.FACE_AUTH_PIPELINE_VALIDATED === 'true') {
+    if (releaseGatesOpen) {
         try {
             requirePipelineConfig();
             await ensureLandmarkServiceReady();
@@ -362,8 +364,37 @@ async function getStatus(userId) {
         } : null,
         enrollmentAvailable: pipelineReady,
         loginAvailable: pipelineReady,
-        reason: pipelineReady ? null : 'SERVER_SIDE_INFERENCE_REQUIRED'
+        reason: pipelineReady ? null : releaseGatesOpen ? 'SERVER_PIPELINE_NOT_READY' : 'RELEASE_GATES_CLOSED'
     };
+}
+
+
+async function getPublicAvailability() {
+    if (
+        process.env.FACE_AUTH_PIPELINE_ENABLED !== 'true' ||
+        process.env.FACE_AUTH_PIPELINE_VALIDATED !== 'true'
+    ) {
+        return {
+            available: false,
+            reason: 'RELEASE_GATES_CLOSED',
+            message: 'Face Login đang chờ hoàn tất kiểm định và triển khai pipeline trên máy chủ.'
+        };
+    }
+
+    try {
+        requirePipelineConfig();
+        await ensureLandmarkServiceReady();
+        await ensureFaceInferenceReady();
+        return { available: true, reason: null, message: null };
+    } catch {
+        // Do not reveal internal model paths, secrets, scores, or service details
+        // through the unauthenticated login page.
+        return {
+            available: false,
+            reason: 'SERVER_PIPELINE_NOT_READY',
+            message: 'Dịch vụ Face Login chưa sẵn sàng. Bạn vẫn có thể đăng nhập bằng mật khẩu hoặc Passkey.'
+        };
+    }
 }
 
 async function beginEnrollment(userId, verificationToken, currentPassword) {
@@ -505,6 +536,7 @@ async function disable(userId, currentPassword, verificationToken) {
 
 module.exports = {
     getStatus,
+    getPublicAvailability,
     beginEnrollment,
     finishEnrollment,
     cancelEnrollment,

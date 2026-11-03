@@ -1,18 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import socket from '@/socket/socket.js';
-
-const ICE_SERVERS = [
-    import.meta.env.VITE_STUN_SERVER
-        ? { urls: import.meta.env.VITE_STUN_SERVER }
-        : null,
-    import.meta.env.VITE_TURN_SERVER
-        ? {
-            urls: import.meta.env.VITE_TURN_SERVER,
-            username: import.meta.env.VITE_TURN_USERNAME,
-            credential: import.meta.env.VITE_TURN_CREDENTIAL
-        }
-        : null
-].filter(Boolean);
+import { callApi } from '@/api/callApi.js';
 
 const createCallId = () => {
     if (crypto?.randomUUID) return crypto.randomUUID();
@@ -21,6 +9,7 @@ const createCallId = () => {
 
 export default function useWebRTCCall() {
     const peerRef = useRef(null);
+    const peerCreationRef = useRef(null);
     const localStreamRef = useRef(null);
     const remoteStreamRef = useRef(new MediaStream());
     const pendingCandidatesRef = useRef([]);
@@ -215,147 +204,187 @@ export default function useWebRTCCall() {
         }
     }, []);
 
-    const createPeer = useCallback((targetUserId, callId) => {
-        const pc = new RTCPeerConnection({
-            iceServers: ICE_SERVERS
-        });
+    const createPeer = useCallback(async (targetUserId, callId) => {
+        if (peerRef.current) return peerRef.current;
+        if (peerCreationRef.current?.callId === callId) {
+            return peerCreationRef.current.promise;
+        }
 
-        pc.onicecandidate = event => {
-            if (event.candidate) {
-                socket.emit('call:ice-candidate', {
-                    callId,
-                    targetUserId,
-                    candidate: event.candidate
+        const creation = (async () => {
+            let iceServers = import.meta.env.VITE_STUN_SERVER
+                ? [{ urls: import.meta.env.VITE_STUN_SERVER }]
+                : [];
+    
+            try {
+                const configuration = await callApi.getIceConfig();
+                if (Array.isArray(configuration?.iceServers)) {
+                    iceServers = [...iceServers, ...configuration.iceServers];
+                }
+                if (!configuration?.turnAvailable) {
+                    console.info('[WebRTC] Coturn is not configured; using available STUN/host candidates.');
+                }
+            } catch (error) {
+                // Calls can still attempt a direct/STUN path while TURN is being
+                // deployed. The backend never exposes the shared Coturn secret.
+                console.warn('[WebRTC] Could not load short-lived TURN credentials; falling back to STUN/host candidates.', {
+                    status: error?.response?.status,
+                    code: error?.response?.data?.code
                 });
             }
-        };
-
-        pc.ontrack = event => {
-            const stream = remoteStreamRef.current;
-            const exists = stream.getTracks().some(track => track.id === event.track.id);
-            if (!exists) stream.addTrack(event.track);
-            setRemoteStream(stream);
-        };
-
-        pc.oniceconnectionstatechange = () => {
-            console.log('[WebRTC][ICE]', callId, pc.iceConnectionState);
-            if (pc.iceConnectionState === 'failed') {
-                const current = callRef.current;
-                if (current && callConnectedAtRef.current === null) {
-                    failConnection(
-                        'ICE không thể thiết lập kết nối. Hãy kiểm tra STUN/TURN hoặc mạng rồi thử lại.',
-                        true
-                    );
-                } else {
-                    setError('ICE không thể tìm được đường kết nối. Kiểm tra STUN/TURN hoặc mạng.');
-                }
+    
+            if (callRef.current?.callId !== callId) {
+                throw new Error('Cuộc gọi đã kết thúc trước khi thiết lập kết nối ICE.');
             }
-        };
-
-        pc.onicegatheringstatechange = () => {
-            console.log('[WebRTC][ICE gathering]', callId, pc.iceGatheringState);
-        };
-
-        pc.onsignalingstatechange = () => {
-            console.log('[WebRTC][signaling]', callId, pc.signalingState);
-        };
-
-        pc.onconnectionstatechange = () => {
-            console.log('[WebRTC][connection]', callId, pc.connectionState);
-            const current = callRef.current;
-
-            if (pc.connectionState === 'connected') {
-                // Start the duration exactly once, when WebRTC first connects.
-                // Keep the same start time through a temporary reconnection.
-                if (callConnectedAtRef.current === null) {
-                    callConnectedAtRef.current = Date.now();
-                    setCallDurationSeconds(0);
-                }
-
-                // The connection-establishment timeout must never end a call
-                // after WebRTC has successfully connected.
-                if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
-                connectTimeoutRef.current = null;
-
-                recoveryAttemptsRef.current = 0;
-                if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
-                if (recoveryDeadlineRef.current) clearTimeout(recoveryDeadlineRef.current);
-                recoveryTimerRef.current = null;
-                recoveryDeadlineRef.current = null;
-
-                if (current) {
-                    socket.emit('call:connected', {
-                        callId: current.callId,
-                        targetUserId: current.targetUserId
+            if (peerRef.current) return peerRef.current;
+    
+            const pc = new RTCPeerConnection({ iceServers });
+    
+            pc.onicecandidate = event => {
+                if (event.candidate) {
+                    socket.emit('call:ice-candidate', {
+                        callId,
+                        targetUserId,
+                        candidate: event.candidate
                     });
                 }
-                setState('connected');
-                return;
-            }
-
-            if (pc.connectionState === 'failed' && current && callConnectedAtRef.current === null) {
-                failConnection(
-                    'WebRTC không thể thiết lập kết nối. Hãy thử gọi lại.',
-                    true
-                );
-                return;
-            }
-
-            if (
-                (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') &&
-                current
-            ) {
-                setState('reconnecting');
-
-                // A peer can remain in "disconnected" without firing another
-                // connection-state event. Keep a hard deadline so the UI can
-                // never stay in reconnecting forever.
-                if (!recoveryDeadlineRef.current) {
-                    recoveryDeadlineRef.current = setTimeout(() => {
-                        recoveryDeadlineRef.current = null;
-                        const activeCall = callRef.current;
-
-                        if (!activeCall || peerRef.current !== pc) return;
-
-                        setError('Không thể khôi phục kết nối cuộc gọi.');
-                        socket.emit('call:end', {
-                            callId: activeCall.callId,
-                            targetUserId: activeCall.targetUserId,
-                            reason: 'reconnect-timeout'
-                        });
-                        cleanup();
-                    }, RECOVERY_TIMEOUT_MS);
+            };
+    
+            pc.ontrack = event => {
+                const stream = remoteStreamRef.current;
+                const exists = stream.getTracks().some(track => track.id === event.track.id);
+                if (!exists) stream.addTrack(event.track);
+                setRemoteStream(stream);
+            };
+    
+            pc.oniceconnectionstatechange = () => {
+                console.log('[WebRTC][ICE]', callId, pc.iceConnectionState);
+                if (pc.iceConnectionState === 'failed') {
+                    const current = callRef.current;
+                    if (current && callConnectedAtRef.current === null) {
+                        failConnection(
+                            'ICE không thể thiết lập kết nối. Hãy kiểm tra STUN/TURN hoặc mạng rồi thử lại.',
+                            true
+                        );
+                    } else {
+                        setError('ICE không thể tìm được đường kết nối. Kiểm tra STUN/TURN hoặc mạng.');
+                    }
                 }
-
-                if (!recoveryTimerRef.current && recoveryAttemptsRef.current < MAX_RECOVERY_ATTEMPTS) {
-                    recoveryTimerRef.current = setTimeout(() => {
-                        recoveryTimerRef.current = null;
-                        const activeCall = callRef.current;
-
-                        if (!activeCall || peerRef.current !== pc) return;
-
-                        recoveryAttemptsRef.current += 1;
-                        console.log('[WebRTC][reconnect attempt]', {
-                            callId: activeCall.callId,
-                            attempt: recoveryAttemptsRef.current,
-                            maxAttempts: MAX_RECOVERY_ATTEMPTS
+            };
+    
+            pc.onicegatheringstatechange = () => {
+                console.log('[WebRTC][ICE gathering]', callId, pc.iceGatheringState);
+            };
+    
+            pc.onsignalingstatechange = () => {
+                console.log('[WebRTC][signaling]', callId, pc.signalingState);
+            };
+    
+            pc.onconnectionstatechange = () => {
+                console.log('[WebRTC][connection]', callId, pc.connectionState);
+                const current = callRef.current;
+    
+                if (pc.connectionState === 'connected') {
+                    // Start the duration exactly once, when WebRTC first connects.
+                    // Keep the same start time through a temporary reconnection.
+                    if (callConnectedAtRef.current === null) {
+                        callConnectedAtRef.current = Date.now();
+                        setCallDurationSeconds(0);
+                    }
+    
+                    // The connection-establishment timeout must never end a call
+                    // after WebRTC has successfully connected.
+                    if (connectTimeoutRef.current) clearTimeout(connectTimeoutRef.current);
+                    connectTimeoutRef.current = null;
+    
+                    recoveryAttemptsRef.current = 0;
+                    if (recoveryTimerRef.current) clearTimeout(recoveryTimerRef.current);
+                    if (recoveryDeadlineRef.current) clearTimeout(recoveryDeadlineRef.current);
+                    recoveryTimerRef.current = null;
+                    recoveryDeadlineRef.current = null;
+    
+                    if (current) {
+                        socket.emit('call:connected', {
+                            callId: current.callId,
+                            targetUserId: current.targetUserId
                         });
-
-                        socket.emit('call:reconnect-request', {
-                            callId: activeCall.callId,
-                            targetUserId: activeCall.targetUserId
-                        });
-                    }, 2000);
+                    }
+                    setState('connected');
+                    return;
                 }
-            }
+    
+                if (pc.connectionState === 'failed' && current && callConnectedAtRef.current === null) {
+                    failConnection(
+                        'WebRTC không thể thiết lập kết nối. Hãy thử gọi lại.',
+                        true
+                    );
+                    return;
+                }
+    
+                if (
+                    (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') &&
+                    current
+                ) {
+                    setState('reconnecting');
+    
+                    // A peer can remain in "disconnected" without firing another
+                    // connection-state event. Keep a hard deadline so the UI can
+                    // never stay in reconnecting forever.
+                    if (!recoveryDeadlineRef.current) {
+                        recoveryDeadlineRef.current = setTimeout(() => {
+                            recoveryDeadlineRef.current = null;
+                            const activeCall = callRef.current;
+    
+                            if (!activeCall || peerRef.current !== pc) return;
+    
+                            setError('Không thể khôi phục kết nối cuộc gọi.');
+                            socket.emit('call:end', {
+                                callId: activeCall.callId,
+                                targetUserId: activeCall.targetUserId,
+                                reason: 'reconnect-timeout'
+                            });
+                            cleanup();
+                        }, RECOVERY_TIMEOUT_MS);
+                    }
+    
+                    if (!recoveryTimerRef.current && recoveryAttemptsRef.current < MAX_RECOVERY_ATTEMPTS) {
+                        recoveryTimerRef.current = setTimeout(() => {
+                            recoveryTimerRef.current = null;
+                            const activeCall = callRef.current;
+    
+                            if (!activeCall || peerRef.current !== pc) return;
+    
+                            recoveryAttemptsRef.current += 1;
+                            console.log('[WebRTC][reconnect attempt]', {
+                                callId: activeCall.callId,
+                                attempt: recoveryAttemptsRef.current,
+                                maxAttempts: MAX_RECOVERY_ATTEMPTS
+                            });
+    
+                            socket.emit('call:reconnect-request', {
+                                callId: activeCall.callId,
+                                targetUserId: activeCall.targetUserId
+                            });
+                        }, 2000);
+                    }
+                }
+    
+                if (pc.connectionState === 'closed' && peerRef.current === pc) {
+                    cleanup();
+                }
+            };
+    
+            peerRef.current = pc;
+            return pc;
+        })();
 
-            if (pc.connectionState === 'closed' && peerRef.current === pc) {
-                cleanup();
+        peerCreationRef.current = { callId, promise: creation };
+        try {
+            return await creation;
+        } finally {
+            if (peerCreationRef.current?.promise === creation) {
+                peerCreationRef.current = null;
             }
-        };
-
-        peerRef.current = pc;
-        return pc;
+        }
     }, [cleanup, failConnection]);
 
     const startMedia = useCallback(async (callType) => {
@@ -734,7 +763,7 @@ export default function useWebRTCCall() {
             }
 
             try {
-                const pc = createPeer(current.targetUserId, current.callId);
+                const pc = await createPeer(current.targetUserId, current.callId);
                 addLocalTracksToPeer(pc);
 
                 const offer = await pc.createOffer();
@@ -782,7 +811,7 @@ export default function useWebRTCCall() {
             if (!current || current.callId !== data.callId) return;
 
             try {
-                const pc = peerRef.current || createPeer(current.targetUserId, current.callId);
+                const pc = peerRef.current || await createPeer(current.targetUserId, current.callId);
                 addLocalTracksToPeer(pc);
 
                 await pc.setRemoteDescription(data.offer);

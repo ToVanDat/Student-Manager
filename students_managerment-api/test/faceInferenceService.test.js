@@ -15,10 +15,18 @@ test('MobileFaceNet rejects wrong dimensions and non-finite outputs', () => {
   assert.throws(() => l2Normalize(invalid), /hữu hạn/);
 });
 
-test('MiniFASNet class mapping remains fail-closed while published sources conflict', () => {
-  assert.equal(PAD_MODEL_CONTRACT.output.verified, false);
-  assert.equal(PAD_MODEL_CONTRACT.output.classOrder, null);
-  assert.throws(() => classProbabilities([0.1, 0.8, 0.1]), /class mapping\/output semantics chưa được xác minh/);
+test('MiniFASNet default contract matches exact hash-pinned ONNX/PyTorch parity evidence', () => {
+  assert.equal(PAD_MODEL_CONTRACT.output.verified, true);
+  assert.equal(PAD_MODEL_CONTRACT.output.semantics, 'logits');
+  assert.equal(PAD_MODEL_CONTRACT.output.bonaFideIndex, 1);
+  assert.deepEqual(PAD_MODEL_CONTRACT.output.attackIndices, [0, 2]);
+  assert.deepEqual(PAD_MODEL_CONTRACT.output.classOrder, ['attack', 'bona_fide', 'attack']);
+
+  const decoded = decodePadOutput([0, 8, 0]);
+  assert.ok(decoded.bonaFideProbability > 0.99);
+  assert.ok(decoded.attackProbability < 0.01);
+  assert.ok(Math.abs(decoded.bonaFideProbability + decoded.attackProbability - 1) < 1e-12);
+  assert.match(PAD_MODEL_CONTRACT.output.reason, /does not establish PAD accuracy/i);
 });
 
 test('MiniFASNet rejects non-finite output and wrong class count before mapping', () => {
