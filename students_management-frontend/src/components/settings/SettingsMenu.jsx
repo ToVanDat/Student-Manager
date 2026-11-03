@@ -14,7 +14,7 @@ function SettingsMenu({ activeTab, onChange, activeSessions }) {
     ];
 
     return (
-        <aside className="sticky top-5 flex flex-col gap-1 rounded-xl border border-line bg-white p-1.5 shadow-sm max-[900px]:static max-[900px]:flex-row max-[900px]:overflow-x-auto max-[900px]:pb-2 max-[900px]:[scrollbar-width:thin] dark:border-slate-700 dark:bg-slate-900">
+        <aside aria-label={t('settingsTitle')} data-ui-region="settings-navigation" className="settings-page__navigation sticky top-5 flex flex-col gap-1 rounded-xl border border-line bg-white p-1.5 shadow-sm max-[900px]:static max-[900px]:flex-row max-[900px]:overflow-x-auto max-[900px]:pb-2 max-[900px]:[scrollbar-width:thin] dark:border-slate-700 dark:bg-slate-900">
             {items.map(({ id, label, Icon }) => (
                 <button
                     key={id}
