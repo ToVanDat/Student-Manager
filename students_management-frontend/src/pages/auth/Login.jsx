@@ -547,7 +547,7 @@ function Login() {
                 <AuthBanner />
             </div>
 
-            <section className="relative flex min-h-[66svh] items-center justify-center px-4 pb-8 pt-5 sm:px-8 sm:pb-12 min-[801px]:min-h-[100svh] min-[801px]:px-10 min-[801px]:py-16 xl:px-16">
+            <section aria-labelledby="auth-title" className="relative flex min-h-[66svh] items-center justify-center px-4 pb-8 pt-5 sm:px-8 sm:pb-12 min-[801px]:min-h-[100svh] min-[801px]:px-10 min-[801px]:py-16 xl:px-16">
                 <div className="absolute right-4 top-4 z-20 sm:right-8 sm:top-6 lg:right-8 xl:right-12">
                     <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 p-1 shadow-sm backdrop-blur" role="group" aria-label={t('language')}>
                         <Languages size={14} aria-hidden="true" className="ml-2 text-slate-400" />
@@ -584,9 +584,9 @@ function Login() {
 
                     <div className="auth-heading mb-6">
                         <p className="mb-2 inline-flex text-xs font-semibold text-blue-700">
-                            {mode === 'login' ? 'STUDENT MANAGER' : mode === 'register' ? 'CREATE ACCOUNT' : 'ACCOUNT RECOVERY'}
+                            {mode === 'login' ? t('authModeLogin') : mode === 'register' ? t('authModeRegister') : t('authModeRecovery')}
                         </p>
-                        <h2 className="mb-2 text-[30px] font-extrabold tracking-[-0.04em] text-slate-950 sm:text-[36px]">
+                        <h2 id="auth-title" className="mb-2 text-[30px] font-extrabold tracking-[-0.04em] text-slate-950 sm:text-[36px]">
                             {mode === 'login' && t('loginHeading')}
                             {mode === 'register' && t('registerHeading')}
                             {mode === 'forgot' && t('forgotHeading')}
@@ -598,7 +598,7 @@ function Login() {
                         </p>
                     </div>
 
-                    <div key={mode} id="auth-mode-panel" aria-live="polite" aria-busy={loading} className="auth-mode-panel">
+                    <div key={mode} id="auth-mode-panel" data-auth-mode={mode} aria-live="polite" aria-busy={loading} className="auth-mode-panel">
                     {mode === 'login' && (
                         <>
                             {renderLogin()}
