@@ -542,7 +542,7 @@ function Login() {
     // =================================================
 
     return (
-        <main className="auth-login-page relative min-h-[100svh] overflow-x-hidden bg-[#f5f7fb] text-slate-900 selection:bg-blue-100 selection:text-blue-950 min-[801px]:grid min-[801px]:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)]">
+        <main data-ui-page="auth-login" className="auth-login-page relative min-h-[100svh] overflow-x-hidden bg-[#f5f7fb] text-slate-900 selection:bg-blue-100 selection:text-blue-950 min-[801px]:grid min-[801px]:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)]">
             <div className="min-h-[34svh] overflow-hidden p-3 min-[601px]:min-h-[38svh] min-[601px]:p-4 min-[801px]:min-h-[100svh] xl:p-5">
                 <AuthBanner />
             </div>
