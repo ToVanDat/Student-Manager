@@ -647,6 +647,8 @@ function Login() {
                             onLogin={() => changeMode('login')}
                             setError={setError}
                             setSuccess={setSuccess}
+                            error={error}
+                            success={success}
                         />
                     )}
                     </div>
