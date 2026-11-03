@@ -180,7 +180,7 @@ test('student portal access is revoked on the next request after the verified li
     assert.deepEqual(afterUnlink, { linked: false, student: null, enrollments: [] });
 
     assert.equal(calls.length, 3);
-    assert.match(calls[0].sql, /FROM student_account_links sal\\s+JOIN students s ON s\\.id = sal\\.student_id/);
+    assert.match(calls[0].sql, /FROM student_account_links sal\s+JOIN students s ON s\.id = sal\.student_id/);
     assert.match(calls[0].sql, /sal\.user_id = \$1 AND sal\.verified_at IS NOT NULL/);
     assert.deepEqual(calls[0].values, [42]);
     assert.deepEqual(calls[2].values, [42]);
