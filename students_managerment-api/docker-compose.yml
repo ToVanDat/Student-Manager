@@ -24,6 +24,8 @@ services:
       TURN_SHARED_SECRET: ${TURN_SHARED_SECRET:-}
       TURN_CREDENTIAL_TTL_SECONDS: ${TURN_CREDENTIAL_TTL_SECONDS:-86400}
       FACE_LANDMARK_SERVICE_URL: ${FACE_LANDMARK_SERVICE_URL:-http://face-landmark:3010}
+      # Permit HTTP only across Compose's private bridge network; the service is not published to the host.
+      FACE_LANDMARK_SERVICE_ALLOW_PRIVATE_HTTP: "true"
       FACE_LANDMARK_SERVICE_TOKEN: ${FACE_LANDMARK_SERVICE_TOKEN:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
