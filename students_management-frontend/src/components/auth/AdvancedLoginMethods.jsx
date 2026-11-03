@@ -96,19 +96,19 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     }, []);
 
     return (
-        <div className="auth-methods-content mt-4 space-y-3">
-            <div className="relative flex items-center gap-3 text-xs text-slate-400">
+        <div className="auth-methods-content mt-4 space-y-3" data-ui-region="alternative-login-methods" aria-busy={busy || (!googleReady && Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID))}>
+            <div className="auth-methods-divider relative flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
                 <span className="h-px flex-1 bg-slate-200" />
                 <span className="whitespace-nowrap">Hoặc tiếp tục bằng</span>
                 <span className="h-px flex-1 bg-slate-200" />
             </div>
 
-            <div className="flex min-h-11 w-full justify-center overflow-hidden" aria-label="Đăng nhập bằng Google">
+            <div className="auth-google-button flex min-h-11 w-full justify-center overflow-hidden" role="group" aria-label="Đăng nhập bằng Google">
                 <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-60' : ''} />
             </div>
 
             {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                <p className="text-center text-xs text-slate-400">
+                <p className="auth-methods-hint text-center text-xs text-slate-400">
                     <ShieldCheck className="mr-1 inline" size={14} />
                     Đăng nhập Google chỉ dùng được khi ứng dụng đã được cấu hình OAuth.
                 </p>
@@ -119,7 +119,7 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 </p>
             )}
             {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                <p role="status" aria-live="polite" className="text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
+                <p role="status" aria-live="polite" className="auth-methods-loading text-center text-xs text-slate-400">Đang tải Google Identity Services…</p>
             )}
         </div>
     );
