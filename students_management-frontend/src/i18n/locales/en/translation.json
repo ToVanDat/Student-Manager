@@ -664,5 +664,8 @@
   "registerSecurityStepTitle": "Set your password",
   "registerSecurityStepDescription": "Create and confirm a password to finish registration.",
   "continue": "Continue",
-  "backToAccountDetails": "Back to details"
+  "backToAccountDetails": "Back to details",
+  "authModeLogin": "STUDENT PORTAL",
+  "authModeRegister": "CREATE ACCOUNT",
+  "authModeRecovery": "ACCOUNT RECOVERY"
 }
