@@ -12,7 +12,6 @@ function ForgotPasswordForm({ onLogin, setError, setSuccess }) {
 
     return (
         <div data-ui-region="password-recovery" aria-busy={flow.loading} className="w-full">
-            <div aria-live="polite" aria-atomic="true" className="sr-only">{`Step ${currentStep + 1} of ${FORGOT_STEPS.length}`}</div>
             <AuthStepper steps={FORGOT_STEPS} currentStep={currentStep} />
             {flow.step === 'email' && (
                 <EmailStep
