@@ -20,14 +20,15 @@ function ResetPasswordStep({ newPassword, onNewPasswordChange, confirmPassword, 
             <div className="flex w-full flex-col gap-2">
                 <label htmlFor="recovery-new-password" className="text-sm font-semibold leading-5 text-slate-700 dark:text-slate-200">{t('newPassword')}</label>
                 <div className="relative">
-                    <input className={fieldClass} id="recovery-new-password" name="newPassword" type={showPassword ? 'text' : 'password'} required minLength={8} value={newPassword} onChange={(event) => onNewPasswordChange(event.target.value)} placeholder={t('enterNewPassword')} autoComplete="new-password" disabled={loading} />
+                    <input className={fieldClass} id="recovery-new-password" name="newPassword" type={showPassword ? 'text' : 'password'} aria-describedby="recovery-password-hint" value={newPassword} onChange={(event) => onNewPasswordChange(event.target.value)} placeholder={t('enterNewPassword')} autoComplete="new-password" disabled={loading} />
                     <button type="button" className="absolute right-2 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40" onClick={() => setShowPassword(value => !value)} disabled={loading} aria-label={showPassword ? t('hidePassword') : t('showPassword')} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button>
                 </div>
+                <p id="recovery-password-hint" className="m-0 text-xs leading-5 text-slate-500">{t('passwordMinimumHint')}</p>
             </div>
             <div className="flex w-full flex-col gap-2">
                 <label htmlFor="recovery-confirm-password" className="text-sm font-semibold leading-5 text-slate-700 dark:text-slate-200">{t('confirmPasswordLabel')}</label>
                 <div className="relative">
-                    <input className={fieldClass} id="recovery-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} required value={confirmPassword} onChange={(event) => onConfirmPasswordChange(event.target.value)} placeholder={t('confirmPasswordPlaceholder')} autoComplete="new-password" disabled={loading} />
+                    <input className={fieldClass} id="recovery-confirm-password" name="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} value={confirmPassword} onChange={(event) => onConfirmPasswordChange(event.target.value)} placeholder={t('confirmPasswordPlaceholder')} autoComplete="new-password" disabled={loading} />
                     <button type="button" className="absolute right-2 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-40" onClick={() => setShowConfirmPassword(value => !value)} disabled={loading} aria-label={showConfirmPassword ? t('hidePassword') : t('showPassword')} aria-pressed={showConfirmPassword}>{showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button>
                 </div>
             </div>
