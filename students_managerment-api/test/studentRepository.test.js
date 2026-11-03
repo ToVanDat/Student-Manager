@@ -162,3 +162,38 @@ test('create and delete use parameterized SQL', async () => {
     assert.match(calls[0].sql, /DELETE FROM students\s+WHERE id = \$1/);
     assert.deepEqual(calls[0].values, [1]);
 });
+
+
+test('student portal access is revoked on the next request after the verified link is removed', async () => {
+    setup([
+        { rows: [{ id: 9, student_code: 'SV009' }] },
+        { rows: [{ id: 101, student_id: 9, total_score: '8.5' }] },
+        { rows: [] }
+    ]);
+
+    const beforeUnlink = await repository.getStudentPortalByUserId(42);
+    assert.equal(beforeUnlink.linked, true);
+    assert.equal(beforeUnlink.student.id, 9);
+    assert.equal(beforeUnlink.enrollments.length, 1);
+
+    const afterUnlink = await repository.getStudentPortalByUserId(42);
+    assert.deepEqual(afterUnlink, { linked: false, student: null, enrollments: [] });
+
+    assert.equal(calls.length, 3);
+    assert.match(calls[0].sql, /FROM student_account_links sal\s+JOIN students s ON s\.id = sal\.student_id/);
+    assert.match(calls[0].sql, /sal\.user_id = \$1 AND sal\.verified_at IS NOT NULL/);
+    assert.deepEqual(calls[0].values, [42]);
+    assert.deepEqual(calls[2].values, [42]);
+    assert.equal(calls[2].sql, calls[0].sql);
+});
+
+test('unlinked student portal requests never issue an enrollment query', async () => {
+    setup([{ rows: [] }]);
+
+    const result = await repository.getStudentPortalByUserId(73);
+
+    assert.deepEqual(result, { linked: false, student: null, enrollments: [] });
+    assert.equal(calls.length, 1);
+    assert.match(calls[0].sql, /sal\.user_id = \$1 AND sal\.verified_at IS NOT NULL/);
+    assert.deepEqual(calls[0].values, [73]);
+});
