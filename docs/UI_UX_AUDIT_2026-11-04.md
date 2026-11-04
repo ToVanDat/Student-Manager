@@ -91,3 +91,11 @@ These are source-level presentation changes only. They have not yet been validat
 - Added localized confirmation-dialog titles for removing a member and leaving a group in Vietnamese and English.
 - Reused existing translation entries for cancel, confirm, processing, member count, roles, and group actions; no API, authorization, Socket.IO, or group-membership behavior changed.
 - Source-level validation only. Browser keyboard/focus and responsive verification remain outstanding.
+
+
+## Follow-up implementation — Chat conversation header and menu
+
+- Localized E2EE state and help text, theme-picker status/actions, conversation details controls, and direct-chat action menu.
+- Added matching Vietnamese/English entries while reusing existing keys where available.
+- Preserved all event handlers, conversation-setting operations, and E2EE state transitions; presentation/localization only.
+- Both locale JSON files were parsed after editing. Browser and full frontend checks remain required.
