@@ -261,8 +261,8 @@ export default function FaceLoginSettings() {
             {status?.credential?.enrolledAt && <p className="mb-0 mt-3 text-[11px] text-slate-400">{t('registeredAt')}: {new Date(status.credential.enrolledAt).toLocaleString()}</p>}
             {error && <p role="alert" className="mb-0 mt-3 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
             {confirmationAction && (
-                <div className="fixed inset-0 z-[12000] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) closeConfirmation(); }}>
-                    <section role="dialog" aria-modal="true" aria-labelledby="face-login-confirm-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900 sm:p-6">
+                <div className="fixed inset-0 z-[12000] flex items-center justify-center bg-slate-950/55 p-4 " onMouseDown={event => { if (event.target === event.currentTarget) closeConfirmation(); }}>
+                    <section role="dialog" aria-modal="true" aria-labelledby="face-login-confirm-title" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-lg dark:border-slate-700 dark:bg-slate-900 sm:p-6">
                         <header className="mb-4 flex items-start justify-between gap-3">
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"><KeyRound size={19} /></span>
