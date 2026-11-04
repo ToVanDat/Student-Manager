@@ -1,0 +1,37 @@
+import { Bell, KeyRound, Languages, Monitor, Moon, ShieldCheck, User } from 'lucide-react';
+import { useLanguage } from '@/context/LanguageContext.jsx';
+
+function SettingsMenu({ activeTab, onChange, activeSessions }) {
+    const { t } = useLanguage();
+    const items = [
+        { id: 'account', label: t('account'), Icon: User },
+        { id: 'notifications', label: t('notifications'), Icon: Bell },
+        { id: 'security', label: t('security'), Icon: ShieldCheck },
+        { id: 'sessions', label: t('sessions'), Icon: Monitor },
+        { id: 'password', label: t('password'), Icon: KeyRound },
+        { id: 'appearance', label: t('appearance'), Icon: Moon },
+        { id: 'language', label: t('language'), Icon: Languages },
+    ];
+
+    return (
+        <aside aria-label={t('settingsTitle')} data-ui-region="settings-navigation" className="settings-page__navigation sticky top-5 flex flex-col gap-1 rounded-xl border border-line bg-white p-1.5 max-[900px]:static max-[900px]:flex-row max-[900px]:overflow-x-auto max-[900px]:pb-2 max-[900px]:[scrollbar-width:thin] dark:border-slate-700 dark:bg-slate-900">
+            {items.map(({ id, label, Icon }) => (
+                <button
+                    key={id}
+                    type="button"
+                    aria-current={activeTab === id ? 'page' : undefined}
+                    className={`flex min-h-[44px] shrink-0 items-center gap-2.5 rounded-lg px-3 text-left text-xs transition-colors max-[900px]:min-w-max focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-slate-900 ${activeTab === id ? 'bg-brand-50 font-semibold text-brand-700 dark:bg-blue-950/60 dark:text-blue-200' : 'font-medium text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                    onClick={() => onChange(id)}
+                >
+                    <Icon size={18} />
+                    <span>{label}</span>
+                    {id === 'sessions' && activeSessions > 0 && (
+                        <span className="ml-auto inline-flex h-[21px] min-w-[21px] items-center justify-center rounded-full bg-slate-100 px-1.5 text-[11px] text-slate-600 dark:bg-slate-700 dark:text-slate-200">{activeSessions}</span>
+                    )}
+                </button>
+            ))}
+        </aside>
+    );
+}
+
+export default SettingsMenu;

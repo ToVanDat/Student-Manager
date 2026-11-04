@@ -1,0 +1,601 @@
+/* Student Manager UI foundation.
+   Tailwind's --app-* tokens are the single source of truth. This file bridges
+   legacy --ui-* consumers and keeps only cross-screen interaction refinements. */
+
+:root {
+  color-scheme: light;
+  --ui-brand: var(--app-primary, #3e61d6);
+  --ui-brand-strong: var(--app-primary-hover, #2f4fb7);
+  --ui-brand-soft: var(--app-primary-soft, #eef3ff);
+  --ui-ink: var(--app-text, #17243b);
+  --ui-muted: var(--app-text-muted, #64748b);
+  --ui-line: var(--app-border, #e5eaf2);
+  --ui-surface: var(--app-surface, #fff);
+  --ui-canvas: var(--app-canvas, #f6f8fc);
+  --ui-radius: var(--app-radius-lg, 1rem);
+  --ui-shadow: var(--app-shadow-card, 0 1px 3px rgb(15 23 42 / 5%), 0 8px 24px rgb(15 23 42 / 3%));
+}
+
+.dark {
+  color-scheme: dark;
+  --ui-brand: var(--app-primary, #8ba7ff);
+  --ui-brand-strong: var(--app-primary-hover, #a8bcff);
+  --ui-brand-soft: var(--app-primary-soft, #1b2b50);
+  --ui-ink: var(--app-text, #e5edf8);
+  --ui-muted: var(--app-text-muted, #a5b4c8);
+  --ui-line: var(--app-border, #26364d);
+  --ui-surface: var(--app-surface, #0f1a2d);
+  --ui-canvas: var(--app-canvas, #080f1e);
+  --ui-radius: var(--app-radius-lg, 1rem);
+  --ui-shadow: var(--app-shadow-card, 0 1px 3px rgb(0 0 0 / 18%), 0 8px 24px rgb(0 0 0 / 12%));
+}
+
+html {
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  color: var(--ui-ink);
+  background-color: var(--ui-canvas);
+  font-feature-settings: "ss01" on, "cv11" on;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, a, [role="button"], input, select, textarea):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ui-brand) 72%, transparent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--ui-brand-soft);
+  color: var(--ui-ink);
+}
+
+a { text-underline-offset: 3px; }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea { caret-color: var(--ui-brand); }
+
+:where(html, body, *) {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ui-muted) 55%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-muted) 48%, transparent);
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  min-width: 0;
+  border-color: var(--ui-line);
+  border-radius: 0.625rem;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--ui-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ui-brand) 14%, transparent);
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder { color: var(--ui-muted); opacity: 1; }
+
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+.dark select,
+.dark textarea {
+  border-color: var(--ui-line);
+  background-color: var(--ui-surface);
+  color: var(--ui-ink);
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder { color: var(--ui-muted); }
+
+/* Shared content surfaces use a border for separation; elevation is reserved for overlays. */
+.app-card,
+.dashboard-surface,
+.feature-surface {
+  border-radius: var(--ui-radius);
+  box-shadow: none;
+}
+
+table { border-collapse: separate; border-spacing: 0; }
+table thead th {
+  color: var(--ui-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+table tbody tr { transition: background-color .14s ease; }
+table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--ui-brand-soft) 55%, transparent);
+}
+
+[role="dialog"],
+dialog {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  box-shadow: 0 24px 80px rgb(10 20 40 / 22%);
+}
+.dark :is([role="dialog"], dialog) {
+  background-color: var(--ui-surface);
+  color: var(--ui-ink);
+}
+
+:where(.chat-shell, [data-chat-shell]) { min-width: 0; }
+:where(.chat-shell, [data-chat-shell]) button { -webkit-tap-highlight-color: transparent; }
+:where(.chat-shell, [data-chat-shell]) input { min-width: 0; }
+:where(.chat-shell, [data-chat-shell]) :is(button, a, input, textarea):focus-visible {
+  outline-offset: 2px;
+}
+:where(.chat-shell, [data-chat-shell]) .overflow-y-auto,
+:where(.chat-shell, [data-chat-shell]) .overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+:where(.chat-shell, [data-chat-shell]) ::-webkit-scrollbar { width: 7px; height: 7px; }
+:where(.chat-shell, [data-chat-shell]) ::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #cbd5e1;
+}
+:where(.chat-shell, [data-chat-shell]) ::-webkit-scrollbar-track { background: transparent; }
+
+/* Assistant workspace: responsive, keyboard-safe and isolated from other dialogs. */
+.student-assistant-dialog {
+  width: min(460px, calc(100vw - 32px));
+  min-width: 0;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.student-assistant-dialog > header {
+  padding-top: max(.75rem, env(safe-area-inset-top));
+}
+.student-assistant-composer {
+  padding-bottom: max(.5rem, env(safe-area-inset-bottom));
+}
+.student-assistant-composer-form {
+  min-width: 0;
+  gap: .5rem;
+}
+.student-assistant-composer-form textarea {
+  min-width: 0;
+  max-height: min(9rem, 24dvh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  resize: vertical;
+  scrollbar-width: thin;
+}
+.student-assistant-composer-form button { flex: 0 0 2.5rem; }
+
+@media (max-width: 768px) {
+  table { font-size: .875rem; }
+  :is([role="dialog"], dialog) {
+    max-width: calc(100vw - 20px);
+    border-radius: 1rem;
+  }
+}
+@media (max-width: 639px) {
+  .student-assistant-dialog {
+    inset-inline: 0;
+    bottom: 0;
+    width: 100%;
+    height: min(92dvh, 860px);
+    max-height: calc(100dvh - env(safe-area-inset-top));
+    border-radius: 24px 24px 0 0;
+  }
+  .student-assistant-dialog > header {
+    padding-inline: max(1rem, env(safe-area-inset-left));
+  }
+  .student-assistant-composer {
+    padding-inline: max(.75rem, env(safe-area-inset-left));
+    padding-right: max(.75rem, env(safe-area-inset-right));
+  }
+  .student-assistant-composer-form {
+    min-height: 60px;
+    border-radius: 16px;
+    padding-inline: .75rem;
+  }
+  .student-assistant-composer-form textarea {
+    max-height: min(7rem, 20dvh);
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .student-assistant-dialog *,
+  .student-assistant-composer-form * {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Admin student-management page: shared page rhythm and resilient toolbar layout. */
+.student-management-page {
+  display: grid;
+  min-width: 0;
+  gap: 1.25rem;
+}
+.student-management-roster {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  box-shadow: var(--ui-shadow);
+}
+.student-management-toolbar {
+  min-width: 0;
+}
+.student-management-toolbar > div {
+  min-width: 0;
+}
+.student-management-toolbar button {
+  min-height: 2.5rem;
+}
+.student-management-page :is(select, input, textarea) {
+  max-width: 100%;
+}
+.student-management-page [role="alert"] {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .student-management-page {
+    gap: 1rem;
+  }
+  .student-management-toolbar {
+    align-items: stretch;
+  }
+  .student-management-toolbar > div:last-child {
+    width: 100%;
+  }
+  .student-management-toolbar > div:last-child button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .student-management-roster > :last-child {
+    gap: .375rem;
+  }
+}
+
+/* Settings workspace: preserve a clear hierarchy and make the tab rail usable on touch screens. */
+.settings-page {
+  min-width: 0;
+}
+.settings-page__header {
+  border-color: var(--ui-line);
+  background: color-mix(in srgb, var(--ui-surface) 92%, transparent);
+  box-shadow: var(--ui-shadow);
+}
+.settings-page__layout {
+  min-width: 0;
+}
+.settings-page__layout > * {
+  min-width: 0;
+}
+.settings-page__navigation {
+  border-color: var(--ui-line);
+  border-radius: 1rem;
+  box-shadow: var(--ui-shadow);
+}
+.settings-page__navigation button {
+  min-height: 2.75rem;
+}
+@media (max-width: 900px) {
+  .settings-page__navigation {
+    position: sticky;
+    top: 4.5rem;
+    z-index: 20;
+    max-width: 100%;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+  .settings-page__navigation button {
+    flex: 0 0 auto;
+  }
+}
+@media (max-width: 640px) {
+  .settings-page__header {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  .settings-page__layout {
+    gap: .875rem;
+  }
+}
+
+/* Student portal: give the landing header and academic panels a consistent hierarchy. */
+.student-portal-page {
+  min-width: 0;
+}
+.student-portal-page > header {
+  min-height: 7rem;
+  padding: clamp(1rem, 2.2vw, 1.5rem);
+  border: 1px solid var(--ui-line);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(ellipse at 92% 0%, color-mix(in srgb, var(--ui-brand) 10%, transparent), transparent 48%),
+    var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+.student-portal-page .app-panel {
+  min-width: 0;
+  border-color: var(--ui-line);
+  box-shadow: var(--ui-shadow);
+}
+.student-portal-page :is(input, select, textarea) {
+  max-width: 100%;
+}
+.student-portal-page ul > li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.student-portal-page button {
+  touch-action: manipulation;
+}
+@media (max-width: 639px) {
+  .student-portal-page {
+    gap: 1rem;
+  }
+  .student-portal-page > header {
+    align-items: flex-start;
+    border-radius: 1rem;
+  }
+  .student-portal-page > header > div:last-child {
+    max-width: 100%;
+  }
+}
+
+
+/* Admin CRUD workspace: consistent responsive tables and mobile-safe dialogs. */
+[data-ui-page="admin-management"] {
+  min-width: 0;
+}
+[data-ui-page="admin-management"] .overflow-x-auto {
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+[data-ui-page="admin-management"] :is(input, select, textarea) {
+  max-width: 100%;
+}
+[data-ui-page="admin-management"] [role="dialog"],
+[data-ui-page="admin-management"] [role="alertdialog"] {
+  max-height: min(90dvh, 48rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+[data-ui-page="admin-management"] [role="alert"] {
+  overflow-wrap: anywhere;
+}
+[data-ui-page="admin-management"] table {
+  width: 100%;
+}
+[data-ui-page="admin-management"] th {
+  white-space: nowrap;
+}
+@media (max-width: 639px) {
+  [data-ui-page="admin-management"] {
+    gap: 1rem;
+  }
+  [data-ui-page="admin-management"] > header {
+    align-items: stretch;
+  }
+  [data-ui-page="admin-management"] > header > button {
+    width: 100%;
+  }
+  [data-ui-page="admin-management"] [role="dialog"] > form,
+  [data-ui-page="admin-management"] [role="alertdialog"] {
+    padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  }
+}
+
+
+/* Student Portal: make academic regions resilient without implying unavailable data exists. */
+[data-ui-page="student-portal"] [data-ui-region] {
+  min-width: 0;
+}
+[data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid {
+  align-items: stretch;
+}
+[data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid > section {
+  min-width: 0;
+  height: 100%;
+}
+[data-ui-page="student-portal"] [data-ui-region="enrollments"] ul,
+[data-ui-page="student-portal"] [data-ui-region="results"] ul {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ui-line) transparent;
+  overscroll-behavior: contain;
+}
+[data-ui-page="student-portal"] [data-ui-region="notifications"] li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+[data-ui-page="student-portal"] [data-ui-region="student-profile"] p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  [data-ui-page="student-portal"] [data-ui-region="academic-records"] > .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  [data-ui-page="student-portal"] [data-ui-region="quick-access"] button {
+    min-height: 3.75rem;
+  }
+}
+
+
+/* Settings sub-pages: consistent surfaces, responsive metadata and pending states. */
+.settings-panel {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+.settings-panel [role="alert"],
+.settings-panel [role="status"] {
+  overflow-wrap: anywhere;
+}
+.settings-panel :is(input, select, textarea, button) {
+  max-width: 100%;
+}
+.settings-panel button {
+  touch-action: manipulation;
+}
+.settings-session-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease;
+}
+.settings-session-card:hover {
+  border-color: color-mix(in srgb, var(--ui-brand) 35%, var(--ui-line));
+}
+.settings-session-card :is(h3, strong, span) {
+  overflow-wrap: anywhere;
+}
+.settings-security-row {
+  min-width: 0;
+}
+.settings-security-row > :nth-child(2) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .settings-panel {
+    padding: 1rem;
+    border-radius: 1rem;
+  }
+  .settings-session-card {
+    padding: .875rem;
+  }
+  .settings-session-card > :first-child {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .settings-security-row {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    align-items: start;
+  }
+  .settings-security-row > :last-child {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .settings-session-card,
+  .settings-panel button {
+    transition-duration: .01ms !important;
+  }
+}
+
+
+/* Authentication and security surfaces: consistent cards, responsive controls and clear status hierarchy. */
+:where(.auth-methods-content, .auth-qr-panel, .settings-advanced-security) {
+  min-width: 0;
+}
+.auth-methods-divider {
+  color: var(--ui-muted);
+}
+.auth-methods-divider > span:first-child,
+.auth-methods-divider > span:last-child {
+  background: var(--ui-line);
+}
+.auth-google-button {
+  align-items: center;
+  min-width: 0;
+}
+.auth-google-button > div {
+  max-width: 100%;
+}
+.auth-methods-hint,
+.auth-methods-loading {
+  max-width: 34rem;
+  margin-inline: auto;
+  line-height: 1.55;
+}
+.auth-qr-panel {
+  border-color: var(--ui-line);
+  border-radius: 1.125rem;
+  box-shadow: var(--ui-shadow);
+}
+.auth-qr-stage {
+  border-color: var(--ui-line);
+  background: color-mix(in srgb, var(--ui-canvas) 78%, var(--ui-surface));
+}
+.auth-qr-stage > div:has(svg) {
+  max-width: 100%;
+}
+.auth-qr-camera {
+  border: 1px solid var(--ui-line);
+  aspect-ratio: 16 / 9;
+}
+.settings-advanced-security {
+  border-color: var(--ui-line);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+}
+.settings-passkey-list > * {
+  min-width: 0;
+}
+.settings-google-link-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.settings-advanced-security :is(input, button) {
+  max-width: 100%;
+}
+.settings-advanced-security button,
+.auth-qr-panel button {
+  touch-action: manipulation;
+}
+@media (max-width: 639px) {
+  .auth-qr-panel {
+    padding: 1rem;
+  }
+  .auth-qr-stage {
+    min-height: 220px;
+    padding: .875rem;
+  }
+  .auth-qr-stage svg {
+    max-width: min(196px, calc(100vw - 96px));
+    height: auto;
+  }
+  .settings-advanced-security button {
+    min-height: 2.5rem;
+  }
+  .settings-google-link-card > button {
+    margin-left: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-methods-content *,
+  .auth-qr-panel *,
+  .settings-advanced-security * {
+    scroll-behavior: auto;
+    transition-duration: .01ms !important;
+  }
+}
+
+/* Recovery flow and settings choice controls */
+[data-auth-step], .settings-choice-panel, .student-table-region { min-width: 0; }
+.auth-step-link { touch-action: manipulation; }
+.auth-step-link:focus-visible { outline: 2px solid var(--ui-focus, #2563eb); outline-offset: 2px; }
+.settings-choice-option { min-width: 0; overflow-wrap: anywhere; touch-action: manipulation; }
+@media (max-width: 639px) {
+  [data-auth-step] { gap: 1rem; }
+  .settings-choice-option { padding: .875rem; }
+}
