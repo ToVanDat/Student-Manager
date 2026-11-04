@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Layers, Plus, Pencil, Trash2, Search, RefreshCw, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, RefreshCw, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/api/client.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
