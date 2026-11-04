@@ -99,3 +99,5 @@ These are source-level presentation changes only. They have not yet been validat
 - Added matching Vietnamese/English entries while reusing existing keys where available.
 - Preserved all event handlers, conversation-setting operations, and E2EE state transitions; presentation/localization only.
 - Both locale JSON files were parsed after editing. Browser and full frontend checks remain required.
+
+- Follow-up: localized the remaining conversation-header back control and message-search field labels/placeholder using shared i18n keys.
