@@ -79,7 +79,7 @@ function LoginForm({
                 {loading ? <><LoaderCircle size={17} className="animate-spin" aria-hidden="true" />{t("loading")}</> : t("login")}
             </button>
             <button type="button" onClick={onFaceLogin} disabled={loading || !username.trim()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                <Camera size={18} aria-hidden="true" /> Đăng nhập bằng Face Login
+                <Camera size={18} aria-hidden="true" />{t("faceLoginAction")}
             </button>
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <span>{t('noAccountYet')}</span>
