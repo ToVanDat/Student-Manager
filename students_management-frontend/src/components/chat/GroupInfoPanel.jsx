@@ -324,7 +324,7 @@ export default function GroupInfoPanel({
                                     <div className="mt-2 max-h-44 overflow-y-auto">
                                         {availableUsers.length === 0 ? (
                                             <p className="px-2 py-3 text-center text-xs text-slate-400">
-                                                Không có người dùng phù hợp
+                                                {t('noUsersFound')}
                                             </p>
                                         ) : (
                                             availableUsers.map(user => (
