@@ -708,5 +708,13 @@
   "unmuteConversation": "Turn notifications back on",
   "muteForEightHours": "Mute notifications for 8 hours",
   "clearConversationContent": "Clear conversation content",
-  "chatMessageSearchPlaceholder": "Search messages in this conversation…"
+  "chatMessageSearchPlaceholder": "Search messages in this conversation…",
+  "confirmDeleteDataTitle": "Confirm data deletion?",
+  "deleteCannotUndo": "This action cannot be undone.",
+  "deleting": "Deleting…",
+  "confirmDelete": "Confirm deletion",
+  "avatarRequirements": "JPEG, PNG, or WebP · up to 5 MB",
+  "usernameImmutableHint": "Your username is your sign-in identifier and cannot be changed in personal information.",
+  "displayName": "Display name",
+  "displayNameUsernameHint": "Changing your display name does not change the username you use to sign in."
 }
