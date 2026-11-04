@@ -571,7 +571,7 @@ function Login() {
                     </div>
                 </div>
 
-                <div data-auth-motion className="auth-login-card w-full max-w-[460px] rounded-[28px] border border-slate-200/80 bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 min-[801px]:px-10">
+                <div data-auth-motion className="auth-login-card w-full max-w-[460px] rounded-[28px] bg-white px-5 py-6 shadow-[0_18px_60px_-35px_rgba(15,23,42,.28)] sm:px-9 sm:py-9 min-[801px]:px-10">
                     <div className="auth-brand-row mb-7 flex items-center gap-3 sm:mb-9">
                         <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-blue-700 text-sm font-bold tracking-wide text-white">
                             SM
