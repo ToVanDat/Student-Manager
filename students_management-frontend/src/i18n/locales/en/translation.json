@@ -591,7 +591,7 @@
   "googleLoginFailed": "Google sign-in failed.",
   "orContinueWith": "Or continue with",
   "loginWithGoogle": "Sign in with Google",
-  "googleOAuthNotConfigured": "Google sign-in is available only after OAuth is configured for this application.",
+  "googleOAuthNotConfigured": "Google sign-in is available after OAuth is configured for this application.",
   "googleServiceLoading": "Loading Google services…",
   "googleLoginLinkingHelp": "Google can sign in only to a Student Manager account that is already linked. If it is not linked, sign in with your username and password, then link Google in Security Settings.",
   "scoreRangeInvalid": "Scores must be between 0 and 10.",
@@ -716,5 +716,8 @@
   "avatarRequirements": "JPEG, PNG, or WebP · up to 5 MB",
   "usernameImmutableHint": "Your username is your sign-in identifier and cannot be changed in personal information.",
   "displayName": "Display name",
-  "displayNameUsernameHint": "Changing your display name does not change the username you use to sign in."
+  "displayNameUsernameHint": "Changing your display name does not change the username you use to sign in.",
+  "continueWithAlternative": "Or continue with",
+  "signInWithGoogle": "Sign in with Google",
+  "loadingGoogleIdentity": "Loading Google Identity Services…"
 }
