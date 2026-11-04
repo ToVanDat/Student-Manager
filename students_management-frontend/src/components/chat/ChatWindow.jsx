@@ -1154,7 +1154,7 @@ export default function ChatWindow({
                             }`}
                         >
                             {activeConversation.type === 'group'
-                                ? activeConversation.memberCount + ' thành viên'
+                                ? activeConversation.memberCount + ' ' + t('membersCount')
                                 : presenceLabel}
                         </p>
                     </div>
@@ -1165,16 +1165,16 @@ export default function ChatWindow({
                     {activeConversation.type === 'direct' && e2eeStatus?.available && (
                         e2eeStatus.enabled && e2eeStatus.mode !== 'paused' ? (
                             <>
-                                <span data-chat-e2ee-state="enabled" role="status" aria-label="Mã hóa đầu cuối đang bật" className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
+                                <span data-chat-e2ee-state="enabled" role="status" aria-label={t("e2eeEnabled")} className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title={t("e2eeNewMessagesEncrypted")}>
                                     <ShieldCheck size={16} /> E2EE
                                 </span>
                                 <button
                                     type="button"
                                     onClick={() => setShowE2EEIdentityVerification(true)}
                                     className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-slate-800"
-                                    title="So sánh mã an toàn với người nhận"
+                                    title={t("verifyIdentity")}
                                 >
-                                    <ShieldCheck size={15} /> Xác minh
+                                    <ShieldCheck size={15} /> {t("verifyIdentity")}
                                 </button>
                                 {showE2EEIdentityVerification && (
                                     <E2EEIdentityVerification
@@ -1189,28 +1189,28 @@ export default function ChatWindow({
                                 onClick={onPauseE2EE}
                                 disabled={enablingE2EE || !onPauseE2EE}
                                 className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                                title="Tạm dừng E2EE cho tin nhắn mới"
+                                title={t("pauseE2EE")}
                             >
-                                    Tạm dừng
+                                    {t("pauseE2EE")}
                                 </button>
                             </>
                         ) : e2eeStatus.enabled && e2eeStatus.mode === 'paused' ? (
                             <span
                                 data-chat-e2ee-state="paused"
                                 className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                                title="E2EE đã tạm dừng. Tin nhắn mới không được mã hóa đầu cuối; lịch sử E2EE cũ được giữ nguyên."
+                                title={t("e2eePausedDescription")}
                                 role="status"
                             >
-                                <Shield size={16} /> E2EE đã tạm dừng
+                                <Shield size={16} /> {t("e2eePaused")}
                             </span>
                         ) : !e2eeStatus.activationEnabled ? (
                             <span
                                 data-chat-e2ee-state="activation-paused"
                                 className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                                title="Tạm dừng bật E2EE cho cuộc trò chuyện mới. Các cuộc trò chuyện E2EE đã bật vẫn giữ nguyên."
+                                title={t("e2eeActivationPausedDescription")}
                                 role="status"
                             >
-                                <Shield size={16} /> E2EE tạm dừng
+                                <Shield size={16} /> {t("e2eeActivationPaused")}
                             </span>
                         ) : (
                             <button
@@ -1218,7 +1218,7 @@ export default function ChatWindow({
                                 onClick={onEnableE2EE}
                                 disabled={!e2eeStatus.canEnable || !e2eeClientReady || enablingE2EE}
                                 className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-slate-800"
-                                title={!e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
+                                title={!e2eeStatus.canEnable ? t('e2eeMembersNeedKeys') : !e2eeClientReady ? t('e2eeDeviceRelayNotReady') : t('enableE2EE')}
                             >
                                 {enablingE2EE ? <LoaderCircle size={16} className="animate-spin" /> : <Shield size={16} />}
                                 E2EE
@@ -1237,7 +1237,7 @@ export default function ChatWindow({
                                             <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('chatTheme')}</h2>
                                             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('chatThemeDescription')}</p>
                                         </div>
-                                        <button type="button" onClick={() => setShowChatThemePicker(false)} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white" aria-label="Đóng"><X size={18} /></button>
+                                        <button type="button" onClick={() => setShowChatThemePicker(false)} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={t("close")}><X size={18} /></button>
                                     </div>
                                     <div className="grid max-h-[min(440px,calc(100dvh-150px))] grid-cols-1 gap-3 overflow-y-auto p-4 sm:grid-cols-2">
                                         {chatThemes.map(item => (
@@ -1247,15 +1247,15 @@ export default function ChatWindow({
                                                 </span>
                                                 <span className="min-w-0 flex-1">
                                                     <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{item.label}</span>
-                                                    <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">{chatTheme === item.value ? 'Đang sử dụng' : 'Áp dụng chủ đề'}</span>
+                                                    <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">{chatTheme === item.value ? t('using') : t('applyTheme')}</span>
                                                 </span>
                                                 {chatTheme === item.value && <Check size={17} className="shrink-0 text-blue-600 dark:text-blue-400" />}
                                             </button>
                                         ))}
                                     </div>
                                     <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                                        <span>{savingChatThemeIds.has(String(activeConversation?.id)) ? 'Đang lưu chủ đề…' : 'Chủ đề áp dụng cho cuộc trò chuyện này'}</span>
-                                        <button type="button" onClick={() => chooseChatTheme('default')} disabled={chatTheme === 'default' || savingChatThemeIds.has(String(activeConversation?.id))} className="rounded-lg px-3 py-2 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950/40">Đặt lại</button>
+                                        <span>{savingChatThemeIds.has(String(activeConversation?.id)) ? t('savingTheme') : t('themeForConversation')}</span>
+                                        <button type="button" onClick={() => chooseChatTheme('default')} disabled={chatTheme === 'default' || savingChatThemeIds.has(String(activeConversation?.id))} className="rounded-lg px-3 py-2 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950/40">{t("reset")}</button>
                                     </div>
                                 </section>
                             </div>,
@@ -1312,9 +1312,9 @@ export default function ChatWindow({
                         type="button"
                         onClick={() => setShowDetailsPanel(value => !value)}
                         className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showDetailsPanel ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-100'}`}
-                        aria-label={showDetailsPanel ? 'Ẩn thông tin cuộc trò chuyện' : 'Hiện thông tin cuộc trò chuyện'}
+                        aria-label={showDetailsPanel ? t('hideConversationInfo') : t('showConversationInfo')}
                         aria-expanded={showDetailsPanel}
-                        title="Thông tin cuộc trò chuyện"
+                        title={t("conversationInfo")}
                     >
                         <PanelRight size={18} />
                     </button>
@@ -1331,11 +1331,11 @@ export default function ChatWindow({
                                 if (!showMoreMenu) positionMoreMenu();
                                 setShowMoreMenu(prev => !prev);
                             }}
-                            aria-label={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Thêm tùy chọn cuộc trò chuyện'}
+                            aria-label={activeConversation.type === 'group' ? t('groupInformation') : t('moreConversationOptions')}
                             aria-haspopup={activeConversation.type === 'group' ? 'dialog' : 'menu'}
                             aria-expanded={activeConversation.type === 'group' ? showGroupInfo : showMoreMenu}
                             className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
+                            title={activeConversation.type === 'group' ? t('groupInformation') : t('options')}
                         >
                             <MoreVertical size={18} />
                         </button>
@@ -1351,34 +1351,34 @@ export default function ChatWindow({
                                     <UserRound size={16} /> {t('conversationInfo')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <FolderOpen size={16} /> File & Media
+                                    <FolderOpen size={16} /> {t("fileMedia")}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('pin', !activeConversation.isPinned))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <Pin size={16} /> {activeConversation.isPinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
+                                    <Pin size={16} /> {activeConversation.isPinned ? t('unpinConversation') : t('pinConversation')}
                                 </button>
                                 <button type="button" role="menuitem" disabled={savingConversationNotifications} onClick={() => { void toggleConversationNotifications(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
                                     {conversationNotificationsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
-                                    {conversationNotificationsEnabled ? 'Tắt thông báo trên thiết bị' : 'Bật thông báo trên thiết bị'}
+                                    {conversationNotificationsEnabled ? t('disableDeviceNotifications') : t('enableDeviceNotifications')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); void runMoreAction(() => updateConversationSetting('mute', until)); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? <Bell size={16} /> : <BellOff size={16} />}
-                                    {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? 'Bật lại thông báo' : 'Tắt thông báo 8 giờ'}
+                                    {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? t('unmuteConversation') : t('muteForEightHours')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('unread', true))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <MailOpen size={16} /> {t('markUnread')}
                                 </button>
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
                                 <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('clear'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                                    <Trash2 size={16} /> Xóa nội dung cuộc trò chuyện
+                                    <Trash2 size={16} /> {t("clearConversationContent")}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('hide'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <FolderOpen size={16} /> Ẩn cuộc trò chuyện
+                                    <FolderOpen size={16} /> {t("hideConversation")}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('block'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
                                     <Ban size={16} /> {t('blockUser')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                                    <Flag size={16} /> Báo cáo
+                                    <Flag size={16} /> {t("report")}
                                 </button>
                             </div>,
                             document.body
