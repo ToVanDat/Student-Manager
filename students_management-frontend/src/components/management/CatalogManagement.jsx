@@ -167,9 +167,9 @@ export default function CatalogManagement({ resource }) {
 
     return (
         <section data-ui-page="admin-management" aria-busy={loading} className="admin-management-page mx-auto max-w-[1500px] space-y-6 pb-8">
-            <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <div><h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[28px]">{t(config.titleKey)}</h1><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('catalogPageDescription')}</p></div>
-                <button type="button" onClick={() => startForm(null)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25"><Plus size={16} />{t('create')} {t(config.entityKey)}</button>
+                <button type="button" onClick={() => startForm(null)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25"><Plus size={16} />{t('create')} {t(config.entityKey)}</button>
             </header>
             <div className="app-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/70 p-5 dark:border-slate-800 dark:bg-slate-900/70 sm:flex-row sm:items-center sm:justify-between sm:p-6">
