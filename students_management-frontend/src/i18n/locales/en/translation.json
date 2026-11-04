@@ -679,5 +679,7 @@
   "callNotificationsTab": "Notifications",
   "callHistoryLoadError": "Couldn't load call history. Check your connection and try again.",
   "retryLoading": "Try again",
-  "faceLoginAction": "Sign in with Face Login"
+  "faceLoginAction": "Sign in with Face Login",
+  "confirmRemoveGroupMemberTitle": "Remove this member from the group?",
+  "confirmLeaveGroupTitle": "Leave this group?"
 }
