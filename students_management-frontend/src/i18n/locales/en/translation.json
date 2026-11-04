@@ -678,5 +678,6 @@
   "callHistoryTab": "History",
   "callNotificationsTab": "Notifications",
   "callHistoryLoadError": "Couldn't load call history. Check your connection and try again.",
-  "retryLoading": "Try again"
+  "retryLoading": "Try again",
+  "faceLoginAction": "Sign in with Face Login"
 }
