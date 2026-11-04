@@ -716,5 +716,8 @@
   "avatarRequirements": "JPEG, PNG hoặc WebP · tối đa 5 MB",
   "usernameImmutableHint": "Username là định danh đăng nhập và không thể đổi tại mục thông tin cá nhân.",
   "displayName": "Tên hiển thị",
-  "displayNameUsernameHint": "Tên hiển thị không làm thay đổi username dùng để đăng nhập."
+  "displayNameUsernameHint": "Tên hiển thị không làm thay đổi username dùng để đăng nhập.",
+  "continueWithAlternative": "Hoặc tiếp tục bằng",
+  "signInWithGoogle": "Đăng nhập bằng Google",
+  "loadingGoogleIdentity": "Đang tải Google Identity Services…"
 }
