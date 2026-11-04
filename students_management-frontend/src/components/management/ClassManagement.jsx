@@ -164,13 +164,12 @@ export default function ClassManagement() {
 
     return (
         <section data-ui-page="admin-management" aria-busy={loading} className="admin-management-page mx-auto max-w-[1500px] space-y-6 pb-8">
-            <header className="flex flex-col gap-4 rounded-2xl border border-slate-200/80 bg-white/70 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between sm:p-6">
                 <div>
-                    <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-950/40 dark:text-blue-200"><Layers size={14} />{t('trainingGroup')}</p>
                     <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-[28px]">{t('classes')}</h1>
                     <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('moduleClassesDescription')}</p>
                 </div>
-                <button type="button" onClick={startCreate} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25"><Plus size={16} />{t('addClass')}</button>
+                <button type="button" onClick={startCreate} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25"><Plus size={16} />{t('addClass')}</button>
             </header>
 
             <div className="app-card overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
