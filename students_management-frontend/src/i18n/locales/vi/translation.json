@@ -678,5 +678,6 @@
   "callHistoryTab": "Lịch sử",
   "callNotificationsTab": "Thông báo",
   "callHistoryLoadError": "Không thể tải lịch sử cuộc gọi. Vui lòng kiểm tra kết nối và thử lại.",
-  "retryLoading": "Thử tải lại"
+  "retryLoading": "Thử tải lại",
+  "faceLoginAction": "Đăng nhập bằng Face Login"
 }
