@@ -41,8 +41,6 @@ export default function AdvancedSecurityMethods() {
             getGoogleLinkApi(),
             getBiometricLoginStatusApi()
         ]);
-        const errors = [];
-
         if (passkeysResult.status === 'fulfilled') {
             setCredentials(passkeysResult.value);
         } else {
@@ -63,7 +61,7 @@ export default function AdvancedSecurityMethods() {
 
         setPasskeysLoading(false);
         setGoogleStatusLoading(false);
-    }, []);
+    }, [t]);
 
     useEffect(() => { void refresh(); }, [refresh]);
 
@@ -272,7 +270,7 @@ export default function AdvancedSecurityMethods() {
             {!googleStatusLoading && googleStatusError && <div role="alert" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">{googleStatusError}<button type="button" onClick={() => void refresh()} className="ml-2 font-semibold underline">{t('retry')}</button></div>}
             {!googleStatusLoading && !googleStatusError && !googleLink && <div className="mb-3 space-y-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-200" htmlFor="link-google-password">{t('verifyWithAccountPassword')}</label>
-                <input id="link-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} placeholder="{t('currentAccountPassword')}" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
+                <input id="link-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} placeholder={t('currentAccountPassword')} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
                 <p className="m-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('googleLinkInstructions')}</p>
                 <button type="button" disabled={busy} onClick={() => verifyWithPasskey('google-link')} className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Fingerprint size={14} /> {t('verifyWithPasskey')}</button>
                 {verificationToken && <p className="m-0 text-xs text-emerald-700 dark:text-emerald-300">{t('passkeyVerifiedContinueGoogle')}</p>}
@@ -281,7 +279,7 @@ export default function AdvancedSecurityMethods() {
             {!googleStatusLoading && !googleStatusError && googleLink ? (
                 <div className="settings-google-link-card space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
                     <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">{t('googleLinked')}</p>
-                    <p className="m-0 text-xs text-slate-500 dark:text-slate-400">{googleLink.provider_email || '{t('linkedGoogleAccount')}'}</p>
+                    <p className="m-0 text-xs text-slate-500 dark:text-slate-400">{googleLink.provider_email || t('linkedGoogleAccount')}</p>
                     <label className="block text-xs text-slate-600 dark:text-slate-300" htmlFor="unlink-google-password">{t('verifyWithAccountPassword')} hoặc passkey</label>
                     <input id="unlink-google-password" type="password" autoComplete="current-password" value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" />
                     <button type="button" disabled={busy || (!currentPassword && !verificationToken)} onClick={unlinkGoogle} className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30"><Unlink size={14} /> {t('unlinkGoogle')}</button>
@@ -295,7 +293,7 @@ export default function AdvancedSecurityMethods() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setConfirmation(null); }}>
                     <section role="alertdialog" aria-modal="true" aria-labelledby="security-confirm-title" aria-describedby="security-confirm-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                         <div className="mb-3 flex items-center gap-2 text-rose-600 dark:text-rose-400"><ShieldCheck size={19} /><span className="text-xs font-bold uppercase tracking-wide">{t('confirmSecurityAction')}</span></div>
-                        <h4 id="security-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmation.type === 'unlink-google' ? '{t('unlinkGoogle')}?' : t('confirmRemovePasskeyTitle')}</h4>
+                        <h4 id="security-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmation.type === 'unlink-google' ? t('confirmUnlinkGoogleTitle') : t('confirmRemovePasskeyTitle')}</h4>
                         <p id="security-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{confirmation.type === 'unlink-google' ? t('confirmUnlinkGoogleDescription') : t('confirmRemovePasskeyDescription')}</p>
                         <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
                             <button ref={cancelConfirmationRef} type="button" disabled={busy} onClick={() => setConfirmation(null)} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{t('cancel')}</button>
