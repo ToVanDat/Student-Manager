@@ -17,7 +17,7 @@ function wait(ms) {
     return new Promise(resolve => window.setTimeout(resolve, ms));
 }
 
-function captureJpeg(video) {
+function captureJpeg(video, t) {
     if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA || !video.videoWidth) {
         throw new Error(t('faceCameraNotReady'));
     }
@@ -119,7 +119,7 @@ export default function FaceLoginSettings() {
 
             for (let index = 0; index < FRAME_COUNT; index += 1) {
                 if (cancelledRef.current) throw new Error(t('faceEnrollmentCancelled'));
-                const frame = await captureJpeg(videoRef.current);
+                const frame = await captureJpeg(videoRef.current, t);
                 const result = await captureFaceEnrollmentFrameApi(
                     challenge.challengeId,
                     challenge.livenessNonce,
@@ -212,7 +212,7 @@ export default function FaceLoginSettings() {
         <section data-ui-region="face-login" aria-busy={busy || loading} className="relative mb-5 min-w-0 rounded-xl border border-slate-200 p-4 dark:border-slate-700 sm:p-5">
             <div className="mb-2 flex items-center gap-2">
                 <Camera size={19} className="text-indigo-600" />
-                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">Face Login · Nhận diện khuôn mặt</h3>
+                <h3 className="m-0 text-sm font-bold text-slate-800 dark:text-slate-100">{t('faceLoginTitle')}</h3>
                 <span className={configured
                     ? 'ml-auto rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300'
                     : 'ml-auto rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'}>
@@ -220,8 +220,7 @@ export default function FaceLoginSettings() {
                 </span>
             </div>
             <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                Face Login là phương thức riêng của Student Manager, không thay thế Passkey/Face ID của hệ điều hành.
-                Camera chỉ được bật khi bạn chủ động đăng ký. Frame được gửi tới server để kiểm tra PAD và liveness; không lưu ảnh thô vào cơ sở dữ liệu.
+                {t('faceLoginExplanation')} {t('faceCameraConsentNote')} {t('faceFramePrivacy')}
             </p>
             <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                 <ShieldAlert size={16} className="mt-0.5 shrink-0" />
@@ -235,7 +234,7 @@ export default function FaceLoginSettings() {
                 <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-slate-950 dark:border-slate-700">
                     <video ref={videoRef} autoPlay muted playsInline className="aspect-video w-full object-cover" />
                     <div className="flex items-center justify-between gap-3 p-3 text-xs text-white">
-                        <span className="inline-flex items-center gap-2"><Video size={14} /> Đang ghi nhận frame an toàn</span>
+                        <span className="inline-flex items-center gap-2"><Video size={14} /> {t('faceCapturingFrames')}</span>
                         <span>{progress}/{FRAME_COUNT}</span>
                     </div>
                     <div className="h-1 bg-slate-700"><div className="h-1 bg-indigo-400 transition-all" style={{ width: `${progress / FRAME_COUNT * 100}%` }} /></div>
@@ -251,15 +250,15 @@ export default function FaceLoginSettings() {
                 </button>
                 {configured && <button type="button" disabled={busy || loading} onClick={() => requestConfirmation('disable')}
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/30">
-                    <Trash2 size={14} /> Vô hiệu hóa
+                    <Trash2 size={14} /> {t('disable')}
                 </button>}
                 {cameraActive && <button type="button" disabled={!busy} onClick={stopCamera}
                     className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 px-3 text-xs font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200">
-                    <VideoOff size={14} /> Dừng camera
+                    <VideoOff size={14} /> {t('stopCamera')}
                 </button>}
-                <span className="inline-flex items-center gap-1 text-[11px] text-slate-500"><ShieldCheck size={13} /> Challenge một lần · AES-256-GCM</span>
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-500"><ShieldCheck size={13} /> {t('faceSecurityNote')}</span>
             </div>
-            {status?.credential?.enrolledAt && <p className="mb-0 mt-3 text-[11px] text-slate-400">Đăng ký: {new Date(status.credential.enrolledAt).toLocaleString()}</p>}
+            {status?.credential?.enrolledAt && <p className="mb-0 mt-3 text-[11px] text-slate-400">{t('registeredAt')}: {new Date(status.credential.enrolledAt).toLocaleString()}</p>}
             {error && <p role="alert" className="mb-0 mt-3 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-700 dark:bg-rose-950/30 dark:text-rose-300">{error}</p>}
             {confirmationAction && (
                 <div className="fixed inset-0 z-[12000] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) closeConfirmation(); }}>
@@ -275,11 +274,11 @@ export default function FaceLoginSettings() {
                             <button type="button" onClick={closeConfirmation} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t("closeDialog")}><X size={17} /></button>
                         </header>
                         <form onSubmit={submitConfirmation} className="grid gap-3">
-                            <label htmlFor="face-login-confirm-password" className="text-xs font-semibold text-slate-700 dark:text-slate-300">Mật khẩu tài khoản</label>
+                            <label htmlFor="face-login-confirm-password" className="text-xs font-semibold text-slate-700 dark:text-slate-300">{t('accountPassword')}</label>
                             <input id="face-login-confirm-password" type="password" autoComplete="current-password" autoFocus value={confirmationPassword} onChange={event => setConfirmationPassword(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-white" required />
                             {confirmationError && <p role="alert" className="m-0 text-xs text-rose-600 dark:text-rose-300">{confirmationError}</p>}
                             <div className="mt-2 flex flex-col-reverse justify-end gap-2 sm:flex-row">
-                                <button type="button" onClick={closeConfirmation} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                                <button type="button" onClick={closeConfirmation} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{t('cancel')}</button>
                                 <button type="submit" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-semibold text-white hover:bg-indigo-700"><ShieldCheck size={15} /> Xác nhận</button>
                             </div>
                         </form>
