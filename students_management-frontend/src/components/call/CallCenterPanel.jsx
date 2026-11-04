@@ -91,8 +91,8 @@ export default function CallCenterPanel({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 z-[180] bg-slate-950/30 backdrop-blur-[2px]" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
-            <section role="dialog" aria-modal="true" aria-labelledby="call-center-title" aria-describedby="call-center-description" className="absolute inset-x-3 top-16 mx-auto flex max-h-[calc(100dvh-80px)] w-full max-w-[420px] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:inset-x-auto sm:right-5 sm:top-20 sm:max-h-[calc(100dvh-110px)] dark:border-slate-700 dark:bg-slate-900">
+        <div className="fixed inset-0 z-[180] bg-slate-950/35" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+            <section role="dialog" aria-modal="true" aria-labelledby="call-center-title" aria-describedby="call-center-description" className="absolute inset-x-3 top-16 mx-auto flex max-h-[calc(100dvh-80px)] w-full max-w-[420px] flex-col overflow-hidden rounded-2xl bg-white shadow-[0_18px_48px_rgba(15,23,42,.22)] sm:inset-x-auto sm:right-5 sm:top-20 sm:max-h-[calc(100dvh-110px)] dark:bg-slate-900">
                 <header className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
                     <div>
                         <h2 id="call-center-title" className="font-semibold text-slate-900 dark:text-white">{t('calls')}</h2>
