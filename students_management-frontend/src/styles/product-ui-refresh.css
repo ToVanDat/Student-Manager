@@ -64,6 +64,20 @@ textarea {
 a { text-underline-offset: 3px; }
 
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea { caret-color: var(--ui-brand); }
+
+:where(html, body, *) {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ui-muted) 55%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ui-muted) 48%, transparent);
+}
+::-webkit-scrollbar-track { background: transparent; }
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
 select,
 textarea {
   min-width: 0;
@@ -81,7 +95,7 @@ textarea:focus {
 }
 
 input::placeholder,
-textarea::placeholder { color: var(--ui-muted); opacity: .78; }
+textarea::placeholder { color: var(--ui-muted); opacity: 1; }
 
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
 .dark select,
@@ -94,11 +108,12 @@ textarea::placeholder { color: var(--ui-muted); opacity: .78; }
 .dark input::placeholder,
 .dark textarea::placeholder { color: var(--ui-muted); }
 
+/* Shared content surfaces use a border for separation; elevation is reserved for overlays. */
 .app-card,
 .dashboard-surface,
 .feature-surface {
   border-radius: var(--ui-radius);
-  box-shadow: var(--ui-shadow);
+  box-shadow: none;
 }
 
 table { border-collapse: separate; border-spacing: 0; }
