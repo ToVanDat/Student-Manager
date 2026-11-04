@@ -70,7 +70,7 @@ export default function FaceLoginSettings() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     useEffect(() => {
         mountedRef.current = true;
@@ -279,7 +279,7 @@ export default function FaceLoginSettings() {
                             {confirmationError && <p role="alert" className="m-0 text-xs text-rose-600 dark:text-rose-300">{confirmationError}</p>}
                             <div className="mt-2 flex flex-col-reverse justify-end gap-2 sm:flex-row">
                                 <button type="button" onClick={closeConfirmation} className="inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{t('cancel')}</button>
-                                <button type="submit" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-semibold text-white hover:bg-indigo-700"><ShieldCheck size={15} /> Xác nhận</button>
+                                <button type="submit" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 text-xs font-semibold text-white hover:bg-indigo-700"><ShieldCheck size={15} /> {t('confirm')}</button>
                             </div>
                         </form>
                     </section>
