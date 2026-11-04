@@ -669,5 +669,14 @@
   "authModeRegister": "TẠO TÀI KHOẢN",
   "authModeRecovery": "KHÔI PHỤC TÀI KHOẢN",
   "authBannerCarousel": "Giới thiệu Student Manager",
-  "passwordMinimumHint": "Mật khẩu mới cần có ít nhất 8 ký tự."
+  "passwordMinimumHint": "Mật khẩu mới cần có ít nhất 8 ký tự.",
+  "noConversations": "Chưa có cuộc trò chuyện",
+  "startConversationHint": "Bắt đầu cuộc trò chuyện mới để nội dung xuất hiện tại đây.",
+  "conversationListLabel": "Danh sách cuộc trò chuyện",
+  "closeCallHistory": "Đóng lịch sử cuộc gọi",
+  "callCenterTabs": "Nội dung cuộc gọi",
+  "callHistoryTab": "Lịch sử",
+  "callNotificationsTab": "Thông báo",
+  "callHistoryLoadError": "Không thể tải lịch sử cuộc gọi. Vui lòng kiểm tra kết nối và thử lại.",
+  "retryLoading": "Thử tải lại"
 }

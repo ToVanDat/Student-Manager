@@ -669,5 +669,14 @@
   "authModeRegister": "CREATE ACCOUNT",
   "authModeRecovery": "ACCOUNT RECOVERY",
   "authBannerCarousel": "Student Manager introduction",
-  "passwordMinimumHint": "Your new password must contain at least 8 characters."
+  "passwordMinimumHint": "Your new password must contain at least 8 characters.",
+  "noConversations": "No conversations yet",
+  "startConversationHint": "Start a new conversation and it will appear here.",
+  "conversationListLabel": "Conversation list",
+  "closeCallHistory": "Close call history",
+  "callCenterTabs": "Call center sections",
+  "callHistoryTab": "History",
+  "callNotificationsTab": "Notifications",
+  "callHistoryLoadError": "Couldn't load call history. Check your connection and try again.",
+  "retryLoading": "Try again"
 }

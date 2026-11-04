@@ -39,7 +39,7 @@ export default function CallCenterPanel({
             const historyResponse = await callApi.getHistory();
             setHistory(historyResponse.data?.data || []);
         } catch (error) {
-            setLoadError(error?.response?.data?.message || 'Không thể tải lịch sử cuộc gọi. Vui lòng thử lại.');
+            setLoadError(error?.response?.data?.message || t('callHistoryLoadError'));
             throw error;
         } finally {
             setLoading(false);
@@ -98,12 +98,12 @@ export default function CallCenterPanel({
                         <h2 id="call-center-title" className="font-semibold text-slate-900 dark:text-white">{t('calls')}</h2>
                         <p id="call-center-description" className="text-xs text-slate-400">{t('callHistoryAndNotifications')}</p>
                     </div>
-                    <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Đóng lịch sử cuộc gọi" className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800">
+                    <button ref={closeButtonRef} type="button" onClick={onClose} aria-label={t("closeCallHistory")} className="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-slate-800">
                         <X size={18} aria-hidden="true" />
                     </button>
                 </header>
 
-                <div role="tablist" aria-label="Nội dung cuộc gọi" className="grid grid-cols-2 border-b border-slate-100 dark:border-slate-800">
+                <div role="tablist" aria-label={t("callCenterTabs")} className="grid grid-cols-2 border-b border-slate-100 dark:border-slate-800">
                     <button
                         type="button"
                         onClick={() => setTab('history')}
@@ -113,7 +113,7 @@ export default function CallCenterPanel({
                         aria-controls="call-center-panel"
                         className={`min-h-11 px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${tab === 'history' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}
                     >
-                        Lịch sử
+                        {t('callHistoryTab')}
                     </button>
                     <button
                         type="button"
@@ -124,7 +124,7 @@ export default function CallCenterPanel({
                         aria-controls="call-center-panel"
                         className={`relative min-h-11 px-4 py-3 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ${tab === 'notifications' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500'}`}
                     >
-                        Thông báo
+                        {t('callNotificationsTab')}
                         {unreadCount > 0 && (
                             <span className="ml-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] text-white">
                                 {unreadCount}
@@ -134,7 +134,7 @@ export default function CallCenterPanel({
                 </div>
 
                 <div id="call-center-panel" role="tabpanel" aria-labelledby={tab === 'history' ? 'call-history-tab' : 'call-notifications-tab'} aria-busy={loading} className="min-h-0 flex-1 overflow-y-auto p-3">
-                    {loadError && !loading && <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"><p>{loadError}</p><button type="button" onClick={() => load().catch(error => console.error('CALL CENTER LOAD ERROR:', error))} className="mt-2 min-h-10 rounded-lg border border-rose-300 px-3 text-xs font-semibold hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-800 dark:hover:bg-rose-900/40">Thử tải lại</button></div>}
+                    {loadError && !loading && <div role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200"><p>{loadError}</p><button type="button" onClick={() => load().catch(error => console.error('CALL CENTER LOAD ERROR:', error))} className="mt-2 min-h-10 rounded-lg border border-rose-300 px-3 text-xs font-semibold hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-800 dark:hover:bg-rose-900/40">{t('retryLoading')}</button></div>}
                     {loading && (
                         <p className="py-8 text-center text-sm text-slate-400">{t('loading')}</p>
                     )}
