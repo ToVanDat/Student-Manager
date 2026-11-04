@@ -126,3 +126,13 @@ These are source-level presentation changes only. They have not yet been validat
 - Corrected the mixed-language password/passkey verification label in advanced security and the Vietnamese cancel label in account-link removal.
 - Preserved CRUD requests, validation, API payloads, enrollment/security flows, and account-link behavior.
 - Re-fetched the changed source files and verified the intended strings and existing translation keys at source level. Frontend compilation, lint, and browser/device interaction tests remain outstanding.
+
+
+## Follow-up implementation — Admin management and settings review
+
+- Reviewed Catalog, Class, User, Student Account Link, and the Settings subpages (Appearance, Language, Notifications, Password, Security, Sessions, menu, and page shell).
+- Catalog and Class delete confirmations now use the shared Vietnamese/English confirmation labels; their primary actions use solid surfaces instead of gradients and the redundant header-card shadow treatment was removed.
+- Removed the redundant eyebrow/kicker from User Management and simplified its confirmation overlay/shadow.
+- Localized the remaining Refresh Token tooltip through the existing translation key. The other reviewed Settings subpages did not expose hardcoded visible labels in the source scan.
+- User Management and Student Account Link currently use explicit Vietnamese/English branches; these were retained rather than introducing a second translation pattern into those components in this pass.
+- No endpoint, API payload, permission, role, or account-link behavior changed. Source inspection only; frontend build/lint and browser QA remain unverified.
