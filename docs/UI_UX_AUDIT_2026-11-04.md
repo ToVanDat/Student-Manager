@@ -117,3 +117,12 @@ These are source-level presentation changes only. They have not yet been validat
 - Kept the Face Login release gate, camera capture flow, challenge lifecycle, server calls, Passkey WebAuthn payloads, sensitive re-authentication, and Google linking behavior unchanged.
 - Parsed both locale JSON files after the additions; both contain 797 keys with no missing counterpart keys at this checkpoint.
 - This remains source-level validation. Frontend build/lint, actual camera/Passkey runtime, browser keyboard/focus, and responsive visual QA are not yet verified.
+
+
+## Follow-up implementation — Admin catalog and class management dialogs
+
+- Localized the catalog and class deletion-confirmation title, irreversible-action notice, cancel action, and busy/confirm labels with the existing Vietnamese/English translation keys.
+- Removed decorative backdrop blur and reduced oversized dialog shadows in catalog, class, Face Login, advanced security, and student-account-link confirmation surfaces.
+- Corrected the mixed-language password/passkey verification label in advanced security and the Vietnamese cancel label in account-link removal.
+- Preserved CRUD requests, validation, API payloads, enrollment/security flows, and account-link behavior.
+- Re-fetched the changed source files and verified the intended strings and existing translation keys at source level. Frontend compilation, lint, and browser/device interaction tests remain outstanding.
