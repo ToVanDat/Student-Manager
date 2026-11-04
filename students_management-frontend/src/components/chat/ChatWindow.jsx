@@ -1127,7 +1127,7 @@ export default function ChatWindow({
             <header data-chat-region="conversation-header" className="min-h-[76px] px-3 sm:px-5 flex flex-wrap items-center justify-between gap-y-2 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
 
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                    <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+                    <button type="button" onClick={onBackToList} title={t("backToConversations")} aria-label={t("backToConversations")} className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
                         <ArrowLeft size={19} />
                     </button>
 
@@ -1402,13 +1402,13 @@ export default function ChatWindow({
                             autoFocus
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            aria-label="Tìm trong tin nhắn của cuộc trò chuyện"
-                            placeholder="Tìm tin nhắn trong cuộc trò chuyện..."
+                            aria-label={t("conversationSearch")}
+                            placeholder={t("chatMessageSearchPlaceholder")}
                             className="h-10 flex-1 bg-transparent text-sm outline-none"
                         />
                         <button
                             type="button"
-                            aria-label="Xóa từ khóa tìm kiếm"
+                            aria-label={t("clearSearch")}
                             onClick={() => { setSearchQuery(''); setMessageSearchResults([]); setSearchError(''); }}
                             className="rounded-md p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
                         >
