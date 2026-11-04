@@ -92,7 +92,7 @@ function AccountSettings({
                         {t('avatar')}
                     </p>
                     <p className="mt-1 mb-3 text-xs text-slate-500">
-                        JPEG, PNG hoặc WebP · tối đa 5 MB
+                        {t('avatarRequirements')}
                     </p>
 
                     <input
@@ -142,7 +142,7 @@ function AccountSettings({
                         />
                     </div>
                     <p id="account-username-help" className="m-0 text-xs text-slate-500 dark:text-slate-400">
-                        Username là định danh đăng nhập và không thể đổi tại mục thông tin cá nhân.
+                        {t('usernameImmutableHint')}
                     </p>
                 </div>
 
@@ -151,7 +151,7 @@ function AccountSettings({
                         htmlFor="account-full-name"
                         className="text-xs font-semibold text-slate-700 dark:text-slate-300"
                     >
-                        Tên hiển thị
+                        {t('displayName')}
                     </label>
                     <div className="flex min-h-[46px] items-center gap-2.5 rounded-lg border border-line bg-white px-3 transition focus-within:border-brand-500 focus-within:ring-4 focus-within:ring-brand-500/10 dark:border-slate-700 dark:bg-slate-950">
                         <User size={17} className="shrink-0 text-slate-400" />
@@ -168,7 +168,7 @@ function AccountSettings({
                         />
                     </div>
                     <p className="m-0 text-xs text-slate-500 dark:text-slate-400">
-                        Tên hiển thị không làm thay đổi username dùng để đăng nhập.
+                        {t('displayNameUsernameHint')}
                     </p>
                 </div>
 
