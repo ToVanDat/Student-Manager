@@ -708,5 +708,13 @@
   "unmuteConversation": "Bật lại thông báo",
   "muteForEightHours": "Tắt thông báo 8 giờ",
   "clearConversationContent": "Xóa nội dung cuộc trò chuyện",
-  "chatMessageSearchPlaceholder": "Tìm tin nhắn trong cuộc trò chuyện..."
+  "chatMessageSearchPlaceholder": "Tìm tin nhắn trong cuộc trò chuyện...",
+  "confirmDeleteDataTitle": "Xác nhận xóa dữ liệu?",
+  "deleteCannotUndo": "Thao tác này không thể hoàn tác.",
+  "deleting": "Đang xóa…",
+  "confirmDelete": "Xác nhận xóa",
+  "avatarRequirements": "JPEG, PNG hoặc WebP · tối đa 5 MB",
+  "usernameImmutableHint": "Username là định danh đăng nhập và không thể đổi tại mục thông tin cá nhân.",
+  "displayName": "Tên hiển thị",
+  "displayNameUsernameHint": "Tên hiển thị không làm thay đổi username dùng để đăng nhập."
 }
