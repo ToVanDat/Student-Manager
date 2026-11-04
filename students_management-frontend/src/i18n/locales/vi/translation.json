@@ -707,5 +707,6 @@
   "enableDeviceNotifications": "Bật thông báo trên thiết bị",
   "unmuteConversation": "Bật lại thông báo",
   "muteForEightHours": "Tắt thông báo 8 giờ",
-  "clearConversationContent": "Xóa nội dung cuộc trò chuyện"
+  "clearConversationContent": "Xóa nội dung cuộc trò chuyện",
+  "chatMessageSearchPlaceholder": "Tìm tin nhắn trong cuộc trò chuyện..."
 }
