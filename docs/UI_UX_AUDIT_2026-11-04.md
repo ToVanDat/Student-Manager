@@ -108,3 +108,12 @@ These are source-level presentation changes only. They have not yet been validat
 - Localized the enrollment deletion confirmation title, irreversible-action notice, cancel action, and busy/confirm labels using the existing language context.
 - Localized account avatar requirements, immutable username guidance, and display-name labels/help text.
 - Kept deletion, account update, and avatar upload behavior unchanged. Translation entries added in Vietnamese and English.
+
+
+## Follow-up implementation — Face Login and advanced security settings
+
+- Added Vietnamese/English localization for Face Login status, enrollment guidance, camera errors, liveness steps, privacy explanation, release-gate messaging, confirmation dialog, and action labels.
+- Added Vietnamese/English localization for Passkey registration/verification, Google account linking/unlinking, status/error feedback, and destructive-action confirmation.
+- Kept the Face Login release gate, camera capture flow, challenge lifecycle, server calls, Passkey WebAuthn payloads, sensitive re-authentication, and Google linking behavior unchanged.
+- Parsed both locale JSON files after the additions; both contain 797 keys with no missing counterpart keys at this checkpoint.
+- This remains source-level validation. Frontend build/lint, actual camera/Passkey runtime, browser keyboard/focus, and responsive visual QA are not yet verified.
