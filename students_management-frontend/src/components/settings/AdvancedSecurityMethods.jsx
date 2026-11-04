@@ -116,7 +116,7 @@ export default function AdvancedSecurityMethods() {
             const script = document.querySelector('script[data-google-identity]');
             script?.removeEventListener('load', initialize);
         };
-    }, [googleStatusLoading, googleStatusError, googleLink, refresh]);
+    }, [googleStatusLoading, googleStatusError, googleLink, refresh, t]);
 
     const registerPasskey = async () => {
         setBusy(true);
