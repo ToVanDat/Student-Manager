@@ -83,3 +83,11 @@ These are source-level presentation changes only. They have not yet been validat
 - No new dependency installation in this phase.
 - No destructive operation, deployment, or merge.
 - Do not mark browser/device QA complete without actual screenshots and interaction tests.
+
+
+## Follow-up implementation — Group information panel
+
+- Replaced remaining hardcoded Vietnamese labels in the group information panel with existing i18n keys so the panel follows the selected language.
+- Added localized confirmation-dialog titles for removing a member and leaving a group in Vietnamese and English.
+- Reused existing translation entries for cancel, confirm, processing, member count, roles, and group actions; no API, authorization, Socket.IO, or group-membership behavior changed.
+- Source-level validation only. Browser keyboard/focus and responsive verification remain outstanding.
