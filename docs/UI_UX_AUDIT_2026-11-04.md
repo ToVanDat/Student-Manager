@@ -56,9 +56,20 @@ PR #63 already contains broad UI work across authentication, Chat/Call, Settings
 | Settings / Profile | Settings sections and responsive navigation exist | long labels, save/error feedback, security actions, dark theme |
 | Landing / 3D | Hero image exists; no 3D model/runtime dependency found | assess actual product need before any WebGL work |
 
+## Changes applied after the audit
+
+- Localized the Face Login action in the login form for Vietnamese and English.
+- Replaced the student sidebar's translucent/blurred surface and gradient logo tile with solid surfaces.
+- Replaced the student header's translucent/blurred surface with a solid surface.
+- Removed blur from the authentication panel entrance keyframes; reduced-motion behavior remains.
+- Simplified the Student Management primary action to a solid button, removed the modal backdrop blur, reduced the modal shadow, and removed the redundant eyebrow above the dialog title.
+- Removed the Student Portal eyebrow above its page heading and the decorative shadow on its date surface.
+
+These are source-level presentation changes only. They have not yet been validated by a local frontend build or browser/device visual QA.
+
 ## Implementation order
 
-1. Fix remaining localization and accessibility defects with minimal component changes.
+1. Continue the remaining localization and accessibility audit with minimal component changes.
 2. Consolidate conflicting global styling only after rendered regression checks.
 3. Refine Login/OTP and Sidebar navigation.
 4. Refine Dashboard/Admin CRUD and Student Portal.
