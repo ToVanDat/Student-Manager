@@ -159,13 +159,13 @@ function StudentDashboard({
         <section className="student-management-page w-full min-w-0" data-ui-page="student-management">
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
             <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1440px]:grid-cols-[minmax(0,1fr)_300px]">
-                <div className="student-management-roster app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900" aria-busy={loading}>
+                <div className="student-management-roster app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900" aria-busy={loading}>
                     <div className="student-management-toolbar mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-5 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
                         <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-300"><GraduationCap size={20} /></span><div className="min-w-0"><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
                         {isAdmin && <div className="flex flex-wrap items-center gap-2">
                             <button type="button" onClick={() => setShowCsvImport(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"><Upload size={16} />{t('studentImportOpen')}</button>
                             <button type="button" onClick={handleExport} disabled={exporting} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"><Download size={16} />{exporting ? t('loading') : 'CSV'} {t('downloadFile')}</button>
-                            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>
+                            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-xs font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>
                         </div>}
                     </div>
                     <div className="px-4 pt-4 sm:px-6">
@@ -306,10 +306,10 @@ function StudentDashboard({
                 />
             )}
             {isAdmin && showForm && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
-                    <div ref={studentFormDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-3 sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
+                    <div ref={studentFormDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-lg outline-none dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
-                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 id="student-form-dialog-title" className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
+                            <div><h2 id="student-form-dialog-title" className="mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
                             <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
                         </div>
                         <div className="px-5 py-5 sm:px-8">
