@@ -707,5 +707,6 @@
   "enableDeviceNotifications": "Turn on device notifications",
   "unmuteConversation": "Turn notifications back on",
   "muteForEightHours": "Mute notifications for 8 hours",
-  "clearConversationContent": "Clear conversation content"
+  "clearConversationContent": "Clear conversation content",
+  "chatMessageSearchPlaceholder": "Search messages in this conversation…"
 }
