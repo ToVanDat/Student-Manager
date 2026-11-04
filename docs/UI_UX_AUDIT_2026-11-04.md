@@ -101,3 +101,10 @@ These are source-level presentation changes only. They have not yet been validat
 - Both locale JSON files were parsed after editing. Browser and full frontend checks remain required.
 
 - Follow-up: localized the remaining conversation-header back control and message-search field labels/placeholder using shared i18n keys.
+
+
+## Follow-up implementation — Settings and enrollment dialogs
+
+- Localized the enrollment deletion confirmation title, irreversible-action notice, cancel action, and busy/confirm labels using the existing language context.
+- Localized account avatar requirements, immutable username guidance, and display-name labels/help text.
+- Kept deletion, account update, and avatar upload behavior unchanged. Translation entries added in Vietnamese and English.
