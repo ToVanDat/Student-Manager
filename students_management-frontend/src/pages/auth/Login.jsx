@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useState} from 'react';
-import { Languages, QrCode, ChevronDown, ChevronUp } from 'lucide-react';
+import { Languages, QrCode, ChevronDown, ChevronUp, Camera } from 'lucide-react';
 import { VN, GB } from 'country-flag-icons/react/3x2';
 
 import { loginApi } from '@/api/authApi.js';
@@ -31,7 +31,7 @@ function Login() {
     const navigate = useNavigate();
 
     const [mode, setMode] = useState('login');
-    const [showQrLogin, setShowQrLogin] = useState(false);
+    const [showMoreLoginOptions, setShowMoreLoginOptions] = useState(false);
     const [showFaceLogin, setShowFaceLogin] = useState(false);
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
@@ -109,7 +109,7 @@ function Login() {
 
         setMode(newMode);
 
-        setShowQrLogin(false);
+        setShowMoreLoginOptions(false);
 
         setError('');
 
@@ -491,7 +491,6 @@ function Login() {
             success={success}
             loading={loading}
             onSubmit={handleLogin}
-            onFaceLogin={handleFaceLogin}
             onOpenRegister={() => changeMode('register')}
         />
     );
@@ -543,11 +542,11 @@ function Login() {
 
     return (
         <main data-ui-page="auth-login" className="auth-login-page relative min-h-[100svh] overflow-x-hidden bg-[#f5f7fb] text-slate-900 selection:bg-blue-100 selection:text-blue-950 min-[801px]:grid min-[801px]:grid-cols-[minmax(0,0.92fr)_minmax(480px,1.08fr)]">
-            <div className="min-h-[34svh] overflow-hidden p-3 min-[601px]:min-h-[38svh] min-[601px]:p-4 min-[801px]:min-h-[100svh] xl:p-5">
+            <div className="hidden min-[801px]:block min-[801px]:min-h-[100svh] min-[801px]:overflow-hidden min-[801px]:p-4 xl:p-5">
                 <AuthBanner />
             </div>
 
-            <section aria-labelledby="auth-title" className="relative flex min-h-[66svh] items-center justify-center px-4 pb-8 pt-5 sm:px-8 sm:pb-12 min-[801px]:min-h-[100svh] min-[801px]:px-10 min-[801px]:py-16 xl:px-16">
+            <section aria-labelledby="auth-title" className="relative flex min-h-[100svh] items-center justify-center px-4 pb-8 pt-16 sm:px-8 sm:pb-12 min-[801px]:min-h-[100svh] min-[801px]:px-10 min-[801px]:py-16 xl:px-16">
                 <div className="absolute right-4 top-4 z-20 sm:right-8 sm:top-6 lg:right-8 xl:right-12">
                     <div className="inline-flex items-center gap-1 rounded-full border border-slate-200/90 bg-white/95 p-1 shadow-sm backdrop-blur" role="group" aria-label={t('language')}>
                         <Languages size={14} aria-hidden="true" className="ml-2 text-slate-400" />
@@ -602,37 +601,40 @@ function Login() {
                     {mode === 'login' && (
                         <>
                             {renderLogin()}
-                            <AdvancedLoginMethods
-                                onLogin={handleAdvancedLogin}
-                                onError={reportAdvancedLoginError}
-                                onLoading={setAdvancedLoading}
-                            />
-
-                            <div className="mt-5 border-t border-slate-200 pt-4">
+                            <div className="mt-4 border-t border-slate-200 pt-3">
                                 <button
                                     type="button"
-                                    aria-expanded={showQrLogin}
-                                    aria-controls="qr-login-panel"
+                                    aria-expanded={showMoreLoginOptions}
+                                    aria-controls="more-login-options"
                                     onClick={() => {
-                                        setShowQrLogin(visible => !visible);
+                                        setShowMoreLoginOptions(visible => !visible);
                                         setError('');
                                         setSuccess('');
                                     }}
-                                    className="group flex min-h-12 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 text-left shadow-sm transition hover:border-blue-300 hover:bg-blue-50/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                                    className="flex min-h-11 w-full items-center justify-between gap-3 rounded-lg px-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                                 >
-                                    <span className="flex items-center gap-3">
-                                        <span className="flex size-9 items-center justify-center rounded-lg bg-slate-100 text-slate-700 transition group-hover:bg-blue-100 group-hover:text-blue-700">
-                                            <QrCode size={18} aria-hidden="true" />
-                                        </span>
-                                        <span>
-                                            <span className="block text-sm font-semibold text-slate-800">Đăng nhập bằng mã QR</span>
-                                            <span className="mt-0.5 block text-xs font-normal text-slate-500">Xác nhận bằng điện thoại đã đăng nhập</span>
-                                        </span>
+                                    <span className="flex items-center gap-2">
+                                        <QrCode size={17} aria-hidden="true" />
+                                        {language === 'vi' ? 'Phương thức đăng nhập khác' : 'More sign-in options'}
                                     </span>
-                                    {showQrLogin ? <ChevronUp size={17} aria-hidden="true" className="shrink-0 text-slate-400" /> : <ChevronDown size={17} aria-hidden="true" className="shrink-0 text-slate-400" />}
+                                    {showMoreLoginOptions ? <ChevronUp size={17} aria-hidden="true" /> : <ChevronDown size={17} aria-hidden="true" />}
                                 </button>
-                                {showQrLogin && (
-                                    <div id="qr-login-panel" className="mt-3">
+                                {showMoreLoginOptions && (
+                                    <div id="more-login-options" className="mt-2 space-y-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleFaceLogin}
+                                            disabled={loading || !username.trim()}
+                                            className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            <Camera size={17} aria-hidden="true" />
+                                            {t('faceLoginAction')}
+                                        </button>
+                                        <AdvancedLoginMethods
+                                            onLogin={handleAdvancedLogin}
+                                            onError={reportAdvancedLoginError}
+                                            onLoading={setAdvancedLoading}
+                                        />
                                         <QrLoginPanel onLogin={handleAdvancedLogin} />
                                     </div>
                                 )}
