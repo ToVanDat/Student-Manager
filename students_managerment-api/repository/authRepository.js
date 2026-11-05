@@ -770,6 +770,34 @@ const revokeSession = async (
 };
 
 
+const setFaceMfaPolicyAndRevokeSessions = async (userId, enabled) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const account = await client.query(
+            'UPDATE users SET require_face_mfa = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND is_active = TRUE RETURNING id',
+            [userId, enabled]
+        );
+        if (!account.rows[0]) throw new Error('Tài khoản không tồn tại hoặc đã bị khóa');
+        const sessions = await client.query(
+            'UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND revoked_at IS NULL RETURNING id',
+            [userId]
+        );
+        await client.query(
+            `UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1 AND revoked_at IS NULL`,
+            [userId]
+        );
+        await client.query('COMMIT');
+        return sessions.rows;
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
 const revokeAllSessions = async (userId) => {
     const query = `
         UPDATE sessions
@@ -1441,6 +1469,7 @@ module.exports = {
     revokeRefreshTokensBySessionId,
 
     revokeAllSessions,
+    setFaceMfaPolicyAndRevokeSessions,
 
 
     // ==================================================
