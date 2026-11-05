@@ -11,6 +11,7 @@ const {
 const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const authRepository = require('../repository/authRepository.js');
+const pendingFaceMfa = require('./pendingFaceMfaService.js');
 const { saveAccessTokenToRedis, removeAccessTokenFromRedis } = require('./accessTokenStore.js');
 
 const googleClient = new OAuth2Client();
@@ -74,6 +75,9 @@ function publicUser(user) {
 
 async function issueSession(user, req, options = {}) {
     if (!user || !user.is_active) throw new Error('Tài khoản đã bị khóa hoặc không tồn tại');
+    if (user.require_face_mfa === true && options.faceMfaVerified !== true && options.requireFaceCredential !== true && options.skipFaceMfaGate !== true) {
+        return pendingFaceMfa.createPendingAuth(user, req, options.authMethod || 'advanced-auth');
+    }
 
     // sessions.device_name is VARCHAR(100), while user_agent is TEXT.
     // Keep the display name within the database limit and preserve the full
@@ -277,13 +281,13 @@ async function unlinkGoogle(userId, currentPassword, verificationToken) {
 async function loginGoogle(idToken, req) {
     const google = await verifyGoogleIdToken(idToken);
     const result = await pool.query(
-        `SELECT u.id, u.username, u.email, u.role, u.avatar_url, u.is_active
+        `SELECT u.id, u.username, u.email, u.role, u.avatar_url, u.is_active, u.require_face_mfa
          FROM user_oauth_accounts a JOIN users u ON u.id = a.user_id
          WHERE a.provider = 'google' AND a.provider_subject = $1`,
         [google.sub]
     );
     if (!result.rows[0]) throw new Error('Google chưa được liên kết. Hãy đăng nhập bằng mật khẩu rồi liên kết Google trong cài đặt bảo mật.');
-    return issueSession(result.rows[0], req);
+    return issueSession(result.rows[0], req, { authMethod: 'google' });
 }
 
 async function beginPasskeyRegistration(userId) {
@@ -372,10 +376,10 @@ async function finishPasskeyLogin(challengeId, response, req) {
         [verification.authenticationInfo.newCounter, stored.id]
     );
     const user = await pool.query(
-        'SELECT id, username, email, role, avatar_url, is_active FROM users WHERE id = $1',
+        'SELECT id, username, email, role, avatar_url, is_active, require_face_mfa FROM users WHERE id = $1',
         [state.userId]
     );
-    return issueSession(user.rows[0], req);
+    return issueSession(user.rows[0], req, { authMethod: 'passkey' });
 }
 
 async function listPasskeys(userId) {
@@ -447,10 +451,10 @@ async function pollQrLogin(requestId, secret, req) {
         // Keep the request row locked until session issuance succeeds. If issuing the
         // session fails, ROLLBACK leaves the QR request approved so the client can retry.
         const userResult = await pool.query(
-            'SELECT id, username, email, role, avatar_url, is_active FROM users WHERE id = $1',
+            'SELECT id, username, email, role, avatar_url, is_active, require_face_mfa FROM users WHERE id = $1',
             [request.approved_user_id]
         );
-        const session = await issueSession(userResult.rows[0], req);
+        const session = await issueSession(userResult.rows[0], req, { authMethod: 'qr' });
         issuedSession = session;
         const consumed = await client.query(
             `UPDATE qr_login_requests SET status = 'consumed', consumed_at = CURRENT_TIMESTAMP
