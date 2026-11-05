@@ -1137,6 +1137,14 @@ const refresh = async (
         );
     }
 
+    // Refresh must never upgrade an old/unverified session into an MFA session.
+    // The user must complete a fresh primary sign-in and Face challenge instead.
+    if (user.require_face_mfa === true && !session.face_mfa_verified_at) {
+        const error = new Error('Phiên đăng nhập chưa hoàn tất Face MFA. Hãy đăng nhập lại và xác minh khuôn mặt.');
+        error.code = 'FACE_MFA_REQUIRED';
+        throw error;
+    }
+
 
     // =================================================
     // GENERATE NEW ACCESS TOKEN
