@@ -1,0 +1,162 @@
+/* Product motion system — restrained, purposeful and progressively enhanced.
+   Motion communicates entry, state change and feedback; it never carries meaning alone. */
+
+:root {
+  --motion-fast: 140ms;
+  --motion-base: 200ms;
+  --motion-enter: 280ms;
+  --motion-ease: cubic-bezier(.2, .75, .25, 1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Guided auth steps: short vertical settle, no blur or scale distortion. */
+  .auth-login-card .auth-step-transition {
+    animation: product-step-enter 240ms var(--motion-ease) both;
+  }
+
+  .auth-login-card [data-auth-step="recovery-otp"] input {
+    letter-spacing: .42em;
+    font-variant-numeric: tabular-nums;
+    transition: border-color var(--motion-base) ease, background-color var(--motion-base) ease,
+      box-shadow var(--motion-base) ease;
+  }
+
+  .auth-login-card [data-auth-step="recovery-otp"] input:focus-visible {
+    background-color: #fff;
+    border-color: #315fd1;
+    box-shadow: 0 0 0 4px rgb(49 95 209 / 12%);
+  }
+
+  .auth-login-card [data-auth-step="recovery-otp"] button[type="submit"],
+  .auth-login-card [data-auth-step="recovery-reset"] button[type="submit"] {
+    background-image: none;
+    background-color: #315fd1;
+    box-shadow: none;
+    transition: background-color var(--motion-fast) ease, transform var(--motion-fast) ease;
+  }
+
+  .auth-login-card [data-auth-step="recovery-otp"] button[type="submit"]:hover:not(:disabled),
+  .auth-login-card [data-auth-step="recovery-reset"] button[type="submit"]:hover:not(:disabled) {
+    background-color: #274eaf;
+    transform: translateY(-1px);
+  }
+
+  .auth-login-card [data-auth-step="recovery-otp"] button[type="submit"]:active:not(:disabled),
+  .auth-login-card [data-auth-step="recovery-reset"] button[type="submit"]:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  /* Navigation: state is communicated by color/position, not decorative glow. */
+  [data-ui-region="student-sidebar"] nav button {
+    transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease, transform var(--motion-fast) ease;
+  }
+
+  [data-ui-region="student-sidebar"] nav button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  /* Popovers and dialogs enter once. Existing focus and dismissal behavior is untouched. */
+  [role="dialog"][aria-modal="true"],
+  [role="menu"],
+  [data-motion-surface="popover"] {
+    transform-origin: top right;
+  }
+
+  [role="menu"],
+  [data-motion-surface="popover"] {
+    animation: product-dialog-enter 160ms var(--motion-ease) both;
+  }
+
+  [role="dialog"][aria-modal="true"] {
+    animation: product-dialog-enter 220ms var(--motion-ease) both;
+  }
+
+  /* Call center tabs use a clear selected-state transition. */
+  [role="tablist"] [role="tab"] {
+    transition: color var(--motion-fast) ease, background-color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease;
+  }
+
+  /* Chat surfaces: restrained hover/press feedback; do not replay all message rows on rerender. */
+  .chat-shell [data-chat-region="conversation-actions"] button,
+  .chat-shell [data-chat-region="message-composer"] button {
+    transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease, transform var(--motion-fast) ease;
+  }
+
+  .chat-shell [data-chat-region="message-composer"] button:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  .chat-shell [data-chat-region="message-timeline"] {
+    scroll-behavior: smooth;
+  }
+
+  [data-chat-region="message-timeline"] [data-message-id] {
+    animation: product-message-enter 180ms var(--motion-ease) both;
+  }
+
+  [data-chat-region="typing-indicator"] {
+    animation: product-feedback-enter 160ms ease-out both;
+  }
+
+  [data-chat-region="typing-indicator"] span.animate-bounce {
+    animation-duration: 900ms;
+  }
+
+  /* Feedback regions appear without changing their layout or live-region semantics. */
+  [role="alert"],
+  [role="status"] {
+    animation: product-feedback-enter 180ms ease-out both;
+  }
+}
+
+@keyframes product-step-enter {
+  from { opacity: .72; transform: translate3d(0, 7px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes product-dialog-enter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(.99); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes product-message-enter {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes product-feedback-enter {
+  from { opacity: .7; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-login-card .auth-step-transition,
+  [data-chat-region="message-timeline"] [data-message-id],
+  [data-chat-region="typing-indicator"],
+  [role="dialog"][aria-modal="true"],
+  [role="alert"],
+  [role="status"] {
+    animation: none !important;
+  }
+
+  .auth-login-card [data-auth-step="recovery-otp"] button,
+  .auth-login-card [data-auth-step="recovery-reset"] button,
+  [data-ui-region="student-sidebar"] nav button,
+  [role="tablist"] [role="tab"],
+  .chat-shell [data-chat-region="conversation-actions"] button,
+  .chat-shell [data-chat-region="message-composer"] button {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .chat-shell [data-chat-region="message-timeline"] {
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .auth-login-card .auth-step-transition { animation-duration: 180ms; }
+}
