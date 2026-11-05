@@ -136,3 +136,13 @@ These are source-level presentation changes only. They have not yet been validat
 - Localized the remaining Refresh Token tooltip through the existing translation key. The other reviewed Settings subpages did not expose hardcoded visible labels in the source scan.
 - User Management and Student Account Link currently use explicit Vietnamese/English branches; these were retained rather than introducing a second translation pattern into those components in this pass.
 - No endpoint, API payload, permission, role, or account-link behavior changed. Source inspection only; frontend build/lint and browser QA remain unverified.
+
+## Follow-up implementation — Product motion foundation
+
+- Added a shared, lightweight CSS motion layer and loaded it from the frontend entry point. No animation dependency was added.
+- Authentication: added a short entrance transition for guided recovery steps, refined OTP focus feedback and tabular code presentation, and simplified OTP/password-reset primary actions to solid surfaces with restrained hover/press feedback.
+- Navigation and overlays: scoped active/press feedback to the Student Sidebar, added a consistent modal/popover entrance, and retained existing focus/dismissal behavior.
+- Chat: marked the message timeline and typing indicator with semantic UI regions; newly mounted message bubbles now enter with a short opacity/position transition. Existing messages are not replayed on parent rerenders.
+- Calls: removed decorative backdrop blur from incoming and active call overlays; existing call-dialog entrance, countdown, and state feedback remain lightweight.
+- Accessibility/performance: motion is enabled only when `prefers-reduced-motion: no-preference`; reduced-motion disables the new transitions/animations and smooth scrolling. No timers, animation loops, API calls, Socket.IO events, E2EE state, or business rules were introduced by this motion layer.
+- Validation status: source changes committed to the UI/UX feature branch. Frontend build/lint, visual QA at desktop/tablet/mobile breakpoints, keyboard testing, reduced-motion testing, and real incoming/active-call testing are still required before marking the motion work production-ready.
