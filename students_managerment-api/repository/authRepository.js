@@ -50,6 +50,7 @@ const findUserById = async (userId) => {
             role,
             avatar_url,
             is_active,
+            require_face_mfa,
             created_at,
             updated_at
         FROM users
@@ -681,7 +682,8 @@ const findSessionByIdAndUserId = async (
             ip_address,
             created_at,
             last_used_at,
-            revoked_at
+            revoked_at,
+            face_mfa_verified_at
         FROM sessions
         WHERE id = $1
           AND user_id = $2
