@@ -243,6 +243,16 @@ const authMiddleware = async (
             });
         }
 
+        // Enforce Face MFA at the API boundary. Existing sessions without a
+        // verified assurance timestamp cannot access protected resources once
+        // the account policy is enabled.
+        if (currentUser.require_face_mfa === true && !session.face_mfa_verified_at) {
+            return res.status(403).json({
+                code: 'FACE_MFA_REQUIRED',
+                message: 'Phiên đăng nhập cần hoàn tất xác minh khuôn mặt.'
+            });
+        }
+
         // ==================================================
         // 12. SAVE CURRENT USER INTO REQUEST
         // ==================================================
