@@ -15,7 +15,6 @@ function LoginForm({
     success,
     loading,
     onSubmit,
-    onFaceLogin,
     onOpenRegister,
 }) {
     const { t } = useLanguage();
