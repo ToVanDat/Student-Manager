@@ -5,7 +5,7 @@ export default function AuthStepper({ steps, currentStep }) {
     const progress = steps.length > 1 ? (currentStep / (steps.length - 1)) * 100 : 100;
 
     return (
-        <nav aria-label={t('authProgress')} className="mb-6 w-full">
+        <nav aria-label={t('authProgress')} className="auth-stepper mb-6 w-full">
             <div className="mb-3 flex items-center justify-between gap-3 md:hidden">
                 <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
                     {t('authStepOf', { current: currentStep + 1, total: steps.length })}
@@ -41,7 +41,7 @@ export default function AuthStepper({ steps, currentStep }) {
                             )}
                             <span
                                 aria-current={active ? 'step' : undefined}
-                                className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-bold transition-colors motion-reduce:transition-none ${
+                                className={`relative z-10 flex h-9 w-9 items-center justify-center rounded-full border text-xs font-bold transition-all duration-300 motion-reduce:transition-none ${
                                     completed
                                         ? 'border-blue-600 bg-blue-600 text-white'
                                         : active

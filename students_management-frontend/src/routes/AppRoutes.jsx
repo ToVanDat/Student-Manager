@@ -9,6 +9,7 @@ import Login from '@/pages/auth/Login.jsx';
 import Students from '@/pages/students/Students.jsx';
 import ChatPage from '@/pages/chat/ChatPage.jsx'; 
 import ProtectedRoute from '@/routes/ProtectedRoute.jsx';
+import GlobalChatbot from '@/components/assistant/GlobalChatbot.jsx';
 
 function AppRoutes() {
     return (
@@ -39,6 +40,7 @@ function AppRoutes() {
                     element={<Navigate to="/login" replace />}
                 />
             </Routes>
+            <GlobalChatbot />
         </BrowserRouter>
     );
 }

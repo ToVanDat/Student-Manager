@@ -21,6 +21,7 @@ const findUserByIdWithPassword = async (userId) => {
             password_hash,
             role,
             is_active,
+            require_face_mfa,
             created_at,
             updated_at
         FROM users
@@ -49,6 +50,7 @@ const findUserById = async (userId) => {
             role,
             avatar_url,
             is_active,
+            require_face_mfa,
             created_at,
             updated_at
         FROM users
@@ -79,7 +81,8 @@ const findUserByUsername = async (username) => {
             password_hash,
             role,
             avatar_url,
-            is_active
+            is_active,
+            require_face_mfa
         FROM users
         WHERE username = $1
         `,
@@ -610,9 +613,9 @@ const createSessionForActiveFaceUser = async (
             FOR UPDATE OF credential
         )
         INSERT INTO sessions (
-            id, user_id, device_name, user_agent, ip_address
+            id, user_id, device_name, user_agent, ip_address, face_mfa_verified_at
         )
-        SELECT $1, account.id, $3, $4, $5
+        SELECT $1, account.id, $3, $4, $5, CURRENT_TIMESTAMP
         FROM active_user AS account
         INNER JOIN active_face_credential AS face ON face.user_id = account.id
         RETURNING *
@@ -645,7 +648,8 @@ const findSessionsByUserId = async (
             ip_address,
             created_at,
             last_used_at,
-            revoked_at
+            revoked_at,
+            face_mfa_verified_at
         FROM sessions
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -678,7 +682,8 @@ const findSessionByIdAndUserId = async (
             ip_address,
             created_at,
             last_used_at,
-            revoked_at
+            revoked_at,
+            face_mfa_verified_at
         FROM sessions
         WHERE id = $1
           AND user_id = $2
@@ -710,6 +715,7 @@ const isSessionActiveForSocket = async (sessionId, userId) => {
               AND session.user_id = $2
               AND session.revoked_at IS NULL
               AND account.is_active = TRUE
+              AND (account.require_face_mfa = FALSE OR session.face_mfa_verified_at IS NOT NULL)
         ) AS active
         `,
         [sessionId, userId]
@@ -763,6 +769,34 @@ const revokeSession = async (
     return result.rows[0] || null;
 };
 
+
+const setFaceMfaPolicyAndRevokeSessions = async (userId, enabled) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const account = await client.query(
+            'UPDATE users SET require_face_mfa = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND is_active = TRUE RETURNING id',
+            [userId, enabled]
+        );
+        if (!account.rows[0]) throw new Error('Tài khoản không tồn tại hoặc đã bị khóa');
+        const sessions = await client.query(
+            'UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = $1 AND revoked_at IS NULL RETURNING id',
+            [userId]
+        );
+        await client.query(
+            `UPDATE refresh_tokens SET revoked_at = CURRENT_TIMESTAMP
+             WHERE user_id = $1 AND revoked_at IS NULL`,
+            [userId]
+        );
+        await client.query('COMMIT');
+        return sessions.rows;
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw error;
+    } finally {
+        client.release();
+    }
+};
 
 const revokeAllSessions = async (userId) => {
     const query = `
@@ -1435,6 +1469,7 @@ module.exports = {
     revokeRefreshTokensBySessionId,
 
     revokeAllSessions,
+    setFaceMfaPolicyAndRevokeSessions,
 
 
     // ==================================================

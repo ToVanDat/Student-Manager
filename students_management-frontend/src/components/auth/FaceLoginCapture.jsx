@@ -29,7 +29,7 @@ function captureJpeg(video) {
 
 const wait = ms => new Promise(resolve => window.setTimeout(resolve, ms));
 
-export default function FaceLoginCapture({ username, onClose, onSuccess }) {
+export default function FaceLoginCapture({ username, pendingAuthId = null, onClose, onSuccess }) {
     const videoRef = useRef(null);
     const streamRef = useRef(null);
     const cancelledRef = useRef(false);
@@ -74,7 +74,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             videoRef.current.srcObject = stream;
             await videoRef.current.play();
 
-            const challenge = await beginFaceLoginApi(username);
+            const challenge = await beginFaceLoginApi(username, pendingAuthId);
             const actions = Array.isArray(challenge.actions) ? challenge.actions : [];
             setInstruction(`Bước 1/2: ${actions[0] === 'blink' ? 'chớp mắt' : 'mỉm cười'}. Giữ khuôn mặt ở giữa khung hình.`);
             await wait(1200);
@@ -103,7 +103,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             onSuccess(data);
         } catch (requestError) {
             if (!cancelledRef.current) {
-                setError(requestError.response?.data?.message || requestError.message || 'Đăng nhập bằng Face Login thất bại.');
+                setError(requestError.response?.data?.message || requestError.message || 'Xác minh khuôn mặt thất bại.');
             }
             stopCamera();
         } finally {
@@ -118,7 +118,7 @@ export default function FaceLoginCapture({ username, onClose, onSuccess }) {
             <section className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
                 <header className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                     <div>
-                        <h2 id="face-login-title" className="m-0 text-base font-bold text-slate-900 dark:text-slate-100">Đăng nhập bằng Face Login</h2>
+                        <h2 id="face-login-title" className="m-0 text-base font-bold text-slate-900 dark:text-slate-100">{pendingAuthId ? 'Xác minh Face MFA' : 'Đăng nhập bằng Face Login'}</h2>
                         <p className="mb-0 mt-1 text-xs text-slate-500">Tài khoản: {username}</p>
                     </div>
                     <button type="button" onClick={onClose} disabled={busy} aria-label="Đóng" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 disabled:opacity-40 dark:hover:bg-slate-800"><X size={18} /></button>

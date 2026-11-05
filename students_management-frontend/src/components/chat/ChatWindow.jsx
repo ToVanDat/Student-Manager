@@ -333,12 +333,56 @@ export default function ChatWindow({
     const [showGroupInfo, setShowGroupInfo] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [pendingDestructiveAction, setPendingDestructiveAction] = useState(null);
+    const [destructiveActionBusy, setDestructiveActionBusy] = useState(false);
     const [showReportDialog, setShowReportDialog] = useState(false);
     const [showContactInfo, setShowContactInfo] = useState(false);
     const [showMediaPanel, setShowMediaPanel] = useState(false);
+    const chatModalRef = useRef(null);
     const [mediaPanelFilter, setMediaPanelFilter] = useState('all');
     const [reportReason, setReportReason] = useState('spam');
     const [showSearchPanel, setShowSearchPanel] = useState(false);
+
+    useEffect(() => {
+        const activeModal = showChatThemePicker || showContactInfo || showMediaPanel || showReportDialog;
+        if (!activeModal || !chatModalRef.current) return undefined;
+        const previouslyFocused = document.activeElement;
+        const modal = chatModalRef.current;
+        const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...modal.querySelectorAll(focusableSelector)];
+        (focusable[0] || modal).focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                if (showChatThemePicker) setShowChatThemePicker(false);
+                else if (showReportDialog) setShowReportDialog(false);
+                else if (showMediaPanel) setShowMediaPanel(false);
+                else setShowContactInfo(false);
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...modal.querySelectorAll(focusableSelector)];
+            if (!items.length) {
+                event.preventDefault();
+                modal.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [showChatThemePicker, showContactInfo, showMediaPanel, showReportDialog]);
     const [searchQuery, setSearchQuery] = useState('');
     const [messageSearchResults, setMessageSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
@@ -601,13 +645,17 @@ export default function ChatWindow({
             setShowSearchPanel(false);
         };
         const handleSearchKeyDown = event => {
-            if (event.key === 'Escape') setShowSearchPanel(false);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setShowSearchPanel(false);
+            }
         };
         document.addEventListener('mousedown', handleSearchOutside);
         document.addEventListener('keydown', handleSearchKeyDown);
         return () => {
             document.removeEventListener('mousedown', handleSearchOutside);
             document.removeEventListener('keydown', handleSearchKeyDown);
+            searchTriggerRef.current?.focus?.();
         };
     }, [showSearchPanel]);
 
@@ -654,6 +702,26 @@ export default function ChatWindow({
             console.error('Không thể thực hiện thao tác cuộc trò chuyện:', error);
             toast.error(error?.response?.data?.message || error?.message || 'Thao tác thất bại. Vui lòng thử lại.', { duration: 8000 });
         }
+    };
+
+    const confirmDestructiveChatAction = async () => {
+        if (!pendingDestructiveAction || destructiveActionBusy) return;
+        const action = pendingDestructiveAction;
+        setPendingDestructiveAction(null);
+        setDestructiveActionBusy(true);
+        if (action === 'clear') {
+            await runMoreAction(async () => {
+                if (typeof onClearConversationMessages !== 'function') {
+                    throw new Error('Chức năng xóa nội dung cuộc trò chuyện chưa được kết nối.');
+                }
+                await onClearConversationMessages();
+            });
+        } else if (action === 'hide') {
+            await runMoreAction(() => updateConversationSetting('hide', true));
+        } else if (action === 'block') {
+            await runMoreAction(blockConversationUser);
+        }
+        setDestructiveActionBusy(false);
     };
 
     const updateConversationSetting = async (action, value) => {
@@ -926,7 +994,7 @@ export default function ChatWindow({
     }, []);
 
     return (
-    <section data-chat-theme={chatTheme} className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950" style={chatThemeStyles}>
+    <section data-chat-theme={chatTheme} data-chat-region="conversation" className="relative flex min-w-0 flex-1 bg-[#f4f8fd] dark:bg-slate-950" style={chatThemeStyles}>
         <div className="relative flex min-w-0 flex-1 flex-col bg-white dark:bg-slate-900" style={{ backgroundColor: 'var(--chat-theme-surface)' }}>
 
             {pendingAttachment && (
@@ -1056,10 +1124,10 @@ export default function ChatWindow({
 
             {/* ================= HEADER ================= */}
 
-            <header className="h-[76px] px-3 sm:px-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
+            <header data-chat-region="conversation-header" className="min-h-[76px] px-3 sm:px-5 flex flex-wrap items-center justify-between gap-y-2 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 backdrop-blur" style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}>
 
                 <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                    <button type="button" onClick={onBackToList} title="Quay lại danh sách hội thoại" aria-label="Quay lại danh sách hội thoại" className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
+                    <button type="button" onClick={onBackToList} title={t("backToConversations")} aria-label={t("backToConversations")} className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 lg:hidden">
                         <ArrowLeft size={19} />
                     </button>
 
@@ -1086,27 +1154,27 @@ export default function ChatWindow({
                             }`}
                         >
                             {activeConversation.type === 'group'
-                                ? activeConversation.memberCount + ' thành viên'
+                                ? activeConversation.memberCount + ' ' + t('membersCount')
                                 : presenceLabel}
                         </p>
                     </div>
 
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1 text-slate-500 dark:text-slate-400">
+                <div data-chat-region="conversation-actions" className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1 text-slate-500 dark:text-slate-400">
                     {activeConversation.type === 'direct' && e2eeStatus?.available && (
                         e2eeStatus.enabled && e2eeStatus.mode !== 'paused' ? (
                             <>
-                                <span className="inline-flex h-9 items-center gap-1 rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title="Tin nhắn mới được mã hóa đầu cuối">
+                                <span data-chat-e2ee-state="enabled" role="status" aria-label={t("e2eeEnabled")} className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-emerald-50 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" title={t("e2eeNewMessagesEncrypted")}>
                                     <ShieldCheck size={16} /> E2EE
                                 </span>
                                 <button
                                     type="button"
                                     onClick={() => setShowE2EEIdentityVerification(true)}
                                     className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-slate-800"
-                                    title="So sánh mã an toàn với người nhận"
+                                    title={t("verifyIdentity")}
                                 >
-                                    <ShieldCheck size={15} /> Xác minh
+                                    <ShieldCheck size={15} /> {t("verifyIdentity")}
                                 </button>
                                 {showE2EEIdentityVerification && (
                                     <E2EEIdentityVerification
@@ -1121,26 +1189,28 @@ export default function ChatWindow({
                                 onClick={onPauseE2EE}
                                 disabled={enablingE2EE || !onPauseE2EE}
                                 className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50 dark:text-amber-300 dark:hover:bg-amber-950/40"
-                                title="Tạm dừng E2EE cho tin nhắn mới"
+                                title={t("pauseE2EE")}
                             >
-                                    Tạm dừng
+                                    {t("pauseE2EE")}
                                 </button>
                             </>
                         ) : e2eeStatus.enabled && e2eeStatus.mode === 'paused' ? (
                             <span
-                                className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                                title="E2EE đã tạm dừng. Tin nhắn mới không được mã hóa đầu cuối; lịch sử E2EE cũ được giữ nguyên."
+                                data-chat-e2ee-state="paused"
+                                className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                title={t("e2eePausedDescription")}
                                 role="status"
                             >
-                                <Shield size={16} /> E2EE đã tạm dừng
+                                <Shield size={16} /> {t("e2eePaused")}
                             </span>
                         ) : !e2eeStatus.activationEnabled ? (
                             <span
-                                className="inline-flex h-9 items-center gap-1 rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-                                title="Tạm dừng bật E2EE cho cuộc trò chuyện mới. Các cuộc trò chuyện E2EE đã bật vẫn giữ nguyên."
+                                data-chat-e2ee-state="activation-paused"
+                                className="inline-flex h-9 items-center gap-1 whitespace-nowrap rounded-xl bg-amber-50 px-2 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                                title={t("e2eeActivationPausedDescription")}
                                 role="status"
                             >
-                                <Shield size={16} /> E2EE tạm dừng
+                                <Shield size={16} /> {t("e2eeActivationPaused")}
                             </span>
                         ) : (
                             <button
@@ -1148,7 +1218,7 @@ export default function ChatWindow({
                                 onClick={onEnableE2EE}
                                 disabled={!e2eeStatus.canEnable || !e2eeClientReady || enablingE2EE}
                                 className="inline-flex h-9 items-center gap-1 rounded-xl px-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-slate-800"
-                                title={!e2eeStatus.canEnable ? 'Mỗi thành viên cần đăng ký khóa trên tất cả thiết bị đang hoạt động' : !e2eeClientReady ? 'Thiết bị hoặc relay chưa sẵn sàng' : 'Bật mã hóa đầu cuối'}
+                                title={!e2eeStatus.canEnable ? t('e2eeMembersNeedKeys') : !e2eeClientReady ? t('e2eeDeviceRelayNotReady') : t('enableE2EE')}
                             >
                                 {enablingE2EE ? <LoaderCircle size={16} className="animate-spin" /> : <Shield size={16} />}
                                 E2EE
@@ -1161,13 +1231,13 @@ export default function ChatWindow({
                         </button>
                         {showChatThemePicker && createPortal(
                             <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/35 p-4 backdrop-blur-[2px]" onMouseDown={event => { if (event.target === event.currentTarget) setShowChatThemePicker(false); }}>
-                                <section role="dialog" aria-modal="true" aria-label={t('chatTheme')} className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900" style={{ maxHeight: 'min(620px, calc(100dvh - 32px))' }}>
+                                <section ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t('chatTheme')} className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900" style={{ maxHeight: 'min(620px, calc(100dvh - 32px))' }}>
                                     <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                                         <div className="min-w-0">
                                             <h2 className="text-base font-semibold text-slate-900 dark:text-white">{t('chatTheme')}</h2>
                                             <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('chatThemeDescription')}</p>
                                         </div>
-                                        <button type="button" onClick={() => setShowChatThemePicker(false)} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white" aria-label="Đóng"><X size={18} /></button>
+                                        <button type="button" onClick={() => setShowChatThemePicker(false)} className="flex size-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white" aria-label={t("close")}><X size={18} /></button>
                                     </div>
                                     <div className="grid max-h-[min(440px,calc(100dvh-150px))] grid-cols-1 gap-3 overflow-y-auto p-4 sm:grid-cols-2">
                                         {chatThemes.map(item => (
@@ -1177,15 +1247,15 @@ export default function ChatWindow({
                                                 </span>
                                                 <span className="min-w-0 flex-1">
                                                     <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{item.label}</span>
-                                                    <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">{chatTheme === item.value ? 'Đang sử dụng' : 'Áp dụng chủ đề'}</span>
+                                                    <span className="mt-1 block text-[11px] text-slate-500 dark:text-slate-400">{chatTheme === item.value ? t('using') : t('applyTheme')}</span>
                                                 </span>
                                                 {chatTheme === item.value && <Check size={17} className="shrink-0 text-blue-600 dark:text-blue-400" />}
                                             </button>
                                         ))}
                                     </div>
                                     <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                                        <span>{savingChatThemeIds.has(String(activeConversation?.id)) ? 'Đang lưu chủ đề…' : 'Chủ đề áp dụng cho cuộc trò chuyện này'}</span>
-                                        <button type="button" onClick={() => chooseChatTheme('default')} disabled={chatTheme === 'default' || savingChatThemeIds.has(String(activeConversation?.id))} className="rounded-lg px-3 py-2 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950/40">Đặt lại</button>
+                                        <span>{savingChatThemeIds.has(String(activeConversation?.id)) ? t('savingTheme') : t('themeForConversation')}</span>
+                                        <button type="button" onClick={() => chooseChatTheme('default')} disabled={chatTheme === 'default' || savingChatThemeIds.has(String(activeConversation?.id))} className="rounded-lg px-3 py-2 font-medium text-blue-600 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950/40">{t("reset")}</button>
                                     </div>
                                 </section>
                             </div>,
@@ -1242,9 +1312,9 @@ export default function ChatWindow({
                         type="button"
                         onClick={() => setShowDetailsPanel(value => !value)}
                         className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${showDetailsPanel ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-100'}`}
-                        aria-label={showDetailsPanel ? 'Ẩn thông tin cuộc trò chuyện' : 'Hiện thông tin cuộc trò chuyện'}
+                        aria-label={showDetailsPanel ? t('hideConversationInfo') : t('showConversationInfo')}
                         aria-expanded={showDetailsPanel}
-                        title="Thông tin cuộc trò chuyện"
+                        title={t("conversationInfo")}
                     >
                         <PanelRight size={18} />
                     </button>
@@ -1261,11 +1331,11 @@ export default function ChatWindow({
                                 if (!showMoreMenu) positionMoreMenu();
                                 setShowMoreMenu(prev => !prev);
                             }}
-                            aria-label={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Thêm tùy chọn cuộc trò chuyện'}
+                            aria-label={activeConversation.type === 'group' ? t('groupInformation') : t('moreConversationOptions')}
                             aria-haspopup={activeConversation.type === 'group' ? 'dialog' : 'menu'}
                             aria-expanded={activeConversation.type === 'group' ? showGroupInfo : showMoreMenu}
                             className="h-9 w-9 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800"
-                            title={activeConversation.type === 'group' ? 'Thông tin nhóm' : 'Tuỳ chọn'}
+                            title={activeConversation.type === 'group' ? t('groupInformation') : t('options')}
                         >
                             <MoreVertical size={18} />
                         </button>
@@ -1281,47 +1351,34 @@ export default function ChatWindow({
                                     <UserRound size={16} /> {t('conversationInfo')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowMediaPanel(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <FolderOpen size={16} /> File & Media
+                                    <FolderOpen size={16} /> {t("fileMedia")}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('pin', !activeConversation.isPinned))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <Pin size={16} /> {activeConversation.isPinned ? 'Bỏ ghim cuộc trò chuyện' : 'Ghim cuộc trò chuyện'}
+                                    <Pin size={16} /> {activeConversation.isPinned ? t('unpinConversation') : t('pinConversation')}
                                 </button>
                                 <button type="button" role="menuitem" disabled={savingConversationNotifications} onClick={() => { void toggleConversationNotifications(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
                                     {conversationNotificationsEnabled ? <Bell size={16} /> : <BellOff size={16} />}
-                                    {conversationNotificationsEnabled ? 'Tắt thông báo trên thiết bị' : 'Bật thông báo trên thiết bị'}
+                                    {conversationNotificationsEnabled ? t('disableDeviceNotifications') : t('enableDeviceNotifications')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { const until = activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? null : new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(); void runMoreAction(() => updateConversationSetting('mute', until)); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? <Bell size={16} /> : <BellOff size={16} />}
-                                    {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? 'Bật lại thông báo' : 'Tắt thông báo 8 giờ'}
+                                    {activeConversation.mutedUntil && new Date(activeConversation.mutedUntil) > new Date() ? t('unmuteConversation') : t('muteForEightHours')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => runMoreAction(() => updateConversationSetting('unread', true))} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
                                     <MailOpen size={16} /> {t('markUnread')}
                                 </button>
                                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-                                <button type="button" role="menuitem" onClick={() => {
-                                    if (window.confirm('Xóa toàn bộ tin nhắn và lịch sử cuộc gọi chỉ ở phía bạn? Người còn lại vẫn giữ lịch sử.')) {
-                                        void runMoreAction(async () => {
-                                            if (typeof onClearConversationMessages !== 'function') {
-                                                throw new Error('Chức năng xóa nội dung cuộc trò chuyện chưa được kết nối.');
-                                            }
-                                            await onClearConversationMessages();
-                                        });
-                                    } else setShowMoreMenu(false);
-                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                                    <Trash2 size={16} /> Xóa nội dung cuộc trò chuyện
+                                <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('clear'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                                    <Trash2 size={16} /> {t("clearConversationContent")}
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => {
-                                    if (window.confirm('Ẩn cuộc trò chuyện này khỏi danh sách của bạn? Tin nhắn sẽ không bị xóa.')) {
-                                        void runMoreAction(() => updateConversationSetting('hide', true));
-                                    } else setShowMoreMenu(false);
-                                }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
-                                    <FolderOpen size={16} /> Ẩn cuộc trò chuyện
+                                <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('hide'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800">
+                                    <FolderOpen size={16} /> {t("hideConversation")}
                                 </button>
-                                <button type="button" role="menuitem" onClick={() => { if (window.confirm('Chặn người dùng này? Bạn sẽ không thể tiếp tục nhắn tin/gọi cho họ.')) void runMoreAction(blockConversationUser); else setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
+                                <button type="button" role="menuitem" onClick={() => { setPendingDestructiveAction('block'); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
                                     <Ban size={16} /> {t('blockUser')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setShowReportDialog(true); setShowMoreMenu(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-600 hover:bg-red-50">
-                                    <Flag size={16} /> Báo cáo
+                                    <Flag size={16} /> {t("report")}
                                 </button>
                             </div>,
                             document.body
@@ -1345,13 +1402,13 @@ export default function ChatWindow({
                             autoFocus
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            aria-label="Tìm trong tin nhắn của cuộc trò chuyện"
-                            placeholder="Tìm tin nhắn trong cuộc trò chuyện..."
+                            aria-label={t("conversationSearch")}
+                            placeholder={t("chatMessageSearchPlaceholder")}
                             className="h-10 flex-1 bg-transparent text-sm outline-none"
                         />
                         <button
                             type="button"
-                            aria-label="Xóa từ khóa tìm kiếm"
+                            aria-label={t("clearSearch")}
                             onClick={() => { setSearchQuery(''); setMessageSearchResults([]); setSearchError(''); }}
                             className="rounded-md p-1 hover:bg-slate-200 dark:hover:bg-slate-700"
                         >
@@ -1397,9 +1454,9 @@ export default function ChatWindow({
 
             {showContactInfo && (
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
+                    <div ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="chat-contact-dialog-title" className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl outline-none">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Thông tin người dùng</h4>
+                            <h4 id="chat-contact-dialog-title" className="font-bold text-slate-900 dark:text-slate-100">Thông tin người dùng</h4>
                             <button type="button" onClick={() => setShowContactInfo(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-5 flex flex-col items-center text-center">
@@ -1421,9 +1478,9 @@ export default function ChatWindow({
 
             {showMediaPanel && (
                 <div className="absolute inset-0 z-[70] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl">
+                    <div ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="chat-media-dialog-title" className="w-full max-w-lg rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5 shadow-2xl outline-none">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">{t("mediaAndFiles")}</h4>
+                            <h4 id="chat-media-dialog-title" className="font-bold text-slate-900 dark:text-slate-100">{t("mediaAndFiles")}</h4>
                             <button type="button" onClick={() => setShowMediaPanel(false)}><X size={18}/></button>
                         </div>
                         <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
@@ -1455,9 +1512,9 @@ export default function ChatWindow({
 
             {showReportDialog && (
                 <div className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/30 p-5 backdrop-blur-[2px]">
-                    <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl">
+                    <div ref={chatModalRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="chat-report-dialog-title" className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl outline-none">
                         <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-slate-900 dark:text-slate-100">Báo cáo người dùng</h4>
+                            <h4 id="chat-report-dialog-title" className="font-bold text-slate-900 dark:text-slate-100">Báo cáo người dùng</h4>
                             <button type="button" onClick={() => setShowReportDialog(false)}><X size={18} /></button>
                         </div>
                         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Chọn lý do để gửi báo cáo.</p>
@@ -1510,6 +1567,7 @@ export default function ChatWindow({
                 )}
 
                 <div
+                data-chat-region="message-timeline"
                 ref={messagesContainerRef}
                 onScroll={(event) => {
                     const container = event.currentTarget;
@@ -1672,6 +1730,8 @@ export default function ChatWindow({
             )}
 
             <form
+                data-chat-region="message-composer"
+                aria-label="Soạn tin nhắn"
                 onSubmit={handleSend}
                 className="min-h-[78px] border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-3 flex items-end gap-1.5 sm:px-5 sm:gap-2"
                 style={{ backgroundColor: 'var(--chat-theme-surface)', borderColor: 'var(--chat-theme-border)' }}
@@ -1691,6 +1751,7 @@ export default function ChatWindow({
                 <button
                     type="button"
                     title="Đính kèm tệp"
+                    aria-label="Đính kèm tệp"
                     disabled={isUploading}
                     className="p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-full disabled:opacity-50"
                     onClick={handleAttachmentClick}
@@ -1701,6 +1762,7 @@ export default function ChatWindow({
                 <button
                     type="button"
                     title={recordingVoice ? 'Dừng ghi âm' : 'Ghi âm'}
+                    aria-label={recordingVoice ? 'Dừng ghi âm' : 'Ghi âm'}
                     disabled={isUploading}
                     onClick={() => recordingVoice ? stopVoiceRecording() : startVoiceRecording()}
                     className={`flex items-center gap-1 rounded-full p-2 ${recordingVoice ? 'bg-red-50 text-red-600' : 'text-slate-500 hover:bg-blue-50 hover:text-blue-600'} disabled:opacity-50`}
@@ -1726,6 +1788,7 @@ export default function ChatWindow({
                     <button
                         type="button"
                         title="Emoji"
+                        aria-label="Mở bảng emoji"
                         onClick={() =>
                             setShowEmojiPicker(
                                 (prev) => !prev
@@ -1859,6 +1922,43 @@ export default function ChatWindow({
             </aside>
         )}
 
+        {pendingDestructiveAction && (
+            <div className="fixed inset-0 z-[150] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !destructiveActionBusy) setPendingDestructiveAction(null); }}>
+                <section
+                    role="alertdialog"
+                    aria-modal="true"
+                    aria-labelledby="chat-action-confirm-title"
+                    aria-describedby="chat-action-confirm-description"
+                    onKeyDown={event => {
+                        if (event.key === 'Escape' && !destructiveActionBusy) {
+                            event.preventDefault();
+                            setPendingDestructiveAction(null);
+                            return;
+                        }
+                        if (event.key !== 'Tab') return;
+                        const focusable = [...event.currentTarget.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+                        if (!focusable.length) return;
+                        const first = focusable[0];
+                        const last = focusable[focusable.length - 1];
+                        if (event.shiftKey && event.target === first) {
+                            event.preventDefault();
+                            last.focus();
+                        } else if (!event.shiftKey && event.target === last) {
+                            event.preventDefault();
+                            first.focus();
+                        }
+                    }}
+                    className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                >
+                    <h3 id="chat-action-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">{pendingDestructiveAction === 'clear' ? 'Xóa nội dung cuộc trò chuyện?' : pendingDestructiveAction === 'hide' ? 'Ẩn cuộc trò chuyện?' : 'Chặn người dùng này?'}</h3>
+                    <p id="chat-action-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{pendingDestructiveAction === 'clear' ? 'Tin nhắn và lịch sử cuộc gọi sẽ bị xóa chỉ ở phía bạn. Người còn lại vẫn giữ lịch sử.' : pendingDestructiveAction === 'hide' ? 'Cuộc trò chuyện sẽ biến mất khỏi danh sách của bạn. Tin nhắn không bị xóa và có thể xuất hiện lại khi có hoạt động mới.' : 'Bạn sẽ không thể tiếp tục nhắn tin hoặc gọi cho người này.'}</p>
+                    <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                        <button type="button" autoFocus disabled={destructiveActionBusy} onClick={() => setPendingDestructiveAction(null)} className="min-h-10 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Hủy</button>
+                        <button type="button" disabled={destructiveActionBusy} onClick={() => void confirmDestructiveChatAction()} className="min-h-10 rounded-lg bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 disabled:opacity-50">{destructiveActionBusy ? 'Đang xử lý…' : 'Xác nhận'}</button>
+                    </div>
+                </section>
+            </div>
+        )}
         </section>
     );
 }

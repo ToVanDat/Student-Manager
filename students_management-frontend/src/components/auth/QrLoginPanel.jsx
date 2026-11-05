@@ -24,6 +24,11 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     const [busy, setBusy] = useState(false);
     const [manualPayload, setManualPayload] = useState('');
     const [cameraError, setCameraError] = useState('');
+    const [pendingApproval, setPendingApproval] = useState(null);
+    const cancelApprovalRef = useRef(null);
+    const approvalDialogRef = useRef(null);
+    const busyRef = useRef(busy);
+    busyRef.current = busy;
     const [scannerEnabled, setScannerEnabled] = useState(false);
     const videoRef = useRef(null);
     const streamRef = useRef(null);
@@ -71,8 +76,8 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
             try {
                 const result = await pollQrLoginApi(request.requestId, request.secret);
                 if (!active) return;
-                if (result.status === 'consumed' && result.accessToken) {
-                    setStatus('Đăng nhập QR thành công.');
+                if (result.requiresFaceMfa === true || (result.status === 'consumed' && result.accessToken)) {
+                    setStatus(result.requiresFaceMfa ? 'Hãy hoàn tất xác minh khuôn mặt để tiếp tục.' : 'Đăng nhập QR thành công.');
                     onLoginRef.current?.(result);
                     setRequest(null);
                     return;
@@ -138,8 +143,12 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
         };
     }, [mode, allowApprove, scannerEnabled]);
 
-    const approvePayload = async payload => {
-        if (!window.confirm('Bạn có chắc muốn cấp quyền đăng nhập cho thiết bị đang hiển thị QR này? Chỉ xác nhận nếu bạn tự khởi tạo yêu cầu.')) return;
+    const approvePayload = payload => setPendingApproval(payload);
+
+    const confirmQrApproval = async () => {
+        if (!pendingApproval || busy) return;
+        const payload = pendingApproval;
+        setPendingApproval(null);
         setBusy(true);
         setStatus('');
         try {
@@ -149,6 +158,41 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
             setStatus(error.response?.data?.message || 'Không thể xác nhận QR.');
         } finally { setBusy(false); }
     };
+
+    useEffect(() => {
+        if (!pendingApproval) return undefined;
+        const previousFocus = document.activeElement;
+        const dialog = approvalDialogRef.current;
+        cancelApprovalRef.current?.focus();
+        const onKeyDown = event => {
+            if (event.key === 'Escape' && !busyRef.current) {
+                event.preventDefault();
+                setPendingApproval(null);
+                return;
+            }
+            if (event.key !== 'Tab' || !dialog) return;
+            const focusable = [...dialog.querySelectorAll('button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])')];
+            if (!focusable.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && (event.target === first || !dialog.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !dialog.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+            previousFocus?.focus?.();
+        };
+    }, [pendingApproval]);
 
     const submitManual = async event => {
         event.preventDefault();
@@ -166,7 +210,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
     }) : '';
 
     return (
-        <section className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Đăng nhập bằng mã QR">
+        <section className="auth-qr-panel rounded-xl border border-slate-200 bg-white p-4 sm:p-5" aria-label="Đăng nhập bằng mã QR" data-ui-region="qr-login" aria-busy={busy || scannerEnabled}>
             <div className="mb-4 flex items-start gap-3">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
                     <QrCode size={20} aria-hidden="true" />
@@ -196,7 +240,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                         </ol>
                     </div>
 
-                    <div className="flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                    <div className="auth-qr-stage flex min-h-[250px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
                         {request ? (
                             <>
                                 <div className="rounded-xl border border-slate-200 bg-white p-3">
@@ -237,7 +281,7 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                         Quét mã trên máy tính chỉ khi bạn tự yêu cầu đăng nhập. Kiểm tra yêu cầu trước khi cho phép.
                     </div>
                     {scannerEnabled ? (
-                        <video ref={videoRef} muted playsInline className="max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
+                        <video ref={videoRef} muted playsInline aria-label="Camera quét mã QR" className="auth-qr-camera max-h-64 min-h-44 w-full rounded-xl bg-slate-950 object-cover" />
                     ) : (
                         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-center">
                             <Camera size={24} className="text-slate-500" aria-hidden="true" />
@@ -252,6 +296,19 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
                         <button type="submit" disabled={busy || !manualPayload.trim()} className="min-h-10 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Đang xác nhận…' : 'Xác nhận yêu cầu'}</button>
                     </form>
                     {status && <p role="status" aria-live="polite" className="m-0 text-xs leading-5 text-slate-600">{status}</p>}
+                </div>
+            )}
+            {pendingApproval && (
+                <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !busy) setPendingApproval(null); }}>
+                    <section ref={approvalDialogRef} tabIndex={-1} role="alertdialog" aria-modal="true" aria-labelledby="qr-approval-title" aria-describedby="qr-approval-description" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                        <div className="mb-3 flex items-center gap-2 text-amber-600 dark:text-amber-400"><QrCode size={19} aria-hidden="true"/><span className="text-xs font-bold uppercase tracking-wide">Xác minh đăng nhập QR</span></div>
+                        <h3 id="qr-approval-title" className="text-base font-bold text-slate-900 dark:text-white">Cho phép thiết bị đăng nhập?</h3>
+                        <p id="qr-approval-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">Chỉ tiếp tục nếu chính bạn vừa khởi tạo yêu cầu đăng nhập trên thiết bị kia. Nếu không nhận ra yêu cầu, hãy hủy ngay.</p>
+                        <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                            <button ref={cancelApprovalRef} type="button" disabled={busy} onClick={() => setPendingApproval(null)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Không phải tôi</button>
+                            <button type="button" disabled={busy} onClick={() => void confirmQrApproval()} className="min-h-11 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50">{busy ? 'Đang xác nhận…' : 'Cho phép đăng nhập'}</button>
+                        </div>
+                    </section>
                 </div>
             )}
         </section>

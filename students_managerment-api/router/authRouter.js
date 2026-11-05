@@ -28,6 +28,7 @@ const avatarController = require('../controller/avatarController');
 const userPreferencesController = require('../controller/userPreferencesController.js');
 const advancedAuthController = require('../controller/advancedAuthController.js');
 const faceAuthController = require('../controller/faceAuthController.js');
+const faceMfaPolicyController = require('../controller/faceMfaPolicyController.js');
 const faceFrameUpload = require('../middleware/faceFrameUploadMiddleware.js');
 const faceFrameRateLimiter = require('../middleware/faceFrameRateLimiter.js');
 
@@ -36,6 +37,8 @@ const faceFrameRateLimiter = require('../middleware/faceFrameRateLimiter.js');
 // Application-managed Face Login is separate from Passkey/WebAuthn.
 // Login and enrollment remain fail-closed until server-side model inference/PAD is deployed.
 router.get('/face/status', authMiddleware, faceAuthController.status);
+router.get('/face/mfa-policy', authMiddleware, faceMfaPolicyController.getPolicy);
+router.patch('/face/mfa-policy', requireTrustedOrigin, authMiddleware, authRateLimiter, faceMfaPolicyController.setPolicy);
 router.post('/face/enrollment/options', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.beginEnrollment);
 router.post('/face/enrollment/frame', requireTrustedOrigin, authMiddleware, faceFrameRateLimiter, faceFrameUpload, faceAuthController.captureEnrollmentFrame);
 router.post('/face/enrollment/verify', requireTrustedOrigin, authMiddleware, faceAuthRateLimiter, faceAuthController.finishEnrollment);

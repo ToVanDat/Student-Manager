@@ -243,6 +243,17 @@
       ],
       "risk": "schema-validation-and-indexes",
       "notes": "Apply only after selecting and reviewing one migration from each overlapping group-presence and chat-safety family. Validates existing values before adding v2 CHECK constraints; aborts without rewriting rows if unsupported values exist. The group_chat_presence.sql dependency is representative of the group-presence family; group_presence.sql is an alternative, not an additional required step."
+    },
+    {
+      "file": "face_mfa_policy_migration.sql",
+      "feature": "face-mfa",
+      "dependsOn": [
+        "users",
+        "sessions",
+        "face_login_credentials_migration.sql"
+      ],
+      "risk": "schema",
+      "notes": "Adds opt-in account policy and per-session Face MFA assurance timestamp. Existing accounts default to opt-out; existing sessions are not upgraded. Apply manually after reviewing the target users/sessions schema and Face pipeline readiness."
     }
   ]
 }

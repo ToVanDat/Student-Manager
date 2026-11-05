@@ -49,6 +49,7 @@ test('Face session issuance requires an active account and active credential in 
         activeUserId, 'Face integration test', 'node:test', '127.0.0.1', matchedCredential
     );
     assert.ok(session?.id, 'active account with active Face credential should create a session');
+    assert.ok(session?.face_mfa_verified_at, 'a Face-verified session must carry MFA assurance');
 
     await pool.query(
         'UPDATE user_face_credentials SET ciphertext = $1 WHERE user_id = $2',

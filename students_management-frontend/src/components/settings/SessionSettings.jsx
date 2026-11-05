@@ -23,7 +23,7 @@ function SessionSettings({
     const revokedSessions = sessions.filter((session) => session.revoked_at);
 
     return (
-        <div className="min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+        <section data-ui-region="session-settings" aria-busy={loading} className="settings-panel min-w-0 rounded-xl border border-line bg-white p-5 shadow-panel sm:p-6 dark:border-slate-700 dark:bg-slate-900">
             <div className="mb-5 flex items-center justify-between gap-4 border-b border-slate-100 pb-5 max-[900px]:items-start max-[900px]:flex-col dark:border-slate-800">
                 <div className="flex items-center gap-3">
                     <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-blue-950 dark:text-blue-300">
@@ -95,7 +95,7 @@ function SessionSettings({
             )}
 
             {loading ? (
-                <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
+                <div role="status" aria-live="polite" className="flex min-h-[220px] flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
                     <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
                     <p>{t('loadingSessions')}</p>
                 </div>
@@ -118,7 +118,7 @@ function SessionSettings({
                     </button>
                 </div>
             ) : (
-                <div className="grid gap-3">
+                <div className="settings-session-list grid gap-3">
                     {sessions.map((session) => {
                         const isCurrent = currentSessionId != null && String(session.id) === String(currentSessionId);
                         const isRevoked = Boolean(session.revoked_at);
@@ -126,7 +126,7 @@ function SessionSettings({
 
                         return (
                             <div
-                                className={`flex gap-4 rounded-lg border p-4 max-[640px]:flex-col dark:border-slate-700 ${
+                                className={`settings-session-card flex gap-4 rounded-lg border p-4 max-[640px]:flex-col dark:border-slate-700 ${
                                     isCurrent
                                         ? 'border-blue-300 bg-blue-50/40 dark:border-blue-800 dark:bg-blue-950/20'
                                         : 'border-slate-200 bg-slate-50/50 dark:bg-slate-900'
@@ -232,7 +232,7 @@ function SessionSettings({
                     })}
                 </div>
             )}
-        </div>
+        </section>
     );
 }
 

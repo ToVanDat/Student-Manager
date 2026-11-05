@@ -6,12 +6,14 @@ import AuthStepper from '@/components/auth/AuthStepper.jsx';
 
 const FORGOT_STEPS = ['forgotStepEmail', 'forgotStepOtp', 'forgotStepPassword'];
 
-function ForgotPasswordForm({ onLogin, setError, setSuccess }) {
+function ForgotPasswordForm({ onLogin, setError, setSuccess, error, success }) {
     const flow = useForgotPassword({ onLogin, setError, setSuccess });
     const currentStep = flow.step === 'email' ? 0 : flow.step === 'otp' ? 1 : 2;
 
     return (
-        <div className="w-full">
+        <div data-ui-region="password-recovery" aria-busy={flow.loading} className="w-full">
+            {error && <div role="alert" aria-live="polite" className="mb-4 w-full rounded-xl border border-red-200 bg-red-50 px-3.5 py-3 text-sm leading-relaxed text-red-700">{error}</div>}
+            {success && <div role="status" aria-live="polite" className="mb-4 w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-800">{success}</div>}
             <AuthStepper steps={FORGOT_STEPS} currentStep={currentStep} />
             {flow.step === 'email' && (
                 <EmailStep

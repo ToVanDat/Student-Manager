@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Crown,
     Shield,
@@ -43,10 +43,90 @@ export default function GroupInfoPanel({
     const [editingGroup, setEditingGroup] = useState(false);
     const [groupName, setGroupName] = useState(conversation?.name || '');
     const [savingGroup, setSavingGroup] = useState(false);
+    const [pendingConfirmation, setPendingConfirmation] = useState(null);
+    const [confirmationBusy, setConfirmationBusy] = useState(false);
+    const confirmationDialogRef = useRef(null);
+    const groupPanelRef = useRef(null);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
 
     useEffect(() => {
         if (!editingGroup) setGroupName(conversation?.name || '');
     }, [conversation?.name, editingGroup]);
+
+    useEffect(() => {
+        if (!open || pendingConfirmation || !groupPanelRef.current) return undefined;
+        const previouslyFocused = document.activeElement;
+        const panel = groupPanelRef.current;
+        const selector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...panel.querySelectorAll(selector)];
+        (focusable[0] || panel).focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onCloseRef.current?.();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...panel.querySelectorAll(selector)];
+            if (!items.length) {
+                event.preventDefault();
+                panel.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (event.target === first || !panel.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !panel.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [open, pendingConfirmation]);
+
+    useEffect(() => {
+        if (!pendingConfirmation || !confirmationDialogRef.current) return undefined;
+        const previouslyFocused = document.activeElement;
+        const dialog = confirmationDialogRef.current;
+        const selector = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...dialog.querySelectorAll(selector)];
+        (focusable[0] || dialog).focus();
+        const handleKeyDown = event => {
+            if (event.key === 'Escape' && !confirmationBusy) {
+                event.preventDefault();
+                setPendingConfirmation(null);
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...dialog.querySelectorAll(selector)];
+            if (!items.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (event.target === first || !dialog.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !dialog.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
+        };
+    }, [pendingConfirmation, confirmationBusy]);
 
     const currentMember = members.find(
         member => Number(member.user_id) === Number(currentUserId)
@@ -96,15 +176,8 @@ export default function GroupInfoPanel({
         }
     };
 
-    const handleRemove = async (userId) => {
-        if (!window.confirm(t('confirmRemoveGroupMember'))) return;
-
-        try {
-            setProcessingUserId(Number(userId));
-            await onRemoveMember?.(userId);
-        } finally {
-            setProcessingUserId(null);
-        }
+    const handleRemove = userId => {
+        setPendingConfirmation({ type: 'remove', userId });
     };
 
     const handleRole = async (userId, role) => {
@@ -117,14 +190,27 @@ export default function GroupInfoPanel({
         }
     };
 
-    const handleLeave = async () => {
+    const handleLeave = () => {
         if (currentRole === 'owner') return;
-        if (!window.confirm(t('confirmLeaveGroup'))) return;
+        setPendingConfirmation({ type: 'leave' });
+    };
 
+    const confirmPendingAction = async () => {
+        if (!pendingConfirmation || confirmationBusy) return;
+        const action = pendingConfirmation;
+        setConfirmationBusy(true);
         try {
-            await onLeaveGroup?.();
+            if (action.type === 'remove') {
+                setProcessingUserId(Number(action.userId));
+                await onRemoveMember?.(action.userId);
+            } else {
+                await onLeaveGroup?.();
+                onClose?.();
+            }
+            setPendingConfirmation(null);
         } finally {
-            onClose?.();
+            setProcessingUserId(null);
+            setConfirmationBusy(false);
         }
     };
 
@@ -133,15 +219,15 @@ export default function GroupInfoPanel({
     );
 
     return (
-        <div className="absolute inset-0 z-[100] flex justify-end bg-slate-950/20 backdrop-blur-[1px]">
-            <div className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900 text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+        <div className="absolute inset-0 z-[100] flex justify-end bg-slate-950/20 backdrop-blur-[1px]" onMouseDown={event => { if (event.target === event.currentTarget) onClose?.(); }}>
+            <div ref={groupPanelRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="group-info-title" className="h-full w-[360px] max-w-[92%] overflow-hidden border-l border-slate-200 bg-white text-slate-900 shadow-2xl outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
                 <div className="flex h-[72px] items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-white px-5 dark:border-slate-800 dark:bg-slate-900">
                     <div>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                        <h3 id="group-info-title" className="text-base font-bold text-slate-900 dark:text-slate-100">
                             {t('groupInformation')}
                         </h3>
                         <p className="text-xs text-slate-400">
-                            {members.length} thành viên · {members.filter(member => onlineUserIds.has(Number(member.user_id))).length} {t('online')}
+                            {members.length} {t('membersCount')} · {members.filter(member => onlineUserIds.has(Number(member.user_id))).length} {t('online')}
                         </p>
                     </div>
 
@@ -184,7 +270,7 @@ export default function GroupInfoPanel({
                             </div>
                         ) : (
                             <>
-                                <p className="mt-1 text-xs text-slate-400">Group chat</p>
+                                <p className="mt-1 text-xs text-slate-400">{t('groupChat')}</p>
                                 {currentRole === 'owner' && (
                                     <button
                                         type="button"
@@ -194,7 +280,7 @@ export default function GroupInfoPanel({
                                         }}
                                         className="mt-3 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                                     >
-                                        Đổi tên nhóm
+                                        {t('renameGroup')}
                                     </button>
                                 )}
                             </>
@@ -219,7 +305,7 @@ export default function GroupInfoPanel({
                                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-600 hover:bg-blue-100"
                                 >
                                     <UserPlus size={15} />
-                                    Thêm
+                                    {t('add')}
                                 </button>
                             )}
                         </div>
@@ -238,7 +324,7 @@ export default function GroupInfoPanel({
                                     <div className="mt-2 max-h-44 overflow-y-auto">
                                         {availableUsers.length === 0 ? (
                                             <p className="px-2 py-3 text-center text-xs text-slate-400">
-                                                Không có người dùng phù hợp
+                                                {t('noUsersFound')}
                                             </p>
                                         ) : (
                                             availableUsers.map(user => (
@@ -310,7 +396,7 @@ export default function GroupInfoPanel({
                                                     {member.username}
                                                 </p>
                                                 {isMe && (
-                                                    <span className="text-[10px] text-blue-500">(Bạn)</span>
+                                                    <span className="text-[10px] text-blue-500">({t('you')})</span>
                                                 )}
                                             </div>
                                             <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-400">
@@ -334,7 +420,7 @@ export default function GroupInfoPanel({
                                                         showRoleMenu === memberId ? null : memberId
                                                     )}
                                                     className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
-                                                    title="Quản lý thành viên"
+                                                    title={t('manageMembers')}
                                                 >
                                                     <span>{t('manage')}</span><ChevronDown size={14} />
                                                 </button>
@@ -355,7 +441,7 @@ export default function GroupInfoPanel({
                                                                     onClick={() => handleRole(memberId, 'owner')}
                                                                     className="w-full px-3 py-2 text-left text-xs text-amber-600 hover:bg-amber-50"
                                                                 >
-                                                                    Chuyển quyền trưởng nhóm
+                                                                    {t('transferGroupOwnership')}
                                                                 </button>
                                                             </>
                                                         )}
@@ -424,6 +510,36 @@ export default function GroupInfoPanel({
                     </div>
                 </div>
             </div>
+            {pendingConfirmation && (
+                <div className="fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !confirmationBusy) setPendingConfirmation(null); }}>
+                    <section
+                        ref={confirmationDialogRef}
+                        tabIndex={-1}
+                        role="alertdialog"
+                        aria-modal="true"
+                        aria-labelledby="group-action-confirm-title"
+                        aria-describedby="group-action-confirm-description"
+                        onKeyDown={event => {
+                            if (event.key === 'Escape' && !confirmationBusy) {
+                                event.preventDefault();
+                                setPendingConfirmation(null);
+                            }
+                        }}
+                        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl dark:border-slate-700 dark:bg-slate-900"
+                    >
+                        <h3 id="group-action-confirm-title" className="text-base font-bold text-slate-900 dark:text-white">
+                            {pendingConfirmation.type === 'remove' ? t('confirmRemoveGroupMemberTitle') : t('confirmLeaveGroupTitle')}
+                        </h3>
+                        <p id="group-action-confirm-description" className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                            {pendingConfirmation.type === 'remove' ? t('confirmRemoveGroupMember') : t('confirmLeaveGroup')}
+                        </p>
+                        <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                            <button type="button" autoFocus disabled={confirmationBusy} onClick={() => setPendingConfirmation(null)} className="min-h-11 rounded-lg border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{t('cancel')}</button>
+                            <button type="button" disabled={confirmationBusy} onClick={() => void confirmPendingAction()} className="min-h-11 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:opacity-50">{confirmationBusy ? t('processing') : t('confirm')}</button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

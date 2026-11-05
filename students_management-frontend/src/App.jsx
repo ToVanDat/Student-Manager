@@ -4,7 +4,6 @@ import socket from './socket/socket.js';
 import { playSound } from './services/soundService.js';
 import AppRoutes from './routes/AppRoutes.jsx';
 import GlobalCallPanel from './components/call/GlobalCallPanel.jsx';
-import GlobalChatbot from './components/assistant/GlobalChatbot.jsx';
 
 function App() {
     useEffect(() => {
@@ -35,7 +34,6 @@ function App() {
             />
             <AppRoutes />
             <GlobalCallPanel />
-            <GlobalChatbot />
         </>
     );
 }

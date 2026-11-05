@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Download, GraduationCap, Plus, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportStudentsCsv } from '@/api/studentApi.js';
@@ -76,6 +76,7 @@ function StudentDashboard({
 
     const [exporting, setExporting] = useState(false);
     const [showCsvImport, setShowCsvImport] = useState(false);
+    const studentFormDialogRef = useRef(null);
 
     const handleExport = async () => {
         if (!isAdmin || exporting) return;
@@ -113,32 +114,58 @@ function StudentDashboard({
 
 
     useEffect(() => {
-        if (!isAdmin || !showForm) return undefined;
+        if (!isAdmin || !showForm || !studentFormDialogRef.current) return undefined;
 
         const previousOverflow = document.body.style.overflow;
+        const previouslyFocused = document.activeElement;
+        const dialog = studentFormDialogRef.current;
         document.body.style.overflow = 'hidden';
+        const selector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+        const focusable = [...dialog.querySelectorAll(selector)];
+        (focusable[0] || dialog).focus();
         const handleKeyDown = event => {
-            if (event.key === 'Escape') onCloseForm?.();
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                onCloseForm?.();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = [...dialog.querySelectorAll(selector)];
+            if (!items.length) {
+                event.preventDefault();
+                dialog.focus();
+                return;
+            }
+            const first = items[0];
+            const last = items[items.length - 1];
+            if (event.shiftKey && (event.target === first || !dialog.contains(event.target))) {
+                event.preventDefault();
+                last.focus();
+            } else if (!event.shiftKey && (event.target === last || !dialog.contains(event.target))) {
+                event.preventDefault();
+                first.focus();
+            }
         };
-        window.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             document.body.style.overflow = previousOverflow;
-            window.removeEventListener('keydown', handleKeyDown);
+            document.removeEventListener('keydown', handleKeyDown);
+            previouslyFocused?.focus?.();
         };
     }, [isAdmin, showForm, onCloseForm]);
 
     return (
-        <>
+        <section className="student-management-page w-full min-w-0" data-ui-page="student-management">
             <StudentStats user={user} statistics={statistics} filteredCount={filteredCount} />
             <div className="grid min-w-0 grid-cols-1 items-start gap-5 min-[1440px]:grid-cols-[minmax(0,1fr)_300px]">
-                <div className="app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                    <div className="mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-gradient-to-r from-white to-slate-50/80 px-4 py-5 sm:px-6 dark:border-slate-800 dark:from-slate-900 dark:to-slate-900/70">
-                        <div className="flex min-w-0 items-start gap-3"><span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-100 to-cyan-50 text-blue-800 ring-1 ring-inset ring-blue-200/70 dark:from-blue-950/80 dark:to-cyan-950/50 dark:text-blue-200 dark:ring-blue-900"><GraduationCap size={22} /></span><div className="min-w-0"><p className="mb-1 text-[10px] font-bold uppercase tracking-[.15em] text-blue-700 dark:text-blue-300">{t('studentManagement')}</p><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
+                <div className="student-management-roster app-card min-w-0 overflow-hidden rounded-2xl border border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900" aria-busy={loading}>
+                    <div className="student-management-toolbar mb-0 flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-4 py-5 sm:px-6 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex min-w-0 items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-300"><GraduationCap size={20} /></span><div className="min-w-0"><h2 className="m-0 font-display text-lg font-bold text-slate-900 dark:text-white">{t('studentList')}</h2><p className="mt-1 mb-0 text-xs leading-5 text-slate-500 dark:text-slate-400">{t('studentListDescription')}</p></div></div>
                         {isAdmin && <div className="flex flex-wrap items-center gap-2">
                             <button type="button" onClick={() => setShowCsvImport(true)} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"><Upload size={16} />{t('studentImportOpen')}</button>
                             <button type="button" onClick={handleExport} disabled={exporting} className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"><Download size={16} />{exporting ? t('loading') : 'CSV'} {t('downloadFile')}</button>
-                            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 px-4 text-xs font-semibold text-white shadow-md shadow-blue-700/15 transition hover:-translate-y-0.5 hover:from-blue-800 hover:to-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>
+                            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-700 px-4 text-xs font-semibold text-white transition hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/25" onClick={onAdd}><Plus size={17} />{t('addStudent')}</button>
                         </div>}
                     </div>
                     <div className="px-4 pt-4 sm:px-6">
@@ -209,7 +236,7 @@ function StudentDashboard({
                             <label className="flex items-center gap-1.5">
                                 <span>{t('rows')}</span>
                                 <select
-                                    className="rounded border border-slate-200 bg-white px-1.5 py-1 text-[11px] text-slate-600 outline-none focus:border-brand-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                                    className="min-h-10 rounded-lg border border-slate-200 bg-white px-2.5 text-xs text-slate-600 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                     value={pageSize}
                                     onChange={(event) => onPageSizeChange(Number(event.target.value))}
                                     aria-label={t("studentsPerPage")}
@@ -222,7 +249,7 @@ function StudentDashboard({
                         </div>
                         <nav className="flex items-center gap-1" aria-label={t("studentPagination")}>
                             <button
-                                className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+                                className="flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                                 type="button"
                                 onClick={() => onPageChange(currentPage - 1)}
                                 disabled={currentPage <= 1}
@@ -235,7 +262,7 @@ function StudentDashboard({
                                     <span className="flex size-8 items-center justify-center text-slate-400" key={page} aria-hidden="true">…</span>
                                 ) : (
                                     <button
-                                        className={`flex size-8 items-center justify-center rounded-md text-[11px] font-semibold ${page === currentPage ? 'bg-brand-600 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+                                        className={`flex size-10 items-center justify-center rounded-lg text-xs font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${page === currentPage ? 'bg-brand-600 text-white shadow-sm' : 'border border-slate-200 text-slate-600 hover:bg-brand-50 hover:text-brand-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800'}`}
                                         key={page}
                                         type="button"
                                         onClick={() => onPageChange(page)}
@@ -247,7 +274,7 @@ function StudentDashboard({
                                 )
                             ))}
                             <button
-                                className="flex size-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
+                                className="flex size-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:hover:bg-slate-800"
                                 type="button"
                                 onClick={() => onPageChange(currentPage + 1)}
                                 disabled={currentPage >= pageCount}
@@ -279,10 +306,10 @@ function StudentDashboard({
                 />
             )}
             {isAdmin && showForm && (
-                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
-                    <div role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-slate-950/65 p-3 sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) onCloseForm?.(); }}>
+                    <div ref={studentFormDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="student-form-dialog-title" className="my-auto max-h-[min(90dvh,900px)] w-full max-w-[700px] overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-lg outline-none dark:border-slate-700 dark:bg-slate-900">
                         <div className="flex items-center justify-between gap-4 border-b border-[#edf0f5] px-5 py-[22px] sm:px-[25px]">
-                            <div><span className="text-[10px] font-bold tracking-widest text-blue-600">{t('studentManagement')}</span><h2 id="student-form-dialog-title" className="mt-1 mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
+                            <div><h2 id="student-form-dialog-title" className="mb-0 text-xl font-bold text-slate-900 dark:text-white">{selectedStudent ? t('updateStudent') : t('addStudent')}</h2></div>
                             <button className="flex size-9 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xl text-slate-500 hover:bg-red-100 hover:text-red-600 dark:bg-slate-800" onClick={onCloseForm} aria-label={t("close")}>×</button>
                         </div>
                         <div className="px-5 py-5 sm:px-8">
@@ -291,7 +318,7 @@ function StudentDashboard({
                     </div>
                 </div>
             )}
-        </>
+        </section>
     );
 }
 

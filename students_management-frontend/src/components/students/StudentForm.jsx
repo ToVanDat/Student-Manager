@@ -179,14 +179,14 @@ function StudentForm({ student, onSubmit, onCancel }) {
     };
 
     return (
-        <div className="rounded-b-2xl bg-white px-1 pb-1 dark:bg-slate-900 sm:px-2">
+        <div data-ui-region="student-editor-form" aria-busy={isSubmitting || classesLoading} className="student-editor-form rounded-b-2xl bg-white px-1 pb-1 dark:bg-slate-900 sm:px-2">
             <h2 className="sr-only">
                 {student
                     ? t('updateStudent')
                     : t('addStudent')}
             </h2>
 
-            <form className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2" onSubmit={handleSubmit}>
+            <form className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2" onSubmit={handleSubmit} aria-busy={isSubmitting}>
                 {/* Mã sinh viên */}
                 <div className="flex flex-col gap-2">
                     <label htmlFor="student-code" className="text-xs font-semibold tracking-wide text-slate-700 dark:text-slate-300">{t('studentCode')}</label>

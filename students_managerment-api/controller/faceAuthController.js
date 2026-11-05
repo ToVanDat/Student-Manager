@@ -60,12 +60,24 @@ exports.cancelEnrollment = async (req, res) => {
     catch (error) { return fail(res, error); }
 };
 exports.beginLogin = async (req, res) => {
-    try { return res.json(await faceAuth.beginLogin(req.body?.username)); }
+    try { return res.json(await faceAuth.beginLogin(req.body?.username, req.body?.pendingAuthId, req)); }
     catch (error) { return fail(res, error); }
 };
 exports.finishLogin = async (req, res) => {
-    try { return res.json(await faceAuth.finishLogin(req.body?.challengeId, req)); }
-    catch (error) { return fail(res, error); }
+    try {
+        const result = await faceAuth.finishLogin(req.body?.challengeId, req);
+        if (result?.refreshToken) {
+            res.cookie('refreshToken', result.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+                path: '/api/auth'
+            });
+        }
+        const { refreshToken, ...safeResult } = result || {};
+        return res.status(200).json(safeResult);
+    } catch (error) { return fail(res, error); }
 };
 exports.disable = async (req, res) => {
     try { return res.json(await faceAuth.disable(req.user.sub, req.body?.currentPassword, req.body?.verificationToken)); }
