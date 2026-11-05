@@ -12,7 +12,7 @@ export default function MessageList({ messages, currentUserId, activeConversatio
     }, [messages, isTyping]);
 
     return (
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div data-chat-region="message-timeline" className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {/* Phân cách ngày */}
             <div className="flex justify-center my-4">
                 <span className="text-[11px] bg-slate-100 text-slate-500 font-medium px-3 py-1 rounded-full">
@@ -31,7 +31,7 @@ export default function MessageList({ messages, currentUserId, activeConversatio
 
             {/* Hiệu ứng Đang nhập... */}
             {isTyping && (
-                <div className="flex items-center gap-2 mb-4">
+                <div data-chat-region="typing-indicator" role="status" aria-live="polite" className="flex items-center gap-2 mb-4">
                     <img src={activeConversation?.avatar} className="w-7 h-7 rounded-full object-cover" alt={t("avatar")} />
                     <div className="bg-slate-100 px-4 py-3 rounded-2xl rounded-bl-xs flex items-center gap-1">
                         <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></span>
