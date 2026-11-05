@@ -611,9 +611,9 @@ const createSessionForActiveFaceUser = async (
             FOR UPDATE OF credential
         )
         INSERT INTO sessions (
-            id, user_id, device_name, user_agent, ip_address
+            id, user_id, device_name, user_agent, ip_address, face_mfa_verified_at
         )
-        SELECT $1, account.id, $3, $4, $5
+        SELECT $1, account.id, $3, $4, $5, CURRENT_TIMESTAMP
         FROM active_user AS account
         INNER JOIN active_face_credential AS face ON face.user_id = account.id
         RETURNING *
