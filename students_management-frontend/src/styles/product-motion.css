@@ -93,6 +93,18 @@
     scroll-behavior: smooth;
   }
 
+  [data-chat-region="message-timeline"] [data-message-id] {
+    animation: product-message-enter 180ms var(--motion-ease) both;
+  }
+
+  [data-chat-region="typing-indicator"] {
+    animation: product-feedback-enter 160ms ease-out both;
+  }
+
+  [data-chat-region="typing-indicator"] span.animate-bounce {
+    animation-duration: 900ms;
+  }
+
   /* Feedback regions appear without changing their layout or live-region semantics. */
   [role="alert"],
   [role="status"] {
@@ -110,6 +122,11 @@
   to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
 }
 
+@keyframes product-message-enter {
+  from { opacity: 0; transform: translate3d(0, 5px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
 @keyframes product-feedback-enter {
   from { opacity: .7; transform: translateY(3px); }
   to { opacity: 1; transform: translateY(0); }
@@ -117,6 +134,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .auth-login-card .auth-step-transition,
+  [data-chat-region="message-timeline"] [data-message-id],
+  [data-chat-region="typing-indicator"],
   [role="dialog"][aria-labelledby="call-center-title"],
   [role="alert"],
   [role="status"] {
@@ -138,10 +157,6 @@
   }
 }
 
-@media (max-width: 640px) {
-  @media (prefers-reduced-motion: no-preference) {
-    .auth-login-card .auth-step-transition {
-      animation-duration: 180ms;
-    }
-  }
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .auth-login-card .auth-step-transition { animation-duration: 180ms; }
 }
