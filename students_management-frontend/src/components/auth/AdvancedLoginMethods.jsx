@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
 import { googleLoginApi } from '@/api/authApi.js';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     const { t } = useLanguage();
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const googleButtonRef = useRef(null);
     const callbacksRef = useRef({ onLogin, onError, onLoading });
     callbacksRef.current = { onLogin, onError, onLoading };
@@ -13,7 +13,6 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
     const [busy, setBusy] = useState(false);
 
     useEffect(() => {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
         if (!clientId || !googleButtonRef.current) return undefined;
 
         let cancelled = false;
@@ -95,8 +94,10 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
         };
     }, []);
 
+    if (!clientId) return null;
+
     return (
-        <div className="auth-methods-content mt-4 space-y-3" data-ui-region="alternative-login-methods" aria-busy={busy || (!googleReady && Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID))}>
+        <div className="auth-methods-content mt-4 space-y-3" data-ui-region="alternative-login-methods" aria-busy={busy || (!googleReady && Boolean(clientId))}>
             <div className="auth-methods-divider relative flex items-center gap-3 text-xs text-slate-400" aria-hidden="true">
                 <span className="h-px flex-1 bg-slate-200" />
                 <span className="whitespace-nowrap">{t('continueWithAlternative')}</span>
@@ -107,18 +108,12 @@ export default function AdvancedLoginMethods({ onLogin, onError, onLoading }) {
                 <div ref={googleButtonRef} className={busy ? 'pointer-events-none opacity-60' : ''} />
             </div>
 
-            {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
-                <p className="auth-methods-hint text-center text-xs text-slate-400">
-                    <ShieldCheck className="mr-1 inline" size={14} />
-                    {t('googleOAuthNotConfigured')}
-                </p>
-            )}
             {googleLoadError && (
                 <p role="status" aria-live="polite" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-center text-xs leading-5 text-amber-800">
                     {googleLoadError}
                 </p>
             )}
-            {!googleReady && !googleLoadError && import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            {!googleReady && !googleLoadError && clientId && (
                 <p role="status" aria-live="polite" className="auth-methods-loading text-center text-xs text-slate-400">{t('loadingGoogleIdentity')}</p>
             )}
         </div>
