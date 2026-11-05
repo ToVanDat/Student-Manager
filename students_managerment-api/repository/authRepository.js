@@ -80,7 +80,8 @@ const findUserByUsername = async (username) => {
             password_hash,
             role,
             avatar_url,
-            is_active
+            is_active,
+            require_face_mfa
         FROM users
         WHERE username = $1
         `,
