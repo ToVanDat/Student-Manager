@@ -21,6 +21,7 @@ const findUserByIdWithPassword = async (userId) => {
             password_hash,
             role,
             is_active,
+            require_face_mfa,
             created_at,
             updated_at
         FROM users
@@ -645,7 +646,8 @@ const findSessionsByUserId = async (
             ip_address,
             created_at,
             last_used_at,
-            revoked_at
+            revoked_at,
+            face_mfa_verified_at
         FROM sessions
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -710,6 +712,7 @@ const isSessionActiveForSocket = async (sessionId, userId) => {
               AND session.user_id = $2
               AND session.revoked_at IS NULL
               AND account.is_active = TRUE
+              AND (account.require_face_mfa = FALSE OR session.face_mfa_verified_at IS NOT NULL)
         ) AS active
         `,
         [sessionId, userId]
