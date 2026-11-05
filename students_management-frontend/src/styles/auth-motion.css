@@ -125,15 +125,17 @@
   overflow-wrap: anywhere;
 }
 @media (max-width: 800px) {
+  /* The promotional banner is desktop-only; the auth form owns the mobile viewport. */
   .auth-login-page > div:first-child {
-    min-height: 34svh;
+    display: none;
   }
   .auth-login-page > section {
-    min-height: 66svh;
+    min-height: 100svh;
     align-items: flex-start;
-    padding-top: 1.25rem;
+    padding-top: 5rem;
   }
   .auth-login-card {
+    width: 100%;
     max-width: 34rem;
     border-radius: 1.5rem;
   }
