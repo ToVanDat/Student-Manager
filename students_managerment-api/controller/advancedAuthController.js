@@ -41,6 +41,15 @@ function fail(res, error) {
     return res.status(500).json({ message: 'Đã xảy ra lỗi hệ thống khi xác thực. Vui lòng thử lại.' });
 }
 function sendSession(res, result) {
+    if (result?.requiresFaceMfa === true) {
+        return res.status(202).json({
+            requiresFaceMfa: true,
+            pendingAuthId: result.pendingAuthId,
+            expiresIn: result.expiresIn,
+            user: result.user,
+            message: 'Hãy hoàn tất xác minh khuôn mặt để tiếp tục.'
+        });
+    }
     setRefreshCookie(res, result.refreshToken);
     return res.status(200).json({
         user: result.user,
