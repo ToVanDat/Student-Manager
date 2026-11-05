@@ -8,7 +8,10 @@ import {
     disableFaceLoginApi,
     finishFaceEnrollmentApi,
     getFaceLoginStatusApi,
+    getFaceMfaPolicyApi,
+    setFaceMfaPolicyApi,
 } from '@/api/authApi.js';
+import { useAuth } from '@/hooks/useAuth.js';
 
 const FRAME_COUNT = 6;
 const FRAME_INTERVAL_MS = 500;
@@ -37,7 +40,9 @@ function captureJpeg(video, t) {
 
 export default function FaceLoginSettings() {
     const { t } = useLanguage();
+    const { logoutUser } = useAuth();
     const [status, setStatus] = useState(null);
+    const [mfaPolicy, setMfaPolicy] = useState(null);
     const [loading, setLoading] = useState(true);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
@@ -64,7 +69,9 @@ export default function FaceLoginSettings() {
         setLoading(true);
         setError('');
         try {
-            setStatus(await getFaceLoginStatusApi());
+            const [nextStatus, nextPolicy] = await Promise.all([getFaceLoginStatusApi(), getFaceMfaPolicyApi()]);
+            setStatus(nextStatus);
+            setMfaPolicy(nextPolicy);
         } catch (requestError) {
             setError(requestError.response?.data?.message || t('faceStatusLoadFailed'));
         } finally {
@@ -168,6 +175,19 @@ export default function FaceLoginSettings() {
         }
     };
 
+    const updateMfaPolicy = async (enabled, currentPassword) => {
+        setBusy(true);
+        setError('');
+        try {
+            await setFaceMfaPolicyApi(enabled, currentPassword);
+            await logoutUser();
+            window.location.assign('/login');
+        } catch (requestError) {
+            setError(requestError.response?.data?.message || 'Không thể cập nhật chính sách Face MFA.');
+            setBusy(false);
+        }
+    };
+
     const requestConfirmation = action => {
         setConfirmationAction(action);
         setConfirmationPassword('');
@@ -194,6 +214,8 @@ export default function FaceLoginSettings() {
         setConfirmationError('');
         if (action === 'enroll') void enroll(password);
         if (action === 'disable') void disable(password);
+        if (action === 'enable-mfa') void updateMfaPolicy(true, password);
+        if (action === 'disable-mfa') void updateMfaPolicy(false, password);
     };
 
     useEffect(() => {
@@ -218,6 +240,16 @@ export default function FaceLoginSettings() {
                     : 'ml-auto rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-200'}>
                     {loading ? t('loading') : configured ? t('faceConfigured') : t('faceNotConfigured')}
                 </span>
+            </div>
+            <div className="mb-3 flex flex-col gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                    <p className="m-0 text-sm font-semibold text-slate-800 dark:text-slate-100">Yêu cầu Face MFA sau đăng nhập</p>
+                    <p className="mb-0 mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Khi bật, Password, Google, Passkey và QR đều cần xác minh khuôn mặt trước khi cấp phiên.</p>
+                    {!mfaPolicy?.pipelineReady && <p className="mb-0 mt-1 text-xs text-amber-700 dark:text-amber-300">Pipeline Face chưa được kiểm định; chưa thể bật chính sách.</p>}
+                </div>
+                <button type="button" disabled={busy || loading || !configured || (!mfaPolicy?.pipelineReady && !mfaPolicy?.enabled)} onClick={() => requestConfirmation(mfaPolicy?.enabled ? 'disable-mfa' : 'enable-mfa')} aria-pressed={mfaPolicy?.enabled === true} className={`inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg px-4 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${mfaPolicy?.enabled ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800'}`}>
+                    {mfaPolicy?.enabled ? 'Đang bật · Tắt' : 'Bật Face MFA'}
+                </button>
             </div>
             <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
                 {t('faceLoginExplanation')} {t('faceCameraConsentNote')} {t('faceFramePrivacy')}
@@ -267,8 +299,8 @@ export default function FaceLoginSettings() {
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"><KeyRound size={19} /></span>
                                 <div className="min-w-0">
-                                    <h4 id="face-login-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmationAction === 'enroll' ? t('faceConfirmEnrollTitle') : t('faceConfirmDisableTitle')}</h4>
-                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{confirmationAction === 'enroll' ? t('faceConfirmEnrollDescription') : t('faceConfirmDisableDescription')}</p>
+                                    <h4 id="face-login-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmationAction === 'enroll' ? t('faceConfirmEnrollTitle') : confirmationAction === 'disable' ? t('faceConfirmDisableTitle') : confirmationAction === 'enable-mfa' ? 'Bật yêu cầu Face MFA' : 'Tắt yêu cầu Face MFA'}</h4>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{confirmationAction === 'enroll' ? t('faceConfirmEnrollDescription') : confirmationAction === 'disable' ? t('faceConfirmDisableDescription') : 'Nhập lại mật khẩu để xác nhận thay đổi chính sách. Bạn sẽ phải đăng nhập lại sau thao tác này.'}</p>
                                 </div>
                             </div>
                             <button type="button" onClick={closeConfirmation} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t("closeDialog")}><X size={17} /></button>
