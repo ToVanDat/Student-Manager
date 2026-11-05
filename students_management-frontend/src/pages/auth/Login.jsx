@@ -33,6 +33,7 @@ function Login() {
     const [mode, setMode] = useState('login');
     const [showMoreLoginOptions, setShowMoreLoginOptions] = useState(false);
     const [showFaceLogin, setShowFaceLogin] = useState(false);
+    const [pendingFaceMfa, setPendingFaceMfa] = useState(null);
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -182,10 +183,13 @@ function Login() {
 
 
             // -----------------------------------------
-            // SAVE AUTH STATE
-            // -----------------------------------------
-
-            loginUser(data);
+            // SAVE AUTH STATE only after all required factors have completed.
+            // A pending MFA response deliberately contains no token or cookie.
+            if (data.requiresFaceMfa === true) {
+                setPendingFaceMfa(data);
+            } else {
+                loginUser(data);
+            }
 
 
             // -----------------------------------------
@@ -231,7 +235,9 @@ function Login() {
             // GO STUDENTS
             // -----------------------------------------
 
-            navigate(data.user?.role === 'admin' ? '/students?view=dashboard' : '/students?view=dashboard', { replace: true });
+            if (data.requiresFaceMfa !== true) {
+                navigate('/students?view=dashboard', { replace: true });
+            }
 
 
         } catch (error) {
@@ -276,6 +282,7 @@ function Login() {
         try {
             loginUser(data);
             setShowFaceLogin(false);
+            setPendingFaceMfa(null);
             navigate('/students?view=dashboard', { replace: true });
         } finally {
             sessionStorage.removeItem('auth:login-in-progress');
@@ -497,6 +504,11 @@ function Login() {
 
 
     const handleAdvancedLogin = useCallback((data) => {
+        if (data?.requiresFaceMfa === true) {
+            setPendingFaceMfa(data);
+            setShowFaceLogin(false);
+            return;
+        }
         loginUser(data);
         navigate('/students?view=dashboard', { replace: true });
     }, [loginUser, navigate]);
@@ -658,10 +670,11 @@ function Login() {
                     <div className="mt-7 border-t border-slate-100 pt-4 text-center text-[11px] leading-5 text-slate-400">
                         Student Manager · Secure account access
                     </div>
-                    {showFaceLogin && (
+                    {(showFaceLogin || pendingFaceMfa) && (
                         <FaceLoginCapture
-                            username={username.trim()}
-                            onClose={() => setShowFaceLogin(false)}
+                            username={pendingFaceMfa?.user?.username || username.trim()}
+                            pendingAuthId={pendingFaceMfa?.pendingAuthId || null}
+                            onClose={() => { setShowFaceLogin(false); setPendingFaceMfa(null); }}
                             onSuccess={handleFaceLoginSuccess}
                         />
                     )}
