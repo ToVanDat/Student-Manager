@@ -39,7 +39,7 @@ function captureJpeg(video, t) {
 }
 
 export default function FaceLoginSettings() {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const { logoutUser } = useAuth();
     const [status, setStatus] = useState(null);
     const [mfaPolicy, setMfaPolicy] = useState(null);
@@ -183,7 +183,7 @@ export default function FaceLoginSettings() {
             await logoutUser();
             window.location.assign('/login');
         } catch (requestError) {
-            setError(requestError.response?.data?.message || 'Không thể cập nhật chính sách Face MFA.');
+            setError(requestError.response?.data?.message || (language === 'vi' ? 'Không thể cập nhật chính sách Face MFA.' : 'Could not update the Face MFA policy.'));
             setBusy(false);
         }
     };
@@ -243,12 +243,12 @@ export default function FaceLoginSettings() {
             </div>
             <div className="mb-3 flex flex-col gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                    <p className="m-0 text-sm font-semibold text-slate-800 dark:text-slate-100">Yêu cầu Face MFA sau đăng nhập</p>
-                    <p className="mb-0 mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">Khi bật, Password, Google, Passkey và QR đều cần xác minh khuôn mặt trước khi cấp phiên.</p>
-                    {!mfaPolicy?.pipelineReady && <p className="mb-0 mt-1 text-xs text-amber-700 dark:text-amber-300">Pipeline Face chưa được kiểm định; chưa thể bật chính sách.</p>}
+                    <p className="m-0 text-sm font-semibold text-slate-800 dark:text-slate-100">{language === 'vi' ? 'Yêu cầu Face MFA sau đăng nhập' : 'Require Face MFA after sign-in'}</p>
+                    <p className="mb-0 mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{language === 'vi' ? 'Khi bật, Password, Google, Passkey và QR đều cần xác minh khuôn mặt trước khi cấp phiên.' : 'When enabled, Password, Google, Passkey and QR sign-ins must pass face verification before a session is issued.'}</p>
+                    {!mfaPolicy?.pipelineReady && <p className="mb-0 mt-1 text-xs text-amber-700 dark:text-amber-300">{language === 'vi' ? 'Pipeline Face chưa được kiểm định; chưa thể bật chính sách.' : 'The Face pipeline has not passed validation; this policy cannot be enabled yet.'}</p>}
                 </div>
                 <button type="button" disabled={busy || loading || (!mfaPolicy?.enabled && (!configured || !available))} onClick={() => requestConfirmation(mfaPolicy?.enabled ? 'disable-mfa' : 'enable-mfa')} aria-pressed={mfaPolicy?.enabled === true} className={`inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg px-4 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${mfaPolicy?.enabled ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800'}`}>
-                    {mfaPolicy?.enabled ? 'Đang bật · Tắt' : 'Bật Face MFA'}
+                    {mfaPolicy?.enabled ? (language === 'vi' ? 'Đang bật · Tắt' : 'Enabled · Turn off') : (language === 'vi' ? 'Bật Face MFA' : 'Enable Face MFA')}
                 </button>
             </div>
             <p className="mb-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
@@ -299,8 +299,8 @@ export default function FaceLoginSettings() {
                             <div className="flex min-w-0 items-start gap-3">
                                 <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300"><KeyRound size={19} /></span>
                                 <div className="min-w-0">
-                                    <h4 id="face-login-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmationAction === 'enroll' ? t('faceConfirmEnrollTitle') : confirmationAction === 'disable' ? t('faceConfirmDisableTitle') : confirmationAction === 'enable-mfa' ? 'Bật yêu cầu Face MFA' : 'Tắt yêu cầu Face MFA'}</h4>
-                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{confirmationAction === 'enroll' ? t('faceConfirmEnrollDescription') : confirmationAction === 'disable' ? t('faceConfirmDisableDescription') : 'Nhập lại mật khẩu để xác nhận thay đổi chính sách. Bạn sẽ phải đăng nhập lại sau thao tác này.'}</p>
+                                    <h4 id="face-login-confirm-title" className="m-0 text-base font-bold text-slate-900 dark:text-white">{confirmationAction === 'enroll' ? t('faceConfirmEnrollTitle') : confirmationAction === 'disable' ? t('faceConfirmDisableTitle') : confirmationAction === 'enable-mfa' ? (language === 'vi' ? 'Bật yêu cầu Face MFA' : 'Enable required Face MFA') : (language === 'vi' ? 'Tắt yêu cầu Face MFA' : 'Disable required Face MFA')}</h4>
+                                    <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{confirmationAction === 'enroll' ? t('faceConfirmEnrollDescription') : confirmationAction === 'disable' ? t('faceConfirmDisableDescription') : (language === 'vi' ? 'Nhập lại mật khẩu để xác nhận thay đổi chính sách. Bạn sẽ phải đăng nhập lại sau thao tác này.' : 'Re-enter your password to confirm this policy change. You will need to sign in again afterward.')}</p>
                                 </div>
                             </div>
                             <button type="button" onClick={closeConfirmation} className="flex size-8 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" aria-label={t("closeDialog")}><X size={17} /></button>
