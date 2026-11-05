@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     BookOpen, Check, ChevronDown, Copy, LoaderCircle, MessageCircle, MessageSquare,
     Pencil, Plus, RefreshCw, Search, Send, Square, ThumbsDown, ThumbsUp, Trash2, X
@@ -27,6 +28,7 @@ const QUICK_PROMPTS = {
 
 export default function GlobalChatbot() {
     const { user } = useAuth();
+    const location = useLocation();
     const { language } = useLanguage();
     const vi = language === 'vi';
     const [open, setOpen] = useState(false);
@@ -128,7 +130,7 @@ export default function GlobalChatbot() {
         }
     }, [open, showConversationList, showKnowledgeManager]);
 
-    if (!user) return null;
+    if (!user || location.pathname === '/login') return null;
 
     const switchConversation = id => {
         if (loading || id === activeConversationId) return;
