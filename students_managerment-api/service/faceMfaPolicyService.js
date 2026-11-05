@@ -2,8 +2,7 @@
 
 const pool = require('../src/config/database.js');
 const { verifySensitiveAction } = require('./advancedAuthService.js');
-const { ensureFaceInferenceReady } = require('./faceInferenceService.js');
-const { ensureLandmarkServiceReady } = require('./faceLandmarkClient.js');
+const { ensureFaceMfaPipelineReady } = require('./faceAuthService.js');
 
 function policyError(code, message, status = 400) {
     const error = new Error(message);
@@ -37,8 +36,7 @@ async function setPolicy(userId, enabled, currentPassword, verificationToken) {
         if (process.env.FACE_AUTH_PIPELINE_ENABLED !== 'true' || process.env.FACE_AUTH_PIPELINE_VALIDATED !== 'true') {
             throw policyError('FACE_MFA_PIPELINE_NOT_READY', 'Không thể bật Face MFA khi pipeline chưa được kiểm định.', 503);
         }
-        await ensureFaceInferenceReady();
-        await ensureLandmarkServiceReady();
+        await ensureFaceMfaPipelineReady();
         const credential = await pool.query(
             'SELECT 1 FROM user_face_credentials WHERE user_id = $1 AND disabled_at IS NULL LIMIT 1',
             [userId]
