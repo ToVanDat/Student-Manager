@@ -14,7 +14,7 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium-desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1365, height: 900 } } },
-    { name: 'chromium-mobile', use: { ...devices['iPhone 13'] } },
+    { name: 'chromium-mobile', use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
   ],
   webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER ? undefined : {
     command: 'npm run dev -- --host 127.0.0.1',
