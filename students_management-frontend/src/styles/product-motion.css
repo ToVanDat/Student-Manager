@@ -79,17 +79,17 @@
   }
 
   /* Chat surfaces: restrained hover/press feedback; do not replay all message rows on rerender. */
-  .chat-shell [data-chat-region="conversation-actions"] button,
-  .chat-shell [data-chat-region="message-composer"] button {
+  [data-chat-region="conversation"] [data-chat-region="conversation-actions"] button,
+  [data-chat-region="conversation"] [data-chat-region="message-composer"] button {
     transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease,
       border-color var(--motion-fast) ease, transform var(--motion-fast) ease;
   }
 
-  .chat-shell [data-chat-region="message-composer"] button:active:not(:disabled) {
+  [data-chat-region="conversation"] [data-chat-region="message-composer"] button:active:not(:disabled) {
     transform: translateY(1px);
   }
 
-  .chat-shell [data-chat-region="message-timeline"] {
+  [data-chat-region="conversation"] [data-chat-region="message-timeline"] {
     scroll-behavior: smooth;
   }
 
@@ -148,13 +148,13 @@
   .auth-login-card [data-auth-step="recovery-reset"] button,
   [data-ui-region="student-sidebar"] nav button,
   [role="tablist"] [role="tab"],
-  .chat-shell [data-chat-region="conversation-actions"] button,
-  .chat-shell [data-chat-region="message-composer"] button {
+  [data-chat-region="conversation"] [data-chat-region="conversation-actions"] button,
+  [data-chat-region="conversation"] [data-chat-region="message-composer"] button {
     transition: none !important;
     transform: none !important;
   }
 
-  .chat-shell [data-chat-region="message-timeline"] {
+  [data-chat-region="conversation"] [data-chat-region="message-timeline"] {
     scroll-behavior: auto !important;
   }
 }
