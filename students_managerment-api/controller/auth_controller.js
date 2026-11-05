@@ -556,6 +556,21 @@ const login = async (req, res) => {
                 ipAddress
             );
 
+        if (result?.requiresFaceMfa === true) {
+            try {
+                await clearAccountIpState(username, ipAddress);
+            } catch (protectionError) {
+                console.warn('[AUTH] Could not clear successful-login cooldown:', protectionError.code || protectionError.message);
+            }
+            return res.status(202).json({
+                requiresFaceMfa: true,
+                pendingAuthId: result.pendingAuthId,
+                expiresIn: result.expiresIn,
+                user: result.user,
+                message: 'Hãy hoàn tất xác minh khuôn mặt để tiếp tục.'
+            });
+        }
+
         // A valid password clears only this account/IP pair; other IP risk
         // signals remain isolated and expire naturally.
         try {
