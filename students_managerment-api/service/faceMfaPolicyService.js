@@ -1,6 +1,8 @@
 'use strict';
 
 const pool = require('../src/config/database.js');
+const authRepository = require('../repository/authRepository.js');
+const { removeAccessTokensForSession } = require('./accessTokenStore.js');
 const { verifySensitiveAction } = require('./advancedAuthService.js');
 const { ensureFaceMfaPipelineReady } = require('./faceAuthService.js');
 
@@ -44,17 +46,25 @@ async function setPolicy(userId, enabled, currentPassword, verificationToken) {
         if (!credential.rows[0]) throw policyError('FACE_MFA_CREDENTIAL_REQUIRED', 'Hãy đăng ký Face Login trước khi bật Face MFA.');
     }
 
-    const updated = await pool.query(
-        `UPDATE users SET require_face_mfa = $2, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1 AND is_active = TRUE RETURNING require_face_mfa`,
-        [userId, enabled]
-    );
-    if (!updated.rows[0]) throw policyError('FACE_MFA_ACCOUNT_NOT_FOUND', 'Tài khoản không tồn tại hoặc đã bị khóa.', 403);
+    let revokedSessions;
+    try {
+        revokedSessions = await authRepository.setFaceMfaPolicyAndRevokeSessions(userId, enabled);
+    } catch (error) {
+        if (/không tồn tại|đã bị khóa/.test(error?.message || '')) {
+            throw policyError('FACE_MFA_ACCOUNT_NOT_FOUND', error.message, 403);
+        }
+        throw error;
+    }
 
-    // Deliberately do not grandfather existing sessions. On enable they are
-    // blocked by middleware/refresh/socket assurance checks; on disable the
-    // client must end the current session and sign in again under the new policy.
-    return { enabled: updated.rows[0].require_face_mfa === true, requiresSignInAgain: true };
+    // Database revocation is authoritative. Redis cleanup is best-effort because
+    // revoked session rows already fail both HTTP and Socket.IO authorization.
+    for (const session of revokedSessions) {
+        try { await removeAccessTokensForSession(session.id); }
+        catch (error) {
+            console.error('[FaceMfaPolicy] Access-token cleanup deferred', { code: error?.code || 'REDIS_CLEANUP_FAILED' });
+        }
+    }
+    return { enabled, requiresSignInAgain: true, revokedSessionCount: revokedSessions.length };
 }
 
 module.exports = { getPolicy, setPolicy };
