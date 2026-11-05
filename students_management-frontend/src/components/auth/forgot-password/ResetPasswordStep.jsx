@@ -33,7 +33,7 @@ function ResetPasswordStep({ newPassword, onNewPasswordChange, confirmPassword, 
                 </div>
             </div>
             <button className="auth-step-link min-h-10 self-center rounded-lg border-0 bg-transparent px-3 text-xs font-semibold text-blue-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:text-slate-400" type="button" onClick={onBack} disabled={loading}>← {t('backToOtp')}</button>
-            <button className="flex min-h-12 w-full items-center justify-center rounded-xl bg-linear-to-r from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>{loading ? t('updating') : t('resetPassword')}</button>
+            <button className="flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-bold text-white transition hover:-translate-y-px disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading}>{loading ? t('updating') : t('resetPassword')}</button>
         </form>
     );
 }
