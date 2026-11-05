@@ -47,14 +47,12 @@
   }
 
   /* Navigation: state is communicated by color/position, not decorative glow. */
-  .student-sidebar nav button,
-  aside[aria-label] nav button {
+  [data-ui-region="student-sidebar"] nav button {
     transition: background-color var(--motion-fast) ease, color var(--motion-fast) ease,
       border-color var(--motion-fast) ease, transform var(--motion-fast) ease;
   }
 
-  .student-sidebar nav button:active:not(:disabled),
-  aside[aria-label] nav button:active:not(:disabled) {
+  [data-ui-region="student-sidebar"] nav button:active:not(:disabled) {
     transform: translateY(1px);
   }
 
@@ -63,6 +61,11 @@
   [role="menu"],
   [data-motion-surface="popover"] {
     transform-origin: top right;
+  }
+
+  [role="menu"],
+  [data-motion-surface="popover"] {
+    animation: product-dialog-enter 160ms var(--motion-ease) both;
   }
 
   [role="dialog"][aria-labelledby="call-center-title"] {
@@ -122,8 +125,7 @@
 
   .auth-login-card [data-auth-step="recovery-otp"] button,
   .auth-login-card [data-auth-step="recovery-reset"] button,
-  .student-sidebar nav button,
-  aside[aria-label] nav button,
+  [data-ui-region="student-sidebar"] nav button,
   [role="tablist"] [role="tab"],
   .chat-shell [data-chat-region="conversation-actions"] button,
   .chat-shell [data-chat-region="message-composer"] button {
