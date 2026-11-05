@@ -20,6 +20,7 @@ const authRepository = require('../repository/authRepository');
 const emailService = require('./emailService.js');
 const { resetAccountState } = require('./passwordLoginProtection.js');
 const { retryRedisCleanup } = require('./redisCleanupRetry.js');
+const pendingFaceMfa = require('./pendingFaceMfaService.js');
 
 // =====================================================
 // CONFIG
@@ -666,6 +667,15 @@ const login = async (
         throw error;
     }
 
+
+    // A policy-enabled account receives no session, access token, refresh token,
+    // or cookie until the same login attempt completes the Face challenge.
+    if (user.require_face_mfa === true) {
+        return pendingFaceMfa.createPendingAuth(user, {
+            ip: ipAddress,
+            get: name => name === 'user-agent' ? userAgent : undefined
+        }, 'password');
+    }
 
     // =================================================
     // MULTIPLE ACTIVE SESSIONS PER USER
