@@ -68,7 +68,7 @@
     animation: product-dialog-enter 160ms var(--motion-ease) both;
   }
 
-  [role="dialog"][aria-labelledby="call-center-title"] {
+  [role="dialog"][aria-modal="true"] {
     animation: product-dialog-enter 220ms var(--motion-ease) both;
   }
 
@@ -136,7 +136,9 @@
   .auth-login-card .auth-step-transition,
   [data-chat-region="message-timeline"] [data-message-id],
   [data-chat-region="typing-indicator"],
-  [role="dialog"][aria-labelledby="call-center-title"],
+  [role="dialog"][aria-modal="true"],
+  [role="menu"],
+  [data-motion-surface="popover"],
   [role="alert"],
   [role="status"] {
     animation: none !important;
