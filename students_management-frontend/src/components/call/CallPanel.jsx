@@ -201,7 +201,7 @@ export default function CallPanel({
             )}
 
             {state === 'incoming' && (
-                <div className="call-overlay call-overlay--incoming fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-200/65 p-4 backdrop-blur-md sm:p-6">
+                <div className="call-overlay call-overlay--incoming fixed inset-0 z-[200] flex items-center justify-center overflow-y-auto bg-slate-200/65 p-4 sm:p-6">
                     <section
                         role="dialog"
                         aria-modal="true"
@@ -258,7 +258,7 @@ export default function CallPanel({
             )}
 
             {isActiveCall && (
-                <div className={`call-overlay call-overlay--active ${call?.callType === 'video' ? 'call-overlay--video' : 'call-overlay--audio'} fixed inset-0 z-[190] flex items-center justify-center overflow-y-auto bg-slate-200/70 p-2 backdrop-blur-sm sm:p-4`}>
+                <div className={`call-overlay call-overlay--active ${call?.callType === 'video' ? 'call-overlay--video' : 'call-overlay--audio'} fixed inset-0 z-[190] flex items-center justify-center overflow-y-auto bg-slate-200/70 p-2 sm:p-4`}>
                     <section className={`call-dialog call-dialog--active my-auto flex max-h-[calc(100dvh-1rem)] w-full ${call?.callType === 'video' ? 'max-w-6xl' : 'max-w-4xl'} flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] dark:border-slate-700 dark:bg-slate-900`}>
                         <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-slate-900 dark:border-slate-800 dark:text-white">
                             <div>
