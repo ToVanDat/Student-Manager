@@ -76,8 +76,8 @@ export default function QrLoginPanel({ onLogin, allowApprove = false, approvalOn
             try {
                 const result = await pollQrLoginApi(request.requestId, request.secret);
                 if (!active) return;
-                if (result.status === 'consumed' && result.accessToken) {
-                    setStatus('Đăng nhập QR thành công.');
+                if (result.requiresFaceMfa === true || (result.status === 'consumed' && result.accessToken)) {
+                    setStatus(result.requiresFaceMfa ? 'Hãy hoàn tất xác minh khuôn mặt để tiếp tục.' : 'Đăng nhập QR thành công.');
                     onLoginRef.current?.(result);
                     setRequest(null);
                     return;
