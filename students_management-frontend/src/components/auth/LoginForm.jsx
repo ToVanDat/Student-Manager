@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Camera, LoaderCircle, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, LoaderCircle, ShieldCheck } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 
 function LoginForm({
@@ -77,9 +77,6 @@ function LoginForm({
             {success && <div role="status" aria-live="polite" className="w-full rounded-xl border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm leading-relaxed text-emerald-800">{success}</div>}
             <button className="mt-1 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 text-sm font-semibold text-white shadow-lg shadow-blue-900/15 transition hover:-translate-y-px hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60" type="submit" disabled={loading} aria-describedby={error ? "login-error" : undefined}>
                 {loading ? <><LoaderCircle size={17} className="animate-spin" aria-hidden="true" />{t("loading")}</> : t("login")}
-            </button>
-            <button type="button" onClick={onFaceLogin} disabled={loading || !username.trim()} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50/70 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                <Camera size={18} aria-hidden="true" />{t("faceLoginAction")}
             </button>
             <div className="mt-1 flex items-center justify-center gap-1 text-xs text-slate-400">
                 <span>{t('noAccountYet')}</span>
