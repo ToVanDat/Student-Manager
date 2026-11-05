@@ -27,6 +27,9 @@ exports.setPolicy = async (req, res) => {
         );
         return res.json({ ...result, message: result.enabled ? 'Đã bật yêu cầu Face MFA. Hãy đăng nhập lại và xác minh khuôn mặt.' : 'Đã tắt yêu cầu Face MFA. Hãy đăng nhập lại.' });
     } catch (error) {
+        if (['FACE_SERVER_INFERENCE_NOT_READY', 'FACE_AUTH_CONFIG_NOT_READY', 'FACE_AUTH_CONFIG_INVALID', 'FACE_INFERENCE_NOT_READY', 'FACE_LANDMARK_SERVICE_UNAVAILABLE', 'FACE_LANDMARK_SERVICE_AUTH_FAILED'].includes(error?.code)) {
+            return res.status(503).json({ code: 'FACE_MFA_PIPELINE_NOT_READY', message: 'Pipeline Face chưa sẵn sàng hoặc chưa vượt qua kiểm định.' });
+        }
         if (error?.code === '42P01' || error?.code === '42703') {
             return res.status(503).json({ code: 'FACE_MFA_SCHEMA_NOT_READY', message: 'Schema Face MFA chưa được áp dụng.' });
         }
