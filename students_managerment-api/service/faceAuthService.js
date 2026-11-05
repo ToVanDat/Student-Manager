@@ -514,7 +514,15 @@ async function disable(userId, currentPassword, verificationToken) {
     return { disabled: result.rowCount > 0 };
 }
 
+async function ensureFaceMfaPipelineReady() {
+    requirePipelineConfig();
+    await ensureLandmarkServiceReady();
+    await ensureFaceInferenceReady();
+    return true;
+}
+
 module.exports = {
+    ensureFaceMfaPipelineReady,
     getStatus,
     beginEnrollment,
     finishEnrollment,
