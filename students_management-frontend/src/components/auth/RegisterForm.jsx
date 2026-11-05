@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, EyeOff, ArrowLeft, ArrowRight, UserRound, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useLanguage } from '@/context/LanguageContext.jsx';
 import AuthStepper from '@/components/auth/AuthStepper.jsx';
 
@@ -44,13 +44,7 @@ function RegisterForm({
             <form data-ui-region="register-form" data-auth-step={step === 0 ? 'register-account' : 'register-security'} className="auth-form-content auth-step-transition flex w-full flex-col gap-4 sm:gap-[18px]" onSubmit={handleStepSubmit} aria-busy={loading}>
                 {step === 0 ? (
                     <>
-                        <div className="mb-1 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm"><UserRound size={18} aria-hidden="true" /></span>
-                            <div>
-                                <p className="m-0 text-sm font-semibold text-slate-800">{t('registerAccountStepTitle')}</p>
-                                <p className="mb-0 mt-1 text-xs leading-5 text-slate-600">{t('registerAccountStepDescription')}</p>
-                            </div>
-                        </div>
+                        <p className="m-0 text-xs leading-5 text-slate-500">{t('registerAccountStepDescription')}</p>
                         <div className="flex w-full flex-col gap-2">
                             <label htmlFor="register-username" className="text-sm font-semibold leading-5 text-slate-700">{t('username')}</label>
                             <input className={fieldClass} id="register-username" name="username" type="text" required autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => onUsernameChange(event.target.value)} placeholder={t('enterUsernamePlaceholder')} autoComplete="username" disabled={loading} />
@@ -66,13 +60,7 @@ function RegisterForm({
                     </>
                 ) : (
                     <>
-                        <div className="mb-1 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/70 p-3.5">
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-white text-blue-700 shadow-sm"><ShieldCheck size={18} aria-hidden="true" /></span>
-                            <div>
-                                <p className="m-0 text-sm font-semibold text-slate-800">{t('registerSecurityStepTitle')}</p>
-                                <p className="mb-0 mt-1 text-xs leading-5 text-slate-600">{t('registerSecurityStepDescription')}</p>
-                            </div>
-                        </div>
+                        <p className="m-0 text-xs leading-5 text-slate-500">{t('registerSecurityStepDescription')}</p>
                         <div className="flex w-full flex-col gap-2">
                             <label htmlFor="register-password" className="text-sm font-semibold leading-5 text-slate-700">{t('password')}</label>
                             <div className="relative w-full">
