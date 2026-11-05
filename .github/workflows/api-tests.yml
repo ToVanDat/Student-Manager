@@ -362,7 +362,9 @@ jobs:
           psql -h localhost -U postgres -d face_auth_integration -v ON_ERROR_STOP=1 <<'SQL'
           CREATE TABLE users (
             id BIGSERIAL PRIMARY KEY,
-            is_active BOOLEAN NOT NULL DEFAULT TRUE
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            require_face_mfa BOOLEAN NOT NULL DEFAULT FALSE,
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
           );
           CREATE TABLE user_face_credentials (
             id BIGSERIAL PRIMARY KEY,
@@ -380,7 +382,8 @@ jobs:
             user_id BIGINT NOT NULL REFERENCES users(id),
             device_name VARCHAR(100),
             user_agent TEXT,
-            ip_address TEXT
+            ip_address TEXT,
+            face_mfa_verified_at TIMESTAMPTZ
           );
           SQL
       - name: Run Face Login PostgreSQL integration test
