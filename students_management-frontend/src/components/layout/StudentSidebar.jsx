@@ -44,7 +44,7 @@ function StudentSidebar({
         <>
             {isOpen && <div className="fixed inset-0 z-40 bg-slate-950/50 min-[801px]:hidden" onClick={onClose} />}
 
-            <aside className={`fixed inset-y-0 left-0 z-50 flex w-[260px] -translate-x-full flex-col border-r border-slate-200/80 bg-white px-4 py-5 text-slate-700 transition-[width,transform,padding] duration-200 motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
+            <aside data-ui-region="student-sidebar" className={`fixed inset-y-0 left-0 z-50 flex w-[260px] -translate-x-full flex-col border-r border-slate-200/80 bg-white px-4 py-5 text-slate-700 transition-[width,transform,padding] duration-200 motion-reduce:transition-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 min-[801px]:translate-x-0 ${collapsed ? 'min-[801px]:w-[72px] min-[801px]:px-2' : 'max-[1100px]:w-[220px]'} ${isOpen ? 'translate-x-0' : ''}`}>
                 <div className={`mb-7 flex items-center gap-3 rounded-xl border-b border-slate-100 px-2 pb-5 dark:border-slate-800 ${collapsed ? 'min-[801px]:justify-center min-[801px]:px-0' : ''}`}>
                     <div aria-label="Student Manager" className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-blue-700">
                         <GraduationCap size={27} strokeWidth={1.9} className="relative z-10 text-white" aria-hidden="true" />
