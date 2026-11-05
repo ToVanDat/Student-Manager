@@ -8,7 +8,8 @@ export default function MessageList({ messages, currentUserId, activeConversatio
 
     // Tự động cuộn xuống cuối khi có tin nhắn mới hoặc đang gõ (scroll )
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+        messagesEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
     }, [messages, isTyping]);
 
     return (
