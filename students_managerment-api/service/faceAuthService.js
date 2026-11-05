@@ -5,6 +5,7 @@ const pool = require('../src/config/database.js');
 const { redisClient } = require('../src/config/redis.js');
 const { encryptFaceTemplate, decryptFaceTemplate, validateEmbedding } = require('./faceTemplateCrypto.js');
 const { verifySensitiveAction, issueSession } = require('./advancedAuthService.js');
+const pendingFaceMfa = require('./pendingFaceMfaService.js');
 const { createLivenessChallenge, verifyLivenessSequence, MAX_FRAME_GAP_MS } = require('./faceLivenessChallenge.js');
 const { inferFaceImage, ensureFaceInferenceReady } = require('./faceInferenceService.js');
 const { verifyCapturePayload } = require('./faceCaptureValidation.js');
@@ -430,19 +431,24 @@ async function cancelEnrollment(userId, challengeId) {
     }
 }
 
-async function beginLogin(username) {
+async function beginLogin(username, pendingAuthId, req) {
     requirePipelineConfig();
     await ensureLandmarkServiceReady();
     await ensureFaceInferenceReady();
+    let pendingState = null;
+    if (pendingAuthId) {
+        pendingState = await pendingFaceMfa.readPendingAuth(pendingAuthId, req);
+        if (!pendingState) throw pipelineError('FACE_PENDING_AUTH_INVALID', 'Lần đăng nhập đang chờ Face MFA đã hết hạn hoặc không hợp lệ.');
+    }
     const normalized = typeof username === 'string' ? username.trim() : '';
-    const found = normalized ? await pool.query(
+    const found = pendingState ? { rows: [{ id: pendingState.userId }] } : normalized ? await pool.query(
         `SELECT u.id FROM users u
          JOIN user_face_credentials f ON f.user_id = u.id AND f.disabled_at IS NULL
          WHERE u.username = $1 AND u.is_active = TRUE LIMIT 1`, [normalized]
     ) : { rows: [] };
     const id = token(18);
     const state = createCaptureState();
-    await saveChallenge('login', id, { ...state, userId: found.rows[0] ? String(found.rows[0].id) : null });
+    await saveChallenge('login', id, { ...state, userId: found.rows[0] ? String(found.rows[0].id) : null, pendingAuthId: pendingAuthId || null });
     return {
         challengeId: id, challenge: state.challenge, expiresIn: CHALLENGE_TTL_SECONDS,
         actions: state.liveness.actions, livenessNonce: state.liveness.nonce,
@@ -459,13 +465,18 @@ async function finishLogin(challengeId, req) {
     const embedding = validateCapture(state);
     if (!state.userId) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
     const userResult = await pool.query(
-        `SELECT id, username, email, role, avatar_url, is_active FROM users WHERE id = $1 LIMIT 1`,
+        `SELECT id, username, email, role, avatar_url, is_active, require_face_mfa FROM users WHERE id = $1 LIMIT 1`,
         [state.userId]
     );
     const user = userResult.rows[0];
     if (!user?.is_active) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
     const comparison = await compareVerifiedTemplate(state.userId, embedding);
     if (!comparison.matched) throw pipelineError('FACE_LOGIN_FAILED', 'Không thể đăng nhập bằng Face Login.');
+    if (state.pendingAuthId) {
+        if (user.require_face_mfa !== true) throw pipelineError('FACE_PENDING_AUTH_INVALID', 'Chính sách Face MFA của tài khoản đã thay đổi. Hãy đăng nhập lại.');
+        const consumed = await pendingFaceMfa.consumePendingAuth(state.pendingAuthId, user.id, req);
+        if (!consumed) throw pipelineError('FACE_PENDING_AUTH_INVALID', 'Lần đăng nhập đang chờ Face MFA đã hết hạn, không khớp thiết bị hoặc đã được sử dụng.');
+    }
     try {
         return await issueSession(user, req, {
             requireFaceCredential: true,
