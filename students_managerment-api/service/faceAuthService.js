@@ -493,6 +493,10 @@ async function finishLogin(challengeId, req) {
 
 async function disable(userId, currentPassword, verificationToken) {
     await verifySensitiveAction(userId, currentPassword, verificationToken, 'face-disable');
+    const policy = await pool.query('SELECT require_face_mfa FROM users WHERE id = $1 AND is_active = TRUE', [userId]);
+    if (policy.rows[0]?.require_face_mfa === true) {
+        throw pipelineError('FACE_MFA_POLICY_ENABLED', 'Hãy tắt chính sách Face MFA và đăng nhập lại trước khi gỡ Face Login.');
+    }
     // Serialize with enrollment and Face Login session creation using the
     // same lock order: account row first, then face credential row.
     const result = await pool.query(
